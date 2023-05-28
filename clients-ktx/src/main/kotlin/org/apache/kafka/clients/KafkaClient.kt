@@ -1,0 +1,201 @@
+package org.apache.kafka.clients
+
+import java.io.Closeable
+import org.apache.kafka.common.Node
+import org.apache.kafka.common.errors.AuthenticationException
+import org.apache.kafka.common.requests.AbstractRequest
+
+/**
+ * The interface for [NetworkClient]
+ */
+interface KafkaClient : Closeable {
+
+    /**
+     * Check if we are currently ready to send another request to the given node but don't attempt to connect if we
+     * aren't.
+     *
+     * @param node The node to check
+     * @param now The current timestamp
+     */
+    fun isReady(node: Node, now: Long): Boolean
+
+    /**
+     * Initiate a connection to the given node (if necessary), and return true if already connected. The readiness of a
+     * node will change only when poll is invoked.
+     *
+     * @param node The node to connect to.
+     * @param now The current time
+     * @return true iff we are ready to immediately initiate the sending of another request to the given node.
+     */
+    fun ready(node: Node, now: Long): Boolean
+
+    /**
+     * Return the number of milliseconds to wait, based on the connection state, before attempting to send data. When
+     * disconnected, this respects the reconnect backoff time. When connecting or connected, this handles slow/stalled
+     * connections.
+     *
+     * @param node The node to check
+     * @param now The current timestamp
+     * @return The number of milliseconds to wait.
+     */
+    fun connectionDelay(node: Node, now: Long): Long
+
+    /**
+     * Return the number of milliseconds to wait, based on the connection state and the throttle time, before
+     * attempting to send data. If the connection has been established but being throttled, return throttle delay.
+     * Otherwise, return connection delay.
+     *
+     * @param node the connection to check
+     * @param now the current time in ms
+     */
+    fun pollDelayMs(node: Node, now: Long): Long
+
+    /**
+     * Check if the connection of the node has failed, based on the connection state. Such connection failure are
+     * usually transient and can be resumed in the next [.ready] }
+     * call, but there are cases where transient failures needs to be caught and re-acted upon.
+     *
+     * @param node the node to check
+     * @return true iff the connection has failed and the node is disconnected
+     */
+    fun connectionFailed(node: Node): Boolean
+
+    /**
+     * Check if authentication to this node has failed, based on the connection state. Authentication failures are
+     * propagated without any retries.
+     *
+     * @param node the node to check
+     * @return an AuthenticationException iff authentication has failed, null otherwise
+     */
+    fun authenticationException(node: Node): AuthenticationException?
+
+    /**
+     * Queue up the given request for sending. Requests can only be sent on ready connections.
+     * @param request The request
+     * @param now The current timestamp
+     */
+    fun send(request: ClientRequest, now: Long)
+
+    /**
+     * Do actual reads and writes from sockets.
+     *
+     * @param timeout The maximum amount of time to wait for responses in ms, must be non-negative. The implementation
+     * is free to use a lower value if appropriate (common reasons for this are a lower request or
+     * metadata update timeout)
+     * @param now The current time in ms
+     * @throws IllegalStateException If a request is sent to an unready node
+     */
+    fun poll(timeout: Long, now: Long): List<ClientResponse>
+
+    /**
+     * Disconnects the connection to a particular node, if there is one.
+     * Any pending ClientRequests for this connection will receive disconnections.
+     *
+     * @param nodeId The id of the node
+     */
+    fun disconnect(nodeId: String)
+
+    /**
+     * Closes the connection to a particular node (if there is one).
+     * All requests on the connection will be cleared.  ClientRequest callbacks will not be invoked
+     * for the cleared requests, nor will they be returned from poll().
+     *
+     * @param nodeId The id of the node
+     */
+    fun close(nodeId: String)
+
+    /**
+     * Choose the node with the fewest outstanding requests. This method will prefer a node with an existing connection,
+     * but will potentially choose a node for which we don't yet have a connection if all existing connections are in
+     * use.
+     *
+     * @param now The current time in ms
+     * @return The node with the fewest in-flight requests.
+     */
+    fun leastLoadedNode(now: Long): Node?
+
+    /**
+     * The number of currently in-flight requests for which we have not yet returned a response
+     */
+    fun inFlightRequestCount(): Int
+
+    /**
+     * Return true if there is at least one in-flight request and false otherwise.
+     */
+    fun hasInFlightRequests(): Boolean
+
+    /**
+     * Get the total in-flight requests for a particular node
+     *
+     * @param nodeId The id of the node
+     */
+    fun inFlightRequestCount(nodeId: String): Int
+
+    /**
+     * Return true if there is at least one in-flight request for a particular node and false otherwise.
+     */
+    fun hasInFlightRequests(nodeId: String): Boolean
+
+    /**
+     * Return true if there is at least one node with connection in the READY state and not throttled. Returns false
+     * otherwise.
+     *
+     * @param now the current time
+     */
+    fun hasReadyNodes(now: Long): Boolean
+
+    /**
+     * Wake up the client if it is currently blocked waiting for I/O
+     */
+    fun wakeup()
+
+    /**
+     * Create a new ClientRequest.
+     *
+     * @param nodeId the node to send to
+     * @param requestBuilder the request builder to use
+     * @param createdTimeMs the time in milliseconds to use as the creation time of the request
+     * @param expectResponse true iff we expect a response
+     */
+    fun newClientRequest(
+        nodeId: String,
+        requestBuilder: AbstractRequest.Builder<*>?,
+        createdTimeMs: Long,
+        expectResponse: Boolean,
+    ): ClientRequest?
+
+    /**
+     * Create a new ClientRequest.
+     *
+     * @param nodeId the node to send to
+     * @param requestBuilder the request builder to use
+     * @param createdTimeMs the time in milliseconds to use as the creation time of the request
+     * @param expectResponse true iff we expect a response
+     * @param requestTimeoutMs Upper bound time in milliseconds to await a response before disconnecting the socket and
+     * cancelling the request. The request may get cancelled sooner if the socket disconnects
+     * for any reason including if another pending request to the same node timed out first.
+     * @param callback the callback to invoke when we get a response
+     */
+    fun newClientRequest(
+        nodeId: String,
+        requestBuilder: AbstractRequest.Builder<*>?,
+        createdTimeMs: Long,
+        expectResponse: Boolean,
+        requestTimeoutMs: Int,
+        callback: RequestCompletionHandler?
+    ): ClientRequest?
+
+    /**
+     * Initiates shutdown of this client. This method may be invoked from another thread while this
+     * client is being polled. No further requests may be sent using the client. The current poll()
+     * will be terminated using wakeup(). The client should be explicitly shutdown using [.close]
+     * after poll returns. Note that [.close] should not be invoked concurrently while polling.
+     */
+    fun initiateClose()
+
+    /**
+     * Returns true if the client is still active. Returns false if [.initiateClose] or [.close]
+     * was invoked for this client.
+     */
+    fun active(): Boolean
+}

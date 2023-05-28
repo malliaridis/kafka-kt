@@ -115,11 +115,11 @@ java.sourceSets["test"].java {
     srcDir("src/generated-test/java")
 }
 
-tasks.compileJava {
+tasks.compileKotlin {
     dependsOn("processMessages")
 }
 
-tasks.compileTestJava {
+tasks.compileTestKotlin {
     dependsOn("processTestMessages")
 }
 
