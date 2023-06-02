@@ -69,9 +69,7 @@ abstract class AbstractResponse protected constructor(
      * throttle time. Client-side throttling is needed when communicating with a newer version of broker which, on
      * quota violation, sends out responses before throttling.
      */
-    open fun shouldClientThrottle(version: Short): Boolean {
-        return false
-    }
+    open fun shouldClientThrottle(version: Short): Boolean = false
 
     /**
      * Get the throttle time in milliseconds. If the response schema does not
@@ -87,9 +85,7 @@ abstract class AbstractResponse protected constructor(
      */
     abstract fun maybeSetThrottleTimeMs(throttleTimeMs: Int)
 
-    override fun toString(): String {
-        return data().toString()
-    }
+    override fun toString(): String = data().toString()
 
     companion object {
         const val DEFAULT_THROTTLE_TIME = 0

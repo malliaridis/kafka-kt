@@ -137,11 +137,11 @@ class AdminMetadataManager private constructor(
             return true
         }
 
-    fun controller(): Node {
-        return cluster.controller()
+    fun controller(): Node? {
+        return cluster.controller
     }
 
-    fun nodeById(nodeId: Int): Node {
+    fun nodeById(nodeId: Int): Node? {
         return cluster.nodeById(nodeId)
     }
 
@@ -153,12 +153,11 @@ class AdminMetadataManager private constructor(
     }
 
     fun clearController() {
-        if (cluster.controller() != null) {
-            log.trace("Clearing cached controller node {}.", cluster.controller())
+        if (cluster.controller != null) {
+            log.trace("Clearing cached controller node {}.", cluster.controller)
             cluster = Cluster(
-                cluster.clusterResource().clusterId(),
-                cluster.nodes(), emptySet(), emptySet(), emptySet(),
-                null
+                clusterId = cluster.clusterResource.clusterId(),
+                nodes = cluster.nodes,
             )
         }
     }

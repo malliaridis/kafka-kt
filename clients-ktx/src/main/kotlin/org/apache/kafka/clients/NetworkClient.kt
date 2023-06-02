@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements. See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.kafka.clients
 
 import java.io.IOException
@@ -41,26 +58,36 @@ import org.slf4j.Logger
  * A network client for asynchronous request/response network i/o. This is an internal class used to implement the
  * user-facing producer and consumer clients.
  *
- *
  * This class is not thread-safe!
+ *
+ * @property selector The selector that is used to perform network i/o.
+ * @property clientId The client id that is used to identify this client in requests to the server.
+ * @property reconnectBackoffMs The time in ms to wait before retrying to create connection to a
+ * server.
+ * @property socketSendBuffer The socket send buffer size in bytes.
+ * @property socketReceiveBuffer The socket receive size buffer in bytes.
+ * @property defaultRequestTimeoutMs Default timeout for individual requests to await
+ * acknowledgement from servers.
+ * @property discoverBrokerVersions True if we should send an ApiVersionRequest when first
+ * connecting to a broker.
  */
 class NetworkClient(
-    metadataUpdater: MetadataUpdater?,
-    metadata: Metadata?,
-    selector: Selectable,
-    clientId: String?,
+    metadataUpdater: MetadataUpdater? = null,
+    metadata: Metadata? = null,
+    private val selector: Selectable,
+    private val clientId: String?,
     maxInFlightRequestsPerConnection: Int,
-    reconnectBackoffMs: Long,
+    private val reconnectBackoffMs: Long,
     reconnectBackoffMax: Long,
-    socketSendBuffer: Int,
-    socketReceiveBuffer: Int,
-    defaultRequestTimeoutMs: Int,
+    private val socketSendBuffer: Int,
+    private val socketReceiveBuffer: Int,
+    private val defaultRequestTimeoutMs: Int,
     connectionSetupTimeoutMs: Long,
     connectionSetupTimeoutMaxMs: Long,
-    time: Time,
-    discoverBrokerVersions: Boolean,
-    apiVersions: ApiVersions,
-    throttleTimeSensor: Sensor?,
+    private val time: Time,
+    private val discoverBrokerVersions: Boolean,
+    private val apiVersions: ApiVersions,
+    private val throttleTimeSensor: Sensor? = null,
     logContext: LogContext,
     hostResolver: HostResolver?
 ) : KafkaClient {
@@ -73,45 +100,27 @@ class NetworkClient(
 
     private val log: Logger
 
-    /* the selector used to perform network i/o */
-    private val selector: Selectable
-    private val randOffset: Random
+    private val randOffset: Random = Random()
     private val metadataUpdater: MetadataUpdater
 
-    /* the state of each node's connection */
+    /**
+     * The state of each node's connection
+     */
     private val connectionStates: ClusterConnectionStates
 
-    /* the set of requests currently being sent or awaiting a response */
+    /**
+     * The set of requests currently being sent or awaiting a response
+     */
     private val inFlightRequests: InFlightRequests
 
-    /* the socket send buffer size in bytes */
-    private val socketSendBuffer: Int
-
-    /* the socket receive size buffer in bytes */
-    private val socketReceiveBuffer: Int
-
-    /* the client id used to identify this client in requests to the server */
-    private val clientId: String?
-
-    /* the current correlation id to use when sending requests to servers */
-    private var correlation: Int
-
-    /* default timeout for individual requests to await acknowledgement from servers */
-    private val defaultRequestTimeoutMs: Int
-
-    /* time in ms to wait before retrying to create connection to a server */
-    private val reconnectBackoffMs: Long
-    private val time: Time
-
     /**
-     * True if we should send an ApiVersionRequest when first connecting to a broker.
+     * The current correlation id to use when sending requests to servers
      */
-    private val discoverBrokerVersions: Boolean
-    private val apiVersions: ApiVersions
+    private var correlation: Int = 0
+
     private val nodesNeedingApiVersionsFetch: MutableMap<String, ApiVersionsRequest.Builder> = HashMap()
     private val abortedSends: MutableList<ClientResponse> = LinkedList()
-    private val throttleTimeSensor: Sensor?
-    private val state: AtomicReference<State>
+    private val state: AtomicReference<State> = AtomicReference(State.ACTIVE)
 
     constructor(
         selector: Selectable,
@@ -231,28 +240,17 @@ class NetworkClient(
         if (metadataUpdater == null) {
             require(metadata != null) { "`metadata` must not be null" }
             this.metadataUpdater = DefaultMetadataUpdater(metadata)
-        } else {
-            this.metadataUpdater = metadataUpdater
-        }
-        this.selector = selector
-        this.clientId = clientId
+        } else this.metadataUpdater = metadataUpdater
         inFlightRequests = InFlightRequests(maxInFlightRequestsPerConnection)
         connectionStates = ClusterConnectionStates(
-            reconnectBackoffMs, reconnectBackoffMax,
-            connectionSetupTimeoutMs, connectionSetupTimeoutMaxMs, logContext, hostResolver
+            reconnectBackoffMs,
+            reconnectBackoffMax,
+            connectionSetupTimeoutMs,
+            connectionSetupTimeoutMaxMs,
+            logContext,
+            hostResolver
         )
-        this.socketSendBuffer = socketSendBuffer
-        this.socketReceiveBuffer = socketReceiveBuffer
-        correlation = 0
-        randOffset = Random()
-        this.defaultRequestTimeoutMs = defaultRequestTimeoutMs
-        this.reconnectBackoffMs = reconnectBackoffMs
-        this.time = time
-        this.discoverBrokerVersions = discoverBrokerVersions
-        this.apiVersions = apiVersions
-        this.throttleTimeSensor = throttleTimeSensor
         log = logContext.logger(NetworkClient::class.java)
-        state = AtomicReference(State.ACTIVE)
     }
 
     /**
@@ -851,14 +849,16 @@ class NetworkClient(
         req: InFlightRequest, now: Long, apiVersionsResponse: ApiVersionsResponse
     ) {
         val node = req.destination
-        if (apiVersionsResponse.data().errorCode() != Errors.NONE.code()) {
+        if (apiVersionsResponse.data().errorCode() != Errors.NONE.code) {
             if (req.request.version().toInt() == 0 || apiVersionsResponse.data()
-                    .errorCode() != Errors.UNSUPPORTED_VERSION.code()
+                    .errorCode() != Errors.UNSUPPORTED_VERSION.code
             ) {
                 log.warn(
                     "Received error {} from node {} when making an ApiVersionsRequest with correlation id {}." +
                             "Disconnecting.",
-                    Errors.forCode(apiVersionsResponse.data().errorCode()), node, req.header.correlationId()
+                    Errors.forCode(apiVersionsResponse.data().errorCode()),
+                    node,
+                    req.header.correlationId()
                 )
                 selector.close(node)
                 processDisconnection(responses, node, now, ChannelState.LOCAL_CLOSE)
@@ -868,7 +868,8 @@ class NetworkClient(
                 // If not provided, the client falls back to version 0.
                 var maxApiVersion: Short = 0
                 if (apiVersionsResponse.data().apiKeys().size > 0) {
-                    val apiVersion = apiVersionsResponse.data().apiKeys().find(ApiKeys.API_VERSIONS.id)
+                    val apiVersion =
+                        apiVersionsResponse.data().apiKeys().find(ApiKeys.API_VERSIONS.id)
                     if (apiVersion != null) {
                         maxApiVersion = apiVersion.maxVersion()
                     }
@@ -1049,17 +1050,17 @@ class NetworkClient(
             val missingListenerPartitions = response.topicMetadata()
                 .stream()
                 .flatMap { topicMetadata: MetadataResponse.TopicMetadata ->
-                    topicMetadata.partitionMetadata()
+                    topicMetadata.partitionMetadata
                         .stream()
                         .filter { partitionMetadata: PartitionMetadata ->
                             partitionMetadata.error == Errors.LISTENER_NOT_FOUND
                         }
                         .map { partitionMetadata: PartitionMetadata ->
                             TopicPartition(
-                                topicMetadata.topic(),
-                                partitionMetadata.partition()
+                                topicMetadata.topic,
+                                partitionMetadata.partition
                             )
-                    }
+                        }
             }
                 .collect(Collectors.toList())
             if (missingListenerPartitions.isNotEmpty()) {

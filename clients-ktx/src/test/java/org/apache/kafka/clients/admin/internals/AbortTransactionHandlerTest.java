@@ -46,7 +46,7 @@ public class AbortTransactionHandlerTest {
     private final LogContext logContext = new LogContext();
     private final TopicPartition topicPartition = new TopicPartition("foo", 5);
     private final AbortTransactionSpec abortSpec = new AbortTransactionSpec(
-        topicPartition, 12345L, (short) 15, 4321);
+        12345L, (short) 15, 4321, topicPartition);
     private final Node node = new Node(1, "host", 1234);
 
     @Test

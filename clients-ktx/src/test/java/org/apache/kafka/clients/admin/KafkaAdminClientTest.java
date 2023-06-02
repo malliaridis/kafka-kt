@@ -6453,7 +6453,8 @@ public class KafkaAdminClientTest {
         try (AdminClientUnitTestEnv env = mockClientEnv()) {
             TopicPartition topicPartition = new TopicPartition("foo", 13);
             AbortTransactionSpec abortSpec = new AbortTransactionSpec(
-                topicPartition, 12345L, (short) 15, 200);
+                12345L, (short) 15, 200, topicPartition
+            );
             Node leader = env.cluster().nodes().iterator().next();
 
             expectMetadataRequest(env, topicPartition, leader);
@@ -6479,7 +6480,7 @@ public class KafkaAdminClientTest {
         try (AdminClientUnitTestEnv env = new AdminClientUnitTestEnv(time, cluster, configOverride)) {
             TopicPartition topicPartition = new TopicPartition("foo", 13);
             AbortTransactionSpec abortSpec = new AbortTransactionSpec(
-                topicPartition, 12345L, (short) 15, 200);
+                12345L, (short) 15, 200, topicPartition);
             Iterator<Node> nodeIterator = env.cluster().nodes().iterator();
             Node firstLeader = nodeIterator.next();
 

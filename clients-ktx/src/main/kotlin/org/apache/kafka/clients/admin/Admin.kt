@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements. See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.kafka.clients.admin
 
 import java.time.Duration
@@ -18,27 +35,28 @@ import org.apache.kafka.common.quota.ClientQuotaAlteration
 import org.apache.kafka.common.quota.ClientQuotaFilter
 
 /**
- * The administrative client for Kafka, which supports managing and inspecting topics, brokers, configurations and ACLs.
+ * The administrative client for Kafka, which supports managing and inspecting topics, brokers,
+ * configurations and ACLs.
  *
  * Instances returned from the `create` methods of this interface are guaranteed to be thread safe.
- * However, the [KafkaFutures][KafkaFuture] returned from request methods are executed
- * by a single thread, so it is important that any code which executes on that thread when they complete
- * (using [KafkaFuture.thenApply], for example) doesn't block
- * for too long. If necessary, processing of results should be passed to another thread.
+ * However, the [KafkaFutures][KafkaFuture] returned from request methods are executed by a single
+ * thread, so it is important that any code which executes on that thread when they complete (using
+ * [KafkaFuture.thenApply], for example) doesn't block for too long. If necessary, processing of
+ * results should be passed to another thread.
  *
  * The operations exposed by Admin follow a consistent pattern:
  *
  *  * Admin instances should be created using [Admin.create] or [Admin.create]
- *  * Each operation typically has two overloaded methods, one which uses a default set of options and an
- * overloaded method where the last parameter is an explicit options object.
- *  * The operation method's first parameter is a `Collection` of items to perform
- * the operation on. Batching multiple requests into a single call is more efficient and should be
- * preferred over multiple calls to the same method.
+ *  * Each operation typically has two overloaded methods, one which uses a default set of options
+ *  and an overloaded method where the last parameter is an explicit options object.
+ *  * The operation method's first parameter is a `Collection` of items to perform the operation on.
+ *  Batching multiple requests into a single call is more efficient and should be preferred over
+ *  multiple calls to the same method.
  *  * The operation methods execute asynchronously.
  *  * Each `xxx` operation method returns an `XxxResult` class with methods which expose
- * [KafkaFuture] for accessing the result(s) of the operation.
- *  * Typically an `all()` method is provided for getting the overall success/failure of the batch and a
- * `values()` method provided access to each item in a request batch.
+ *  [KafkaFuture] for accessing the result(s) of the operation.
+ *  * Typically an `all()` method is provided for getting the overall success/failure of the batch
+ *  and a `values()` method provided access to each item in a request batch.
  * Other methods may also be provided.
  *  * For synchronous behaviour use [KafkaFuture.get]
  *
@@ -137,8 +155,8 @@ interface Admin : AutoCloseable {
      * During this time, [.listTopics] and [.describeTopics]
      * may not return information about the new topics.
      *
-     * This operation is supported by brokers with version 0.10.1.0 or higher. The validateOnly option is supported
-     * from version 0.10.2.0.
+     * This operation is supported by brokers with version 0.10.1.0 or higher. The validateOnly
+     * option is supported from version 0.10.2.0.
      *
      * @param newTopics The new topics to create.
      * @param options   The options to use when creating the new topics.
@@ -177,8 +195,9 @@ interface Admin : AutoCloseable {
      * This is a convenience method for [.deleteTopics]
      * with default options. See the overload for more details.
      *
-     * When using topic IDs, this operation is supported by brokers with inter-broker protocol 2.8 or higher.
-     * When using topic names, this operation is supported by brokers with version 0.10.1.0 or higher.
+     * When using topic IDs, this operation is supported by brokers with inter-broker protocol 2.8
+     * or higher. When using topic names, this operation is supported by brokers with version
+     * 0.10.1.0 or higher.
      *
      * @param topics The topics to delete.
      * @return The DeleteTopicsResult.
@@ -201,8 +220,9 @@ interface Admin : AutoCloseable {
      * the topics for deletion, but not actually delete them. The futures will
      * return successfully in this case.
      *
-     * When using topic IDs, this operation is supported by brokers with inter-broker protocol 2.8 or higher.
-     * When using topic names, this operation is supported by brokers with version 0.10.1.0 or higher.
+     * When using topic IDs, this operation is supported by brokers with inter-broker protocol 2.8
+     * or higher. When using topic names, this operation is supported by brokers with version
+     * 0.10.1.0 or higher.
      *
      * @param topics  The topics to delete.
      * @param options The options to use when deleting the topics.
@@ -266,7 +286,10 @@ interface Admin : AutoCloseable {
      * @param options The options to use when describing the topics.
      * @return The DescribeTopicsResult.
      */
-    fun describeTopics(topics: TopicCollection, options: DescribeTopicsOptions): DescribeTopicsResult
+    fun describeTopics(
+        topics: TopicCollection,
+        options: DescribeTopicsOptions,
+    ): DescribeTopicsResult
 
     /**
      * Get information about the nodes in the cluster, using the default options.
@@ -388,11 +411,11 @@ interface Admin : AutoCloseable {
     /**
      * Get the configuration for the specified resources.
      *
-     * The returned configuration includes default values and the isDefault() method can be used to distinguish them
-     * from user supplied values.
+     * The returned configuration includes default values and the isDefault() method can be used to
+     * distinguish them from user supplied values.
      *
-     * The value of config entries where isSensitive() is true is always `null` so that sensitive information
-     * is not disclosed.
+     * The value of config entries where isSensitive() is true is always `null` so that sensitive
+     * information is not disclosed.
      *
      * Config entries where isReadOnly() is true cannot be updated.
      *
@@ -415,8 +438,9 @@ interface Admin : AutoCloseable {
      *
      * This operation is supported by brokers with version 0.11.0.0 or higher.
      *
-     * @param configs The resources with their configs (topic is the only resource type with configs that can
-     * be updated currently)
+     * @param configs The resources with their configs (topic is the only resource type with configs
+     * that can be updated currently)
+     *
      * @return The AlterConfigsResult
      */
     @Deprecated("Since 2.3. Use {@link #incrementalAlterConfigs(Map)}.")
@@ -427,13 +451,14 @@ interface Admin : AutoCloseable {
     /**
      * Update the configuration for the specified resources with the default options.
      *
-     * Updates are not transactional so they may succeed for some resources while fail for others. The configs for
-     * a particular resource are updated atomically.
+     * Updates are not transactional, so they may succeed for some resources while fail for others.
+     * The configs for a particular resource are updated atomically.
      *
      * This operation is supported by brokers with version 0.11.0.0 or higher.
      *
-     * @param configs The resources with their configs (topic is the only resource type with configs that can
-     * be updated currently)
+     * @param configs The resources with their configs (topic is the only resource type with configs
+     * that can be updated currently)
+     *
      * @param options The options to use when describing configs
      * @return The AlterConfigsResult
      */
@@ -451,15 +476,17 @@ interface Admin : AutoCloseable {
      * @param configs The resources with their configs
      * @return The AlterConfigsResult
      */
-    fun incrementalAlterConfigs(configs: Map<ConfigResource, Collection<AlterConfigOp>>): AlterConfigsResult {
+    fun incrementalAlterConfigs(
+        configs: Map<ConfigResource, Collection<AlterConfigOp>>,
+    ): AlterConfigsResult {
         return incrementalAlterConfigs(configs, AlterConfigsOptions())
     }
 
     /**
      * Incrementally update the configuration for the specified resources.
      *
-     * Updates are not transactional so they may succeed for some resources while fail for others. The configs for
-     * a particular resource are updated atomically.
+     * Updates are not transactional so they may succeed for some resources while fail for others.
+     * The configs for a particular resource are updated atomically.
      *
      * The following exceptions can be anticipated when calling `get()` on the futures obtained from
      * the returned [AlterConfigsResult]:
@@ -471,7 +498,8 @@ interface Admin : AutoCloseable {
      *  * [org.apache.kafka.common.errors.UnknownTopicOrPartitionException]
      * if the Topic doesn't exist.
      *  * [org.apache.kafka.common.errors.InvalidRequestException]
-     * if the request details are invalid. e.g., a configuration key was specified more than once for a resource
+     * if the request details are invalid. e.g., a configuration key was specified more than once
+     * for a resource
      *
      * This operation is supported by brokers with version 2.3.0 or higher.
      *
@@ -485,11 +513,12 @@ interface Admin : AutoCloseable {
     ): AlterConfigsResult
 
     /**
-     * Change the log directory for the specified replicas. If the replica does not exist on the broker, the result
-     * shows REPLICA_NOT_AVAILABLE for the given replica and the replica will be created in the given log directory on
-     * the broker when it is created later. If the replica already exists on the broker, the replica will be moved to
-     * the given log directory if it is not already there. For detailed result, inspect the returned
-     * [AlterReplicaLogDirsResult] instance.
+     * Change the log directory for the specified replicas. If the replica does not exist on the
+     * broker, the result shows REPLICA_NOT_AVAILABLE for the given replica and the replica will be
+     * created in the given log directory on the broker when it is created later. If the replica
+     * already exists on the broker, the replica will be moved to the given log directory if it is
+     * not already there. For detailed result, inspect the returned [AlterReplicaLogDirsResult]
+     * instance.
      *
      * This operation is not transactional so it may succeed for some replicas while fail for others.
      *
@@ -501,16 +530,19 @@ interface Admin : AutoCloseable {
      * @param replicaAssignment     The replicas with their log directory absolute path
      * @return                      The AlterReplicaLogDirsResult
      */
-    fun alterReplicaLogDirs(replicaAssignment: Map<TopicPartitionReplica, String>): AlterReplicaLogDirsResult {
+    fun alterReplicaLogDirs(
+        replicaAssignment: Map<TopicPartitionReplica, String>,
+    ): AlterReplicaLogDirsResult {
         return alterReplicaLogDirs(replicaAssignment, AlterReplicaLogDirsOptions())
     }
 
     /**
-     * Change the log directory for the specified replicas. If the replica does not exist on the broker, the result
-     * shows REPLICA_NOT_AVAILABLE for the given replica and the replica will be created in the given log directory on
-     * the broker when it is created later. If the replica already exists on the broker, the replica will be moved to
-     * the given log directory if it is not already there. For detailed result, inspect the returned
-     * [AlterReplicaLogDirsResult] instance.
+     * Change the log directory for the specified replicas. If the replica does not exist on the
+     * broker, the result shows REPLICA_NOT_AVAILABLE for the given replica and the replica will be
+     * created in the given log directory on the broker when it is created later. If the replica
+     * already exists on the broker, the replica will be moved to the given log directory if it is
+     * not already there. For detailed result, inspect the returned [AlterReplicaLogDirsResult]
+     * instance.
      *
      * This operation is not transactional so it may succeed for some replicas while fail for others.
      *
@@ -565,7 +597,9 @@ interface Admin : AutoCloseable {
      * @param replicas The replicas to query
      * @return The DescribeReplicaLogDirsResult
      */
-    fun describeReplicaLogDirs(replicas: Collection<TopicPartitionReplica>): DescribeReplicaLogDirsResult {
+    fun describeReplicaLogDirs(
+        replicas: Collection<TopicPartitionReplica>,
+    ): DescribeReplicaLogDirsResult {
         return describeReplicaLogDirs(replicas, DescribeReplicaLogDirsOptions())
     }
 
@@ -585,14 +619,15 @@ interface Admin : AutoCloseable {
 
     /**
      * Increase the number of partitions of the topics given as the keys of `newPartitions`
-     * according to the corresponding values. **If partitions are increased for a topic that has a key,
-     * the partition logic or ordering of the messages will be affected.**
+     * according to the corresponding values. **If partitions are increased for a topic that has a
+     * key, the partition logic or ordering of the messages will be affected.**
      *
      * This is a convenience method for [.createPartitions] with default options.
      * See the overload for more details.
      *
-     * @param newPartitions The topics which should have new partitions created, and corresponding parameters
-     * for the created partitions.
+     * @param newPartitions The topics which should have new partitions created, and corresponding
+     * parameters for the created partitions.
+     *
      * @return The CreatePartitionsResult.
      */
     fun createPartitions(newPartitions: Map<String, NewPartitions>): CreatePartitionsResult {
@@ -601,8 +636,8 @@ interface Admin : AutoCloseable {
 
     /**
      * Increase the number of partitions of the topics given as the keys of `newPartitions`
-     * according to the corresponding values. **If partitions are increased for a topic that has a key,
-     * the partition logic or ordering of the messages will be affected.**
+     * according to the corresponding values. **If partitions are increased for a topic that has a
+     * key, the partition logic or ordering of the messages will be affected.**
      *
      * This operation is not transactional so it may succeed for some topics while fail for others.
      *
@@ -613,8 +648,8 @@ interface Admin : AutoCloseable {
      *
      * This operation is supported by brokers with version 1.0.0 or higher.
      *
-     * The following exceptions can be anticipated when calling `get()` on the futures obtained from the
-     * [values()][CreatePartitionsResult.values] method of the returned [CreatePartitionsResult]
+     * The following exceptions can be anticipated when calling `get()` on the futures obtained from
+     * the [values()][CreatePartitionsResult.values] method of the returned [CreatePartitionsResult]
      *
      *  * [org.apache.kafka.common.errors.AuthorizationException]
      * if the authenticated user is not authorized to alter the topic
@@ -630,8 +665,8 @@ interface Admin : AutoCloseable {
      *  * Subclasses of [org.apache.kafka.common.KafkaException]
      * if the request is invalid in some way.
      *
-     * @param newPartitions The topics which should have new partitions created, and corresponding parameters
-     * for the created partitions.
+     * @param newPartitions The topics which should have new partitions created, and corresponding
+     * parameters for the created partitions.
      * @param options       The options to use when creating the new partitions.
      * @return The CreatePartitionsResult.
      */
@@ -648,7 +683,8 @@ interface Admin : AutoCloseable {
      *
      * This operation is supported by brokers with version 0.11.0.0 or higher.
      *
-     * @param recordsToDelete The topic partitions and related offsets from which records deletion starts.
+     * @param recordsToDelete The topic partitions and related offsets from which records deletion
+     * starts.
      * @return The DeleteRecordsResult.
      */
     fun deleteRecords(recordsToDelete: Map<TopicPartition, RecordsToDelete>): DeleteRecordsResult {
@@ -660,8 +696,9 @@ interface Admin : AutoCloseable {
      *
      * This operation is supported by brokers with version 0.11.0.0 or higher.
      *
-     * @param recordsToDelete The topic partitions and related offsets from which records deletion starts.
-     * @param options         The options to use when deleting records.
+     * @param recordsToDelete The topic partitions and related offsets from which records deletion
+     * starts.
+     * @param options The options to use when deleting records.
      * @return The DeleteRecordsResult.
      */
     fun deleteRecords(
@@ -686,11 +723,13 @@ interface Admin : AutoCloseable {
      *
      * This operation is supported by brokers with version 1.1.0 or higher.
      *
-     * The following exceptions can be anticipated when calling `get()` on the futures obtained from the
-     * [delegationToken()][CreateDelegationTokenResult.delegationToken] method of the returned [CreateDelegationTokenResult]
+     * The following exceptions can be anticipated when calling `get()` on the futures obtained from
+     * the [delegationToken()][CreateDelegationTokenResult.delegationToken] method of the returned
+     * [CreateDelegationTokenResult]
      *
      *  * [org.apache.kafka.common.errors.UnsupportedByAuthenticationException]
-     * If the request sent on PLAINTEXT/1-way SSL channels or delegation token authenticated channels.
+     * If the request sent on PLAINTEXT/1-way SSL channels or delegation token authenticated
+     * channels.
      *  * [org.apache.kafka.common.errors.InvalidPrincipalTypeException]
      * if the renewers principal type is not supported.
      *  * [org.apache.kafka.common.errors.DelegationTokenDisabledException]
@@ -722,8 +761,9 @@ interface Admin : AutoCloseable {
      *
      * This operation is supported by brokers with version 1.1.0 or higher.
      *
-     * The following exceptions can be anticipated when calling `get()` on the futures obtained from the
-     * [expiryTimestamp()][RenewDelegationTokenResult.expiryTimestamp] method of the returned [RenewDelegationTokenResult]
+     * The following exceptions can be anticipated when calling `get()` on the futures obtained from
+     * the [expiryTimestamp()][RenewDelegationTokenResult.expiryTimestamp] method of the returned
+     * [RenewDelegationTokenResult]
      *
      *  * [org.apache.kafka.common.errors.UnsupportedByAuthenticationException]
      * If the request sent on PLAINTEXT/1-way SSL channels or delegation token authenticated channels.
@@ -762,8 +802,9 @@ interface Admin : AutoCloseable {
      *
      * This operation is supported by brokers with version 1.1.0 or higher.
      *
-     * The following exceptions can be anticipated when calling `get()` on the futures obtained from the
-     * [expiryTimestamp()][ExpireDelegationTokenResult.expiryTimestamp] method of the returned [ExpireDelegationTokenResult]
+     * The following exceptions can be anticipated when calling `get()` on the futures obtained from
+     * the [expiryTimestamp()][ExpireDelegationTokenResult.expiryTimestamp] method of the returned
+     * [ExpireDelegationTokenResult]
      *
      *  * [org.apache.kafka.common.errors.UnsupportedByAuthenticationException]
      * If the request sent on PLAINTEXT/1-way SSL channels or delegation token authenticated channels.
@@ -782,13 +823,17 @@ interface Admin : AutoCloseable {
      * @param options The options to use when expiring delegation token.
      * @return The ExpireDelegationTokenResult.
      */
-    fun expireDelegationToken(hmac: ByteArray, options: ExpireDelegationTokenOptions): ExpireDelegationTokenResult
+    fun expireDelegationToken(
+        hmac: ByteArray,
+        options: ExpireDelegationTokenOptions,
+    ): ExpireDelegationTokenResult
 
     /**
      * Describe the Delegation Tokens.
      *
      * This is a convenience method for [.describeDelegationToken] with default options.
-     * This will return all the user owned tokens and tokens where user have Describe permission. See the overload for more details.
+     * This will return all the user owned tokens and tokens where user have Describe permission.
+     * See the overload for more details.
      *
      * @return The DescribeDelegationTokenResult.
      */
@@ -801,8 +846,9 @@ interface Admin : AutoCloseable {
      *
      * This operation is supported by brokers with version 1.1.0 or higher.
      *
-     * The following exceptions can be anticipated when calling `get()` on the futures obtained from the
-     * [delegationTokens()][DescribeDelegationTokenResult.delegationTokens] method of the returned [DescribeDelegationTokenResult]
+     * The following exceptions can be anticipated when calling `get()` on the futures obtained from
+     * the [delegationTokens()][DescribeDelegationTokenResult.delegationTokens] method of the
+     * returned [DescribeDelegationTokenResult]
      *
      *  * [org.apache.kafka.common.errors.UnsupportedByAuthenticationException]
      * If the request sent on PLAINTEXT/1-way SSL channels or delegation token authenticated channels.
@@ -1042,12 +1088,13 @@ interface Admin : AutoCloseable {
      *  * [org.apache.kafka.common.errors.InvalidReplicaAssignmentException]
      * If the specified assignment was not valid.
      *  * [org.apache.kafka.common.errors.NoReassignmentInProgressException]
-     * If there was an attempt to cancel a reassignment for a partition which was not being reassigned.
+     * If there was an attempt to cancel a reassignment for a partition which was not being
+     * reassigned.
      *
-     *
-     * @param reassignments   The reassignments to add, modify, or remove. See [NewPartitionReassignment].
-     * @param options         The options to use.
-     * @return                The result.
+     * @param reassignments The reassignments to add, modify, or remove. See
+     * [NewPartitionReassignment].
+     * @param options The options to use.
+     * @return The result.
      */
     fun alterPartitionReassignments(
         reassignments: Map<TopicPartition, NewPartitionReassignment?>,
@@ -1101,8 +1148,9 @@ interface Admin : AutoCloseable {
     }
 
     /**
-     * @param partitions the partitions we want to get reassignment for, or `null` if we want to get the reassignments
-     * for all partitions in the cluster
+     * @param partitions the partitions we want to get reassignment for, or `null` if we want to get
+     * the reassignments for all partitions in the cluster.
+     *
      * @param options The options to use.
      * @return The result.
      */
@@ -1148,7 +1196,8 @@ interface Admin : AutoCloseable {
      * This operation is not transactional so it may succeed for some partitions while fail for others.
      *
      * @param groupId The group for which to alter offsets.
-     * @param offsets A map of offsets by partition with associated metadata. Partitions not specified in the map are ignored.
+     * @param offsets A map of offsets by partition with associated metadata. Partitions not
+     * specified in the map are ignored.
      * @param options The options to use when altering the offsets.
      * @return The AlterOffsetsResult.
      */
@@ -1644,7 +1693,7 @@ interface Admin : AutoCloseable {
          * @param conf The configuration.
          * @return The new KafkaAdminClient.
          */
-        fun create(conf: Map<String, Any>): Admin {
+        fun create(conf: Map<String, Any?>): Admin {
             return KafkaAdminClient.createInternal(config = AdminClientConfig(conf, true))
         }
     }

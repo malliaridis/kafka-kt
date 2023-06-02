@@ -508,7 +508,7 @@ open class SaslClientAuthenticator(
             if (error != Errors.NONE) {
                 setSaslState(SaslState.FAILED)
                 val errMsg = response.errorMessage()
-                throw if (errMsg == null) error.exception() else error.exception(errMsg)
+                throw if (errMsg == null) error.exception else error.exception(errMsg)
             }
             val sessionLifetimeMs = response.sessionLifetimeMs()
             if (sessionLifetimeMs > 0L) reauthInfo.positiveSessionLifetimeMs = sessionLifetimeMs

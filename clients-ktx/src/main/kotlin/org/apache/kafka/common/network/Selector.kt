@@ -152,7 +152,7 @@ class Selector private constructor(
         try {
             nioSelector = java.nio.channels.Selector.open()
         } catch (e: IOException) {
-            throw KafkaException(e)
+            throw KafkaException(cause = e)
         }
         this.sensors = SelectorMetrics(metrics, metricGrpPrefix, metricTags, metricsPerConnection)
     }
