@@ -15,21 +15,14 @@
  * limitations under the License.
  */
 
-package org.apache.kafka.common.errors
+package org.apache.kafka.clients.admin
 
-/**
- * Exception thrown if an operation on a resource exceeds the throttling quota.
- */
-class ThrottlingQuotaExceededException(
-    val throttleTimeMs: Int = 0,
-    message : String? = null,
-) : RetriableException(message = message) {
+import org.apache.kafka.common.annotation.InterfaceStability.Evolving
 
-    @Deprecated(
-        message = "Use property instead",
-        replaceWith = ReplaceWith("throttleTimeMs"),
-    )
-    fun throttleTimeMs(): Int {
-        return throttleTimeMs
+@Evolving
+class AbortTransactionOptions : AbstractOptions<AbortTransactionOptions?>() {
+
+    override fun toString(): String {
+        return "AbortTransactionOptions(timeoutMs=$timeoutMs)"
     }
 }

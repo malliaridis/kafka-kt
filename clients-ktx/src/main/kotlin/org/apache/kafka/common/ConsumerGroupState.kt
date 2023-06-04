@@ -15,21 +15,30 @@
  * limitations under the License.
  */
 
-package org.apache.kafka.common.errors
+package org.apache.kafka.common
 
 /**
- * Exception thrown if an operation on a resource exceeds the throttling quota.
+ * The consumer group state.
  */
-class ThrottlingQuotaExceededException(
-    val throttleTimeMs: Int = 0,
-    message : String? = null,
-) : RetriableException(message = message) {
+enum class ConsumerGroupState(private val displayName: String) {
+    UNKNOWN("Unknown"),
+    PREPARING_REBALANCE("PreparingRebalance"),
+    COMPLETING_REBALANCE("CompletingRebalance"),
+    STABLE("Stable"),
+    DEAD("Dead"),
+    EMPTY("Empty");
 
-    @Deprecated(
-        message = "Use property instead",
-        replaceWith = ReplaceWith("throttleTimeMs"),
-    )
-    fun throttleTimeMs(): Int {
-        return throttleTimeMs
+    override fun toString(): String = displayName
+
+    companion object {
+        private val NAME_TO_ENUM = values().associateBy { it.displayName }
+
+        /**
+         * Parse a string into a consumer group state.
+         */
+        fun parse(name: String): ConsumerGroupState {
+            val state = NAME_TO_ENUM[name]
+            return state ?: UNKNOWN
+        }
     }
 }

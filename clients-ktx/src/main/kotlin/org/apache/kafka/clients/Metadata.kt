@@ -51,7 +51,7 @@ import org.slf4j.Logger
  * interval is removed from the metadata refresh set after an update. Consumers disable topic expiry
  * since they explicitly manage topics while producers rely on topic expiry to limit the refresh set.
  */
-class Metadata(
+open class Metadata(
     private val refreshBackoffMs: Long,
     private val metadataExpireMs: Long,
     private val clusterResourceListeners: ClusterResourceListeners,
@@ -285,7 +285,7 @@ class Metadata(
      * @param nowMs current time in milliseconds
      */
     @Synchronized
-    fun update(
+    open fun update(
         requestVersion: Int,
         response: MetadataResponse,
         isPartialUpdate: Boolean,
@@ -555,7 +555,7 @@ class Metadata(
      * @param exception The fatal exception
      */
     @Synchronized
-    fun fatalError(exception: KafkaException?) {
+    open fun fatalError(exception: KafkaException?) {
         fatalException = exception
     }
 

@@ -377,7 +377,8 @@ class KafkaAdminClient private constructor(
     override fun close(timeout: Duration) {
         var waitTimeMs = timeout.toMillis()
         if (waitTimeMs < 0) throw IllegalArgumentException("The timeout cannot be negative.")
-        waitTimeMs = waitTimeMs.coerceAtMost(TimeUnit.DAYS.toMillis(365)) // Limit the timeout to a year.
+        waitTimeMs =
+            waitTimeMs.coerceAtMost(TimeUnit.DAYS.toMillis(365)) // Limit the timeout to a year.
         val now = time.milliseconds()
         var newHardShutdownTimeMs = now + waitTimeMs
         var prev = INVALID_SHUTDOWN_TIME
@@ -505,7 +506,10 @@ class KafkaAdminClient private constructor(
             // If this is an UnsupportedVersionException that we can retry, do so. Note that a
             // protocol downgrade will not count against the total number of retries we get for
             // this RPC. That is why 'tries' is not incremented.
-            if ((throwable is UnsupportedVersionException) && handleUnsupportedVersionException(throwable)) {
+            if ((throwable is UnsupportedVersionException) && handleUnsupportedVersionException(
+                    throwable
+                )
+            ) {
                 log.debug("{} attempting protocol downgrade and then retry.", this)
                 runnable.pendingCalls.add(this)
                 return
@@ -597,7 +601,8 @@ class KafkaAdminClient private constructor(
          *
          * @return True if the exception can be handled; false otherwise.
          */
-        open fun handleUnsupportedVersionException(exception: UnsupportedVersionException): Boolean = false
+        open fun handleUnsupportedVersionException(exception: UnsupportedVersionException): Boolean =
+            false
 
         override fun toString(): String {
             return ("Call(callName=" + callName + ", deadlineMs=" + deadlineMs +
@@ -720,7 +725,8 @@ class KafkaAdminClient private constructor(
          * @param processor     The timeout processor.
          */
         private fun timeoutPendingCalls(processor: TimeoutProcessor) {
-            val numTimedOut = processor.handleTimeouts(pendingCalls, "Timed out waiting for a node assignment.")
+            val numTimedOut =
+                processor.handleTimeouts(pendingCalls, "Timed out waiting for a node assignment.")
             if (numTimedOut > 0) log.debug("Timed out {} pending calls.", numTimedOut)
         }
 
@@ -822,7 +828,8 @@ class KafkaAdminClient private constructor(
          */
         private fun sendEligibleCalls(now: Long): Long {
             var pollTimeout = Long.MAX_VALUE
-            val iter: MutableIterator<Map.Entry<Node, MutableList<Call>>> = callsToSend.entries.iterator()
+            val iter: MutableIterator<Map.Entry<Node, MutableList<Call>>> =
+                callsToSend.entries.iterator()
             while (iter.hasNext()) {
                 val entry = iter.next()
                 val calls = entry.value
@@ -857,7 +864,11 @@ class KafkaAdminClient private constructor(
                     }
                     val nodeTimeout = client.pollDelayMs(node, now)
                     pollTimeout = Math.min(pollTimeout, nodeTimeout)
-                    log.trace("Client is not ready to send to {}. Must delay {} ms", node, nodeTimeout)
+                    log.trace(
+                        "Client is not ready to send to {}. Must delay {} ms",
+                        node,
+                        nodeTimeout
+                    )
                     continue
                 }
                 // Subtract the time we spent waiting for the node to become ready from
@@ -946,7 +957,9 @@ class KafkaAdminClient private constructor(
                     // an internal server error has occurred. Close the connection and log an error message.
                     log.error(
                         "Internal server error on {}: server returned information about unknown " +
-                                "correlation ID {}, requestHeader = {}", response.destination(), correlationId,
+                                "correlation ID {}, requestHeader = {}",
+                        response.destination(),
+                        correlationId,
                         response.requestHeader()
                     )
                     client.disconnect(response.destination())
@@ -986,7 +999,11 @@ class KafkaAdminClient private constructor(
                 } else {
                     try {
                         call.handleResponse(response.responseBody())
-                        if (log.isTraceEnabled) log.trace("{} got response {}", call, response.responseBody())
+                        if (log.isTraceEnabled) log.trace(
+                            "{} got response {}",
+                            call,
+                            response.responseBody()
+                        )
                     } catch (t: Throwable) {
                         if (log.isTraceEnabled) log.trace(
                             "{} handleResponse failed with {}",
@@ -1007,7 +1024,8 @@ class KafkaAdminClient private constructor(
          * be put back in the pendingCalls collection and they will be reassigned
          */
         private fun unassignUnsentCalls(shouldUnassign: Predicate<Node>) {
-            val iter: MutableIterator<Map.Entry<Node, MutableList<Call>>> = callsToSend.entries.iterator()
+            val iter: MutableIterator<Map.Entry<Node, MutableList<Call>>> =
+                callsToSend.entries.iterator()
             while (iter.hasNext()) {
                 val entry = iter.next()
                 val node = entry.key
@@ -1074,7 +1092,10 @@ class KafkaAdminClient private constructor(
                         "The AdminClient thread has exited."
                     )
                 }
-                numTimedOut += timeoutProcessor.handleTimeouts(pendingCalls, "The AdminClient thread has exited.")
+                numTimedOut += timeoutProcessor.handleTimeouts(
+                    pendingCalls,
+                    "The AdminClient thread has exited."
+                )
                 numTimedOut += timeoutCallsToSend(timeoutProcessor)
                 numTimedOut += timeoutProcessor.handleTimeouts(
                     correlationIdToCalls.values,
@@ -1259,7 +1280,8 @@ class KafkaAdminClient private constructor(
         newTopics: Collection<NewTopic>,
         options: CreateTopicsOptions
     ): CreateTopicsResult {
-        val topicFutures: MutableMap<String, KafkaFutureImpl<TopicMetadataAndConfig>?> = HashMap(newTopics.size)
+        val topicFutures: MutableMap<String, KafkaFutureImpl<TopicMetadataAndConfig>> =
+            HashMap(newTopics.size)
         val topics = CreatableTopicCollection()
         for (newTopic: NewTopic in newTopics) {
             if (topicNameIsUnrepresentable(newTopic.name())) {
@@ -1279,7 +1301,14 @@ class KafkaAdminClient private constructor(
         if (!topics.isEmpty()) {
             val now = time.milliseconds()
             val deadline = calcDeadlineMs(now, options.timeoutMs)
-            val call = getCreateTopicsCall(options, topicFutures, topics, emptyMap(), now, deadline)
+            val call = getCreateTopicsCall(
+                options = options,
+                futures = topicFutures,
+                topics = topics,
+                quotaExceededExceptions = emptyMap(),
+                now = now,
+                deadline = deadline,
+            )
             runnable.call(call, now)
         }
         return CreateTopicsResult(HashMap<String, KafkaFuture<TopicMetadataAndConfig>?>(topicFutures))
@@ -1287,7 +1316,7 @@ class KafkaAdminClient private constructor(
 
     private fun getCreateTopicsCall(
         options: CreateTopicsOptions,
-        futures: Map<String, KafkaFutureImpl<TopicMetadataAndConfig>?>,
+        futures: Map<String, KafkaFutureImpl<TopicMetadataAndConfig>>,
         topics: CreatableTopicCollection,
         quotaExceededExceptions: Map<String, ThrottlingQuotaExceededException>,
         now: Long,
@@ -1313,7 +1342,8 @@ class KafkaAdminClient private constructor(
                 // Handle server responses for particular topics.
                 val response = abstractResponse as CreateTopicsResponse
                 val retryTopics = CreatableTopicCollection()
-                val retryTopicQuotaExceededExceptions: MutableMap<String, ThrottlingQuotaExceededException> = HashMap()
+                val retryTopicQuotaExceededExceptions: MutableMap<String, ThrottlingQuotaExceededException> =
+                    HashMap()
                 for (result: CreatableTopicResult in response.data().topics()) {
                     val future = futures[result.name()]
                     if (future == null) {
@@ -1323,11 +1353,13 @@ class KafkaAdminClient private constructor(
                         if (error.isFailure) {
                             if (error.`is`(Errors.THROTTLING_QUOTA_EXCEEDED)) {
                                 val quotaExceededException = ThrottlingQuotaExceededException(
-                                    response.throttleTimeMs(), error.messageWithFallback()
+                                    throttleTimeMs = response.throttleTimeMs(),
+                                    message = error.messageWithFallback()
                                 )
                                 if (options.shouldRetryOnQuotaViolation()) {
                                     retryTopics.add(topics.find(result.name()).duplicate())
-                                    retryTopicQuotaExceededExceptions[result.name()] = quotaExceededException
+                                    retryTopicQuotaExceededExceptions[result.name()] =
+                                        quotaExceededException
                                 } else future.completeExceptionally(quotaExceededException)
                             } else future.completeExceptionally(error.exception())
                         } else {
@@ -1391,8 +1423,11 @@ class KafkaAdminClient private constructor(
                 // If there were any topics retries due to a quota exceeded exception, we propagate
                 // the initial error back to the caller if the request timed out.
                 maybeCompleteQuotaExceededException(
-                    options.shouldRetryOnQuotaViolation(),
-                    throwable, futures, quotaExceededExceptions, (time.milliseconds() - now).toInt()
+                    shouldRetryOnQuotaViolation = options.shouldRetryOnQuotaViolation(),
+                    throwable = throwable,
+                    futures = futures,
+                    quotaExceededExceptions = quotaExceededExceptions,
+                    throttleTimeDelta = (time.milliseconds() - now).toInt(),
                 )
                 // Fail all the other remaining futures
                 completeAllExceptionally(futures.values, throwable)
@@ -1404,25 +1439,31 @@ class KafkaAdminClient private constructor(
         topics: TopicCollection,
         options: DeleteTopicsOptions
     ): DeleteTopicsResult {
-        return if (topics is TopicIdCollection) DeleteTopicsResult.ofTopicIds(
-            handleDeleteTopicsUsingIds(topics.topicIds(), options)
-        ) else if (topics is TopicNameCollection) DeleteTopicsResult.ofTopicNames(
-            handleDeleteTopicsUsingNames(topics.topicNames(), options)
-        ) else throw IllegalArgumentException(
-            "The TopicCollection: $topics provided did not match any supported classes for " +
-                    "deleteTopics."
-        )
+        return when (topics) {
+            is TopicIdCollection -> DeleteTopicsResult.ofTopicIds(
+                handleDeleteTopicsUsingIds(topics.topicIds, options)
+            )
+
+            is TopicNameCollection -> DeleteTopicsResult.ofTopicNames(
+                handleDeleteTopicsUsingNames(topics.topicNames, options)
+            )
+
+            else -> throw IllegalArgumentException(
+                "The TopicCollection: $topics provided did not match any supported classes for " +
+                        "deleteTopics."
+            )
+        }
     }
 
     private fun handleDeleteTopicsUsingNames(
         topicNames: Collection<String>,
         options: DeleteTopicsOptions
-    ): Map<String, KafkaFuture<Void?>?> {
-        val topicFutures: MutableMap<String, KafkaFutureImpl<Void?>?> = HashMap(topicNames.size)
+    ): Map<String, KafkaFuture<Unit>> {
+        val topicFutures: MutableMap<String, KafkaFutureImpl<Unit>> = HashMap(topicNames.size)
         val validTopicNames: MutableList<String> = ArrayList(topicNames.size)
         for (topicName: String in topicNames) {
             if (topicNameIsUnrepresentable(topicName)) {
-                val future = KafkaFutureImpl<Void?>()
+                val future = KafkaFutureImpl<Unit>()
                 future.completeExceptionally(
                     InvalidTopicException(
                         ("The given topic name '" +
@@ -1438,21 +1479,28 @@ class KafkaAdminClient private constructor(
         if (!validTopicNames.isEmpty()) {
             val now = time.milliseconds()
             val deadline = calcDeadlineMs(now, options.timeoutMs)
-            val call = getDeleteTopicsCall(options, topicFutures, validTopicNames, emptyMap(), now, deadline)
+            val call = getDeleteTopicsCall(
+                options,
+                topicFutures,
+                validTopicNames,
+                emptyMap(),
+                now,
+                deadline
+            )
             runnable.call(call, now)
         }
-        return HashMap<String, KafkaFuture<Void?>?>(topicFutures)
+        return HashMap<String, KafkaFuture<Unit>>(topicFutures)
     }
 
     private fun handleDeleteTopicsUsingIds(
         topicIds: Collection<Uuid>,
         options: DeleteTopicsOptions
-    ): Map<Uuid, KafkaFuture<Void?>?> {
-        val topicFutures: MutableMap<Uuid, KafkaFutureImpl<Void?>?> = HashMap(topicIds.size)
+    ): Map<Uuid, KafkaFuture<Unit>> {
+        val topicFutures: MutableMap<Uuid, KafkaFutureImpl<Unit>> = HashMap(topicIds.size)
         val validTopicIds: MutableList<Uuid> = ArrayList(topicIds.size)
         for (topicId: Uuid in topicIds) {
             if ((topicId == Uuid.ZERO_UUID)) {
-                val future = KafkaFutureImpl<Void?>()
+                val future = KafkaFutureImpl<Unit>()
                 future.completeExceptionally(
                     InvalidTopicException(
                         ("The given topic ID '" +
@@ -1468,15 +1516,22 @@ class KafkaAdminClient private constructor(
         if (!validTopicIds.isEmpty()) {
             val now = time.milliseconds()
             val deadline = calcDeadlineMs(now, options.timeoutMs)
-            val call = getDeleteTopicsWithIdsCall(options, topicFutures, validTopicIds, emptyMap(), now, deadline)
+            val call = getDeleteTopicsWithIdsCall(
+                options,
+                topicFutures,
+                validTopicIds,
+                emptyMap(),
+                now,
+                deadline
+            )
             runnable.call(call, now)
         }
-        return HashMap<Uuid, KafkaFuture<Void?>?>(topicFutures)
+        return HashMap<Uuid, KafkaFuture<Unit>>(topicFutures)
     }
 
     private fun getDeleteTopicsCall(
         options: DeleteTopicsOptions,
-        futures: Map<String, KafkaFutureImpl<Void?>?>,
+        futures: Map<String, KafkaFutureImpl<Unit>>,
         topics: List<String>,
         quotaExceededExceptions: Map<String, ThrottlingQuotaExceededException>,
         now: Long,
@@ -1501,7 +1556,8 @@ class KafkaAdminClient private constructor(
                 // Handle server responses for particular topics.
                 val response = abstractResponse as DeleteTopicsResponse
                 val retryTopics: MutableList<String> = ArrayList()
-                val retryTopicQuotaExceededExceptions: MutableMap<String, ThrottlingQuotaExceededException> = HashMap()
+                val retryTopicQuotaExceededExceptions: MutableMap<String, ThrottlingQuotaExceededException> =
+                    HashMap()
                 for (result: DeletableTopicResult in response.data().responses()) {
                     val future = futures[result.name()]
                     if (future == null) {
@@ -1511,20 +1567,16 @@ class KafkaAdminClient private constructor(
                         if (error.isFailure) {
                             if (error.`is`(Errors.THROTTLING_QUOTA_EXCEEDED)) {
                                 val quotaExceededException = ThrottlingQuotaExceededException(
-                                    response.throttleTimeMs(), error.messageWithFallback()
+                                    throttleTimeMs = response.throttleTimeMs(),
+                                    message = error.messageWithFallback()
                                 )
                                 if (options.shouldRetryOnQuotaViolation()) {
                                     retryTopics.add(result.name())
-                                    retryTopicQuotaExceededExceptions[result.name()] = quotaExceededException
-                                } else {
-                                    future.completeExceptionally(quotaExceededException)
-                                }
-                            } else {
-                                future.completeExceptionally(error.exception())
-                            }
-                        } else {
-                            future.complete(null)
-                        }
+                                    retryTopicQuotaExceededExceptions[result.name()] =
+                                        quotaExceededException
+                                } else future.completeExceptionally(quotaExceededException)
+                            } else future.completeExceptionally(error.exception())
+                        } else future.complete(Unit)
                     }
                 }
                 // If there are topics to retry, retry them; complete unrealized futures otherwise.
@@ -1560,7 +1612,7 @@ class KafkaAdminClient private constructor(
 
     private fun getDeleteTopicsWithIdsCall(
         options: DeleteTopicsOptions,
-        futures: Map<Uuid, KafkaFutureImpl<Void?>?>,
+        futures: Map<Uuid, KafkaFutureImpl<Unit>>,
         topicIds: List<Uuid>,
         quotaExceededExceptions: Map<Uuid, ThrottlingQuotaExceededException>,
         now: Long,
@@ -1574,7 +1626,11 @@ class KafkaAdminClient private constructor(
             override fun createRequest(timeoutMs: Int): DeleteTopicsRequest.Builder {
                 return DeleteTopicsRequest.Builder(
                     DeleteTopicsRequestData()
-                        .setTopics(topicIds.map { topic: Uuid? -> DeleteTopicState().setTopicId(topic) })
+                        .setTopics(topicIds.map { topic: Uuid? ->
+                            DeleteTopicState().setTopicId(
+                                topic
+                            )
+                        })
                         .setTimeoutMs(timeoutMs)
                 )
             }
@@ -1585,7 +1641,8 @@ class KafkaAdminClient private constructor(
                 // Handle server responses for particular topics.
                 val response = abstractResponse as DeleteTopicsResponse
                 val retryTopics: MutableList<Uuid> = ArrayList()
-                val retryTopicQuotaExceededExceptions: MutableMap<Uuid, ThrottlingQuotaExceededException> = HashMap()
+                val retryTopicQuotaExceededExceptions: MutableMap<Uuid, ThrottlingQuotaExceededException> =
+                    HashMap()
                 for (result: DeletableTopicResult in response.data().responses()) {
                     val future = futures[result.topicId()]
                     if (future == null) {
@@ -1595,14 +1652,16 @@ class KafkaAdminClient private constructor(
                         if (error.isFailure) {
                             if (error.`is`(Errors.THROTTLING_QUOTA_EXCEEDED)) {
                                 val quotaExceededException = ThrottlingQuotaExceededException(
-                                    response.throttleTimeMs(), error.messageWithFallback()
+                                    throttleTimeMs = response.throttleTimeMs(),
+                                    message = error.messageWithFallback(),
                                 )
                                 if (options.shouldRetryOnQuotaViolation()) {
                                     retryTopics.add(result.topicId())
-                                    retryTopicQuotaExceededExceptions[result.topicId()] = quotaExceededException
+                                    retryTopicQuotaExceededExceptions[result.topicId()] =
+                                        quotaExceededException
                                 } else future.completeExceptionally(quotaExceededException)
                             } else future.completeExceptionally(error.exception())
-                        } else future.complete(null)
+                        } else future.complete(Unit)
                     }
                 }
                 // If there are topics to retry, retry them; complete unrealized futures otherwise.
@@ -1671,16 +1730,14 @@ class KafkaAdminClient private constructor(
         return ListTopicsResult(topicListingFuture)
     }
 
-    override fun describeTopics(topics: TopicCollection, options: DescribeTopicsOptions): DescribeTopicsResult {
-        if (topics is TopicIdCollection) return DescribeTopicsResult.ofTopicIds(
-            handleDescribeTopicsByIds(
-                topics.topicIds(),
-                options
-            )
-        ) else return if (topics is TopicNameCollection) DescribeTopicsResult.ofTopicNames(
-            handleDescribeTopicsByNames(
-                topics.topicNames(), options
-            )
+    override fun describeTopics(
+        topics: TopicCollection,
+        options: DescribeTopicsOptions,
+    ): DescribeTopicsResult {
+        return if (topics is TopicIdCollection) DescribeTopicsResult.ofTopicIds(
+            handleDescribeTopicsByIds(topics.topicIds, options)
+        ) else if (topics is TopicNameCollection) DescribeTopicsResult.ofTopicNames(
+            handleDescribeTopicsByNames(topics.topicNames, options)
         ) else throw IllegalArgumentException(
             "The TopicCollection: $topics provided did not match any supported classes for describeTopics."
         )
@@ -1690,15 +1747,15 @@ class KafkaAdminClient private constructor(
         topicNames: Collection<String>,
         options: DescribeTopicsOptions
     ): Map<String, KafkaFuture<TopicDescription>?> {
-        val topicFutures: MutableMap<String, KafkaFutureImpl<TopicDescription>?> = HashMap(topicNames.size)
+        val topicFutures: MutableMap<String, KafkaFutureImpl<TopicDescription>?> =
+            HashMap(topicNames.size)
         val topicNamesList = ArrayList<String>()
         for (topicName: String in topicNames) {
             if (topicNameIsUnrepresentable(topicName)) {
                 val future = KafkaFutureImpl<TopicDescription>()
                 future.completeExceptionally(
                     InvalidTopicException(
-                        ("The given topic name '" +
-                                topicName + "' cannot be represented in a request.")
+                        "The given topic name '$topicName' cannot be represented in a request."
                     )
                 )
                 topicFutures[topicName] = future
@@ -1743,7 +1800,12 @@ class KafkaAdminClient private constructor(
                     val topicId = cluster.topicId(topicName)
                     val authorizedOperations = response.topicAuthorizedOperations(topicName)
                     val topicDescription =
-                        getTopicDescriptionFromCluster(cluster, topicName, topicId, authorizedOperations)
+                        getTopicDescriptionFromCluster(
+                            cluster,
+                            topicName,
+                            topicId,
+                            authorizedOperations
+                        )
                     future!!.complete(topicDescription)
                 }
             }
@@ -1756,7 +1818,8 @@ class KafkaAdminClient private constructor(
                 return false
             }
 
-            override fun handleFailure(throwable: Throwable) = completeAllExceptionally(topicFutures.values, throwable)
+            override fun handleFailure(throwable: Throwable) =
+                completeAllExceptionally(topicFutures.values, throwable)
         }
         if (topicNamesList.isNotEmpty()) {
             runnable.call(call, now)
@@ -1768,7 +1831,8 @@ class KafkaAdminClient private constructor(
         topicIds: Collection<Uuid>,
         options: DescribeTopicsOptions
     ): Map<Uuid, KafkaFuture<TopicDescription>?> {
-        val topicFutures: MutableMap<Uuid, KafkaFutureImpl<TopicDescription>?> = HashMap(topicIds.size)
+        val topicFutures: MutableMap<Uuid, KafkaFutureImpl<TopicDescription>?> =
+            HashMap(topicIds.size)
         val topicIdsList: MutableList<Uuid> = ArrayList()
         for (topicId: Uuid in topicIds) {
             if (topicIdIsUnrepresentable(topicId)) {
@@ -1794,7 +1858,11 @@ class KafkaAdminClient private constructor(
             override fun createRequest(timeoutMs: Int): MetadataRequest.Builder {
                 return MetadataRequest.Builder(
                     MetadataRequestData()
-                        .setTopics(MetadataRequest.convertTopicIdsToMetadataRequestTopic(topicIdsList))
+                        .setTopics(
+                            MetadataRequest.convertTopicIdsToMetadataRequestTopic(
+                                topicIdsList
+                            )
+                        )
                         .setAllowAutoTopicCreation(false)
                         .setIncludeTopicAuthorizedOperations(options.includeAuthorizedOperations())
                 )
@@ -1820,12 +1888,18 @@ class KafkaAdminClient private constructor(
                     }
                     val authorizedOperations = response.topicAuthorizedOperations(topicName)
                     val topicDescription =
-                        getTopicDescriptionFromCluster(cluster, topicName, topicId, authorizedOperations)
+                        getTopicDescriptionFromCluster(
+                            cluster,
+                            topicName,
+                            topicId,
+                            authorizedOperations
+                        )
                     future!!.complete(topicDescription)
                 }
             }
 
-            override fun handleFailure(throwable: Throwable) = completeAllExceptionally(topicFutures.values, throwable)
+            override fun handleFailure(throwable: Throwable) =
+                completeAllExceptionally(topicFutures.values, throwable)
         }
         if (topicIdsList.isNotEmpty()) {
             runnable.call(call, now)
@@ -1860,9 +1934,7 @@ class KafkaAdminClient private constructor(
     }
 
     private fun leader(partitionInfo: PartitionInfo): Node? {
-        return if (partitionInfo.leader == null || partitionInfo.leader?.id == Node.noNode()
-                .id
-        ) null
+        return if (partitionInfo.leader == null || partitionInfo.leader.id == Node.noNode().id) null
         else partitionInfo.leader
     }
 
@@ -1954,7 +2026,10 @@ class KafkaAdminClient private constructor(
         )
     }
 
-    override fun describeAcls(filter: AclBindingFilter, options: DescribeAclsOptions): DescribeAclsResult {
+    override fun describeAcls(
+        filter: AclBindingFilter,
+        options: DescribeAclsOptions
+    ): DescribeAclsResult {
         if (filter.isUnknown) {
             val future = KafkaFutureImpl<Collection<AclBinding>>()
             future.completeExceptionally(
@@ -1993,27 +2068,25 @@ class KafkaAdminClient private constructor(
         return DescribeAclsResult(future)
     }
 
-    override fun createAcls(acls: Collection<AclBinding>, options: CreateAclsOptions): CreateAclsResult {
+    override fun createAcls(
+        acls: Collection<AclBinding>,
+        options: CreateAclsOptions
+    ): CreateAclsResult {
         val now = time.milliseconds()
-        val futures: MutableMap<AclBinding, KafkaFutureImpl<Void?>?> = HashMap()
+        val futures: MutableMap<AclBinding, KafkaFutureImpl<Unit>> = HashMap()
         val aclCreations: MutableList<AclCreation> = ArrayList()
         val aclBindingsSent: MutableList<AclBinding> = ArrayList()
         for (acl: AclBinding in acls) {
             if (futures[acl] == null) {
-                val future = KafkaFutureImpl<Void?>()
+                val future = KafkaFutureImpl<Unit>()
                 futures[acl] = future
                 val indefinite = acl.toFilter().findIndefiniteField()
                 if (indefinite == null) {
                     aclCreations.add(CreateAclsRequest.aclCreation(acl))
                     aclBindingsSent.add(acl)
-                } else {
-                    future.completeExceptionally(
-                        InvalidRequestException(
-                            "Invalid ACL creation: " +
-                                    indefinite
-                        )
-                    )
-                }
+                } else future.completeExceptionally(
+                    InvalidRequestException("Invalid ACL creation: $indefinite")
+                )
             }
         }
         val data = CreateAclsRequestData().setCreations(aclCreations)
@@ -2030,10 +2103,11 @@ class KafkaAdminClient private constructor(
                 val response = abstractResponse as CreateAclsResponse
                 val responses = response.results()
                 val iter: Iterator<AclCreationResult> = responses.iterator()
-                for (aclBinding: AclBinding in aclBindingsSent) {
-                    val future = futures[aclBinding]
+
+                aclBindingsSent.forEach { aclBinding ->
+                    val future = futures[aclBinding]!!
                     if (!iter.hasNext()) {
-                        future!!.completeExceptionally(
+                        future.completeExceptionally(
                             UnknownServerException(
                                 "The broker reported no creation result for the given ACL: $aclBinding"
                             )
@@ -2042,18 +2116,22 @@ class KafkaAdminClient private constructor(
                         val creation = iter.next()
                         val error = Errors.forCode(creation.errorCode())
                         val apiError = ApiError(error, creation.errorMessage())
-                        if (apiError.isFailure) future!!.completeExceptionally(apiError.exception())
-                        else future!!.complete(null)
+                        if (apiError.isFailure) future.completeExceptionally(apiError.exception())
+                        else future.complete(Unit)
                     }
                 }
             }
 
-            override fun handleFailure(throwable: Throwable) = completeAllExceptionally(futures.values, throwable)
+            override fun handleFailure(throwable: Throwable) =
+                completeAllExceptionally(futures.values, throwable)
         }, now)
-        return CreateAclsResult(HashMap<AclBinding, KafkaFuture<Void?>?>(futures))
+        return CreateAclsResult(futures.toMap())
     }
 
-    override fun deleteAcls(filters: Collection<AclBindingFilter>, options: DeleteAclsOptions): DeleteAclsResult {
+    override fun deleteAcls(
+        filters: Collection<AclBindingFilter>,
+        options: DeleteAclsOptions,
+    ): DeleteAclsResult {
         val now = time.milliseconds()
         val futures: MutableMap<AclBindingFilter, KafkaFutureImpl<FilterResults>?> = HashMap()
         val aclBindingFiltersSent: MutableList<AclBindingFilter> = ArrayList()
@@ -2080,35 +2158,45 @@ class KafkaAdminClient private constructor(
                 val results = response.filterResults()
                 val iter: Iterator<DeleteAclsFilterResult> = results.iterator()
                 for (bindingFilter: AclBindingFilter in aclBindingFiltersSent) {
-                    val future = futures[bindingFilter]
+                    val future = futures[bindingFilter]!!
                     if (!iter.hasNext()) {
-                        future!!.completeExceptionally(
+                        future.completeExceptionally(
                             UnknownServerException(
                                 "The broker reported no deletion result for the given filter."
                             )
                         )
                     } else {
                         val filterResult = iter.next()
-                        val error = ApiError(Errors.forCode(filterResult.errorCode()), filterResult.errorMessage())
+                        val error = ApiError(
+                            Errors.forCode(filterResult.errorCode()),
+                            filterResult.errorMessage()
+                        )
                         if (error.isFailure) {
-                            future!!.completeExceptionally(error.exception())
+                            future.completeExceptionally(error.exception())
                         } else {
-                            val filterResults: MutableList<DeleteAclsResult.FilterResult> = ArrayList()
+                            val filterResults: MutableList<DeleteAclsResult.FilterResult> =
+                                ArrayList()
                             for (matchingAcl: DeleteAclsMatchingAcl in filterResult.matchingAcls()) {
                                 val aclError = ApiError(
                                     Errors.forCode(matchingAcl.errorCode()),
                                     matchingAcl.errorMessage()
                                 )
                                 val aclBinding = DeleteAclsResponse.aclBinding(matchingAcl)
-                                filterResults.add(DeleteAclsResult.FilterResult(aclBinding, aclError.exception()))
+                                filterResults.add(
+                                    DeleteAclsResult.FilterResult(
+                                        aclBinding,
+                                        aclError.exception()
+                                    )
+                                )
                             }
-                            future!!.complete(FilterResults(filterResults))
+                            future.complete(FilterResults(filterResults))
                         }
                     }
                 }
             }
 
-            override fun handleFailure(throwable: Throwable) = completeAllExceptionally(futures.values, throwable)
+            override fun handleFailure(throwable: Throwable) =
+                completeAllExceptionally(futures.values, throwable)
         }, now)
         return DeleteAclsResult(HashMap<AclBindingFilter, KafkaFuture<FilterResults>?>(futures))
     }
@@ -2123,17 +2211,13 @@ class KafkaAdminClient private constructor(
             HashMap(configResources.size)
         for (resource: ConfigResource in configResources) {
             val broker = nodeFor(resource)
-            brokerFutures.compute(broker,
-                BiFunction { key: Int?, value: MutableMap<ConfigResource, KafkaFutureImpl<Config>?>? ->
-                    var value: MutableMap<ConfigResource, KafkaFutureImpl<Config>?>? =
-                        value
-                    if (value == null) {
-                        value =
-                            HashMap()
-                    }
-                    value.put(resource, KafkaFutureImpl())
-                    value
-                })
+            brokerFutures.compute(
+                broker
+            ) { _, value ->
+                val v = value ?: HashMap()
+                v[resource] = KafkaFutureImpl()
+                v
+            }
         }
         val now = time.milliseconds()
         for (entry: Map.Entry<Int?, Map<ConfigResource, KafkaFutureImpl<Config>?>> in brokerFutures.entries) {
@@ -2143,7 +2227,8 @@ class KafkaAdminClient private constructor(
                 object : Call(
                     callName = "describeConfigs",
                     deadlineMs = calcDeadlineMs(now, options.timeoutMs),
-                    nodeProvider = broker?.let { ConstantNodeIdProvider(it) } ?: LeastLoadedNodeProvider(),
+                    nodeProvider = broker?.let { ConstantNodeIdProvider(it) }
+                        ?: LeastLoadedNodeProvider(),
                 ) {
                     override fun createRequest(timeoutMs: Int): DescribeConfigsRequest.Builder {
                         return DescribeConfigsRequest.Builder(
@@ -2258,8 +2343,11 @@ class KafkaAdminClient private constructor(
     }
 
     @Deprecated("")
-    override fun alterConfigs(configs: Map<ConfigResource, Config>, options: AlterConfigsOptions): AlterConfigsResult {
-        val allFutures: MutableMap<ConfigResource, KafkaFutureImpl<Void?>?> = HashMap()
+    override fun alterConfigs(
+        configs: Map<ConfigResource, Config>,
+        options: AlterConfigsOptions
+    ): AlterConfigsResult {
+        val allFutures: MutableMap<ConfigResource, KafkaFutureImpl<Unit>> = HashMap()
         // We must make a separate AlterConfigs request for every BROKER resource we want to alter
         // and send the request to that specific broker. Other resources are grouped together into
         // a single request that may be sent to any broker.
@@ -2279,7 +2367,7 @@ class KafkaAdminClient private constructor(
                 LeastLoadedNodeProvider()
             )
         )
-        return AlterConfigsResult(HashMap<ConfigResource, KafkaFuture<Void?>?>(allFutures))
+        return AlterConfigsResult(HashMap(allFutures))
     }
 
     private fun alterConfigs(
@@ -2287,15 +2375,16 @@ class KafkaAdminClient private constructor(
         options: AlterConfigsOptions,
         resources: Collection<ConfigResource>,
         nodeProvider: NodeProvider
-    ): Map<ConfigResource, KafkaFutureImpl<Void?>?> {
-        val futures: MutableMap<ConfigResource, KafkaFutureImpl<Void?>?> = HashMap()
-        val requestMap: MutableMap<ConfigResource, AlterConfigsRequest.Config> = HashMap(resources.size)
+    ): Map<ConfigResource, KafkaFutureImpl<Unit>> {
+        val futures: MutableMap<ConfigResource, KafkaFutureImpl<Unit>> = HashMap()
+        val requestMap: MutableMap<ConfigResource, AlterConfigsRequest.Config> =
+            HashMap(resources.size)
         for (resource: ConfigResource in resources) {
             val configEntries: MutableList<AlterConfigsRequest.ConfigEntry> = ArrayList()
             for (configEntry: ConfigEntry in configs[resource]!!.entries()) configEntries.add(
                 AlterConfigsRequest.ConfigEntry(
-                    configEntry.name(),
-                    configEntry.value()
+                    configEntry.name,
+                    configEntry.value
                 )
             )
             requestMap[resource] = AlterConfigsRequest.Config(configEntries)
@@ -2308,23 +2397,22 @@ class KafkaAdminClient private constructor(
             nodeProvider = nodeProvider,
         ) {
             override fun createRequest(timeoutMs: Int): AlterConfigsRequest.Builder {
-                return AlterConfigsRequest.Builder(requestMap, options.shouldValidateOnly())
+                return AlterConfigsRequest.Builder(requestMap, options.validateOnly)
             }
 
             override fun handleResponse(abstractResponse: AbstractResponse) {
                 val response = abstractResponse as AlterConfigsResponse
-                for (entry: Map.Entry<ConfigResource, KafkaFutureImpl<Void?>?> in futures.entries) {
+                for (entry: Map.Entry<ConfigResource, KafkaFutureImpl<Unit>> in futures.entries) {
                     val future = entry.value
                     val exception = response.errors()[entry.key]!!.exception()
-                    if (exception != null) {
-                        future!!.completeExceptionally(exception)
-                    } else {
-                        future!!.complete(null)
-                    }
+
+                    if (exception != null) future.completeExceptionally(exception)
+                    else future.complete(Unit)
                 }
             }
 
-            override fun handleFailure(throwable: Throwable) = completeAllExceptionally(futures.values, throwable)
+            override fun handleFailure(throwable: Throwable) =
+                completeAllExceptionally(futures.values, throwable)
         }, now)
         return futures
     }
@@ -2333,7 +2421,7 @@ class KafkaAdminClient private constructor(
         configs: Map<ConfigResource, Collection<AlterConfigOp>>,
         options: AlterConfigsOptions
     ): AlterConfigsResult {
-        val allFutures: MutableMap<ConfigResource, KafkaFutureImpl<Void?>?> = HashMap()
+        val allFutures: MutableMap<ConfigResource, KafkaFutureImpl<Unit>> = HashMap()
         // We must make a separate AlterConfigs request for every BROKER resource we want to alter
         // and send the request to that specific broker. Other resources are grouped together into
         // a single request that may be sent to any broker.
@@ -2342,18 +2430,25 @@ class KafkaAdminClient private constructor(
             val node = nodeFor(resource)
             if (node != null) {
                 val nodeProvider: NodeProvider = ConstantNodeIdProvider(node)
-                allFutures.putAll(incrementalAlterConfigs(configs, options, setOf(resource), nodeProvider))
+                allFutures.putAll(
+                    incrementalAlterConfigs(
+                        configs = configs,
+                        options = options,
+                        resources = setOf(resource),
+                        nodeProvider = nodeProvider,
+                    )
+                )
             } else unifiedRequestResources.add(resource)
         }
         if (!unifiedRequestResources.isEmpty()) allFutures.putAll(
             incrementalAlterConfigs(
-                configs,
-                options,
-                unifiedRequestResources,
-                LeastLoadedNodeProvider()
+                configs = configs,
+                options = options,
+                resources = unifiedRequestResources,
+                nodeProvider = LeastLoadedNodeProvider()
             )
         )
-        return AlterConfigsResult(HashMap<ConfigResource, KafkaFuture<Void?>?>(allFutures))
+        return AlterConfigsResult(HashMap<ConfigResource, KafkaFuture<Unit>>(allFutures))
     }
 
     private fun incrementalAlterConfigs(
@@ -2361,8 +2456,8 @@ class KafkaAdminClient private constructor(
         options: AlterConfigsOptions,
         resources: Collection<ConfigResource>,
         nodeProvider: NodeProvider
-    ): Map<ConfigResource, KafkaFutureImpl<Void?>?> {
-        val futures: MutableMap<ConfigResource, KafkaFutureImpl<Void?>?> = HashMap()
+    ): Map<ConfigResource, KafkaFutureImpl<Unit>> {
+        val futures: MutableMap<ConfigResource, KafkaFutureImpl<Unit>> = HashMap()
         for (resource: ConfigResource in resources) futures[resource] = KafkaFutureImpl()
         val now = time.milliseconds()
         runnable.call(object : Call(
@@ -2371,24 +2466,27 @@ class KafkaAdminClient private constructor(
             nodeProvider = nodeProvider,
         ) {
             override fun createRequest(timeoutMs: Int): IncrementalAlterConfigsRequest.Builder {
-                return IncrementalAlterConfigsRequest.Builder(resources, configs, options.shouldValidateOnly())
+                return IncrementalAlterConfigsRequest.Builder(
+                    resources,
+                    configs,
+                    options.validateOnly,
+                )
             }
 
             override fun handleResponse(abstractResponse: AbstractResponse) {
                 val response = abstractResponse as IncrementalAlterConfigsResponse
                 val errors = IncrementalAlterConfigsResponse.fromResponseData(response.data())
-                for (entry: Map.Entry<ConfigResource, KafkaFutureImpl<Void?>?> in futures.entries) {
-                    val future = entry.value
-                    val exception = errors[entry.key]!!.exception()
-                    if (exception != null) {
-                        future!!.completeExceptionally(exception)
-                    } else {
-                        future!!.complete(null)
-                    }
+
+                futures.forEach { (key, future) ->
+                    val exception = errors[key]!!.exception()
+
+                    if (exception != null) future.completeExceptionally(exception)
+                    else future.complete(Unit)
                 }
             }
 
-            override fun handleFailure(throwable: Throwable) = completeAllExceptionally(futures.values, throwable)
+            override fun handleFailure(throwable: Throwable) =
+                completeAllExceptionally(futures.values, throwable)
         }, now)
         return futures
     }
@@ -2397,26 +2495,29 @@ class KafkaAdminClient private constructor(
         replicaAssignment: Map<TopicPartitionReplica, String>,
         options: AlterReplicaLogDirsOptions
     ): AlterReplicaLogDirsResult {
-        val futures: MutableMap<TopicPartitionReplica, KafkaFutureImpl<Void?>> = HashMap(replicaAssignment.size)
-        for (replica: TopicPartitionReplica in replicaAssignment.keys) futures[replica] = KafkaFutureImpl()
+        val futures: MutableMap<TopicPartitionReplica, KafkaFutureImpl<Unit>> =
+            HashMap(replicaAssignment.size)
+        for (replica: TopicPartitionReplica in replicaAssignment.keys) futures[replica] =
+            KafkaFutureImpl()
         val replicaAssignmentByBroker: MutableMap<Int, AlterReplicaLogDirsRequestData> = HashMap()
         for (entry: Map.Entry<TopicPartitionReplica, String> in replicaAssignment.entries) {
             val replica = entry.key
             val logDir = entry.value
-            val brokerId = replica.brokerId()
-            val value = replicaAssignmentByBroker.computeIfAbsent(brokerId) { AlterReplicaLogDirsRequestData() }
+            val value = replicaAssignmentByBroker.computeIfAbsent(replica.brokerId) {
+                AlterReplicaLogDirsRequestData()
+            }
             var alterReplicaLogDir = value.dirs().find(logDir)
             if (alterReplicaLogDir == null) {
                 alterReplicaLogDir = AlterReplicaLogDir()
                 alterReplicaLogDir.setPath(logDir)
                 value.dirs().add(alterReplicaLogDir)
             }
-            var alterReplicaLogDirTopic = alterReplicaLogDir.topics().find(replica.topic())
+            var alterReplicaLogDirTopic = alterReplicaLogDir.topics().find(replica.topic)
             if (alterReplicaLogDirTopic == null) {
-                alterReplicaLogDirTopic = AlterReplicaLogDirTopic().setName(replica.topic())
+                alterReplicaLogDirTopic = AlterReplicaLogDirTopic().setName(replica.topic)
                 alterReplicaLogDir.topics().add(alterReplicaLogDirTopic)
             }
-            alterReplicaLogDirTopic.partitions().add(replica.partition())
+            alterReplicaLogDirTopic.partitions().add(replica.partition)
         }
         val now = time.milliseconds()
         for (entry: Map.Entry<Int, AlterReplicaLogDirsRequestData> in replicaAssignmentByBroker.entries) {
@@ -2433,27 +2534,31 @@ class KafkaAdminClient private constructor(
 
                 override fun handleResponse(abstractResponse: AbstractResponse) {
                     val response = abstractResponse as AlterReplicaLogDirsResponse
-                    for (topicResult: AlterReplicaLogDirTopicResult in response.data().results()) {
-                        for (partitionResult: AlterReplicaLogDirPartitionResult in topicResult.partitions()) {
+
+                    response.data().results().forEach { topicResult ->
+                        topicResult.partitions().forEach { partitionResult ->
                             val replica = TopicPartitionReplica(
-                                topicResult.topicName(), partitionResult.partitionIndex(), brokerId
+                                topic = topicResult.topicName(),
+                                partition = partitionResult.partitionIndex(),
+                                brokerId = brokerId
                             )
                             val future = futures[replica]
-                            if (future == null) {
-                                log.warn(
-                                    "The partition {} in the response from broker {} is not in the request",
-                                    TopicPartition(topicResult.topicName(), partitionResult.partitionIndex()),
-                                    brokerId
-                                )
-                            } else if (partitionResult.errorCode() == Errors.NONE.code) future.complete(
-                                null
+                            if (future == null) log.warn(
+                                "The partition {} in the response from broker {} is not in the request",
+                                TopicPartition(
+                                    topic = topicResult.topicName(),
+                                    partition = partitionResult.partitionIndex()
+                                ),
+                                brokerId
                             )
+                            else if (partitionResult.errorCode() == Errors.NONE.code)
+                                future.complete(Unit)
                             else future.completeExceptionally(Errors.forCode(partitionResult.errorCode()).exception)
                         }
                     }
                     // The server should send back a response for every replica. But do a sanity check anyway.
                     completeUnrealizedFutures(
-                        futures = futures.filterKeys { key -> key.brokerId() == brokerId },
+                        futures = futures.filterKeys { key -> key.brokerId == brokerId },
                         messageFormatter = { replica ->
                             "The response from broker $brokerId did not contain a result for replica $replica"
                         })
@@ -2462,17 +2567,21 @@ class KafkaAdminClient private constructor(
                 override fun handleFailure(throwable: Throwable) {
                     // Only completes the futures of brokerId
                     completeAllExceptionally(
-                        futures = futures.filterKeys { key -> key.brokerId() == brokerId },
+                        futures = futures.filterKeys { key -> key.brokerId == brokerId },
                         exception = throwable,
                     )
                 }
             }, now)
         }
-        return AlterReplicaLogDirsResult(HashMap<TopicPartitionReplica, KafkaFuture<Void?>?>(futures))
+        return AlterReplicaLogDirsResult(futures.toMap())
     }
 
-    override fun describeLogDirs(brokers: Collection<Int>, options: DescribeLogDirsOptions): DescribeLogDirsResult {
-        val futures: MutableMap<Int, KafkaFutureImpl<Map<String, LogDirDescription>>> = HashMap(brokers.size)
+    override fun describeLogDirs(
+        brokers: Collection<Int>,
+        options: DescribeLogDirsOptions
+    ): DescribeLogDirsResult {
+        val futures: MutableMap<Int, KafkaFutureImpl<Map<String, LogDirDescription>>> =
+            HashMap(brokers.size)
         val now = time.milliseconds()
         for (brokerId: Int in brokers) {
             val future = KafkaFutureImpl<Map<String, LogDirDescription>>()
@@ -2484,7 +2593,11 @@ class KafkaAdminClient private constructor(
             ) {
                 override fun createRequest(timeoutMs: Int): DescribeLogDirsRequest.Builder {
                     // Query selected partitions in all log directories
-                    return DescribeLogDirsRequest.Builder(DescribeLogDirsRequestData().setTopics(null))
+                    return DescribeLogDirsRequest.Builder(
+                        DescribeLogDirsRequestData().setTopics(
+                            null
+                        )
+                    )
                 }
 
                 override fun handleResponse(abstractResponse: AbstractResponse) {
@@ -2493,11 +2606,9 @@ class KafkaAdminClient private constructor(
                     if (descriptions.isNotEmpty()) future.complete(descriptions)
                     else {
                         // Up to v3 DescribeLogDirsResponse did not have an error code field, hence it defaults to None
-                        val error = if (response.data()
-                                .errorCode() == Errors.NONE.code
-                        ) Errors.CLUSTER_AUTHORIZATION_FAILED else Errors.forCode(
-                            response.data().errorCode()
-                        )
+                        val error = if (response.data().errorCode() == Errors.NONE.code)
+                            Errors.CLUSTER_AUTHORIZATION_FAILED
+                        else Errors.forCode(response.data().errorCode())
                         future.completeExceptionally(error.exception)
                     }
                 }
@@ -2507,45 +2618,54 @@ class KafkaAdminClient private constructor(
                 }
             }, now)
         }
-        return DescribeLogDirsResult(HashMap<Int, KafkaFuture<Map<String, LogDirDescription>>>(futures))
+        return DescribeLogDirsResult(
+            HashMap<Int, KafkaFuture<Map<String, LogDirDescription>>>(
+                futures
+            )
+        )
     }
 
     override fun describeReplicaLogDirs(
         replicas: Collection<TopicPartitionReplica>,
         options: DescribeReplicaLogDirsOptions
     ): DescribeReplicaLogDirsResult {
-        val futures: MutableMap<TopicPartitionReplica, KafkaFutureImpl<ReplicaLogDirInfo>?> = HashMap(replicas.size)
-        for (replica: TopicPartitionReplica in replicas) {
-            futures[replica] = KafkaFutureImpl()
-        }
+        val futures = replicas.associateBy(
+            keySelector = { it },
+            valueTransform = { KafkaFutureImpl<ReplicaLogDirInfo>() }
+        )
+
         val partitionsByBroker: MutableMap<Int, DescribeLogDirsRequestData> = HashMap()
-        for (replica: TopicPartitionReplica in replicas) {
-            val requestData = partitionsByBroker.computeIfAbsent(replica.brokerId(),
-                { brokerId: Int? -> DescribeLogDirsRequestData() })
-            var describableLogDirTopic = requestData.topics().find(replica.topic())
+
+        replicas.forEach { replica ->
+            val requestData = partitionsByBroker.computeIfAbsent(replica.brokerId) {
+                DescribeLogDirsRequestData()
+            }
+            var describableLogDirTopic = requestData.topics().find(replica.topic)
             if (describableLogDirTopic == null) {
-                val partitions: MutableList<Int> = ArrayList()
-                partitions.add(replica.partition())
-                describableLogDirTopic = DescribableLogDirTopic().setTopic(replica.topic())
+                val partitions = mutableListOf<Int>()
+                partitions.add(replica.partition)
+                describableLogDirTopic = DescribableLogDirTopic()
+                    .setTopic(replica.topic)
                     .setPartitions(partitions)
                 requestData.topics().add(describableLogDirTopic)
-            } else {
-                describableLogDirTopic.partitions().add(replica.partition())
-            }
+            } else describableLogDirTopic.partitions().add(replica.partition)
         }
+
         val now = time.milliseconds()
-        for (entry: Map.Entry<Int, DescribeLogDirsRequestData> in partitionsByBroker.entries) {
-            val brokerId = entry.key
-            val topicPartitions = entry.value
-            val replicaDirInfoByPartition: MutableMap<TopicPartition, ReplicaLogDirInfo> = HashMap()
-            for (topicPartition: DescribableLogDirTopic in topicPartitions.topics()) {
-                for (partitionId: Int? in topicPartition.partitions()) {
-                    replicaDirInfoByPartition[TopicPartition(
-                        topicPartition.topic(),
-                        (partitionId)!!
-                    )] = ReplicaLogDirInfo()
+        partitionsByBroker.forEach { (brokerId, topicPartitions) ->
+            val replicaDirInfoByPartition = mutableMapOf<TopicPartition, ReplicaLogDirInfo>()
+
+            topicPartitions.topics().forEach { topicPartition ->
+                topicPartition.partitions().forEach { partitionId ->
+                    replicaDirInfoByPartition[
+                        TopicPartition(
+                            topic = topicPartition.topic(),
+                            partition = partitionId!!
+                        )
+                    ] = ReplicaLogDirInfo()
                 }
             }
+
             runnable.call(object : Call(
                 callName = "describeReplicaLogDirs",
                 deadlineMs = calcDeadlineMs(now, options.timeoutMs),
@@ -2558,23 +2678,26 @@ class KafkaAdminClient private constructor(
 
                 override fun handleResponse(abstractResponse: AbstractResponse) {
                     val response = abstractResponse as DescribeLogDirsResponse
-                    for (responseEntry: Map.Entry<String, LogDirDescription> in logDirDescriptions(response).entries) {
-                        val logDir = responseEntry.key
-                        val logDirInfo = responseEntry.value
+
+                    logDirDescriptions(response).forEach innerLoop@{ (logDir, logDirInfo) ->
 
                         // No replica info will be provided if the log directory is offline
-                        if (logDirInfo.error() is KafkaStorageException) continue
+                        if (logDirInfo.error() is KafkaStorageException) return@innerLoop
                         if (logDirInfo.error() != null) handleFailure(
                             IllegalStateException(
-                                "The error " + logDirInfo.error().javaClass.name + " for log directory " + logDir + " in the response from broker " + brokerId + " is illegal"
+                                "The error ${logDirInfo.error().javaClass.name} for log directory " +
+                                        "$logDir in the response from broker $brokerId is illegal"
                             )
                         )
-                        for (replicaInfoEntry: Map.Entry<TopicPartition, ReplicaInfo> in logDirInfo.replicaInfos().entries) {
-                            val tp = replicaInfoEntry.key
-                            val replicaInfo = replicaInfoEntry.value
+
+                        logDirInfo.replicaInfos().forEach { (tp, replicaInfo) ->
+
                             val replicaLogDirInfo = replicaDirInfoByPartition[tp]
                             if (replicaLogDirInfo == null) {
-                                log.warn("Server response from broker {} mentioned unknown partition {}", brokerId, tp)
+                                log.warn(
+                                    "Server response from broker {} mentioned unknown partition {}",
+                                    brokerId, tp
+                                )
                             } else if (replicaInfo.isFuture) {
                                 replicaDirInfoByPartition[tp] = ReplicaLogDirInfo(
                                     replicaLogDirInfo.currentReplicaLogDir,
@@ -2592,34 +2715,33 @@ class KafkaAdminClient private constructor(
                             }
                         }
                     }
-                    for (entry: Map.Entry<TopicPartition, ReplicaLogDirInfo> in replicaDirInfoByPartition.entries) {
-                        val tp = entry.key
-                        val future = futures[TopicPartitionReplica(
-                            tp.topic,
-                            tp.partition,
-                            brokerId
-                        )]
-                        future!!.complete(entry.value)
+                    replicaDirInfoByPartition.forEach { (key, value) ->
+                        futures[TopicPartitionReplica(
+                            topic = key.topic,
+                            partition = key.partition,
+                            brokerId = brokerId,
+                        )]?.complete(value)
                     }
                 }
 
-                override fun handleFailure(throwable: Throwable) = completeAllExceptionally(futures.values, throwable)
+                override fun handleFailure(throwable: Throwable) =
+                    completeAllExceptionally(futures.values, throwable)
             }, now)
         }
-        return DescribeReplicaLogDirsResult(HashMap<TopicPartitionReplica, KafkaFuture<ReplicaLogDirInfo>?>(futures))
+        return DescribeReplicaLogDirsResult(futures.toMap())
     }
 
     override fun createPartitions(
         newPartitions: Map<String, NewPartitions>,
         options: CreatePartitionsOptions
     ): CreatePartitionsResult {
-        val futures: MutableMap<String, KafkaFutureImpl<Void?>?> = HashMap(newPartitions.size)
+        val futures: MutableMap<String, KafkaFutureImpl<Unit>> = HashMap(newPartitions.size)
         val topics = CreatePartitionsTopicCollection(newPartitions.size)
-        for (entry: Map.Entry<String, NewPartitions> in newPartitions.entries) {
-            val topic = entry.key
-            val newPartition = entry.value
+
+        newPartitions.forEach { (topic, newPartition) ->
+
             val newAssignments = newPartition.assignments()
-            val assignments = newAssignments?.map { brokerIds: List<Int>? ->
+            val assignments = newAssignments?.map { brokerIds ->
                 CreatePartitionsAssignment().setBrokerIds(brokerIds)
             }
             topics.add(
@@ -2633,15 +2755,22 @@ class KafkaAdminClient private constructor(
         if (!topics.isEmpty()) {
             val now = time.milliseconds()
             val deadline = calcDeadlineMs(now, options.timeoutMs)
-            val call = getCreatePartitionsCall(options, futures, topics, emptyMap(), now, deadline)
+            val call = getCreatePartitionsCall(
+                options = options,
+                futures = futures,
+                topics = topics,
+                quotaExceededExceptions = emptyMap(),
+                now = now,
+                deadline = deadline,
+            )
             runnable.call(call, now)
         }
-        return CreatePartitionsResult(HashMap<String, KafkaFuture<Void?>?>(futures))
+        return CreatePartitionsResult(futures.toMap())
     }
 
     private fun getCreatePartitionsCall(
         options: CreatePartitionsOptions,
-        futures: Map<String, KafkaFutureImpl<Void?>?>,
+        futures: Map<String, KafkaFutureImpl<Unit>>,
         topics: CreatePartitionsTopicCollection,
         quotaExceededExceptions: Map<String, ThrottlingQuotaExceededException>,
         now: Long,
@@ -2667,7 +2796,8 @@ class KafkaAdminClient private constructor(
                 // Handle server responses for particular topics.
                 val response = abstractResponse as CreatePartitionsResponse
                 val retryTopics = CreatePartitionsTopicCollection()
-                val retryTopicQuotaExceededExceptions: MutableMap<String, ThrottlingQuotaExceededException> = HashMap()
+                val retryTopicQuotaExceededExceptions: MutableMap<String, ThrottlingQuotaExceededException> =
+                    HashMap()
                 for (result: CreatePartitionsTopicResult in response.data().results()) {
                     val future = futures[result.name()]
                     if (future == null) {
@@ -2677,22 +2807,19 @@ class KafkaAdminClient private constructor(
                         if (error.isFailure) {
                             if (error.`is`(Errors.THROTTLING_QUOTA_EXCEEDED)) {
                                 val quotaExceededException = ThrottlingQuotaExceededException(
-                                    response.throttleTimeMs(), error.messageWithFallback()
+                                    throttleTimeMs = response.throttleTimeMs(),
+                                    message = error.messageWithFallback()
                                 )
                                 if (options.shouldRetryOnQuotaViolation()) {
                                     retryTopics.add(topics.find(result.name()).duplicate())
-                                    retryTopicQuotaExceededExceptions[result.name()] = quotaExceededException
-                                } else {
-                                    future.completeExceptionally(quotaExceededException)
-                                }
-                            } else {
-                                future.completeExceptionally(error.exception())
-                            }
-                        } else {
-                            future.complete(null)
-                        }
+                                    retryTopicQuotaExceededExceptions[result.name()] =
+                                        quotaExceededException
+                                } else future.completeExceptionally(quotaExceededException)
+                            } else future.completeExceptionally(error.exception())
+                        } else future.complete(Unit)
                     }
                 }
+
                 // If there are topics to retry, retry them; complete unrealized futures otherwise.
                 if (retryTopics.isEmpty()) {
                     // The server should send back a response for every topic. But do a sanity check anyway.
@@ -2702,12 +2829,16 @@ class KafkaAdminClient private constructor(
                             "The controller response did not contain a result for topic $topic"
                         })
                 } else {
-                    val now = time.milliseconds()
+                    val currentTime = time.milliseconds()
                     val call = getCreatePartitionsCall(
-                        options, futures, retryTopics,
-                        retryTopicQuotaExceededExceptions, now, deadline
+                        options = options,
+                        futures = futures,
+                        topics = retryTopics,
+                        quotaExceededExceptions = retryTopicQuotaExceededExceptions,
+                        now = currentTime,
+                        deadline = deadline,
                     )
-                    runnable.call(call, now)
+                    runnable.call(call, currentTime)
                 }
             }
 
@@ -2731,7 +2862,8 @@ class KafkaAdminClient private constructor(
 
         // requests need to be sent to partitions leader nodes so ...
         // ... from the provided map it's needed to create more maps grouping topic/partition per leader
-        val futures: MutableMap<TopicPartition, KafkaFutureImpl<DeletedRecords>?> = HashMap(recordsToDelete.size)
+        val futures: MutableMap<TopicPartition, KafkaFutureImpl<DeletedRecords>?> =
+            HashMap(recordsToDelete.size)
         for (topicPartition: TopicPartition in recordsToDelete.keys) {
             futures[topicPartition] = KafkaFutureImpl()
         }
@@ -2808,24 +2940,27 @@ class KafkaAdminClient private constructor(
                         }
 
                         override fun handleResponse(abstractResponse: AbstractResponse) {
-                            val response = abstractResponse as DeleteRecordsResponse
-                            for (topicResult: DeleteRecordsTopicResult in response.data()
-                                .topics()) {
-                                for (partitionResult: DeleteRecordsPartitionResult in topicResult.partitions()) {
-                                    val future =
-                                        futures[TopicPartition(
-                                            topicResult.name(),
-                                            partitionResult.partitionIndex()
-                                        )]
-                                    if (partitionResult.errorCode() == Errors.NONE.code) {
-                                        future!!.complete(DeletedRecords(partitionResult.lowWatermark()))
-                                    } else {
-                                        future!!.completeExceptionally(
+
+                            (abstractResponse as DeleteRecordsResponse).data()
+                                .topics()
+                                .forEach { topicResult ->
+
+                                    topicResult.partitions().forEach { partitionResult ->
+
+                                        val future = futures[
+                                            TopicPartition(
+                                                topic = topicResult.name(),
+                                                partition = partitionResult.partitionIndex(),
+                                            )
+                                        ]!!
+
+                                        if (partitionResult.errorCode() == Errors.NONE.code)
+                                            future.complete(DeletedRecords(partitionResult.lowWatermark()))
+                                        else future.completeExceptionally(
                                             Errors.forCode(partitionResult.errorCode()).exception
                                         )
                                     }
                                 }
-                            }
                         }
 
                         override fun handleFailure(throwable: Throwable) {
@@ -2846,7 +2981,8 @@ class KafkaAdminClient private constructor(
                 }
             }
 
-            override fun handleFailure(throwable: Throwable) = completeAllExceptionally(futures.values, throwable)
+            override fun handleFailure(throwable: Throwable) =
+                completeAllExceptionally(futures.values, throwable)
         }, nowMetadata)
         return DeleteRecordsResult(HashMap<TopicPartition, KafkaFuture<DeletedRecords>?>(futures))
     }
@@ -2885,9 +3021,16 @@ class KafkaAdminClient private constructor(
                 } else {
                     val data = response.data()
                     val tokenInfo = TokenInformation(
-                        data.tokenId(), KafkaPrincipal(data.principalType(), data.principalName()),
-                        KafkaPrincipal(data.tokenRequesterPrincipalType(), data.tokenRequesterPrincipalName()),
-                        options.renewers(), data.issueTimestampMs(), data.maxTimestampMs(), data.expiryTimestampMs()
+                        data.tokenId(),
+                        KafkaPrincipal(data.principalType(), data.principalName()),
+                        KafkaPrincipal(
+                            data.tokenRequesterPrincipalType(),
+                            data.tokenRequesterPrincipalName()
+                        ),
+                        options.renewers(),
+                        data.issueTimestampMs(),
+                        data.maxTimestampMs(),
+                        data.expiryTimestampMs()
                     )
                     val token = DelegationToken(tokenInfo, data.hmac())
                     delegationTokenFuture.complete(token)
@@ -2990,7 +3133,10 @@ class KafkaAdminClient private constructor(
         return DescribeDelegationTokenResult(tokensFuture)
     }
 
-    private fun rescheduleMetadataTask(context: MetadataOperationContext<*, *>, nextCalls: Supplier<List<Call>>) {
+    private fun rescheduleMetadataTask(
+        context: MetadataOperationContext<*, *>,
+        nextCalls: Supplier<List<Call>>
+    ) {
         log.info("Retrying to fetch metadata.")
         // Requeue the task so that we can re-attempt fetching metadata
         context.setResponse(null)
@@ -3084,7 +3230,10 @@ class KafkaAdminClient private constructor(
             if (error.message() == null || error.message().isEmpty()) {
                 errors.add(error.error().exception("Error listing groups on $node"))
             } else {
-                errors.add(error.error().exception("Error listing groups on " + node + ": " + error.message()))
+                errors.add(
+                    error.error()
+                        .exception("Error listing groups on " + node + ": " + error.message())
+                )
             }
         }
 
@@ -3140,8 +3289,13 @@ class KafkaAdminClient private constructor(
                         nodeProvider = ConstantNodeIdProvider(node.id),
                     ) {
                         override fun createRequest(timeoutMs: Int): ListGroupsRequest.Builder {
-                            val states = options.states().map { obj: ConsumerGroupState -> obj.toString() }
-                            return ListGroupsRequest.Builder(ListGroupsRequestData().setStatesFilter(states))
+                            val states =
+                                options.states().map { obj: ConsumerGroupState -> obj.toString() }
+                            return ListGroupsRequest.Builder(
+                                ListGroupsRequestData().setStatesFilter(
+                                    states
+                                )
+                            )
                         }
 
                         private fun maybeAddConsumerGroup(group: ListedGroup) {
@@ -3169,8 +3323,9 @@ class KafkaAdminClient private constructor(
                                         throw error.exception
 
                                     Errors.NONE -> results.addError(error.exception, node)
-                                    else -> response.data().groups()
-                                        .forEach { group -> maybeAddConsumerGroup(group) }
+                                    else -> response.data().groups().forEach { group ->
+                                        maybeAddConsumerGroup(group)
+                                    }
                                 }
                                 results.tryComplete(node)
                             }
@@ -3187,7 +3342,8 @@ class KafkaAdminClient private constructor(
             }
 
             override fun handleFailure(throwable: Throwable) {
-                val exception = KafkaException("Failed to find brokers to send ListGroups", throwable)
+                val exception =
+                    KafkaException("Failed to find brokers to send ListGroups", throwable)
                 all.complete(listOf<Any>(exception))
             }
         }, nowMetadata)
@@ -3199,11 +3355,14 @@ class KafkaAdminClient private constructor(
         options: ListConsumerGroupOffsetsOptions
     ): ListConsumerGroupOffsetsResult {
         val future = ListConsumerGroupOffsetsHandler.newFuture(groupSpecs.keys)
+
         val handler = ListConsumerGroupOffsetsHandler(
-            groupSpecs, options.requireStable(),
+            groupSpecs,
+            options.requireStable(),
             logContext
         )
         invokeDriver(handler, future, options.timeoutMs)
+
         return ListConsumerGroupOffsetsResult(future.all())
     }
 
@@ -3228,7 +3387,10 @@ class KafkaAdminClient private constructor(
             logContext
         )
         invokeDriver(handler, future, options.timeoutMs)
-        return DeleteConsumerGroupOffsetsResult(future[CoordinatorKey.byGroupId(groupId)], partitions)
+        return DeleteConsumerGroupOffsetsResult(
+            future[CoordinatorKey.byGroupId(groupId)],
+            partitions
+        )
     }
 
     override fun metrics(): Map<MetricName, Metric> {
@@ -3242,11 +3404,13 @@ class KafkaAdminClient private constructor(
     ): ElectLeadersResult {
         val electionFuture = KafkaFutureImpl<Map<TopicPartition, Throwable?>>()
         val now = time.milliseconds()
+
         runnable.call(object : Call(
             callName = "electLeaders",
             deadlineMs = calcDeadlineMs(now, options.timeoutMs),
             nodeProvider = ControllerNodeProvider(),
         ) {
+
             override fun createRequest(timeoutMs: Int): ElectLeadersRequest.Builder {
                 return ElectLeadersRequest.Builder(electionType, partitions, timeoutMs)
             }
@@ -3275,14 +3439,15 @@ class KafkaAdminClient private constructor(
         reassignments: Map<TopicPartition, NewPartitionReassignment?>,
         options: AlterPartitionReassignmentsOptions
     ): AlterPartitionReassignmentsResult {
-        val futures: MutableMap<TopicPartition, KafkaFutureImpl<Void?>> = HashMap()
-        val topicsToReassignments: MutableMap<String, MutableMap<Int, NewPartitionReassignment?>> = TreeMap()
+        val futures: MutableMap<TopicPartition, KafkaFutureImpl<Unit>> = HashMap()
+        val topicsToReassignments: MutableMap<String, MutableMap<Int, NewPartitionReassignment?>> =
+            TreeMap()
         for (entry: Map.Entry<TopicPartition, NewPartitionReassignment?> in reassignments.entries) {
             val topic = entry.key.topic
             val partition = entry.key.partition
             val topicPartition = TopicPartition(topic, partition)
             val reassignment = entry.value
-            val future = KafkaFutureImpl<Void?>()
+            val future = KafkaFutureImpl<Unit>()
             futures[topicPartition] = future
             if (topicNameIsUnrepresentable(topic)) {
                 future.completeExceptionally(
@@ -3340,9 +3505,13 @@ class KafkaAdminClient private constructor(
                 val errors: MutableMap<TopicPartition, ApiException?> = HashMap()
                 var receivedResponsesCount = 0
                 when (val topLevelError = Errors.forCode(response.data().errorCode())) {
-                    Errors.NONE -> receivedResponsesCount += validateTopicResponses(response.data().responses(), errors)
+                    Errors.NONE -> receivedResponsesCount += validateTopicResponses(
+                        response.data().responses(), errors
+                    )
+
                     Errors.NOT_CONTROLLER -> handleNotControllerError(topLevelError)
-                    else -> for (topicResponse: ReassignableTopicResponse in response.data().responses()) {
+                    else -> for (topicResponse: ReassignableTopicResponse in response.data()
+                        .responses()) {
                         val topicName = topicResponse.name()
                         for (partition: ReassignablePartitionResponse in topicResponse.partitions()) {
                             errors[TopicPartition(topicName, partition.partitionIndex())] =
@@ -3353,7 +3522,7 @@ class KafkaAdminClient private constructor(
                 }
                 assertResponseCountMatch(errors, receivedResponsesCount)
                 errors.entries.forEach { (key, exception) ->
-                    if (exception == null) futures[key]!!.complete(null)
+                    if (exception == null) futures[key]!!.complete(Unit)
                     else futures[key]!!.completeExceptionally(exception)
                 }
             }
@@ -3364,10 +3533,13 @@ class KafkaAdminClient private constructor(
             ) {
                 val expectedResponsesCount = topicsToReassignments.values.sumOf { it.size }
 
-                if (errors.values.stream().noneMatch { obj: ApiException? -> Objects.nonNull(obj) }
+                if (
+                    errors.values.none { it != null }
                     && receivedResponsesCount != expectedResponsesCount
                 ) {
-                    val quantifier = if (receivedResponsesCount > expectedResponsesCount) "many" else "less"
+                    val quantifier =
+                        if (receivedResponsesCount > expectedResponsesCount) "many"
+                        else "less"
                     throw UnknownServerException(
                         "The server returned too $quantifier results." +
                                 "Expected $expectedResponsesCount but received $receivedResponsesCount"
@@ -3398,14 +3570,15 @@ class KafkaAdminClient private constructor(
             }
         }
         if (topicsToReassignments.isNotEmpty()) runnable.call(call, now)
-        return AlterPartitionReassignmentsResult(HashMap<TopicPartition, KafkaFuture<Void?>>(futures))
+        return AlterPartitionReassignmentsResult(futures.toMap())
     }
 
     override fun listPartitionReassignments(
         partitions: Set<TopicPartition>?,
         options: ListPartitionReassignmentsOptions
     ): ListPartitionReassignmentsResult {
-        val partitionReassignmentsFuture = KafkaFutureImpl<Map<TopicPartition, PartitionReassignment>>()
+        val partitionReassignmentsFuture =
+            KafkaFutureImpl<Map<TopicPartition, PartitionReassignment>>()
         partitions?.forEach { tp ->
             val topic = tp.topic
             val partition = tp.partition
@@ -3429,11 +3602,13 @@ class KafkaAdminClient private constructor(
                 val listData = ListPartitionReassignmentsRequestData()
                 listData.setTimeoutMs(timeoutMs)
                 partitions?.let {
-                    val reassignmentTopicByTopicName: MutableMap<String, ListPartitionReassignmentsTopics> = HashMap()
+                    val reassignmentTopicByTopicName: MutableMap<String, ListPartitionReassignmentsTopics> =
+                        HashMap()
                     partitions.forEach { tp ->
                         if (!reassignmentTopicByTopicName.containsKey(tp.topic)) reassignmentTopicByTopicName[tp.topic] =
                             ListPartitionReassignmentsTopics().setName(tp.topic)
-                        reassignmentTopicByTopicName[tp.topic]!!.partitionIndexes().add(tp.partition)
+                        reassignmentTopicByTopicName[tp.topic]!!.partitionIndexes()
+                            .add(tp.partition)
                     }
                     listData.setTopics(ArrayList(reassignmentTopicByTopicName.values))
                 }
@@ -3453,7 +3628,10 @@ class KafkaAdminClient private constructor(
                 for (topicReassignment: OngoingTopicReassignment in response.data().topics()) {
                     val topicName = topicReassignment.name()
                     for (partitionReassignment: OngoingPartitionReassignment in topicReassignment.partitions()) {
-                        reassignmentMap[TopicPartition(topicName, partitionReassignment.partitionIndex())] =
+                        reassignmentMap[TopicPartition(
+                            topicName,
+                            partitionReassignment.partitionIndex()
+                        )] =
                             PartitionReassignment(
                                 partitionReassignment.replicas(),
                                 partitionReassignment.addingReplicas(),
@@ -3501,16 +3679,18 @@ class KafkaAdminClient private constructor(
             members = describeConsumerGroups(setOf(groupId)).describedGroups()[groupId]!!
                 .get().members()
         } catch (ex: Exception) {
-            throw KafkaException("Encounter exception when trying to get members from group: $groupId", ex)
+            throw KafkaException(
+                "Encounter exception when trying to get members from group: $groupId",
+                ex
+            )
         }
         val membersToRemove: MutableList<MemberIdentity> = ArrayList()
         for (member: MemberDescription in members) {
             val memberIdentity = MemberIdentity().setReason(reason)
-            if (member.groupInstanceId().isPresent) {
-                memberIdentity.setGroupInstanceId(member.groupInstanceId().get())
-            } else {
-                memberIdentity.setMemberId(member.consumerId())
-            }
+
+            member.groupInstanceId?.let { memberIdentity.setGroupInstanceId(it) }
+                ?: run { memberIdentity.setMemberId(member.memberId) }
+
             membersToRemove.add(memberIdentity)
         }
         return membersToRemove
@@ -3520,18 +3700,28 @@ class KafkaAdminClient private constructor(
         groupId: String,
         options: RemoveMembersFromConsumerGroupOptions
     ): RemoveMembersFromConsumerGroupResult {
-        val reason = if (options.reason() == null || options.reason().isEmpty()) DEFAULT_LEAVE_GROUP_REASON
-        else JoinGroupRequest.maybeTruncateReason(options.reason())
-        val members: List<MemberIdentity> = if (options.removeAll()) getMembersFromGroup(groupId, reason)
-        else options.members().map { m: MemberToRemove -> m.toMemberIdentity().setReason(reason) }
+
+        val reason =
+            if (options.reason() == null || options.reason().isEmpty()) DEFAULT_LEAVE_GROUP_REASON
+            else JoinGroupRequest.maybeTruncateReason(options.reason())
+
+        val members: List<MemberIdentity> =
+            if (options.removeAll()) getMembersFromGroup(groupId, reason)
+            else options.members()
+                .map { m: MemberToRemove -> m.toMemberIdentity().setReason(reason) }
+
         val future = RemoveMembersFromConsumerGroupHandler.newFuture(groupId)
         val handler = RemoveMembersFromConsumerGroupHandler(
-            groupId,
-            members,
-            logContext
+            groupId = groupId,
+            members = members,
+            logContext = logContext,
         )
         invokeDriver(handler, future, options.timeoutMs)
-        return RemoveMembersFromConsumerGroupResult(future[CoordinatorKey.byGroupId(groupId)], options.members())
+
+        return RemoveMembersFromConsumerGroupResult(
+            future = future[CoordinatorKey.byGroupId(groupId)],
+            memberInfos = options.members(),
+        )
     }
 
     override fun alterConsumerGroupOffsets(
@@ -3539,9 +3729,15 @@ class KafkaAdminClient private constructor(
         offsets: Map<TopicPartition, OffsetAndMetadata>,
         options: AlterConsumerGroupOffsetsOptions
     ): AlterConsumerGroupOffsetsResult {
+
         val future = AlterConsumerGroupOffsetsHandler.newFuture(groupId)
-        val handler = AlterConsumerGroupOffsetsHandler(groupId, offsets, logContext)
+        val handler = AlterConsumerGroupOffsetsHandler(
+            groupId = groupId,
+            offsets = offsets,
+            logContext = logContext,
+        )
         invokeDriver(handler, future, options.timeoutMs)
+
         return AlterConsumerGroupOffsetsResult(future[CoordinatorKey.byGroupId(groupId)])
     }
 
@@ -3553,18 +3749,22 @@ class KafkaAdminClient private constructor(
         // preparing topics list for asking metadata about them
         val futures: MutableMap<TopicPartition, KafkaFutureImpl<ListOffsetsResultInfo>> =
             HashMap(topicPartitionOffsets.size)
-        val topics: MutableSet<String> = HashSet()
+
+        val topics = mutableSetOf<String>()
         topicPartitionOffsets.keys.forEach { topicPartition ->
             topics.add(topicPartition.topic)
             futures[topicPartition] = KafkaFutureImpl()
         }
+
         val nowMetadata = time.milliseconds()
         val deadline = calcDeadlineMs(nowMetadata, options.timeoutMs)
         val context = MetadataOperationContext(topics, options, deadline, futures)
         val metadataCall = getMetadataCall(context) {
             getListOffsetsCalls(context, topicPartitionOffsets, futures)
         }
+
         runnable.call(metadataCall, nowMetadata)
+
         return ListOffsetsResult(HashMap<TopicPartition, KafkaFuture<ListOffsetsResultInfo>>(futures))
     }
 
@@ -3574,11 +3774,13 @@ class KafkaAdminClient private constructor(
         topicPartitionOffsets: Map<TopicPartition, OffsetSpec>,
         futures: Map<TopicPartition, KafkaFutureImpl<ListOffsetsResultInfo>>
     ): List<Call> {
+
         val mr = checkNotNull(context.response) { "No Metadata response" }
         val clusterSnapshot = mr.buildCluster()
         val calls: MutableList<Call> = ArrayList()
         // grouping topic partitions per leader
         val leaders: MutableMap<Node, MutableMap<String, ListOffsetsTopic>> = HashMap()
+
         topicPartitionOffsets.forEach { (tp, offsetSpec) ->
             val future = futures[tp]!!
             val offsetQuery = getOffsetFromOffsetSpec(offsetSpec)
@@ -3601,14 +3803,16 @@ class KafkaAdminClient private constructor(
                 } ?: run { future.completeExceptionally(Errors.LEADER_NOT_AVAILABLE.exception) }
             } else future.completeExceptionally(mr.errors()[tp.topic]!!.exception)
         }
-        for (entry: Map.Entry<Node, Map<String, ListOffsetsTopic>> in leaders.entries) {
-            val brokerId = entry.key.id
+
+        leaders.forEach { (key, value) ->
+            val brokerId = key.id
+
             calls.add(object : Call(
                 callName = "listOffsets on broker $brokerId",
                 deadlineMs = context.deadline,
                 nodeProvider = ConstantNodeIdProvider(brokerId),
             ) {
-                val partitionsToQuery: MutableList<ListOffsetsTopic> = ArrayList(entry.value.values)
+                val partitionsToQuery: MutableList<ListOffsetsTopic> = ArrayList(value.values)
                 private var supportsMaxTimestamp = partitionsToQuery
                     .flatMap { t: ListOffsetsTopic -> t.partitions() }
                     .any { p: ListOffsetsPartition -> p.timestamp() == ListOffsetsRequest.MAX_TIMESTAMP }
@@ -3682,7 +3886,7 @@ class KafkaAdminClient private constructor(
                 }
 
                 override fun handleFailure(throwable: Throwable) {
-                    for (topic: ListOffsetsTopic in entry.value.values) {
+                    for (topic: ListOffsetsTopic in value.values) {
                         for (partition: ListOffsetsPartition in topic.partitions()) {
                             val tp = TopicPartition(topic.name(), partition.partitionIndex())
                             val future = (futures[tp])!!
@@ -3757,10 +3961,11 @@ class KafkaAdminClient private constructor(
         entries: Collection<ClientQuotaAlteration>,
         options: AlterClientQuotasOptions
     ): AlterClientQuotasResult {
-        val futures: MutableMap<ClientQuotaEntity, KafkaFutureImpl<Void>?> = HashMap(entries.size)
-        for (entry: ClientQuotaAlteration in entries) {
-            futures[entry.entity()] = KafkaFutureImpl()
-        }
+        val futures = entries.associateBy(
+            keySelector = { it.entity() },
+            valueTransform = { KafkaFutureImpl<Unit>() }
+        ).toMutableMap()
+
         val now = time.milliseconds()
         runnable.call(object : Call(
             callName = "alterClientQuotas",
@@ -3776,9 +3981,11 @@ class KafkaAdminClient private constructor(
                 response.complete(futures)
             }
 
-            override fun handleFailure(throwable: Throwable) = completeAllExceptionally(futures.values, throwable)
+            override fun handleFailure(throwable: Throwable) =
+                completeAllExceptionally(futures.values, throwable)
         }, now)
-        return AlterClientQuotasResult(Collections.unmodifiableMap<ClientQuotaEntity, KafkaFuture<Void>?>(futures))
+
+        return AlterClientQuotasResult(futures.toMap())
     }
 
     override fun describeUserScramCredentials(
@@ -3827,23 +4034,26 @@ class KafkaAdminClient private constructor(
         options: AlterUserScramCredentialsOptions
     ): AlterUserScramCredentialsResult {
         val now = time.milliseconds()
-        val futures: MutableMap<String, KafkaFutureImpl<Void?>?> = HashMap()
-        for (alteration: UserScramCredentialAlteration in alterations) {
-            futures[alteration.user()] = KafkaFutureImpl()
-        }
+
+        val futures = alterations.associateBy(
+            keySelector = { it.user() },
+            valueTransform = { KafkaFutureImpl<Unit>() }
+        ).toMutableMap()
+
         val userIllegalAlterationExceptions: MutableMap<String, Exception> = HashMap()
         // We need to keep track of users with deletions of an unknown SCRAM mechanism
         val usernameMustNotBeEmptyMsg = "Username must not be empty"
         val passwordMustNotBeEmptyMsg = "Password must not be empty"
         val unknownScramMechanismMsg = "Unknown SCRAM mechanism"
-        alterations.stream()
-            .filter { a: UserScramCredentialAlteration? -> a is UserScramCredentialDeletion }
+        alterations
+            .filterIsInstance<UserScramCredentialDeletion>()
             .forEach { alteration: UserScramCredentialAlteration ->
                 val user: String? = alteration.user()
                 if (user.isNullOrEmpty()) userIllegalAlterationExceptions[alteration.user()] =
                     UnacceptableCredentialException(usernameMustNotBeEmptyMsg)
                 else {
-                    val deletion: UserScramCredentialDeletion = alteration as UserScramCredentialDeletion
+                    val deletion: UserScramCredentialDeletion =
+                        alteration as UserScramCredentialDeletion
                     val mechanism: ScramMechanism? = deletion.mechanism()
                     if (mechanism == null || mechanism == ScramMechanism.UNKNOWN)
                         userIllegalAlterationExceptions[user] =
@@ -3852,9 +4062,10 @@ class KafkaAdminClient private constructor(
             }
         // Creating an upsertion may throw InvalidKeyException or NoSuchAlgorithmException,
         // so keep track of which users are affected by such a failure so we can fail all their alterations later
-        val userInsertions: MutableMap<String, MutableMap<ScramMechanism, ScramCredentialUpsertion>> = HashMap()
-        alterations.stream()
-            .filter { a: UserScramCredentialAlteration? -> a is UserScramCredentialUpsertion }
+        val userInsertions = mutableMapOf<String, MutableMap<ScramMechanism, ScramCredentialUpsertion>>()
+
+        alterations
+            .filterIsInstance<UserScramCredentialUpsertion>()
             .filter { alteration: UserScramCredentialAlteration ->
                 !userIllegalAlterationExceptions.containsKey(alteration.user())
             }
@@ -3863,7 +4074,8 @@ class KafkaAdminClient private constructor(
                 if (user.isNullOrEmpty()) userIllegalAlterationExceptions[alteration.user()] =
                     UnacceptableCredentialException(usernameMustNotBeEmptyMsg)
                 else {
-                    val upsertion: UserScramCredentialUpsertion = alteration as UserScramCredentialUpsertion
+                    val upsertion: UserScramCredentialUpsertion =
+                        alteration as UserScramCredentialUpsertion
                     try {
                         val password: ByteArray? = upsertion.password()
                         if (password == null || password.isEmpty()) userIllegalAlterationExceptions[user] =
@@ -3876,7 +4088,8 @@ class KafkaAdminClient private constructor(
                                     UnsupportedSaslMechanismException(unknownScramMechanismMsg)
                             else {
                                 userInsertions.putIfAbsent(user, HashMap())
-                                userInsertions[user]!![mechanism] = getScramCredentialUpsertion(upsertion)
+                                userInsertions[user]!![mechanism] =
+                                    getScramCredentialUpsertion(upsertion)
                             }
                         }
                     } catch (e: NoSuchAlgorithmException) {
@@ -3888,7 +4101,8 @@ class KafkaAdminClient private constructor(
                     } catch (e: InvalidKeyException) {
                         // generally shouldn't happen since we deal with the empty password case above,
                         // but we still need to catch/handle it
-                        userIllegalAlterationExceptions[user] = UnacceptableCredentialException(e.message, e)
+                        userIllegalAlterationExceptions[user] =
+                            UnacceptableCredentialException(e.message, e)
                     }
                 }
             }
@@ -3939,18 +4153,22 @@ class KafkaAdminClient private constructor(
                  * fail any users that have an illegal alteration as identified above.
                  * Be sure to do this after the NOT_CONTROLLER error check above
                  * so that all errors are consistent in that case.
-                 */userIllegalAlterationExceptions.entries.stream().forEach { entry: Map.Entry<String, Exception> ->
-                    futures[entry.key]!!.completeExceptionally(entry.value)
-                }
+                 */userIllegalAlterationExceptions.entries.stream()
+                    .forEach { entry: Map.Entry<String, Exception> ->
+                        futures[entry.key]!!.completeExceptionally(entry.value)
+                    }
                 response.data().results()
                     .forEach(Consumer { result: AlterUserScramCredentialsResponseData.AlterUserScramCredentialsResult ->
-                        val future: KafkaFutureImpl<Void?>? = futures[result.user()]
-                        if (future == null) log.warn("Server response mentioned unknown user {}", result.user())
+                        val future: KafkaFutureImpl<Unit>? = futures[result.user()]
+                        if (future == null) log.warn(
+                            "Server response mentioned unknown user {}",
+                            result.user()
+                        )
                         else {
                             val error: Errors = Errors.forCode(result.errorCode())
                             if (error != Errors.NONE)
                                 future.completeExceptionally(error.exception(result.errorMessage()))
-                            else future.complete(null)
+                            else future.complete(Unit)
                         }
                     })
                 completeUnrealizedFutures(
@@ -3959,10 +4177,11 @@ class KafkaAdminClient private constructor(
                 )
             }
 
-            override fun handleFailure(throwable: Throwable) = completeAllExceptionally(futures.values, throwable)
+            override fun handleFailure(throwable: Throwable) =
+                completeAllExceptionally(futures.values, throwable)
         }
         runnable.call(call, now)
-        return AlterUserScramCredentialsResult(HashMap<String, KafkaFuture<Void?>?>(futures))
+        return AlterUserScramCredentialsResult(futures.toMap())
     }
 
     override fun describeFeatures(options: DescribeFeaturesOptions): DescribeFeaturesResult {
@@ -3976,11 +4195,13 @@ class KafkaAdminClient private constructor(
             private fun createFeatureMetadata(response: ApiVersionsResponse): FeatureMetadata {
                 val finalizedFeatures: MutableMap<String, FinalizedVersionRange> = HashMap()
                 for (key: FinalizedFeatureKey in response.data().finalizedFeatures().valuesSet()) {
-                    finalizedFeatures[key.name()] = FinalizedVersionRange(key.minVersionLevel(), key.maxVersionLevel())
+                    finalizedFeatures[key.name()] =
+                        FinalizedVersionRange(key.minVersionLevel(), key.maxVersionLevel())
                 }
-                val finalizedFeaturesEpoch: Long? = if (response.data().finalizedFeaturesEpoch() >= 0L)
-                    response.data().finalizedFeaturesEpoch()
-                else null
+                val finalizedFeaturesEpoch: Long? =
+                    if (response.data().finalizedFeaturesEpoch() >= 0L)
+                        response.data().finalizedFeaturesEpoch()
+                    else null
                 val supportedFeatures: MutableMap<String, SupportedVersionRange> = HashMap()
                 for (key: SupportedFeatureKey in response.data().supportedFeatures().valuesSet()) {
                     supportedFeatures[key.name()] =
@@ -4021,7 +4242,7 @@ class KafkaAdminClient private constructor(
         if (featureUpdates.isEmpty()) {
             throw IllegalArgumentException("Feature updates can not be null or empty.")
         }
-        val updateFutures: MutableMap<String, KafkaFutureImpl<Void?>?> = HashMap()
+        val updateFutures: MutableMap<String, KafkaFutureImpl<Unit>> = HashMap()
         for (entry: Map.Entry<String, FeatureUpdate> in featureUpdates.entries) {
             val feature = entry.key
             if (Utils.isBlank(feature)) {
@@ -4067,7 +4288,7 @@ class KafkaAdminClient private constructor(
                             )
                             else {
                                 val error = Errors.forCode(result.errorCode())
-                                if (error == Errors.NONE) future.complete(null)
+                                if (error == Errors.NONE) future.complete(Unit)
                                 else future.completeExceptionally(error.exception(result.errorMessage()))
                             }
                         }
@@ -4079,16 +4300,17 @@ class KafkaAdminClient private constructor(
                     }
 
                     Errors.NOT_CONTROLLER -> handleNotControllerError(topLevelError.error())
-                    else -> for (entry: Map.Entry<String, KafkaFutureImpl<Void?>?> in updateFutures.entries) {
-                        entry.value!!.completeExceptionally(topLevelError.exception())
+                    else -> for (entry: Map.Entry<String, KafkaFutureImpl<Unit>> in updateFutures.entries) {
+                        entry.value.completeExceptionally(topLevelError.exception())
                     }
                 }
             }
 
-            override fun handleFailure(throwable: Throwable) = completeAllExceptionally(updateFutures.values, throwable)
+            override fun handleFailure(throwable: Throwable) =
+                completeAllExceptionally(updateFutures.values, throwable)
         }
         runnable.call(call, now)
-        return UpdateFeaturesResult(HashMap<String, KafkaFuture<Void?>?>(updateFutures))
+        return UpdateFeaturesResult(updateFutures.toMap())
     }
 
     override fun describeMetadataQuorum(options: DescribeMetadataQuorumOptions): DescribeMetadataQuorumResult {
@@ -4113,10 +4335,18 @@ class KafkaAdminClient private constructor(
 
             private fun createQuorumResult(partition: DescribeQuorumResponseData.PartitionData): QuorumInfo {
                 val voters = partition.currentVoters().stream()
-                    .map { replica: DescribeQuorumResponseData.ReplicaState -> translateReplicaState(replica) }
+                    .map { replica: DescribeQuorumResponseData.ReplicaState ->
+                        translateReplicaState(
+                            replica
+                        )
+                    }
                     .collect(Collectors.toList())
                 val observers = partition.observers().stream()
-                    .map { replica: DescribeQuorumResponseData.ReplicaState -> translateReplicaState(replica) }
+                    .map { replica: DescribeQuorumResponseData.ReplicaState ->
+                        translateReplicaState(
+                            replica
+                        )
+                    }
                     .collect(Collectors.toList())
                 return QuorumInfo(
                     partition.leaderId(),
@@ -4192,8 +4422,11 @@ class KafkaAdminClient private constructor(
         return DescribeMetadataQuorumResult(future)
     }
 
-    override fun unregisterBroker(brokerId: Int, options: UnregisterBrokerOptions): UnregisterBrokerResult {
-        val future = KafkaFutureImpl<Void?>()
+    override fun unregisterBroker(
+        brokerId: Int,
+        options: UnregisterBrokerOptions
+    ): UnregisterBrokerResult {
+        val future = KafkaFutureImpl<Unit>()
         val now = time.milliseconds()
         val call: Call = object : Call(
             callName = "unregisterBroker",
@@ -4208,13 +4441,13 @@ class KafkaAdminClient private constructor(
             override fun handleResponse(abstractResponse: AbstractResponse) {
                 val response = abstractResponse as UnregisterBrokerResponse
                 when (val error = Errors.forCode(response.data().errorCode())) {
-                    Errors.NONE -> future.complete(null)
+                    Errors.NONE -> future.complete(Unit)
                     Errors.REQUEST_TIMED_OUT -> throw error.exception
                     else -> {
                         log.error(
                             "Unregister broker request for broker ID {} failed: {}",
                             brokerId,
-                            error.message()
+                            error.message
                         )
                         future.completeExceptionally(error.exception)
                     }
@@ -4230,10 +4463,10 @@ class KafkaAdminClient private constructor(
     }
 
     override fun describeProducers(
-        topicPartitions: Collection<TopicPartition>,
+        partitions: Collection<TopicPartition>,
         options: DescribeProducersOptions
     ): DescribeProducersResult {
-        val future = DescribeProducersHandler.newFuture(topicPartitions)
+        val future = DescribeProducersHandler.newFuture(partitions)
         val handler = DescribeProducersHandler(options, logContext)
         invokeDriver(handler, future, options.timeoutMs)
         return DescribeProducersResult(future.all())
@@ -4284,11 +4517,11 @@ class KafkaAdminClient private constructor(
         val currentTimeMs = time.milliseconds()
         val deadlineMs = calcDeadlineMs(currentTimeMs, timeoutMs)
         val driver = AdminApiDriver(
-            handler,
-            future,
-            deadlineMs,
-            retryBackoffMs,
-            logContext
+            handler = handler,
+            future = future,
+            deadlineMs = deadlineMs,
+            retryBackoffMs = retryBackoffMs,
+            logContext = logContext
         )
         maybeSendRequests(driver, currentTimeMs)
     }
@@ -4300,8 +4533,8 @@ class KafkaAdminClient private constructor(
     }
 
     private fun <K, V> newCall(driver: AdminApiDriver<K, V>, spec: RequestSpec<K>): Call {
-        val nodeProvider =
-            if (spec.scope.destinationBrokerId().isPresent) ConstantNodeIdProvider(spec.scope.destinationBrokerId().asInt) else LeastLoadedNodeProvider()
+        val nodeProvider = spec.scope.destinationBrokerId()?.let { ConstantNodeIdProvider(it) }
+            ?: LeastLoadedNodeProvider()
         return object : Call(
             callName = spec.name,
             nextAllowedTryMs = spec.nextAllowedTryMs,
@@ -4340,14 +4573,12 @@ class KafkaAdminClient private constructor(
     }
 
     private fun getOffsetFromOffsetSpec(offsetSpec: OffsetSpec): Long {
-        if (offsetSpec is TimestampSpec) {
-            return offsetSpec.timestamp()
-        } else if (offsetSpec is EarliestSpec) {
-            return ListOffsetsRequest.EARLIEST_TIMESTAMP
-        } else if (offsetSpec is MaxTimestampSpec) {
-            return ListOffsetsRequest.MAX_TIMESTAMP
+        return when (offsetSpec) {
+            is TimestampSpec -> offsetSpec.timestamp()
+            is EarliestSpec -> ListOffsetsRequest.EARLIEST_TIMESTAMP
+            is MaxTimestampSpec -> ListOffsetsRequest.MAX_TIMESTAMP
+            else -> ListOffsetsRequest.LATEST_TIMESTAMP
         }
-        return ListOffsetsRequest.LATEST_TIMESTAMP
     }
 
     companion object {
@@ -4399,7 +4630,10 @@ class KafkaAdminClient private constructor(
          * @param exc The exception
          * @param T The KafkaFutureImpl result type.
          */
-        private fun <T> completeAllExceptionally(futures: Collection<KafkaFutureImpl<T>?>, exc: Throwable) {
+        private fun <T> completeAllExceptionally(
+            futures: Collection<KafkaFutureImpl<T>?>,
+            exc: Throwable
+        ) {
             futures.forEach { future -> future?.completeExceptionally(exc) }
         }
 
@@ -4494,13 +4728,20 @@ class KafkaAdminClient private constructor(
                 metadataManager.update(Cluster.bootstrap(addresses), time.milliseconds())
                 val reporters = CommonClientConfigs.metricsReporters(clientId, config)
                 val metricTags = Collections.singletonMap("client-id", clientId)
-                val metricConfig = MetricConfig().samples(config.getInt(AdminClientConfig.METRICS_NUM_SAMPLES_CONFIG))
-                    .timeWindow(
-                        config.getLong(AdminClientConfig.METRICS_SAMPLE_WINDOW_MS_CONFIG),
-                        TimeUnit.MILLISECONDS
-                    )
-                    .recordLevel(Sensor.RecordingLevel.forName(config.getString(AdminClientConfig.METRICS_RECORDING_LEVEL_CONFIG)))
-                    .tags(metricTags)
+                val metricConfig =
+                    MetricConfig().samples(config.getInt(AdminClientConfig.METRICS_NUM_SAMPLES_CONFIG))
+                        .timeWindow(
+                            config.getLong(AdminClientConfig.METRICS_SAMPLE_WINDOW_MS_CONFIG),
+                            TimeUnit.MILLISECONDS
+                        )
+                        .recordLevel(
+                            Sensor.RecordingLevel.forName(
+                                config.getString(
+                                    AdminClientConfig.METRICS_RECORDING_LEVEL_CONFIG
+                                )
+                            )
+                        )
+                        .tags(metricTags)
                 val metricsContext: MetricsContext = KafkaMetricsContext(
                     JMX_PREFIX,
                     config.originalsWithPrefix(CommonClientConfigs.METRICS_CONTEXT_PREFIX)
@@ -4606,7 +4847,13 @@ class KafkaAdminClient private constructor(
             messageFormatter: (K) -> String
         ) {
             futures.filterValues { value -> value?.isDone == false }
-                .forEach { (key, value) -> value!!.completeExceptionally(ApiException(messageFormatter(key))) }
+                .forEach { (key, value) ->
+                    value!!.completeExceptionally(
+                        ApiException(
+                            messageFormatter(key)
+                        )
+                    )
+                }
         }
 
         /**
@@ -4616,16 +4863,17 @@ class KafkaAdminClient private constructor(
         private fun <K, V> maybeCompleteQuotaExceededException(
             shouldRetryOnQuotaViolation: Boolean,
             throwable: Throwable,
-            futures: Map<K, KafkaFutureImpl<V>?>,
+            futures: Map<K, KafkaFutureImpl<V>>,
             quotaExceededExceptions: Map<K, ThrottlingQuotaExceededException>,
             throttleTimeDelta: Int
         ) {
             if (shouldRetryOnQuotaViolation && throwable is TimeoutException) {
-                quotaExceededExceptions.forEach { (key: K, value: ThrottlingQuotaExceededException) ->
+                quotaExceededExceptions.forEach { (key, value) ->
                     futures[key]!!.completeExceptionally(
                         ThrottlingQuotaExceededException(
-                            (value.throttleTimeMs() - throttleTimeDelta).coerceAtLeast(0),
-                            value.message
+                            throttleTimeMs = (value.throttleTimeMs - throttleTimeDelta)
+                                .coerceAtLeast(0),
+                            message = value.message,
                         )
                     )
                 }
@@ -4633,8 +4881,10 @@ class KafkaAdminClient private constructor(
         }
 
         private fun logDirDescriptions(response: DescribeLogDirsResponse): Map<String, LogDirDescription> {
-            val result: MutableMap<String, LogDirDescription> = HashMap(response.data().results().size)
-            for (logDirResult: DescribeLogDirsResponseData.DescribeLogDirsResult in response.data().results()) {
+            val result: MutableMap<String, LogDirDescription> =
+                HashMap(response.data().results().size)
+            for (logDirResult: DescribeLogDirsResponseData.DescribeLogDirsResult in response.data()
+                .results()) {
                 val replicaInfoMap: MutableMap<TopicPartition, ReplicaInfo> = HashMap()
                 for (t: DescribeLogDirsTopic in logDirResult.topics()) {
                     for (p: DescribeLogDirsPartition in t.partitions()) {
@@ -4698,7 +4948,7 @@ class KafkaAdminClient private constructor(
             keyNotFoundMsg: String,
         ): Throwable {
             val error = requireNotNull(subLevelErrors[subKey]) { keyNotFoundMsg }
-            return error.exception!!
+            return error.exception
         }
     }
 }

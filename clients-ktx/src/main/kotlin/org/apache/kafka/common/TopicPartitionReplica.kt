@@ -15,21 +15,42 @@
  * limitations under the License.
  */
 
-package org.apache.kafka.common.errors
+package org.apache.kafka.common
+
+import java.io.Serializable
 
 /**
- * Exception thrown if an operation on a resource exceeds the throttling quota.
+ * The topic name, partition number and the brokerId of the replica
  */
-class ThrottlingQuotaExceededException(
-    val throttleTimeMs: Int = 0,
-    message : String? = null,
-) : RetriableException(message = message) {
+data class TopicPartitionReplica(
+    val topic: String,
+    val partition: Int,
+    val brokerId: Int,
+) : Serializable {
 
     @Deprecated(
-        message = "Use property instead",
-        replaceWith = ReplaceWith("throttleTimeMs"),
+        message = "Use property instead.",
+        replaceWith = ReplaceWith("topic")
     )
-    fun throttleTimeMs(): Int {
-        return throttleTimeMs
+    fun topic(): String {
+        return topic
     }
+
+    @Deprecated(
+        message = "Use property instead.",
+        replaceWith = ReplaceWith("partition")
+    )
+    fun partition(): Int {
+        return partition
+    }
+
+    @Deprecated(
+        message = "Use property instead.",
+        replaceWith = ReplaceWith("brokerId")
+    )
+    fun brokerId(): Int {
+        return brokerId
+    }
+
+    override fun toString(): String = "$topic-$partition-$brokerId"
 }

@@ -15,21 +15,29 @@
  * limitations under the License.
  */
 
-package org.apache.kafka.common.errors
+package org.apache.kafka.common
+
+import org.apache.kafka.common.annotation.InterfaceStability.Evolving
 
 /**
- * Exception thrown if an operation on a resource exceeds the throttling quota.
+ * Options for [org.apache.kafka.clients.admin.Admin.electLeaders].
+ *
+ * The API of this class is evolving, see [org.apache.kafka.clients.admin.Admin] for details.
  */
-class ThrottlingQuotaExceededException(
-    val throttleTimeMs: Int = 0,
-    message : String? = null,
-) : RetriableException(message = message) {
+@Evolving
+enum class ElectionType(val value: Byte) {
+    PREFERRED(0.toByte()),
+    UNCLEAN(1.toByte());
 
-    @Deprecated(
-        message = "Use property instead",
-        replaceWith = ReplaceWith("throttleTimeMs"),
-    )
-    fun throttleTimeMs(): Int {
-        return throttleTimeMs
+    companion object {
+        fun valueOf(value: Byte): ElectionType {
+            return when (value) {
+                PREFERRED.value -> PREFERRED
+                UNCLEAN.value -> UNCLEAN
+                else -> throw IllegalArgumentException(
+                    String.format("Value %s must be one of %s", value, values())
+                )
+            }
+        }
     }
 }

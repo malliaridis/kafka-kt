@@ -649,7 +649,7 @@ interface Admin : AutoCloseable {
      * This operation is supported by brokers with version 1.0.0 or higher.
      *
      * The following exceptions can be anticipated when calling `get()` on the futures obtained from
-     * the [values()][CreatePartitionsResult.values] method of the returned [CreatePartitionsResult]
+     * the [values()][CreatePartitionsResult.futures] method of the returned [CreatePartitionsResult]
      *
      *  * [org.apache.kafka.common.errors.AuthorizationException]
      * if the authenticated user is not authorized to alter the topic

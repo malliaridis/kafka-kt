@@ -52,7 +52,8 @@ class ElectLeadersResponse(
     override fun shouldClientThrottle(version: Short): Boolean = true
 
     companion object {
-        fun parse(buffer: ByteBuffer?, version: Short): ElectLeadersResponse {
+
+        fun parse(buffer: ByteBuffer, version: Short): ElectLeadersResponse {
             return ElectLeadersResponse(ElectLeadersResponseData(ByteBufferAccessor(buffer), version))
         }
 

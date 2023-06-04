@@ -61,13 +61,13 @@ import org.slf4j.Logger
  * stage has at least one opportunity to complete. So if a user sets `retries=1`, then
  * the full pipeline can still complete as long as there are no request failures.
  *
- * @param <K> The key type, which is also the granularity of the request routing (e.g.
+ * @param K The key type, which is also the granularity of the request routing (e.g.
  * this could be `TopicPartition` in the case of requests intended for a partition
  * leader or the `GroupId` in the case of consumer group requests intended for
  * the group coordinator)
- * @param <V> The fulfillment type for each key (e.g. this could be consumer group state
+ * @param V The fulfillment type for each key (e.g. this could be consumer group state
  * when the key type is a consumer `GroupId`)
-</V></K> */
+ */
 class AdminApiDriver<K, V>(
     private val handler: AdminApiHandler<K, V>,
     private val future: AdminApiFuture<K, V>,

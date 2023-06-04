@@ -17,34 +17,31 @@
 
 package org.apache.kafka.clients.admin
 
+import org.apache.kafka.common.KafkaFuture
+import org.apache.kafka.common.annotation.InterfaceStability.Evolving
+import org.apache.kafka.common.quota.ClientQuotaEntity
+
 /**
- * This class implements the common APIs that are shared by Options classes for various
- * [AdminClient] commands.
+ * The result of the [Admin.alterClientQuotas] call.
+ *
+ * The API of this class is evolving, see [Admin] for details.
+ *
+ * @property futures maps entity to its alteration result
  */
-abstract class AbstractOptions<T : AbstractOptions<T>?> {
-    var timeoutMs: Int? = null
+@Evolving
+class AlterClientQuotasResult(private val futures: Map<ClientQuotaEntity, KafkaFuture<Unit>>) {
 
     /**
-     * Set the timeout in milliseconds for this operation or `null` if the default api timeout for
-     * the [AdminClient] should be used.
+     * Returns a map from quota entity to a future which can be used to check the status of the operation.
      */
-    @Deprecated(message = "Use property instead.")
-    @Suppress("UNCHECKED_CAST")
-    open fun timeoutMs(timeoutMs: Int): T {
-        this.timeoutMs = timeoutMs
-
-        return this as T
+    fun values(): Map<ClientQuotaEntity, KafkaFuture<Unit>> {
+        return futures
     }
 
     /**
-     * The timeout in milliseconds for this operation or `null` if the default api timeout for the
-     * [AdminClient] should be used.
+     * Returns a future which succeeds only if all quota alterations succeed.
      */
-    @Deprecated(
-        message = "Use class property instead.",
-        replaceWith = ReplaceWith("timeoutMs"),
-    )
-    fun timeoutMs(): Int? {
-        return timeoutMs
+    fun all(): KafkaFuture<Unit> {
+        return KafkaFuture.allOf(*futures.values.toTypedArray())
     }
 }

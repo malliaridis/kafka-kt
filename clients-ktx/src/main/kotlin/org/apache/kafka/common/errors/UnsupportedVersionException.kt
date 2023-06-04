@@ -27,7 +27,7 @@ package org.apache.kafka.common.errors
  * is raised from [org.apache.kafka.clients.consumer.KafkaConsumer.offsetsForTimes], it would
  * be possible to revert to alternative logic to set the consumer's position.
  */
-class UnsupportedVersionException(
+open class UnsupportedVersionException(
     message: String? = null,
     cause: Throwable? = null,
 ) : ApiException(message = message, cause = cause) {

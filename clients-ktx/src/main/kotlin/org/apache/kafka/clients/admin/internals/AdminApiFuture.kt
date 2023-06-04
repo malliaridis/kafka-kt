@@ -20,7 +20,6 @@ package org.apache.kafka.clients.admin.internals
 import org.apache.kafka.common.KafkaFuture
 import org.apache.kafka.common.internals.KafkaFutureImpl
 
-
 interface AdminApiFuture<K, V> {
 
     /**
@@ -98,7 +97,7 @@ interface AdminApiFuture<K, V> {
 
         fun all(): Map<K, KafkaFuture<V>> = futures
 
-        operator fun get(key: K): KafkaFuture<V>? = futures[key]
+        operator fun get(key: K): KafkaFuture<V> = futures[key]!!
     }
 
     companion object {

@@ -15,21 +15,14 @@
  * limitations under the License.
  */
 
-package org.apache.kafka.common.errors
+package org.apache.kafka.clients.admin
+
+import org.apache.kafka.common.annotation.InterfaceStability.Evolving
 
 /**
- * Exception thrown if an operation on a resource exceeds the throttling quota.
+ * Options for the [AdminClient.alterConsumerGroupOffsets] call.
+ *
+ * The API of this class is evolving, see [AdminClient] for details.
  */
-class ThrottlingQuotaExceededException(
-    val throttleTimeMs: Int = 0,
-    message : String? = null,
-) : RetriableException(message = message) {
-
-    @Deprecated(
-        message = "Use property instead",
-        replaceWith = ReplaceWith("throttleTimeMs"),
-    )
-    fun throttleTimeMs(): Int {
-        return throttleTimeMs
-    }
-}
+@Evolving
+class AlterConsumerGroupOffsetsOptions : AbstractOptions<AlterConsumerGroupOffsetsOptions?>()

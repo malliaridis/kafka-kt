@@ -15,21 +15,32 @@
  * limitations under the License.
  */
 
-package org.apache.kafka.common.errors
+package org.apache.kafka.clients.admin
+
+import org.apache.kafka.common.KafkaFuture
 
 /**
- * Exception thrown if an operation on a resource exceeds the throttling quota.
+ * The result of the [Admin.updateFeatures] call.
+ *
+ * The API of this class is evolving, see [Admin] for details.
+ *
+ * @property futures A map from feature name to future, which can be used to check the status of
+ * individual feature updates.
  */
-class ThrottlingQuotaExceededException(
-    val throttleTimeMs: Int = 0,
-    message : String? = null,
-) : RetriableException(message = message) {
+class UpdateFeaturesResult internal constructor(val futures: Map<String, KafkaFuture<Unit>>) {
 
     @Deprecated(
         message = "Use property instead",
-        replaceWith = ReplaceWith("throttleTimeMs"),
+        replaceWith = ReplaceWith("futures")
     )
-    fun throttleTimeMs(): Int {
-        return throttleTimeMs
+    fun values(): Map<String, KafkaFuture<Unit>> {
+        return futures
+    }
+
+    /**
+     * Return a future which succeeds if all the feature updates succeed.
+     */
+    fun all(): KafkaFuture<Unit> {
+        return KafkaFuture.allOf(*futures.values.toTypedArray())
     }
 }

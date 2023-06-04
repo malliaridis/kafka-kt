@@ -191,14 +191,15 @@ abstract class KafkaFuture<T> : Future<T> {
          * If any future throws an exception, the returned future returns it.  If multiple futures
          * throw an exception, which one gets returned is arbitrarily chosen.
          */
-        fun allOf(vararg futures: KafkaFuture<*>?): KafkaFuture<Void> {
-            val result = KafkaFutureImpl<Void>()
+        fun allOf(vararg futures: KafkaFuture<*>): KafkaFuture<Unit> {
+            val result = KafkaFutureImpl<Unit>()
+
             CompletableFuture.allOf(
                 *futures.map { kafkaFuture ->
-                    kafkaFuture?.toCompletionStage() as CompletableFuture<*>?
+                    kafkaFuture.toCompletionStage() as CompletableFuture<*>
                 }.toTypedArray()
-            ).whenComplete { value: Void, ex: Throwable? ->
-                if (ex == null) result.complete(value)
+            ).whenComplete { _, ex: Throwable? ->
+                if (ex == null) result.complete(Unit)
                 else {
                     // Have to unwrap the CompletionException which allOf() introduced
                     result.completeExceptionally(ex.cause!!)

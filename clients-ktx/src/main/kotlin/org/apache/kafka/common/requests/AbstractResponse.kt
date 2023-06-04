@@ -94,7 +94,7 @@ abstract class AbstractResponse protected constructor(
          * Parse a response from the provided buffer. The buffer is expected to hold both
          * the [ResponseHeader] as well as the response payload.
          */
-        fun parseResponse(buffer: ByteBuffer?, requestHeader: RequestHeader): AbstractResponse {
+        fun parseResponse(buffer: ByteBuffer, requestHeader: RequestHeader): AbstractResponse {
             val apiKey = requestHeader.apiKey()
             val apiVersion = requestHeader.apiVersion()
             val responseHeader = ResponseHeader.parse(buffer, apiKey.responseHeaderVersion(apiVersion))
@@ -109,8 +109,8 @@ abstract class AbstractResponse protected constructor(
         }
 
         fun parseResponse(
-            apiKey: ApiKeys?,
-            responseBuffer: ByteBuffer?,
+            apiKey: ApiKeys,
+            responseBuffer: ByteBuffer,
             version: Short,
         ): AbstractResponse {
             return when (apiKey) {

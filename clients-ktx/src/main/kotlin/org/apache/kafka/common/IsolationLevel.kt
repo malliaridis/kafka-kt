@@ -15,21 +15,23 @@
  * limitations under the License.
  */
 
-package org.apache.kafka.common.errors
+package org.apache.kafka.common
 
-/**
- * Exception thrown if an operation on a resource exceeds the throttling quota.
- */
-class ThrottlingQuotaExceededException(
-    val throttleTimeMs: Int = 0,
-    message : String? = null,
-) : RetriableException(message = message) {
+enum class IsolationLevel(private val id: Byte) {
+    READ_UNCOMMITTED(0.toByte()),
+    READ_COMMITTED(1.toByte());
 
-    @Deprecated(
-        message = "Use property instead",
-        replaceWith = ReplaceWith("throttleTimeMs"),
-    )
-    fun throttleTimeMs(): Int {
-        return throttleTimeMs
+    fun id(): Byte {
+        return id
+    }
+
+    companion object {
+        fun forId(id: Byte): IsolationLevel {
+            return when (id.toInt()) {
+                0 -> READ_UNCOMMITTED
+                1 -> READ_COMMITTED
+                else -> throw IllegalArgumentException("Unknown isolation level $id")
+            }
+        }
     }
 }

@@ -15,21 +15,35 @@
  * limitations under the License.
  */
 
-package org.apache.kafka.common.errors
+package org.apache.kafka.clients.admin
+
+import org.apache.kafka.common.KafkaFuture
+import org.apache.kafka.common.acl.AclBinding
+import org.apache.kafka.common.annotation.InterfaceStability.Evolving
 
 /**
- * Exception thrown if an operation on a resource exceeds the throttling quota.
+ * The result of the [Admin.createAcls] call.
+ *
+ * The API of this class is evolving, see [Admin] for details.
  */
-class ThrottlingQuotaExceededException(
-    val throttleTimeMs: Int = 0,
-    message : String? = null,
-) : RetriableException(message = message) {
-
+@Evolving
+class CreateAclsResult internal constructor(
+    val futures: Map<AclBinding, KafkaFuture<Unit>>
+) {
+    /**
+     * Return a map from ACL bindings to futures which can be used to check the status of the creation of each ACL
+     * binding.
+     */
     @Deprecated(
         message = "Use property instead",
-        replaceWith = ReplaceWith("throttleTimeMs"),
+        replaceWith = ReplaceWith("futures")
     )
-    fun throttleTimeMs(): Int {
-        return throttleTimeMs
+    fun values(): Map<AclBinding, KafkaFuture<Unit>> = futures
+
+    /**
+     * Return a future which succeeds only if all the ACL creations succeed.
+     */
+    fun all(): KafkaFuture<Unit> {
+        return KafkaFuture.allOf(*futures.values.toTypedArray())
     }
 }

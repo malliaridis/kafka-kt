@@ -15,21 +15,32 @@
  * limitations under the License.
  */
 
-package org.apache.kafka.common.errors
+package org.apache.kafka.clients.admin
+
+import org.apache.kafka.common.KafkaFuture
+import org.apache.kafka.common.annotation.InterfaceStability.Evolving
 
 /**
- * Exception thrown if an operation on a resource exceeds the throttling quota.
+ * The result of the [Admin.createPartitions] call.
+ *
+ * The API of this class is evolving, see [Admin] for details.
  */
-class ThrottlingQuotaExceededException(
-    val throttleTimeMs: Int = 0,
-    message : String? = null,
-) : RetriableException(message = message) {
-
+@Evolving
+class CreatePartitionsResult internal constructor(val futures: Map<String, KafkaFuture<Unit>>) {
+    /**
+     * Return a map from topic names to futures, which can be used to check the status of individual
+     * partition creations.
+     */
     @Deprecated(
         message = "Use property instead",
-        replaceWith = ReplaceWith("throttleTimeMs"),
+        replaceWith = ReplaceWith("futures")
     )
-    fun throttleTimeMs(): Int {
-        return throttleTimeMs
+    fun values(): Map<String, KafkaFuture<Unit>> = futures
+
+    /**
+     * Return a future which succeeds if all the partition creations succeed.
+     */
+    fun all(): KafkaFuture<Unit> {
+        return KafkaFuture.allOf(*futures.values.toTypedArray())
     }
 }

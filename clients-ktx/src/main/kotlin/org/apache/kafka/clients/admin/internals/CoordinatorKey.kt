@@ -15,21 +15,24 @@
  * limitations under the License.
  */
 
-package org.apache.kafka.common.errors
+package org.apache.kafka.clients.admin.internals
 
-/**
- * Exception thrown if an operation on a resource exceeds the throttling quota.
- */
-class ThrottlingQuotaExceededException(
-    val throttleTimeMs: Int = 0,
-    message : String? = null,
-) : RetriableException(message = message) {
+import org.apache.kafka.common.requests.FindCoordinatorRequest.CoordinatorType
 
-    @Deprecated(
-        message = "Use property instead",
-        replaceWith = ReplaceWith("throttleTimeMs"),
-    )
-    fun throttleTimeMs(): Int {
-        return throttleTimeMs
+class CoordinatorKey private constructor(
+    val type: CoordinatorType,
+    val idValue: String,
+) {
+
+    override fun toString(): String = "CoordinatorKey(idValue='$idValue', type=$type)"
+
+    companion object {
+        fun byGroupId(groupId: String): CoordinatorKey {
+            return CoordinatorKey(CoordinatorType.GROUP, groupId)
+        }
+
+        fun byTransactionalId(transactionalId: String): CoordinatorKey {
+            return CoordinatorKey(CoordinatorType.TRANSACTION, transactionalId)
+        }
     }
 }

@@ -17,34 +17,31 @@
 
 package org.apache.kafka.clients.admin
 
+import org.apache.kafka.common.KafkaFuture
+import org.apache.kafka.common.annotation.InterfaceStability.Evolving
+import org.apache.kafka.common.config.ConfigResource
+
 /**
- * This class implements the common APIs that are shared by Options classes for various
- * [AdminClient] commands.
+ * The result of the [Admin.alterConfigs] call.
+ *
+ * The API of this class is evolving, see [Admin] for details.
  */
-abstract class AbstractOptions<T : AbstractOptions<T>?> {
-    var timeoutMs: Int? = null
+@Evolving
+class AlterConfigsResult internal constructor(
+    val futures: Map<ConfigResource, KafkaFuture<Unit>>,
+) {
 
     /**
-     * Set the timeout in milliseconds for this operation or `null` if the default api timeout for
-     * the [AdminClient] should be used.
-     */
-    @Deprecated(message = "Use property instead.")
-    @Suppress("UNCHECKED_CAST")
-    open fun timeoutMs(timeoutMs: Int): T {
-        this.timeoutMs = timeoutMs
-
-        return this as T
-    }
-
-    /**
-     * The timeout in milliseconds for this operation or `null` if the default api timeout for the
-     * [AdminClient] should be used.
+     * Return a map from resources to futures which can be used to check the status of the operation on each resource.
      */
     @Deprecated(
-        message = "Use class property instead.",
-        replaceWith = ReplaceWith("timeoutMs"),
+        message = "Use property instead.",
+        replaceWith = ReplaceWith("futures")
     )
-    fun timeoutMs(): Int? {
-        return timeoutMs
-    }
+    fun values(): Map<ConfigResource, KafkaFuture<Unit>> = futures
+
+    /**
+     * Return a future which succeeds only if all the alter configs operations succeed.
+     */
+    fun all(): KafkaFuture<Unit> = KafkaFuture.allOf(*futures.values.toTypedArray())
 }

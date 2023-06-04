@@ -20,30 +20,5 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 
-/**
- * An interface for scheduling tasks for the future.
- *
- * Implementations of this class should be thread-safe.
- */
-public interface Scheduler {
-    Scheduler SYSTEM = new SystemScheduler();
 
-    /**
-     * Get the timekeeper associated with this scheduler.
-     */
-    Time time();
 
-    /**
-     * Schedule a callable to be executed in the future on a
-     * ScheduledExecutorService.  Note that the Callable may not be queued on
-     * the executor until the designated time arrives.
-     *
-     * @param executor      The executor to use.
-     * @param callable      The callable to execute.
-     * @param delayMs       The delay to use, in milliseconds.
-     * @param <T>           The return type of the callable.
-     * @return              A future which will complete when the callable is finished.
-     */
-    <T> Future<T> schedule(final ScheduledExecutorService executor,
-                           final Callable<T> callable, long delayMs);
-}

@@ -31,32 +31,25 @@ import org.apache.kafka.common.utils.LogContext
 import org.slf4j.Logger
 
 class RemoveMembersFromConsumerGroupHandler(
-    groupId: String?,
+    groupId: String,
     private val members: List<MemberIdentity>,
     logContext: LogContext
 ) : Batched<CoordinatorKey, Map<MemberIdentity, Errors>>() {
 
     private val groupId: CoordinatorKey = CoordinatorKey.byGroupId(groupId)
+
     private val log: Logger = logContext.logger(RemoveMembersFromConsumerGroupHandler::class.java)
+
     private val lookupStrategy: AdminApiLookupStrategy<CoordinatorKey> =
         CoordinatorStrategy(CoordinatorType.GROUP, logContext)
 
-    override fun apiName(): String {
-        return "leaveGroup"
-    }
+    override fun apiName(): String = "leaveGroup"
 
-    override fun lookupStrategy(): AdminApiLookupStrategy<CoordinatorKey> {
-        return lookupStrategy
-    }
+    override fun lookupStrategy(): AdminApiLookupStrategy<CoordinatorKey> = lookupStrategy
 
-    private fun validateKeys(
-        groupIds: Set<CoordinatorKey>
-    ) {
-        if (groupIds != setOf(groupId)) {
-            throw IllegalArgumentException(
-                "Received unexpected group ids " + groupIds +
-                        " (expected only " + setOf(groupId) + ")"
-            )
+    private fun validateKeys(groupIds: Set<CoordinatorKey>) {
+        require(groupIds == setOf(groupId)) {
+            "Received unexpected group ids $groupIds (expected only ${setOf(groupId)})"
         }
     }
 
@@ -140,8 +133,9 @@ class RemoveMembersFromConsumerGroupHandler(
     }
 
     companion object {
+
         fun newFuture(
-            groupId: String?
+            groupId: String
         ): SimpleAdminApiFuture<CoordinatorKey, Map<MemberIdentity, Errors>> {
             return AdminApiFuture.forKeys(setOf(CoordinatorKey.byGroupId(groupId)))
         }

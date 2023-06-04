@@ -823,7 +823,7 @@ class NetworkClient(
         for (receive: NetworkReceive in selector.completedReceives()) {
             val source = receive.source()
             val req = inFlightRequests.completeNext(source)
-            val response = parseResponse(receive.payload(), req.header)
+            val response = parseResponse(receive.payload()!!, req.header)
             throttleTimeSensor?.record(response.throttleTimeMs().toDouble(), now)
             if (log.isDebugEnabled) {
                 log.debug(
@@ -1267,7 +1267,8 @@ class NetworkClient(
     }
 
     companion object {
-        fun parseResponse(responseBuffer: ByteBuffer?, requestHeader: RequestHeader): AbstractResponse {
+
+        fun parseResponse(responseBuffer: ByteBuffer, requestHeader: RequestHeader): AbstractResponse {
             try {
                 return AbstractResponse.parseResponse(responseBuffer, requestHeader)
             } catch (exception: BufferUnderflowException) {

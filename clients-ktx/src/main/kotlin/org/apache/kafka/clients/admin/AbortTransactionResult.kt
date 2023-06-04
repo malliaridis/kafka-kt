@@ -15,21 +15,28 @@
  * limitations under the License.
  */
 
-package org.apache.kafka.common.errors
+package org.apache.kafka.clients.admin
+
+import org.apache.kafka.common.KafkaFuture
+import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.annotation.InterfaceStability.Evolving
 
 /**
- * Exception thrown if an operation on a resource exceeds the throttling quota.
+ * The result of [Admin.abortTransaction].
+ *
+ * The API of this class is evolving, see [Admin] for details.
  */
-class ThrottlingQuotaExceededException(
-    val throttleTimeMs: Int = 0,
-    message : String? = null,
-) : RetriableException(message = message) {
+@Evolving
+class AbortTransactionResult internal constructor(
+    private val futures: Map<TopicPartition, KafkaFuture<Unit>>,
+) {
 
-    @Deprecated(
-        message = "Use property instead",
-        replaceWith = ReplaceWith("throttleTimeMs"),
-    )
-    fun throttleTimeMs(): Int {
-        return throttleTimeMs
-    }
+    /**
+     * Get a future which completes when the transaction specified by [AbortTransactionSpec]
+     * in the respective call to [Admin.abortTransaction]
+     * returns successfully or fails due to an error or timeout.
+     *
+     * @return the future
+     */
+    fun all(): KafkaFuture<Unit> = KafkaFuture.allOf(*futures.values.toTypedArray())
 }

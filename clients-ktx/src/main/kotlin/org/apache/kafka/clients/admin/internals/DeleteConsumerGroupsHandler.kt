@@ -140,13 +140,7 @@ class DeleteConsumerGroupsHandler(
         }
 
         private fun buildKeySet(groupIds: Collection<String>): Set<CoordinatorKey> {
-            return groupIds.stream()
-                .map { groupId: String? ->
-                    CoordinatorKey.byGroupId(
-                        groupId
-                    )
-                }
-                .collect(Collectors.toSet())
+            return groupIds.map { groupId -> CoordinatorKey.byGroupId(groupId) }.toSet()
         }
     }
 }

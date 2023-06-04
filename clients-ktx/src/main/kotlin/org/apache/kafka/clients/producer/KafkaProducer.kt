@@ -434,9 +434,8 @@ open class KafkaProducer<K, V> : Producer<K, V> {
                 config.getList(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG),
                 config.getString(ProducerConfig.CLIENT_DNS_LOOKUP_CONFIG)
             )
-            if (metadata != null) {
-                this.metadata = metadata
-            } else {
+            if (metadata != null) this.metadata = metadata
+            else {
                 this.metadata = ProducerMetadata(
                     retryBackoffMs,
                     config.getLong(ProducerConfig.METADATA_MAX_AGE_CONFIG),
@@ -539,7 +538,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
         val throttleTimeSensor = Sender.throttleTimeSensor(metricsRegistry.senderMetrics)
         val client = kafkaClient
             ?: NetworkClient(
-                Selector(
+                selector = Selector(
                     connectionMaxIdleMs = producerConfig.getLong(ProducerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG),
                     metrics = metrics,
                     time = time,
@@ -547,21 +546,21 @@ open class KafkaProducer<K, V> : Producer<K, V> {
                     channelBuilder = channelBuilder,
                     logContext = logContext
                 ),
-                metadata,
-                clientId,
-                maxInflightRequests,
-                producerConfig.getLong(ProducerConfig.RECONNECT_BACKOFF_MS_CONFIG),
-                producerConfig.getLong(ProducerConfig.RECONNECT_BACKOFF_MAX_MS_CONFIG),
-                producerConfig.getInt(ProducerConfig.SEND_BUFFER_CONFIG),
-                producerConfig.getInt(ProducerConfig.RECEIVE_BUFFER_CONFIG),
-                requestTimeoutMs,
-                producerConfig.getLong(ProducerConfig.SOCKET_CONNECTION_SETUP_TIMEOUT_MS_CONFIG),
-                producerConfig.getLong(ProducerConfig.SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS_CONFIG),
-                time,
-                true,
-                apiVersions,
-                throttleTimeSensor,
-                logContext
+                metadata = metadata,
+                clientId = clientId,
+                maxInFlightRequestsPerConnection = maxInflightRequests,
+                reconnectBackoffMs = producerConfig.getLong(ProducerConfig.RECONNECT_BACKOFF_MS_CONFIG),
+                reconnectBackoffMax = producerConfig.getLong(ProducerConfig.RECONNECT_BACKOFF_MAX_MS_CONFIG),
+                socketSendBuffer = producerConfig.getInt(ProducerConfig.SEND_BUFFER_CONFIG),
+                socketReceiveBuffer = producerConfig.getInt(ProducerConfig.RECEIVE_BUFFER_CONFIG),
+                defaultRequestTimeoutMs = requestTimeoutMs,
+                connectionSetupTimeoutMs = producerConfig.getLong(ProducerConfig.SOCKET_CONNECTION_SETUP_TIMEOUT_MS_CONFIG),
+                connectionSetupTimeoutMaxMs = producerConfig.getLong(ProducerConfig.SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS_CONFIG),
+                time = time,
+                discoverBrokerVersions = true,
+                apiVersions = apiVersions,
+                throttleTimeSensor = throttleTimeSensor,
+                logContext = logContext
             )
         val acks = producerConfig.getString(ProducerConfig.ACKS_CONFIG).toShort()
         return Sender(
@@ -1021,7 +1020,12 @@ open class KafkaProducer<K, V> : Producer<K, V> {
             val clusterAndWaitTime: ClusterAndWaitTime
             try {
                 clusterAndWaitTime =
-                    waitOnMetadata(record.topic, record.partition, nowMs, maxBlockTimeMs)
+                    waitOnMetadata(
+                        topic = record.topic,
+                        partition = record.partition,
+                        nowMs = nowMs,
+                        maxWaitMs = maxBlockTimeMs
+                    )
             } catch (e: KafkaException) {
                 if (metadata.isClosed) throw KafkaException(
                     "Producer closed while send in progress",
@@ -1159,7 +1163,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
         } catch (e: InterruptedException) {
             errors.record()
             interceptors.onSendError(record, appendCallbacks.topicPartition(), e)
-            throw InterruptException(e)
+            throw InterruptException(cause = e)
         } catch (e: KafkaException) {
             errors.record()
             interceptors.onSendError(record, appendCallbacks.topicPartition(), e)
@@ -1341,13 +1345,13 @@ open class KafkaProducer<K, V> : Producer<K, V> {
         Objects.requireNonNull(topic, "topic cannot be null")
         try {
             return waitOnMetadata(
-                topic,
-                null,
-                time.milliseconds(),
-                maxBlockTimeMs
+                topic = topic,
+                partition = null,
+                nowMs = time.milliseconds(),
+                maxWaitMs = maxBlockTimeMs,
             ).cluster.partitionsForTopic(topic)
         } catch (e: InterruptedException) {
-            throw InterruptException(e)
+            throw InterruptException(cause = e)
         }
     }
 
@@ -1420,9 +1424,12 @@ open class KafkaProducer<K, V> : Producer<K, V> {
                 if (ioThread != null) {
                     try {
                         ioThread.join(timeoutMs)
-                    } catch (t: InterruptedException) {
-                        firstException.compareAndSet(null, InterruptException(t))
-                        log.error("Interrupted while joining ioThread", t)
+                    } catch (exception: InterruptedException) {
+                        firstException.compareAndSet(
+                            null,
+                            InterruptException(cause = exception)
+                        )
+                        log.error("Interrupted while joining ioThread", exception)
                     }
                 }
             }
@@ -1438,7 +1445,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
                 try {
                     ioThread.join()
                 } catch (e: InterruptedException) {
-                    firstException.compareAndSet(null, InterruptException(e))
+                    firstException.compareAndSet(null, InterruptException(cause = e))
                 }
             }
         }
