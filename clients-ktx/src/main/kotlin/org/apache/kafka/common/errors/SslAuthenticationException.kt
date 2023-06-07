@@ -20,7 +20,7 @@ package org.apache.kafka.common.errors
 import javax.net.ssl.SSLException
 
 /**
- * This exception indicates that SSL handshake has failed. See [.getCause]
+ * This exception indicates that SSL handshake has failed. See [getCause]
  * for the [SSLException] that caused this failure.
  *
  *

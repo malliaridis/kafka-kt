@@ -70,7 +70,7 @@ open class Metadata(
     private var needPartialUpdate = false
 
     /**
-     * Check if this metadata instance has been closed. See [.close] for more information.
+     * Check if this metadata instance has been closed. See [close] for more information.
      *
      * @return True if this instance has been closed; false otherwise
      */
@@ -163,7 +163,7 @@ open class Metadata(
     /**
      * Request an update for the partition metadata iff we have seen a newer leader epoch. This is called by the client
      * any time it handles a response from the broker that includes leader epoch, except for UpdateMetadata which
-     * follows a different code path ([.update]).
+     * follows a different code path ([update]).
      *
      * @param topicPartition
      * @param leaderEpoch
@@ -279,7 +279,7 @@ open class Metadata(
      * is set for topics if required and expired topics are removed from the metadata.
      *
      * @param requestVersion The request version corresponding to the update response, as provided by
-     * [.newMetadataRequestAndVersion].
+     * [newMetadataRequestAndVersion].
      * @param response metadata response received from the broker
      * @param isPartialUpdate whether the metadata request was for a subset of the active topics
      * @param nowMs current time in milliseconds

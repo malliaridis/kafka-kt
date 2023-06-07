@@ -297,14 +297,14 @@ open class KafkaChannel(
 
     /**
      * Delay channel close on authentication failure. This will remove all read/write operations from the channel until
-     * [.completeCloseOnAuthenticationFailure] is called to finish up the channel close.
+     * [completeCloseOnAuthenticationFailure] is called to finish up the channel close.
      */
     private fun delayCloseOnAuthenticationFailure() {
         transportLayer.removeInterestOps(SelectionKey.OP_WRITE)
     }
 
     /**
-     * Finish up any processing on [.prepare] failure.
+     * Finish up any processing on [prepare] failure.
      * @throws IOException
      */
     @Throws(IOException::class)

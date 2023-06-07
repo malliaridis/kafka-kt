@@ -24,8 +24,8 @@ import org.apache.kafka.common.annotation.InterfaceStability.Evolving
 /**
  * The result of [Admin.alterReplicaLogDirs].
  *
- * To retrieve the detailed result per specified [TopicPartitionReplica], use [.values]. To retrieve the
- * overall result only, use [.all].
+ * To retrieve the detailed result per specified [TopicPartitionReplica], use [values]. To retrieve the
+ * overall result only, use [all].
  */
 @Evolving
 class AlterReplicaLogDirsResult internal constructor(
@@ -59,7 +59,7 @@ class AlterReplicaLogDirsResult internal constructor(
 
     /**
      * Return a [KafkaFuture] which succeeds on [KafkaFuture.get] if all the replica movement have succeeded.
-     * if not, it throws an [Exception] described in [.values] method.
+     * if not, it throws an [Exception] described in [values] method.
      */
     fun all(): KafkaFuture<Unit> {
         return KafkaFuture.allOf(*futures.values.toTypedArray())

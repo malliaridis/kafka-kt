@@ -28,7 +28,7 @@ import org.apache.kafka.common.utils.CloseableIterator
  * many records otherwise. Newer versions (magic versions 2 and above) will generally contain many
  * records regardless of compression.
  */
-interface RecordBatch : Iterable<Record?> {
+interface RecordBatch : Iterable<Record> {
 
     /**
      * Check whether the checksum of this batch is correct.
@@ -76,7 +76,7 @@ interface RecordBatch : Iterable<Record?> {
      * prior to compaction). For non-compacted topics, the behavior is equivalent.
      *
      * Because this requires deep iteration for older magic versions, this method should be used
-     * with caution. Generally [.lastOffset] is safer since access is efficient for all magic
+     * with caution. Generally [lastOffset] is safer since access is efficient for all magic
      * versions.
      *
      * @return The base offset of this record batch (which may or may not be the offset of the first
@@ -85,7 +85,7 @@ interface RecordBatch : Iterable<Record?> {
     fun baseOffset(): Long
 
     /**
-     * Get the last offset in this record batch (inclusive). Just like [.baseOffset], the last
+     * Get the last offset in this record batch (inclusive). Just like [baseOffset], the last
      * offset always reflects the offset of the last record in the original batch, even if it is
      * removed during log compaction.
      *
@@ -128,7 +128,7 @@ interface RecordBatch : Iterable<Record?> {
     fun hasProducerId(): Boolean
 
     /**
-     * Get the base sequence number of this record batch. Like [.baseOffset], this value is not
+     * Get the base sequence number of this record batch. Like [baseOffset], this value is not
      * affected by compaction: it always retains the base sequence number from the original batch.
      *
      * @return The first sequence number or -1 if there is none
@@ -136,7 +136,7 @@ interface RecordBatch : Iterable<Record?> {
     fun baseSequence(): Int
 
     /**
-     * Get the last sequence number of this record batch. Like [.lastOffset], the last sequence
+     * Get the last sequence number of this record batch. Like [lastOffset], the last sequence
      * number always reflects the sequence number of the last record in the original batch, even if
      * it is removed during log compaction.
      *
@@ -149,7 +149,7 @@ interface RecordBatch : Iterable<Record?> {
      *
      * @return The compression type
      */
-    fun compressionType(): CompressionType?
+    fun compressionType(): CompressionType
 
     /**
      * Get the size in bytes of this batch, including the size of the record and the batch overhead.
@@ -161,7 +161,7 @@ interface RecordBatch : Iterable<Record?> {
      * Get the count if it is efficiently supported by the record format (which is only the case
      * for magic 2 and higher).
      *
-     * @return The number of records in the batch or null for magic versions 0 and 1.
+     * @return The number of records in the batch or `null` for magic versions 0 and 1.
      */
     fun countOrNull(): Int?
 
@@ -175,7 +175,7 @@ interface RecordBatch : Iterable<Record?> {
      * Write this record batch into a buffer.
      * @param buffer The buffer to write the batch to
      */
-    fun writeTo(buffer: ByteBuffer?)
+    fun writeTo(buffer: ByteBuffer)
 
     /**
      * Whether or not this record batch is part of a transaction.
@@ -184,15 +184,16 @@ interface RecordBatch : Iterable<Record?> {
     val isTransactional: Boolean
 
     /**
-     * Get the delete horizon, returns OptionalLong.EMPTY if the first timestamp is not the delete
-     * horizon.
+     * Get the delete horizon.
      *
-     * @return timestamp of the delete horizon
+     * @return timestamp of the delete horizon or `null` if the first timestamp is not the delete
+     * horizon.
      */
-    fun deleteHorizonMs(): OptionalLong?
+    fun deleteHorizonMs(): Long?
 
     /**
      * Get the partition leader epoch of this record batch.
+     *
      * @return The leader epoch or -1 if it is unknown
      */
     fun partitionLeaderEpoch(): Int
@@ -210,7 +211,7 @@ interface RecordBatch : Iterable<Record?> {
      *
      * @return The closeable iterator
      */
-    fun streamingIterator(decompressionBufferSupplier: BufferSupplier?): CloseableIterator<Record?>?
+    fun streamingIterator(decompressionBufferSupplier: BufferSupplier): CloseableIterator<Record>
 
     /**
      * Check whether this is a control batch (i.e. whether the control bit is set in the batch

@@ -64,7 +64,7 @@ abstract class AbstractIterator<T> : MutableIterator<T> {
         return null
     }
 
-    protected abstract fun makeNext(): T
+    protected abstract fun makeNext(): T?
 
     private fun maybeComputeNext(): Boolean {
         state = State.FAILED

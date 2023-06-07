@@ -26,7 +26,7 @@ interface Authenticator : Closeable {
 
     /**
      * Perform any processing related to authentication failure. This is invoked when the channel is about to be closed
-     * because of an [AuthenticationException] thrown from a prior [.authenticate] call.
+     * because of an [AuthenticationException] thrown from a prior [authenticate] call.
      * @throws IOException if read/write fails due to an I/O error
      */
     @Throws(IOException::class)
@@ -50,7 +50,7 @@ interface Authenticator : Closeable {
 
     /**
      * Begins re-authentication. Uses transportLayer to read or write tokens as is
-     * done for [.authenticate]. For security protocols PLAINTEXT and SSL,
+     * done for [authenticate]. For security protocols PLAINTEXT and SSL,
      * this is a no-op since re-authentication does not apply/is not supported,
      * respectively. For SASL_PLAINTEXT and SASL_SSL, this performs a SASL
      * authentication. Any in-flight responses from prior requests can/will be read

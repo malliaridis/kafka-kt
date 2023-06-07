@@ -69,7 +69,7 @@ interface KafkaClient : Closeable {
 
     /**
      * Check if the connection of the node has failed, based on the connection state. Such connection failure are
-     * usually transient and can be resumed in the next [.ready] }
+     * usually transient and can be resumed in the next [ready] }
      * call, but there are cases where transient failures needs to be caught and re-acted upon.
      *
      * @param node the node to check
@@ -205,13 +205,13 @@ interface KafkaClient : Closeable {
     /**
      * Initiates shutdown of this client. This method may be invoked from another thread while this
      * client is being polled. No further requests may be sent using the client. The current poll()
-     * will be terminated using wakeup(). The client should be explicitly shutdown using [.close]
-     * after poll returns. Note that [.close] should not be invoked concurrently while polling.
+     * will be terminated using wakeup(). The client should be explicitly shutdown using [close]
+     * after poll returns. Note that [close] should not be invoked concurrently while polling.
      */
     fun initiateClose()
 
     /**
-     * Returns true if the client is still active. Returns false if [.initiateClose] or [.close]
+     * Returns true if the client is still active. Returns false if [initiateClose] or [close]
      * was invoked for this client.
      */
     fun active(): Boolean

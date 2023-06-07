@@ -267,7 +267,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
      * method won't be called in the producer when the serializer is passed in directly.
      */
     constructor(
-        configs: Map<String?, Any?>?,
+        configs: Map<String, Any?>,
         keySerializer: Serializer<K>? = null,
         valueSerializer: Serializer<V>? = null
     ) : this(
@@ -283,7 +283,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
      * a value [Serializer]. Valid configuration strings are documented
      * [here](http://kafka.apache.org/documentation.html#producerconfigs).
      *
-     * Note: after creating a `KafkaProducer` you must always [.close] it to avoid resource leaks.
+     * Note: after creating a `KafkaProducer` you must always [close] it to avoid resource leaks.
      *
      * @param properties The producer configs
      * @param keySerializer The serializer for key that implements [Serializer]. The configure()
@@ -292,7 +292,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
      * method won't be called in the producer when the serializer is passed in directly.
      */
     constructor(
-        properties: Properties?,
+        properties: Properties,
         keySerializer: Serializer<K>? = null,
         valueSerializer: Serializer<V>? = null
     ) : this(
@@ -644,9 +644,9 @@ open class KafkaProducer<K, V> : Producer<K, V> {
 
     /**
      * Should be called before the start of each new transaction. Note that prior to the first invocation
-     * of this method, you must invoke [.initTransactions] exactly one time.
+     * of this method, you must invoke [initTransactions] exactly one time.
      *
-     * @throws IllegalStateException if no transactional.id has been configured or if [.initTransactions]
+     * @throws IllegalStateException if no transactional.id has been configured or if [initTransactions]
      * has not yet been invoked
      * @throws ProducerFencedException if another producer with the same transactional.id is active
      * @throws org.apache.kafka.common.errors.InvalidProducerEpochException if the producer has attempted to produce with an old epoch
@@ -684,7 +684,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
      *
      * This method is a blocking call that waits until the request has been received and acknowledged by the consumer group
      * coordinator; but the offsets are not considered as committed until the transaction itself is successfully committed later (via
-     * the [.commitTransaction] call).
+     * the [commitTransaction] call).
      *
      * @throws IllegalStateException if no transactional.id has been configured, no transaction has been started
      * @throws ProducerFencedException fatal error indicating another producer with the same transactional.id is active
@@ -731,7 +731,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
      *
      * This method is a blocking call that waits until the request has been received and acknowledged by the consumer group
      * coordinator; but the offsets are not considered as committed until the transaction itself is successfully committed later (via
-     * the [.commitTransaction] call).
+     * the [commitTransaction] call).
      *
      *
      *
@@ -783,9 +783,9 @@ open class KafkaProducer<K, V> : Producer<K, V> {
      * Commits the ongoing transaction. This method will flush any unsent records before actually committing the transaction.
      *
      *
-     * Further, if any of the [.send] calls which were part of the transaction hit irrecoverable
+     * Further, if any of the [send] calls which were part of the transaction hit irrecoverable
      * errors, this method will throw the last received exception immediately and the transaction will not be committed.
-     * So all [.send] calls in a transaction must succeed in order for this method to succeed.
+     * So all [send] calls in a transaction must succeed in order for this method to succeed.
      *
      *
      * If the transaction is committed successfully and this method returns without throwing an exception, it is guaranteed
@@ -827,7 +827,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
 
     /**
      * Aborts the ongoing transaction. Any unflushed produce messages will be aborted when this call is made.
-     * This call will throw an exception immediately if any prior [.send] calls failed with a
+     * This call will throw an exception immediately if any prior [send] calls failed with a
      * [ProducerFencedException] or an instance of [org.apache.kafka.common.errors.AuthorizationException].
      *
      * Note that this method will raise [TimeoutException] if the transaction cannot be aborted before expiration
@@ -863,7 +863,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
 
     /**
      * Asynchronously send a record to a topic. Equivalent to `send(record, null)`.
-     * See [.send] for details.
+     * See [send] for details.
      */
     override fun send(record: ProducerRecord<K, V>): Future<RecordMetadata> {
         return send(record, null)
@@ -930,7 +930,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
      *
      * When used as part of a transaction, it is not necessary to define a callback or check the
      * result of the future in order to detect errors from `send`. If any of the send calls failed
-     * with an irrecoverable error, the final [.commitTransaction] call will fail and throw the
+     * with an irrecoverable error, the final [commitTransaction] call will fail and throw the
      * exception from the last failed send. When this happens, your application should call
      * [abortTransaction] to reset the state and continue to send data.
      *

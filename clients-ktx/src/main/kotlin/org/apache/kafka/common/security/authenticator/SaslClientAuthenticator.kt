@@ -65,17 +65,17 @@ open class SaslClientAuthenticator(
 
     /**
      * The internal state transitions for initial authentication of a channel are
-     * declared in order, starting with [.SEND_APIVERSIONS_REQUEST] and ending
-     * in either [.COMPLETE] or [.FAILED].
+     * declared in order, starting with [SEND_APIVERSIONS_REQUEST] and ending
+     * in either [COMPLETE] or [FAILED].
      *
      *
      * Re-authentication of a channel starts with the state
-     * [.REAUTH_PROCESS_ORIG_APIVERSIONS_RESPONSE] and then flows to
-     * [.REAUTH_SEND_HANDSHAKE_REQUEST] followed by
-     * [.REAUTH_RECEIVE_HANDSHAKE_OR_OTHER_RESPONSE] and then
-     * [.REAUTH_INITIAL]; after that the flow joins the authentication flow
-     * at the [.INTERMEDIATE] state and ends at either [.COMPLETE] or
-     * [.FAILED].
+     * [REAUTH_PROCESS_ORIG_APIVERSIONS_RESPONSE] and then flows to
+     * [REAUTH_SEND_HANDSHAKE_REQUEST] followed by
+     * [REAUTH_RECEIVE_HANDSHAKE_OR_OTHER_RESPONSE] and then
+     * [REAUTH_INITIAL]; after that the flow joins the authentication flow
+     * at the [INTERMEDIATE] state and ends at either [COMPLETE] or
+     * [FAILED].
      */
     enum class SaslState {
 

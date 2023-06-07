@@ -21,8 +21,9 @@ package org.apache.kafka.common
  * configuration parameters.
  */
 interface Configurable {
+
     /**
      * Configure this class with the given key-value pairs.
      */
-    fun configure(configs: Map<String?, *>?)
+    fun configure(configs: Map<String, Any?>)
 }

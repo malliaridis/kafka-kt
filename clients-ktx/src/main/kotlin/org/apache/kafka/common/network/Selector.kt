@@ -112,9 +112,9 @@ class Selector private constructor(
     /**
      * Create a new nioSelector
      * @param maxReceiveSize Max size in bytes of a single network receive (use [NetworkReceive.UNLIMITED] for no limit)
-     * @param connectionMaxIdleMs Max idle connection time (use [.NO_IDLE_TIMEOUT_MS] to disable idle timeout)
+     * @param connectionMaxIdleMs Max idle connection time (use [NO_IDLE_TIMEOUT_MS] to disable idle timeout)
      * @param failedAuthenticationDelayMs Minimum time by which failed authentication response and channel close should be delayed by.
-     * Use [.NO_FAILED_AUTHENTICATION_DELAY] to disable this delay.
+     * Use [NO_FAILED_AUTHENTICATION_DELAY] to disable this delay.
      * @param metrics Registry for Selector metrics
      * @param time Time implementation
      * @param metricGrpPrefix Prefix for the group of metrics registered by Selector
@@ -162,8 +162,8 @@ class Selector private constructor(
      * number.
      *
      *
-     * Note that this call only initiates the connection, which will be completed on a future [.poll]
-     * call. Check [.connected] to see which (if any) connections have completed after a given poll call.
+     * Note that this call only initiates the connection, which will be completed on a future [poll]
+     * call. Check [connected] to see which (if any) connections have completed after a given poll call.
      * @param id The id for the new connection
      * @param address The address to connect to
      * @param sendBufferSize The send buffer for the new connection
@@ -326,7 +326,7 @@ class Selector private constructor(
     }
 
     /**
-     * Queue the given request for sending in the subsequent [.poll] calls
+     * Queue the given request for sending in the subsequent [poll] calls
      * @param send The request to send
      */
     override fun send(send: NetworkSend) {
@@ -361,7 +361,7 @@ class Selector private constructor(
      * disconnections, initiating new sends, or making progress on in-progress sends or receives.
      *
      * When this call is completed the user can check for completed sends, receives, connections or disconnects using
-     * [.completedSends], [.completedReceives], [.connected], [.disconnected]. These
+     * [completedSends], [completedReceives], [connected], [disconnected]. These
      * lists will be cleared at the beginning of each `poll` call and repopulated by the call if there is
      * any completed I/O.
      *
@@ -749,10 +749,10 @@ class Selector private constructor(
      * a poll() when all the results from the previous poll are expected to have been handled.
      *
      *
-     * SocketServer uses [.clearCompletedSends] and [.clearCompletedReceives] to
+     * SocketServer uses [clearCompletedSends] and [clearCompletedReceives] to
      * clear `completedSends` and `completedReceives` as soon as they are processed to avoid
      * holding onto large request/response buffers from multiple connections longer than necessary.
-     * Clients rely on Selector invoking [.clear] at the start of each poll() since memory usage
+     * Clients rely on Selector invoking [clear] at the start of each poll() since memory usage
      * is less critical and clearing once-per-poll provides the flexibility to process these results in
      * any order before the next poll.
      */

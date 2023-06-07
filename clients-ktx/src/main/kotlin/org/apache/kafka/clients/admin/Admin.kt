@@ -92,7 +92,7 @@ import org.apache.kafka.common.quota.ClientQuotaFilter
  * being unavailable.
  *
  * Different operations necessitate requests being sent to different nodes in the cluster. For example
- * [.createTopics] communicates with the controller, but [.describeTopics]
+ * [createTopics] communicates with the controller, but [describeTopics]
  * can talk to any broker. When the recipient does not matter the instance will try to use the broker with the
  * fewest outstanding requests.
  *
@@ -133,7 +133,7 @@ interface Admin : AutoCloseable {
     /**
      * Create a batch of new topics with the default options.
      *
-     * This is a convenience method for [.createTopics] with default options.
+     * This is a convenience method for [createTopics] with default options.
      * See the overload for more details.
      *
      * This operation is supported by brokers with version 0.10.1.0 or higher.
@@ -152,7 +152,7 @@ interface Admin : AutoCloseable {
      *
      * It may take several seconds after [CreateTopicsResult] returns
      * success for all the brokers to become aware that the topics have been created.
-     * During this time, [.listTopics] and [.describeTopics]
+     * During this time, [listTopics] and [describeTopics]
      * may not return information about the new topics.
      *
      * This operation is supported by brokers with version 0.10.1.0 or higher. The validateOnly
@@ -165,7 +165,7 @@ interface Admin : AutoCloseable {
     fun createTopics(newTopics: Collection<NewTopic>, options: CreateTopicsOptions): CreateTopicsResult
 
     /**
-     * This is a convenience method for [.deleteTopics]
+     * This is a convenience method for [deleteTopics]
      * with default options. See the overload for more details.
      *
      * This operation is supported by brokers with version 0.10.1.0 or higher.
@@ -178,7 +178,7 @@ interface Admin : AutoCloseable {
     }
 
     /**
-     * This is a convenience method for [.deleteTopics]
+     * This is a convenience method for [deleteTopics]
      * with default options. See the overload for more details.
      *
      * This operation is supported by brokers with version 0.10.1.0 or higher.
@@ -192,7 +192,7 @@ interface Admin : AutoCloseable {
     }
 
     /**
-     * This is a convenience method for [.deleteTopics]
+     * This is a convenience method for [deleteTopics]
      * with default options. See the overload for more details.
      *
      * When using topic IDs, this operation is supported by brokers with inter-broker protocol 2.8
@@ -213,7 +213,7 @@ interface Admin : AutoCloseable {
      *
      * It may take several seconds after the [DeleteTopicsResult] returns
      * success for all the brokers to become aware that the topics are gone.
-     * During this time, [.listTopics] and [.describeTopics]
+     * During this time, [listTopics] and [describeTopics]
      * may continue to return information about the deleted topics.
      *
      * If delete.topic.enable is false on the brokers, deleteTopics will mark
@@ -233,7 +233,7 @@ interface Admin : AutoCloseable {
     /**
      * List the topics available in the cluster with the default options.
      *
-     * This is a convenience method for [.listTopics] with default options.
+     * This is a convenience method for [listTopics] with default options.
      * See the overload for more details.
      *
      * @return The ListTopicsResult.
@@ -265,7 +265,7 @@ interface Admin : AutoCloseable {
     }
 
     /**
-     * This is a convenience method for [.describeTopics]
+     * This is a convenience method for [describeTopics]
      * with default options. See the overload for more details.
      *
      * When using topic IDs, this operation is supported by brokers with version 3.1.0 or higher.
@@ -294,7 +294,7 @@ interface Admin : AutoCloseable {
     /**
      * Get information about the nodes in the cluster, using the default options.
      *
-     * This is a convenience method for [.describeCluster] with default options.
+     * This is a convenience method for [describeCluster] with default options.
      * See the overload for more details.
      *
      * @return The DescribeClusterResult.
@@ -312,7 +312,7 @@ interface Admin : AutoCloseable {
     fun describeCluster(options: DescribeClusterOptions): DescribeClusterResult
 
     /**
-     * This is a convenience method for [.describeAcls] with
+     * This is a convenience method for [describeAcls] with
      * default options. See the overload for more details.
      *
      * This operation is supported by brokers with version 0.11.0.0 or higher.
@@ -339,7 +339,7 @@ interface Admin : AutoCloseable {
     fun describeAcls(filter: AclBindingFilter, options: DescribeAclsOptions): DescribeAclsResult
 
     /**
-     * This is a convenience method for [.createAcls] with
+     * This is a convenience method for [createAcls] with
      * default options. See the overload for more details.
      *
      * This operation is supported by brokers with version 0.11.0.0 or higher.
@@ -368,7 +368,7 @@ interface Admin : AutoCloseable {
     fun createAcls(acls: Collection<AclBinding>, options: CreateAclsOptions): CreateAclsResult
 
     /**
-     * This is a convenience method for [.deleteAcls] with default options.
+     * This is a convenience method for [deleteAcls] with default options.
      * See the overload for more details.
      *
      * This operation is supported by brokers with version 0.11.0.0 or higher.
@@ -396,7 +396,7 @@ interface Admin : AutoCloseable {
     /**
      * Get the configuration for the specified resources with the default options.
      *
-     * This is a convenience method for [.describeConfigs] with default options.
+     * This is a convenience method for [describeConfigs] with default options.
      * See the overload for more details.
      *
      * This operation is supported by brokers with version 0.11.0.0 or higher.
@@ -433,7 +433,7 @@ interface Admin : AutoCloseable {
     /**
      * Update the configuration for the specified resources with the default options.
      *
-     * This is a convenience method for [.alterConfigs] with default options.
+     * This is a convenience method for [alterConfigs] with default options.
      * See the overload for more details.
      *
      * This operation is supported by brokers with version 0.11.0.0 or higher.
@@ -468,7 +468,7 @@ interface Admin : AutoCloseable {
     /**
      * Incrementally updates the configuration for the specified resources with default options.
      *
-     * This is a convenience method for [.incrementalAlterConfigs] with default options.
+     * This is a convenience method for [incrementalAlterConfigs] with default options.
      * See the overload for more details.
      *
      * This operation is supported by brokers with version 2.3.0 or higher.
@@ -522,7 +522,7 @@ interface Admin : AutoCloseable {
      *
      * This operation is not transactional so it may succeed for some replicas while fail for others.
      *
-     * This is a convenience method for [.alterReplicaLogDirs] with default options.
+     * This is a convenience method for [alterReplicaLogDirs] with default options.
      * See the overload for more details.
      *
      * This operation is supported by brokers with version 1.1.0 or higher.
@@ -560,7 +560,7 @@ interface Admin : AutoCloseable {
     /**
      * Query the information of all log directories on the given set of brokers
      *
-     * This is a convenience method for [.describeLogDirs] with default options.
+     * This is a convenience method for [describeLogDirs] with default options.
      * See the overload for more details.
      *
      * This operation is supported by brokers with version 1.0.0 or higher.
@@ -589,7 +589,7 @@ interface Admin : AutoCloseable {
     /**
      * Query the replica log directory information for the specified replicas.
      *
-     * This is a convenience method for [.describeReplicaLogDirs]
+     * This is a convenience method for [describeReplicaLogDirs]
      * with default options. See the overload for more details.
      *
      * This operation is supported by brokers with version 1.0.0 or higher.
@@ -622,7 +622,7 @@ interface Admin : AutoCloseable {
      * according to the corresponding values. **If partitions are increased for a topic that has a
      * key, the partition logic or ordering of the messages will be affected.**
      *
-     * This is a convenience method for [.createPartitions] with default options.
+     * This is a convenience method for [createPartitions] with default options.
      * See the overload for more details.
      *
      * @param newPartitions The topics which should have new partitions created, and corresponding
@@ -643,7 +643,7 @@ interface Admin : AutoCloseable {
      *
      * It may take several seconds after this method returns
      * success for all the brokers to become aware that the partitions have been created.
-     * During this time, [.describeTopics]
+     * During this time, [describeTopics]
      * may not return information about the new partitions.
      *
      * This operation is supported by brokers with version 1.0.0 or higher.
@@ -678,7 +678,7 @@ interface Admin : AutoCloseable {
     /**
      * Delete records whose offset is smaller than the given offset of the corresponding partition.
      *
-     * This is a convenience method for [.deleteRecords] with default options.
+     * This is a convenience method for [deleteRecords] with default options.
      * See the overload for more details.
      *
      * This operation is supported by brokers with version 0.11.0.0 or higher.
@@ -709,7 +709,7 @@ interface Admin : AutoCloseable {
     /**
      * Create a Delegation Token.
      *
-     * This is a convenience method for [.createDelegationToken] with default options.
+     * This is a convenience method for [createDelegationToken] with default options.
      * See the overload for more details.
      *
      * @return The CreateDelegationTokenResult.
@@ -746,7 +746,7 @@ interface Admin : AutoCloseable {
     /**
      * Renew a Delegation Token.
      *
-     * This is a convenience method for [.renewDelegationToken] with default options.
+     * This is a convenience method for [renewDelegationToken] with default options.
      * See the overload for more details.
      *
      * @param hmac HMAC of the Delegation token
@@ -787,7 +787,7 @@ interface Admin : AutoCloseable {
     /**
      * Expire a Delegation Token.
      *
-     * This is a convenience method for [.expireDelegationToken] with default options.
+     * This is a convenience method for [expireDelegationToken] with default options.
      * This will expire the token immediately. See the overload for more details.
      *
      * @param hmac HMAC of the Delegation token
@@ -831,7 +831,7 @@ interface Admin : AutoCloseable {
     /**
      * Describe the Delegation Tokens.
      *
-     * This is a convenience method for [.describeDelegationToken] with default options.
+     * This is a convenience method for [describeDelegationToken] with default options.
      * This will return all the user owned tokens and tokens where user have Describe permission.
      * See the overload for more details.
      *
@@ -878,7 +878,7 @@ interface Admin : AutoCloseable {
     /**
      * Describe some group IDs in the cluster, with the default options.
      *
-     * This is a convenience method for [.describeConsumerGroups]
+     * This is a convenience method for [describeConsumerGroups]
      * with default options. See the overload for more details.
      *
      * @param groupIds The IDs of the groups to describe.
@@ -899,7 +899,7 @@ interface Admin : AutoCloseable {
     /**
      * List the consumer groups available in the cluster with the default options.
      *
-     * This is a convenience method for [.listConsumerGroups] with default options.
+     * This is a convenience method for [listConsumerGroups] with default options.
      * See the overload for more details.
      *
      * @return The ListGroupsResult.
@@ -944,7 +944,7 @@ interface Admin : AutoCloseable {
      * List the consumer group offsets available in the cluster for the specified groups with the default options.
      *
      * This is a convenience method for
-     * [.listConsumerGroupOffsets] with default options.
+     * [listConsumerGroupOffsets] with default options.
      *
      * @param groupSpecs Map of consumer group ids to a spec that specifies the topic partitions of the group to list
      * offsets for.
@@ -1007,7 +1007,7 @@ interface Admin : AutoCloseable {
     /**
      * Elect a replica as leader for topic partitions.
      *
-     * This is a convenience method for [.electLeaders]
+     * This is a convenience method for [electLeaders]
      * with default options.
      *
      * @param electionType The type of election to conduct.
@@ -1026,7 +1026,7 @@ interface Admin : AutoCloseable {
      *
      * It may take several seconds after this method returns success for all the brokers in the cluster
      * to become aware that the partitions have new leaders. During this time,
-     * [.describeTopics] may not return information about the partitions'
+     * [describeTopics] may not return information about the partitions'
      * new leaders.
      *
      * This operation is supported by brokers with version 2.2.0 or later if preferred election is use;
@@ -1063,7 +1063,7 @@ interface Admin : AutoCloseable {
      * Change the reassignments for one or more partitions.
      * Providing `null` will <bold>revert</bold> the reassignment for the associated partition.
      *
-     * This is a convenience method for [.alterPartitionReassignments]
+     * This is a convenience method for [alterPartitionReassignments]
      * with default options.  See the overload for more details.
      */
     fun alterPartitionReassignments(
@@ -1176,7 +1176,7 @@ interface Admin : AutoCloseable {
     /**
      * Alters offsets for the specified group. In order to succeed, the group must be empty.
      *
-     * This is a convenience method for [.alterConsumerGroupOffsets] with default options.
+     * This is a convenience method for [alterConsumerGroupOffsets] with default options.
      * See the overload for more details.
      *
      * @param groupId The group for which to alter offsets.
@@ -1211,7 +1211,7 @@ interface Admin : AutoCloseable {
      * List offset for the specified partitions and OffsetSpec. This operation enables to find
      * the beginning offset, end offset as well as the offset matching a timestamp in partitions.
      *
-     * This is a convenience method for [.listOffsets]
+     * This is a convenience method for [listOffsets]
      *
      * @param topicPartitionOffsets The mapping from partition to the OffsetSpec to look up.
      * @return The ListOffsetsResult.
@@ -1237,7 +1237,7 @@ interface Admin : AutoCloseable {
      * Describes all entities matching the provided filter that have at least one client quota configuration
      * value defined.
      *
-     * This is a convenience method for [.describeClientQuotas]
+     * This is a convenience method for [describeClientQuotas]
      * with default options. See the overload for more details.
      *
      * This operation is supported by brokers with version 2.6.0 or higher.
@@ -1277,7 +1277,7 @@ interface Admin : AutoCloseable {
     /**
      * Alters client quota configurations with the specified alterations.
      *
-     * This is a convenience method for [.alterClientQuotas]
+     * This is a convenience method for [alterClientQuotas]
      * with default options. See the overload for more details.
      *
      * This operation is supported by brokers with version 2.6.0 or higher.
@@ -1319,7 +1319,7 @@ interface Admin : AutoCloseable {
     /**
      * Describe all SASL/SCRAM credentials.
      *
-     * This is a convenience method for [.describeUserScramCredentials]
+     * This is a convenience method for [describeUserScramCredentials]
      *
      * @return The DescribeUserScramCredentialsResult.
      */
@@ -1330,7 +1330,7 @@ interface Admin : AutoCloseable {
     /**
      * Describe SASL/SCRAM credentials for the given users.
      *
-     * This is a convenience method for [.describeUserScramCredentials]
+     * This is a convenience method for [describeUserScramCredentials]
      *
      * @param users the users for which credentials are to be described; all users' credentials are described if null
      * or empty.
@@ -1370,7 +1370,7 @@ interface Admin : AutoCloseable {
     /**
      * Alter SASL/SCRAM credentials for the given users.
      *
-     * This is a convenience method for [.alterUserScramCredentials]
+     * This is a convenience method for [alterUserScramCredentials]
      *
      * @param alterations the alterations to be applied
      * @return The AlterUserScramCredentialsResult.
@@ -1412,7 +1412,7 @@ interface Admin : AutoCloseable {
     /**
      * Describes finalized as well as supported features.
      *
-     * This is a convenience method for [.describeFeatures] with default options.
+     * This is a convenience method for [describeFeatures] with default options.
      * See the overload for more details.
      *
      * @return the [DescribeFeaturesResult] containing the result
@@ -1487,7 +1487,7 @@ interface Admin : AutoCloseable {
     /**
      * Describes the state of the metadata quorum.
      *
-     * This is a convenience method for [.describeMetadataQuorum] with default options.
+     * This is a convenience method for [describeMetadataQuorum] with default options.
      * See the overload for more details.
      *
      * @return the [DescribeMetadataQuorumResult] containing the result
@@ -1518,7 +1518,7 @@ interface Admin : AutoCloseable {
      * This operation does not have any effect on partition assignments. It is supported
      * only on Kafka clusters which use Raft to store metadata, rather than ZooKeeper.
      *
-     * This is a convenience method for [.unregisterBroker]
+     * This is a convenience method for [unregisterBroker]
      *
      * @param brokerId  the broker id to unregister.
      *
@@ -1554,7 +1554,7 @@ interface Admin : AutoCloseable {
 
     /**
      * Describe producer state on a set of topic partitions. See
-     * [.describeProducers] for more details.
+     * [describeProducers] for more details.
      *
      * @param partitions The set of partitions to query
      * @return The result
@@ -1579,7 +1579,7 @@ interface Admin : AutoCloseable {
 
     /**
      * Describe the state of a set of transactional IDs. See
-     * [.describeTransactions] for more details.
+     * [describeTransactions] for more details.
      *
      * @param transactionalIds The set of transactional IDs to query
      * @return The result
@@ -1603,7 +1603,7 @@ interface Admin : AutoCloseable {
 
     /**
      * Forcefully abort a transaction which is open on a topic partition. See
-     * [.abortTransaction] for more details.
+     * [abortTransaction] for more details.
      *
      * @param spec The transaction specification including topic partition and producer details
      * @return The result
@@ -1625,7 +1625,7 @@ interface Admin : AutoCloseable {
 
     /**
      * List active transactions in the cluster. See
-     * [.listTransactions] for more details.
+     * [listTransactions] for more details.
      *
      * @return The result
      */
@@ -1648,7 +1648,7 @@ interface Admin : AutoCloseable {
     /**
      * Fence out all active producers that use any of the provided transactional IDs, with the default options.
      *
-     * This is a convenience method for [.fenceProducers]
+     * This is a convenience method for [fenceProducers]
      * with default options. See the overload for more details.
      *
      * @param transactionalIds The IDs of the producers to fence.

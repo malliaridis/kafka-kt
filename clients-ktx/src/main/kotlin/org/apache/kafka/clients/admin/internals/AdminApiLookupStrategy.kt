@@ -46,7 +46,7 @@ interface AdminApiLookupStrategy<T> {
 
     /**
      * Build the lookup request for a set of keys. The grouping of the keys is controlled
-     * through [.lookupScope]. In other words, each set of keys that map
+     * through [lookupScope]. In other words, each set of keys that map
      * to the same request scope object will be sent to this method.
      *
      * @param keys the set of keys that require lookup

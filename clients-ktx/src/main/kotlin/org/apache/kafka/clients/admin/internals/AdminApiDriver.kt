@@ -167,8 +167,8 @@ class AdminApiDriver<K, V>(
     /**
      * Check whether any requests need to be sent. This should be called immediately
      * after the driver is constructed and then again after each request returns
-     * (i.e. after [.onFailure] or
-     * [.onResponse]).
+     * (i.e. after [onFailure] or
+     * [onResponse]).
      *
      * @return A list of requests that need to be sent
      */
