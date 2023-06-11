@@ -84,8 +84,8 @@ import org.apache.kafka.common.utils.Utils.join
  * The [Config] contains updated configuration information given the current configuration values.
  * ```
  *
- * This class can be used standalone or in combination with [AbstractConfig] which provides some additional
- * functionality for accessing configs.
+ * This class can be used standalone or in combination with [AbstractConfig] which provides some
+ * additional functionality for accessing configs.
  */
 class ConfigDef {
 
@@ -132,18 +132,19 @@ class ConfigDef {
 
     /**
      * Define a new configuration with no dependents and no custom recommender
-     * @param name          the name of the config parameter
-     * @param type          the type of the config
-     * @param defaultValue  the default value to use if this config isn't present
-     * @param validator     the validator to use in checking the correctness of the config
-     * @param importance    the importance of this config
+     *
+     * @param name the name of the config parameter
+     * @param type the type of the config
+     * @param defaultValue the default value to use if this config isn't present
+     * @param validator the validator to use in checking the correctness of the config
+     * @param importance the importance of this config
      * @param documentation the documentation string for the config
-     * @param group         the group this config belongs to
-     * @param orderInGroup  the order of this config in the group
-     * @param width         the width of the config
-     * @param displayName   the name suitable for display
-     * @param dependents    the configurations that are dependents of this configuration
-     * @param recommender   the recommender provides valid values given the parent configuration values
+     * @param group the group this config belongs to
+     * @param orderInGroup the order of this config in the group
+     * @param width the width of the config
+     * @param displayName the name suitable for display
+     * @param dependents the configurations that are dependents of this configuration
+     * @param recommender the recommender provides valid values given the parent configuration values
      * @return This ConfigDef so you can chain calls
      */
     fun define(
@@ -180,12 +181,14 @@ class ConfigDef {
     }
 
     /**
-     * Define a new internal configuration. Internal configuration won't show up in the docs and aren't
-     * intended for general use.
-     * @param name              The name of the config parameter
-     * @param type              The type of the config
-     * @param defaultValue      The default value to use if this config isn't present
-     * @param importance        The importance of this config (i.e. is this something you will likely need to change?)
+     * Define a new internal configuration. Internal configuration won't show up in the docs and
+     * aren't intended for general use.
+     *
+     * @param name The name of the config parameter
+     * @param type The type of the config
+     * @param defaultValue The default value to use if this config isn't present
+     * @param importance The importance of this config (i.e. is this something you will likely need
+     * to change?)
      * @return This ConfigDef so you can chain calls
      */
     fun defineInternal(
@@ -566,21 +569,17 @@ class ConfigDef {
     }
 
     /**
-     * Validation logic for numeric ranges
+     * Validation logic for numeric ranges.
+     *
+     * This is a numeric range with inclusive upper bound and inclusive lower bound.
+     *
+     * @property min the lower bound
+     * @property max the upper bound
      */
-    class Range private constructor(min: Number, max: Number?) : Validator {
-        private val min: Number?
-        private val max: Number?
-
-        /**
-         * A numeric range with inclusive upper bound and inclusive lower bound
-         * @param min  the lower bound
-         * @param max  the upper bound
-         */
-        init {
-            this.min = min
-            this.max = max
-        }
+    class Range private constructor(
+        private val min: Number?,
+        private val max: Number?,
+    ) : Validator {
 
         override fun ensureValid(name: String, value: Any?) {
             if (value == null) throw ConfigException(name, null, "Value must be non-null")
@@ -603,6 +602,7 @@ class ConfigDef {
         }
 
         companion object {
+
             /**
              * A numeric range that checks only the lower bound
              *
@@ -1113,54 +1113,53 @@ class ConfigDef {
      * mode is "read-only".
      * @param dynamicUpdateModes Config name -> update mode mapping.
      */
-    @JvmOverloads
-    fun toHtml(dynamicUpdateModes: Map<String?, String?> = emptyMap<String?, String>()): String {
+    fun toHtml(dynamicUpdateModes: Map<String, String> = emptyMap()): String {
         return toHtml(4, Function.identity(), dynamicUpdateModes)
     }
+
     /**
      * Converts this config into an HTML list that can be embedded into docs.
      * If `dynamicUpdateModes` is non-empty, a "Dynamic Update Mode" label
      * will be included in the config details with the value of the update mode. Default
      * mode is "read-only".
      * @param headerDepth The top level header depth in the generated HTML.
-     * @param idGenerator A function for computing the HTML id attribute in the generated HTML from a given config name.
+     * @param idGenerator A function for computing the HTML id attribute in the generated HTML from
+     * a given config name.
      * @param dynamicUpdateModes Config name -> update mode mapping.
-     */
-    /**
+     *
      * Converts this config into an HTML list that can be embedded into docs.
      * @param headerDepth The top level header depth in the generated HTML.
-     * @param idGenerator A function for computing the HTML id attribute in the generated HTML from a given config name.
+     * @param idGenerator A function for computing the HTML id attribute in the generated HTML from
+     * a given config name.
      */
-    @JvmOverloads
     fun toHtml(
-        headerDepth: Int, idGenerator: Function<String?, String?>,
-        dynamicUpdateModes: Map<String?, String?> = emptyMap<String?, String>()
+        headerDepth: Int,
+        idGenerator: Function<String, String>,
+        dynamicUpdateModes: Map<String, String> = emptyMap()
     ): String {
-        val hasUpdateModes = !dynamicUpdateModes.isEmpty()
+        val hasUpdateModes = dynamicUpdateModes.isNotEmpty()
         val configs = sortedConfigs()
         val b = StringBuilder()
         b.append("<ul class=\"config-list\">\n")
         for (key: ConfigKey in configs) {
-            if (key.internalConfig) {
-                continue
-            }
+            if (key.internalConfig) continue
+
             b.append("<li>\n")
             b.append(
                 String.format(
-                    "<h%1\$d>" +
-                            "<a id=\"%3\$s\"></a><a id=\"%2\$s\" href=\"#%2\$s\">%3\$s</a>" +
+                    "<h%1\$d><a id=\"%3\$s\"></a><a id=\"%2\$s\" href=\"#%2\$s\">%3\$s</a>" +
                             "</h%1\$d>%n", headerDepth, idGenerator.apply(key.name), key.name
                 )
             )
             b.append("<p>")
+
             if (key.documentation != null) {
                 b.append(key.documentation.replace("\n".toRegex(), "<br>"))
             }
+
             b.append("</p>\n")
-            b.append(
-                "<table>" +
-                        "<tbody>\n"
-            )
+            b.append("<table><tbody>\n")
+
             for (detail: String in headers()) {
                 if ((detail == "Name") || (detail == "Description")) continue
                 addConfigDetail(b, detail, getConfigValue(key, detail))
@@ -1217,7 +1216,7 @@ class ConfigDef {
 
                     Type.PASSWORD -> return when (value) {
                         is Password -> value
-                        is String -> Password(trimmed)
+                        is String -> Password(trimmed!!)
 
                         else -> throw ConfigException(
                             name = name,
@@ -1239,7 +1238,7 @@ class ConfigDef {
                         else -> throw ConfigException(
                             name = name,
                             value = value,
-                            message = "Expected value to be a 32-bit integer, but it was a " + value.javaClass.name
+                            message = "Expected value to be a 32-bit integer, but it was a ${value.javaClass.name}"
                         )
                     }
 
@@ -1345,14 +1344,16 @@ class ConfigDef {
          */
         fun convertToStringMapWithPasswordValues(configs: Map<String, *>): Map<String, String> {
             val result: MutableMap<String, String> = HashMap()
-            for (entry: Map.Entry<String, *> in configs.entries) {
-                val value = (entry.value)!!
-                var strValue: String?
-                if (value is Password) strValue =
-                    value.value() else if (value is List<*>) strValue =
-                    convertToString(value, Type.LIST) else if (value is Class<*>) strValue =
-                    convertToString(value, Type.CLASS) else strValue = convertToString(value, null)
-                if (strValue != null) result[entry.key] = strValue
+
+            configs.forEach { (key, value) ->
+                val strValue: String? = when (value) {
+                    is Password -> value.value
+                    is List<*> -> convertToString(value, Type.LIST)
+                    is Class<*> -> convertToString(value, Type.CLASS)
+                    else -> convertToString(value, null)
+                }
+
+                if (strValue != null) result[key] = strValue
             }
             return result
         }

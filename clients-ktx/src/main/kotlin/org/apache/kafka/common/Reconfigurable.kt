@@ -26,17 +26,18 @@ interface Reconfigurable : Configurable {
     /**
      * Returns the names of configs that may be reconfigured.
      */
-    fun reconfigurableConfigs(): Set<String?>
+    fun reconfigurableConfigs(): Set<String>
 
     /**
      * Validates the provided configuration. The provided map contains all configs including any
      * reconfigurable configs that may be different from the initial configuration. Reconfiguration
      * will be not performed if this method throws any exception.
+     *
      * @throws ConfigException if the provided configs are not valid. The exception message from
      * ConfigException will be returned to the client in the AlterConfigs response.
      */
     @Throws(ConfigException::class)
-    fun validateReconfiguration(configs: Map<String?, *>?)
+    fun validateReconfiguration(configs: Map<String, *>)
 
     /**
      * Reconfigures this instance with the given key-value pairs. The provided map contains all
@@ -44,5 +45,5 @@ interface Reconfigurable : Configurable {
      * initially configured using [Configurable.configure]. This method will only be invoked if the
      * configs have passed validation using [validateReconfiguration].
      */
-    fun reconfigure(configs: Map<String?, *>?)
+    fun reconfigure(configs: Map<String, *>)
 }

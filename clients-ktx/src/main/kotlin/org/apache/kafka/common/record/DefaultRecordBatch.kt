@@ -227,12 +227,12 @@ class DefaultRecordBatch internal constructor(
                     logAppendTime: Long?
                 ): Record {
                     return DefaultRecord.readPartiallyFrom(
-                        inputStream,
-                        skipArray,
-                        baseOffset,
-                        baseTimestamp,
-                        baseSequence,
-                        logAppendTime
+                        input = inputStream,
+                        skipArray = skipArray,
+                        baseOffset = baseOffset,
+                        baseTimestamp = baseTimestamp,
+                        baseSequence = baseSequence,
+                        logAppendTime = logAppendTime
                     )
                 }
             }
@@ -362,10 +362,10 @@ class DefaultRecordBatch internal constructor(
         return buffer.getShort(ATTRIBUTES_OFFSET).toByte()
     }
 
-    override fun equals(o: Any?): Boolean {
-        if (this === o) return true
-        if (o == null || javaClass != o.javaClass) return false
-        val that = o as DefaultRecordBatch
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || javaClass != other.javaClass) return false
+        val that = other as DefaultRecordBatch
         return (buffer == that.buffer)
     }
 
@@ -762,8 +762,8 @@ class DefaultRecordBatch internal constructor(
          * from the compression algorithm used.
          */
         fun estimateBatchSizeUpperBound(
-            key: ByteBuffer,
-            value: ByteBuffer,
+            key: ByteBuffer?,
+            value: ByteBuffer?,
             headers: Array<Header>
         ): Int = RECORD_BATCH_OVERHEAD + DefaultRecord.recordSizeUpperBound(key, value, headers)
 

@@ -140,7 +140,7 @@ class FileLogInputStream internal constructor(
             }
         }
 
-        protected abstract fun toMemoryRecordBatch(buffer: ByteBuffer?): RecordBatch
+        protected abstract fun toMemoryRecordBatch(buffer: ByteBuffer): RecordBatch
 
         protected abstract fun headerSize(): Int
 

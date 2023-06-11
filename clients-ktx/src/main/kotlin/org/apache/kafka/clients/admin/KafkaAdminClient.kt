@@ -3688,8 +3688,8 @@ class KafkaAdminClient private constructor(
         for (member: MemberDescription in members) {
             val memberIdentity = MemberIdentity().setReason(reason)
 
-            member.groupInstanceId?.let { memberIdentity.setGroupInstanceId(it) }
-                ?: run { memberIdentity.setMemberId(member.memberId) }
+            if (member.groupInstanceId == null) memberIdentity.setMemberId(member.memberId)
+            else memberIdentity.setGroupInstanceId(member.groupInstanceId)
 
             membersToRemove.add(memberIdentity)
         }
