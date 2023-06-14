@@ -14,50 +14,50 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.common.config;
 
-import org.apache.kafka.common.config.provider.ConfigProvider;
+package org.apache.kafka.common.config
 
-import java.util.Map;
+import org.apache.kafka.common.config.provider.ConfigProvider
 
 /**
- * The result of a transformation from {@link ConfigTransformer}.
+ * The result of a transformation from [ConfigTransformer].
+ *
+ * @constructor Creates a new ConfigTransformerResult with the given data and TTL values for a set
+ * of paths.
+ * @property data the transformed data, with variables replaced with corresponding values from the
+ * ConfigProvider instances if found.
+ * @property ttls the TTL values (in milliseconds) returned from the ConfigProvider instances for a
+ * given set of paths.
  */
-public class ConfigTransformerResult {
-
-    private Map<String, Long> ttls;
-    private Map<String, String> data;
-
-    /**
-     * Creates a new ConfigTransformerResult with the given data and TTL values for a set of paths.
-     *
-     * @param data a Map of key-value pairs
-     * @param ttls a Map of path and TTL values (in milliseconds)
-     */
-    public ConfigTransformerResult(Map<String, String> data, Map<String, Long> ttls) {
-        this.data = data;
-        this.ttls = ttls;
-    }
+data class ConfigTransformerResult(
+    val data: Map<String, String>,
+    val ttls: Map<String, Long>,
+) {
 
     /**
      * Returns the transformed data, with variables replaced with corresponding values from the
      * ConfigProvider instances if found.
      *
-     * <p>Modifying the transformed data that is returned does not affect the {@link ConfigProvider} nor the
+     * Modifying the transformed data that is returned does not affect the [ConfigProvider] nor the
      * original data that was used as the source of the transformation.
      *
      * @return data a Map of key-value pairs
      */
-    public Map<String, String> data() {
-        return data;
-    }
+    @Deprecated(
+        message = "Use property instead",
+        replaceWith = ReplaceWith("data")
+    )
+    fun data(): Map<String, String> = data
 
     /**
-     * Returns the TTL values (in milliseconds) returned from the ConfigProvider instances for a given set of paths.
+     * Returns the TTL values (in milliseconds) returned from the ConfigProvider instances for a
+     * given set of paths.
      *
      * @return data a Map of path and TTL values
      */
-    public Map<String, Long> ttls() {
-        return ttls;
-    }
+    @Deprecated(
+        message = "Use property instead",
+        replaceWith = ReplaceWith("ttls")
+    )
+    fun ttls(): Map<String, Long> = ttls
 }

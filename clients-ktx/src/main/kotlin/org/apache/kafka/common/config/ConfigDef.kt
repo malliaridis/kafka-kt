@@ -90,7 +90,9 @@ import org.apache.kafka.common.utils.Utils.join
 class ConfigDef {
 
     val configKeys: MutableMap<String, ConfigKey>
+
     val groups: MutableList<String?>
+
     private var configsWithNoParent: Set<String>? = null
 
     constructor() {
@@ -122,11 +124,12 @@ class ConfigDef {
     }
 
     fun define(key: ConfigKey): ConfigDef {
-        if (configKeys.containsKey(key.name)) {
+        if (configKeys.containsKey(key.name))
             throw ConfigException("Configuration ${key.name} is defined twice.")
-        }
+
         if (key.group != null && !groups.contains(key.group)) groups.add(key.group)
         configKeys[key.name] = key
+
         return this
     }
 
@@ -469,15 +472,15 @@ class ConfigDef {
         if (key.recommender != null) {
             try {
                 val recommendedValues = key.recommender.validValues(name, parsed)
-                val originalRecommendedValues = value.recommendedValues()
+                val originalRecommendedValues = value.recommendedValues
 
                 if (originalRecommendedValues.isNotEmpty()) {
                     val originalRecommendedValueSet: Set<Any> = HashSet(originalRecommendedValues)
                     recommendedValues.filter { originalRecommendedValueSet.contains(it) }
                 }
 
-                value.recommendedValues(recommendedValues)
-                value.visible(key.recommender.visible(name, parsed))
+                value.recommendedValues = recommendedValues
+                value.visible = key.recommender.visible(name, parsed)
             } catch (e: ConfigException) {
                 value.addErrorMessage(e.message)
             }

@@ -14,55 +14,42 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.common.config;
 
-import org.apache.kafka.common.config.provider.ConfigProvider;
+package org.apache.kafka.common.config
 
-import java.util.Map;
+import org.apache.kafka.common.config.provider.ConfigProvider
 
 /**
- * Configuration data from a {@link ConfigProvider}.
+ * Configuration data from a [ConfigProvider].
+ *
+ * @constructor Creates a new ConfigData with the given data and TTL (in milliseconds).
+ * @property data a Map of key-value pairs
+ * @property ttl the time-to-live of the data in milliseconds, or `null` if there is no TTL
  */
-public class ConfigData {
-
-    private final Map<String, String> data;
-    private final Long ttl;
-
-    /**
-     * Creates a new ConfigData with the given data and TTL (in milliseconds).
-     *
-     * @param data a Map of key-value pairs
-     * @param ttl the time-to-live of the data in milliseconds, or null if there is no TTL
-     */
-    public ConfigData(Map<String, String> data, Long ttl) {
-        this.data = data;
-        this.ttl = ttl;
-    }
-
-    /**
-     * Creates a new ConfigData with the given data.
-     *
-     * @param data a Map of key-value pairs
-     */
-    public ConfigData(Map<String, String> data) {
-        this(data, null);
-    }
+data class ConfigData(
+    val data: Map<String, String>,
+    val ttl: Long? = null
+) {
 
     /**
      * Returns the data.
      *
      * @return data a Map of key-value pairs
      */
-    public Map<String, String> data() {
-        return data;
-    }
+    @Deprecated(
+        message = "Use property instead",
+        replaceWith = ReplaceWith("data")
+    )
+    fun data(): Map<String, String> = data
 
     /**
      * Returns the TTL (in milliseconds).
      *
      * @return ttl the time-to-live (in milliseconds) of the data, or null if there is no TTL
      */
-    public Long ttl() {
-        return ttl;
-    }
+    @Deprecated(
+        message = "Use property instead",
+        replaceWith = ReplaceWith("ttl")
+    )
+    fun ttl(): Long? = ttl
 }

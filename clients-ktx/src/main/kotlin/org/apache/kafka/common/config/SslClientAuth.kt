@@ -15,39 +15,34 @@
  * limitations under the License.
  */
 
-package org.apache.kafka.common.config;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
+package org.apache.kafka.common.config
 
 /**
  * Describes whether the server should require or request client authentication.
  */
-public enum SslClientAuth {
+enum class SslClientAuth {
+
     REQUIRED,
+
     REQUESTED,
+
     NONE;
 
-    public static final List<SslClientAuth> VALUES =
-            Collections.unmodifiableList(Arrays.asList(SslClientAuth.values()));
+    override fun toString(): String = super.toString().lowercase()
 
-    public static SslClientAuth forConfig(String key) {
-        if (key == null) {
-            return SslClientAuth.NONE;
-        }
-        String upperCaseKey = key.toUpperCase(Locale.ROOT);
-        for (SslClientAuth auth : VALUES) {
-            if (auth.name().equals(upperCaseKey)) {
-                return auth;
-            }
-        }
-        return null;
-    }
+    companion object {
 
-    @Override
-    public String toString() {
-        return super.toString().toLowerCase(Locale.ROOT);
+        @Deprecated(
+            message = "Use values() instead",
+            replaceWith = ReplaceWith("values()"),
+        )
+        val VALUES = values()
+
+        fun forConfig(key: String?): SslClientAuth? {
+            if (key == null) return NONE
+
+            val upperCaseKey = key.uppercase()
+            return values().firstOrNull { it.name == upperCaseKey }
+        }
     }
 }

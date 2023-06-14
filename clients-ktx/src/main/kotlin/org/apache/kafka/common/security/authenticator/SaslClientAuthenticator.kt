@@ -7,7 +7,6 @@ import java.nio.channels.SelectionKey
 import java.security.Principal
 import java.security.PrivilegedActionException
 import java.security.PrivilegedExceptionAction
-import java.util.*
 import javax.security.auth.Subject
 import javax.security.sasl.Sasl
 import javax.security.sasl.SaslClient
@@ -42,12 +41,13 @@ import org.apache.kafka.common.requests.SaslHandshakeResponse
 import org.apache.kafka.common.security.auth.AuthenticateCallbackHandler
 import org.apache.kafka.common.security.auth.KafkaPrincipal
 import org.apache.kafka.common.security.auth.KafkaPrincipalSerde
-import org.apache.kafka.common.security.kerberos.KerberosError
+import org.apache.kafka.common.security.kerberors.KerberosError
 import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.Time
 import org.apache.kafka.common.utils.Utils
 import org.slf4j.Logger
 import kotlin.math.roundToLong
+import kotlin.random.Random
 
 open class SaslClientAuthenticator(
     private val configs: Map<String, *>,
@@ -759,7 +759,7 @@ open class SaslClientAuthenticator(
 
                 // pick a random percentage between WINDOW_FACTOR (85%) and WINDOW_FACTOR + JITTER
                 // (95%) for session re-authentication
-                val pctToUse = WINDOW_FACTOR_PERCENTAGE + RNG.nextDouble() * WINDOW_JITTER_PERCENTAGE
+                val pctToUse = WINDOW_FACTOR_PERCENTAGE + Random.nextDouble() * WINDOW_JITTER_PERCENTAGE
                 val sessionLifetimeMsToUse = (positiveSessionLifetimeMs!! * pctToUse).toLong()
                 clientSessionReauthenticationTime = authenticationEndNanos + 1000 * 1000 * sessionLifetimeMsToUse
 
@@ -789,8 +789,6 @@ open class SaslClientAuthenticator(
     companion object {
 
         private const val DISABLE_KAFKA_SASL_AUTHENTICATE_HEADER: Short = -1
-
-        private val RNG = Random()
 
         /**
          * Minimum percentage value for window factor to take network latency and clock drift into

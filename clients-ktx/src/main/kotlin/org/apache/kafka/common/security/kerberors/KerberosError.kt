@@ -68,9 +68,9 @@ enum class KerberosError(private val errorCode: Int, private val retriable: Bool
         init {
             try {
                 // different IBM JDKs versions include different security implementations
-                KRB_EXCEPTION_CLASS = if (Java.isIbmJdk() && canLoad(IBM_KERBEROS_EXCEPTION_CLASS))
+                KRB_EXCEPTION_CLASS = if (Java.isIbmJdk && canLoad(IBM_KERBEROS_EXCEPTION_CLASS))
                     Class.forName(IBM_KERBEROS_EXCEPTION_CLASS)
-                else if (Java.isIbmJdk() && canLoad(IBM_INTERNAL_KERBEROS_EXCEPTION_CLASS))
+                else if (Java.isIbmJdk && canLoad(IBM_INTERNAL_KERBEROS_EXCEPTION_CLASS))
                     Class.forName(IBM_INTERNAL_KERBEROS_EXCEPTION_CLASS)
                 else Class.forName(SUN_KERBEROS_EXCEPTION_CLASS)
 

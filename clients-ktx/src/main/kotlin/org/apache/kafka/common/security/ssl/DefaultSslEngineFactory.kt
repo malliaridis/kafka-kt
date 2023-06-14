@@ -120,7 +120,7 @@ class DefaultSslEngineFactory : SslEngineFactory {
         this.configs = configs
         protocol = configs[SslConfigs.SSL_PROTOCOL_CONFIG] as String?
         provider = configs[SslConfigs.SSL_PROVIDER_CONFIG] as String?
-        SecurityUtils.addConfiguredSecurityProviders(this.configs)
+        SecurityUtils.addConfiguredSecurityProviders(configs)
 
         val cipherSuitesList = configs[SslConfigs.SSL_CIPHER_SUITES_CONFIG] as List<String>?
         cipherSuites =
@@ -583,7 +583,7 @@ class DefaultSslEngineFactory : SslEngineFactory {
             log.warn("Unrecognized client authentication configuration {}.  Falling " +
                     "back to NONE.  Recognized client authentication configurations are {}.",
                 key,
-                SslClientAuth.VALUES
+                SslClientAuth.values()
                     .map(SslClientAuth::name)
                     .joinToString(", "),
             )
