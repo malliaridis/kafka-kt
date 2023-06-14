@@ -71,7 +71,7 @@ interface Time {
      * condition is satisfied
      */
     @Throws(InterruptedException::class)
-    fun waitObject(obj: Any?, condition: Supplier<Boolean?>?, deadlineMs: Long)
+    fun waitObject(obj: Any, condition: Supplier<Boolean>, deadlineMs: Long)
 
     /**
      * Get a timer which is bound to this time instance and expires after the given timeout

@@ -20,36 +20,22 @@ package org.apache.kafka.common.utils
 import java.util.concurrent.Callable
 import java.util.concurrent.Future
 import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
 
 /**
- * An interface for scheduling tasks for the future.
+ * A scheduler implementation that uses the system clock.
  *
- * Implementations of this class should be thread-safe.
+ * Use `Scheduler.SYSTEM` instead of constructing an instance of this class.
  */
-interface Scheduler {
+class SystemScheduler internal constructor() : Scheduler {
 
-    /**
-     * Get the timekeeper associated with this scheduler.
-     */
-    fun time(): Time
+    override fun time(): Time = Time.SYSTEM
 
-    /**
-     * Schedule a callable to be executed in the future on a [ScheduledExecutorService]. Note that
-     * the Callable may not be queued on the executor until the designated time arrives.
-     *
-     * @param executor The executor to use
-     * @param callable The callable to execute.
-     * @param delayMs The delay to use, in milliseconds.
-     * @param T The return type of the callable.
-     * @return A future which will complete when the callable is finished.
-     */
-    fun <T> schedule(
+    override fun <T> schedule(
         executor: ScheduledExecutorService,
         callable: Callable<T>,
         delayMs: Long
-    ): Future<T>
-
-    companion object {
-        val SYSTEM: Scheduler = SystemScheduler()
+    ): Future<T> {
+        return executor.schedule(callable, delayMs, TimeUnit.MILLISECONDS)
     }
 }

@@ -63,7 +63,7 @@ class KerberosLogin : AbstractLogin() {
     // Change the '1' to e.g. 5, to change this to 5 minutes.
     private var minTimeBeforeRelogin: Long = 0
 
-    private var kinitCmd: String? = null
+    private lateinit var kinitCmd: String
 
     @Volatile
     private var subject: Subject? = null
@@ -89,7 +89,7 @@ class KerberosLogin : AbstractLogin() {
 
         minTimeBeforeRelogin = configs[SaslConfigs.SASL_KERBEROS_MIN_TIME_BEFORE_RELOGIN] as Long
 
-        kinitCmd = configs[SaslConfigs.SASL_KERBEROS_KINIT_CMD] as String?
+        kinitCmd = configs[SaslConfigs.SASL_KERBEROS_KINIT_CMD] as String
         serviceName = getServiceName(configs, contextName, jaasConfiguration)
     }
 
@@ -256,7 +256,7 @@ class KerberosLogin : AbstractLogin() {
                                     principal,
                                     e
                                 )
-                                retry = retry.dec()
+                                retry--
                                 // sleep for 10 seconds
                                 try {
                                     Thread.sleep((10 * 1000).toLong())
@@ -295,7 +295,7 @@ class KerberosLogin : AbstractLogin() {
                                     principal,
                                     le
                                 )
-                                retry = retry.dec()
+                                retry--
                                 // sleep for 10 seconds.
                                 try {
                                     Thread.sleep((10 * 1000).toLong())
