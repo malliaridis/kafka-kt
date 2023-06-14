@@ -24,7 +24,6 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
-import java.util.function.BiFunction
 import java.util.function.Consumer
 import java.util.function.Predicate
 import java.util.function.Supplier
@@ -110,8 +109,6 @@ import org.apache.kafka.common.message.AlterPartitionReassignmentsResponseData.R
 import org.apache.kafka.common.message.AlterReplicaLogDirsRequestData
 import org.apache.kafka.common.message.AlterReplicaLogDirsRequestData.AlterReplicaLogDir
 import org.apache.kafka.common.message.AlterReplicaLogDirsRequestData.AlterReplicaLogDirTopic
-import org.apache.kafka.common.message.AlterReplicaLogDirsResponseData.AlterReplicaLogDirPartitionResult
-import org.apache.kafka.common.message.AlterReplicaLogDirsResponseData.AlterReplicaLogDirTopicResult
 import org.apache.kafka.common.message.AlterUserScramCredentialsRequestData
 import org.apache.kafka.common.message.AlterUserScramCredentialsRequestData.ScramCredentialDeletion
 import org.apache.kafka.common.message.AlterUserScramCredentialsRequestData.ScramCredentialUpsertion
@@ -139,8 +136,6 @@ import org.apache.kafka.common.message.DeleteAclsResponseData.DeleteAclsMatching
 import org.apache.kafka.common.message.DeleteRecordsRequestData
 import org.apache.kafka.common.message.DeleteRecordsRequestData.DeleteRecordsPartition
 import org.apache.kafka.common.message.DeleteRecordsRequestData.DeleteRecordsTopic
-import org.apache.kafka.common.message.DeleteRecordsResponseData.DeleteRecordsPartitionResult
-import org.apache.kafka.common.message.DeleteRecordsResponseData.DeleteRecordsTopicResult
 import org.apache.kafka.common.message.DeleteTopicsRequestData
 import org.apache.kafka.common.message.DeleteTopicsRequestData.DeleteTopicState
 import org.apache.kafka.common.message.DeleteTopicsResponseData.DeletableTopicResult
@@ -260,6 +255,7 @@ import org.apache.kafka.common.security.scram.internals.ScramFormatter
 import org.apache.kafka.common.security.token.delegation.DelegationToken
 import org.apache.kafka.common.security.token.delegation.TokenInformation
 import org.apache.kafka.common.utils.AppInfoParser
+import org.apache.kafka.common.security.scram.internals.ScramMechanism
 import org.apache.kafka.common.utils.KafkaThread
 import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.Time
@@ -4931,11 +4927,8 @@ class KafkaAdminClient private constructor(
             iterations: Int
         ): ByteArray {
             return ScramFormatter(
-                org.apache.kafka.common.security.scram.internals.ScramMechanism.forMechanismName(
-                    publicScramMechanism.mechanismName()
-                )
-            )
-                .hi(password, salt, iterations)
+                ScramMechanism.forMechanismName(publicScramMechanism.mechanismName)!!
+            ).hi(password, salt, iterations)
         }
 
         /**

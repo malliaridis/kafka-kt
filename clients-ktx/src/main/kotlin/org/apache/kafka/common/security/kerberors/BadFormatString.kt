@@ -20,6 +20,6 @@ package org.apache.kafka.common.security.kerberors
 import java.io.IOException
 
 class BadFormatString internal constructor(
-    msg: String?,
-    err: Throwable? = null,
-): IOException(msg, err)
+    message: String?,
+    error: Throwable? = null,
+): IOException(message, error)

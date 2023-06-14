@@ -14,7 +14,8 @@ import org.slf4j.LoggerFactory
 private const val DEFAULT_BUFFER_CAPACITY = 4
 
 /**
- * A size delimited Receive that consists of a 4 byte network-ordered size N followed by N bytes of content
+ * A size delimited Receive that consists of a 4 byte network-ordered size N followed by N bytes of
+ * content.
  */
 class NetworkReceive(
     private val source: String = UNKNOWN_SOURCE,
@@ -22,7 +23,9 @@ class NetworkReceive(
     private val memoryPool: MemoryPool = MemoryPool.NONE,
     private var buffer: ByteBuffer? = null
 ) : Receive {
+
     private val size: ByteBuffer = ByteBuffer.allocate(DEFAULT_BUFFER_CAPACITY)
+
     private var requestedBufferSize = -1
 
     override fun source(): String = source
@@ -77,9 +80,11 @@ class NetworkReceive(
 
     @Throws(IOException::class)
     override fun close() {
-        if (buffer != null && buffer !== EMPTY_BUFFER) {
+        val buffer = this.buffer ?: return
+
+        if (buffer !== EMPTY_BUFFER) {
             memoryPool.release(buffer)
-            buffer = null
+            this.buffer = null
         }
     }
 

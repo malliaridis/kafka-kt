@@ -26,7 +26,7 @@ import org.apache.kafka.common.resource.ResourcePattern
  * The API for this class is still evolving, and we may break compatibility in minor releases, if
  * necessary.
  *
- * Constructor creates an instance of this class with the provided parameters.
+ * @constructor Creates an instance of this class with the provided parameters.
  *
  * @property pattern resource pattern.
  * @property entry entry

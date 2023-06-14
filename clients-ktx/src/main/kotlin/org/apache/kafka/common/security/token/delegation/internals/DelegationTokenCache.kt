@@ -97,7 +97,7 @@ open class DelegationTokenCache(scramMechanisms: Collection<String>) {
 
     open fun token(tokenId: String): TokenInformation? = tokenCache[tokenId]
 
-    fun credentialCache(mechanism: String?): CredentialCache.Cache<ScramCredential> {
+    fun credentialCache(mechanism: String?): CredentialCache.Cache<ScramCredential>? {
         return credentialCache.cache(mechanism, ScramCredential::class.java)
     }
 
@@ -105,7 +105,7 @@ open class DelegationTokenCache(scramMechanisms: Collection<String>) {
         tokenId: String,
         scramCredentialMap: Map<String, ScramCredential>
     ) {
-        ScramMechanism.mechanismNames().forEach { mechanism ->
+        ScramMechanism.mechanismNames.forEach { mechanism ->
             val cache = credentialCache.cache(
                 mechanism,
                 ScramCredential::class.java

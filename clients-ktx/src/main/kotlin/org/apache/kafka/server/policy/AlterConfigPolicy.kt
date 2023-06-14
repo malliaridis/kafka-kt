@@ -38,9 +38,8 @@ interface AlterConfigPolicy : Configurable, AutoCloseable {
     /**
      * Class containing the create request parameters.
      *
-     * Constructor creates an instance of this class with the provided parameters.
-     *
-     * This constructor is public to make testing of [AlterConfigPolicy] implementations easier.
+     * @constructor Creates an instance of this class with the provided parameters. This constructor is public to make
+     * testing of [AlterConfigPolicy] implementations easier.
      */
     data class RequestMetadata(
         val resource: ConfigResource,

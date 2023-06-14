@@ -43,7 +43,6 @@ interface Time {
     /**
      * Returns the current value of the running JVM's high-resolution time source, in nanoseconds.
      *
-     *
      * This method can only be used to measure elapsed time and is
      * not related to any other notion of system or wall-clock time.
      * The value returned represents nanoseconds since some fixed but

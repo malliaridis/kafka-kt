@@ -1279,20 +1279,13 @@ class Selector private constructor(
             val rateMetricName = metrics.metricName(
                 "$baseName-rate",
                 groupName,
-                String.format(
-                    locale = Locale.getDefault(),
-                    format = "The number of %s per second",
-                    descriptiveName
-                ),
+                String.format("The number of %s per second", descriptiveName),
                 metricTags
             )
             val totalMetricName = metrics.metricName(
                 "$baseName-total",
                 groupName,
-                String.format(locale = Locale.getDefault(),
-                    format = "The total number of %s",
-                    descriptiveName
-                ),
+                String.format("The total number of %s", descriptiveName),
                 metricTags
             )
             return stat?.let { Meter(it, rateMetricName, totalMetricName) } ?: Meter(rateMetricName, totalMetricName)

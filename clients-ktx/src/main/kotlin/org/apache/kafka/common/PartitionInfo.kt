@@ -16,8 +16,6 @@
  */
 package org.apache.kafka.common
 
-import java.util.Locale
-
 /**
  * This is used to describe per-partition state in the MetadataResponse.
  */
@@ -116,7 +114,6 @@ data class PartitionInfo(
 
     override fun toString(): String {
         return String.format(
-            Locale.getDefault(),
             "Partition(topic = %s, partition = %d, leader = %s, replicas = %s, isr = %s, offlineReplicas = %s)",
             topic,
             partition,

@@ -64,23 +64,23 @@ open class SaslClientAuthenticator(
 ) : Authenticator {
 
     /**
-     * The internal state transitions for initial authentication of a channel are
-     * declared in order, starting with [SEND_APIVERSIONS_REQUEST] and ending
-     * in either [COMPLETE] or [FAILED].
-     *
+     * The internal state transitions for initial authentication of a channel are declared in order,
+     * starting with [SEND_APIVERSIONS_REQUEST] and ending in either [COMPLETE] or [FAILED].
      *
      * Re-authentication of a channel starts with the state
-     * [REAUTH_PROCESS_ORIG_APIVERSIONS_RESPONSE] and then flows to
-     * [REAUTH_SEND_HANDSHAKE_REQUEST] followed by
-     * [REAUTH_RECEIVE_HANDSHAKE_OR_OTHER_RESPONSE] and then
-     * [REAUTH_INITIAL]; after that the flow joins the authentication flow
-     * at the [INTERMEDIATE] state and ends at either [COMPLETE] or
-     * [FAILED].
+     * - [REAUTH_PROCESS_ORIG_APIVERSIONS_RESPONSE] and then flows to
+     * - [REAUTH_SEND_HANDSHAKE_REQUEST] followed by
+     * - [REAUTH_RECEIVE_HANDSHAKE_OR_OTHER_RESPONSE] and then
+     * - [REAUTH_INITIAL];
+     *
+     * after that the flow joins the authentication flow at the [INTERMEDIATE] state and ends at
+     * either [COMPLETE] or [FAILED].
      */
     enum class SaslState {
 
         /**
-         * Initial state for authentication: client sends ApiVersionsRequest in this state when authenticating.
+         * Initial state for authentication: client sends ApiVersionsRequest in this state when
+         * authenticating.
          */
         SEND_APIVERSIONS_REQUEST,
 
@@ -101,23 +101,25 @@ open class SaslClientAuthenticator(
         RECEIVE_HANDSHAKE_RESPONSE,
 
         /**
-         * Initial authentication state starting SASL token exchange for configured mechanism, send first token.
+         * Initial authentication state starting SASL token exchange for configured mechanism, send
+         * first token.
          */
         INITIAL,
 
         /**
-         * Intermediate state during SASL token exchange, process challenges and send responses .
+         * Intermediate state during SASL token exchange, process challenges and send responses.
          */
         INTERMEDIATE,
 
         /**
-         * Sent response to last challenge. If using SaslAuthenticate, wait for authentication status from server,
-         * else COMPLETE.
+         * Sent response to last challenge. If using SaslAuthenticate, wait for authentication
+         * status from server, else COMPLETE.
          */
         CLIENT_COMPLETE,
 
         /**
-         * Authentication sequence complete. If using SaslAuthenticate, this state implies successful authentication.
+         * Authentication sequence complete. If using SaslAuthenticate, this state implies
+         * successful authentication.
          */
         COMPLETE,
 
@@ -127,63 +129,91 @@ open class SaslClientAuthenticator(
         FAILED,
 
         /**
-         * Initial state for re-authentication: process ApiVersionsResponse from original authentication.
+         * Initial state for re-authentication: process ApiVersionsResponse from original
+         * authentication.
          */
         REAUTH_PROCESS_ORIG_APIVERSIONS_RESPONSE,
 
         /**
-         * Processed original ApiVersionsResponse, send SaslHandshake request as part of re-authentication.
+         * Processed original ApiVersionsResponse, send SaslHandshake request as part of
+         * re-authentication.
          */
         REAUTH_SEND_HANDSHAKE_REQUEST,
 
         /**
-         * Awaiting SaslHandshake response from server when re-authenticating, and may receive other, in-flight
-         * responses sent prior to start of re-authentication as well.
+         * Awaiting SaslHandshake response from server when re-authenticating, and may receive
+         * other, in-flight responses sent prior to start of re-authentication as well.
          */
         REAUTH_RECEIVE_HANDSHAKE_OR_OTHER_RESPONSE,
 
         /**
-         * Initial re-authentication state starting SASL token exchange for configured mechanism, send first token
+         * Initial re-authentication state starting SASL token exchange for configured mechanism,
+         * send first token.
          */
         REAUTH_INITIAL
     }
 
     private val saslClient: SaslClient
+
     private var clientPrincipalName: String? = null
+
     private val log: Logger = logContext.logger(javaClass)
+
     private val reauthInfo: ReauthInfo = ReauthInfo()
 
-    // buffers used in `authenticate`
+    /**
+     * Buffers used in [authenticate].
+     */
     private var netInBuffer: NetworkReceive? = null
+
     private var netOutBuffer: Send? = null
 
-    // Current SASL state
+    /**
+     * Current SASL state
+     */
     private var saslState: SaslState? = null
 
-    // Next SASL state to be set when outgoing writes associated with the current SASL state complete
+    /**
+     * Next SASL state to be set when outgoing writes associated with the current SASL state
+     * complete.
+     */
     private var pendingSaslState: SaslState? = null
 
-    // Correlation ID for the next request
+    /**
+     * Correlation ID for the next request.
+     */
     private var correlationId = 0
 
-    // Request header for which response from the server is pending
+    /**
+     * Request header for which response from the server is pending.
+     */
     private var currentRequestHeader: RequestHeader? = null
 
-    // Version of SaslAuthenticate request/responses
+    /**
+     * Version of SaslAuthenticate request/responses.
+     */
     private var saslAuthenticateVersion: Short = DISABLE_KAFKA_SASL_AUTHENTICATE_HEADER
 
-    // Version of SaslHandshake request/responses
+    /**
+     * Version of SaslHandshake request/responses.
+     */
     private var saslHandshakeVersion: Short = 0
 
     init {
         try {
-            setSaslState(if (handshakeRequestEnable) SaslState.SEND_APIVERSIONS_REQUEST else SaslState.INITIAL)
+            setSaslState(
+                if (handshakeRequestEnable) SaslState.SEND_APIVERSIONS_REQUEST
+                else SaslState.INITIAL
+            )
 
-            // determine client principal from subject for Kerberos to use as authorization id for the SaslClient.
-            // For other mechanisms, the authenticated principal (username for PLAIN and SCRAM) is used as
-            // authorization id. Hence the principal is not specified for creating the SaslClient.
-            clientPrincipalName = if (mechanism == SaslConfigs.GSSAPI_MECHANISM) firstPrincipal(subject)
-            else null
+            // determine client principal from subject for Kerberos to use as authorization id for
+            // the SaslClient. For other mechanisms, the authenticated principal (username for PLAIN
+            // and SCRAM) is used as authorization id. Hence the principal is not specified for
+            // creating the SaslClient.
+            clientPrincipalName =
+                if (mechanism == SaslConfigs.GSSAPI_MECHANISM) firstPrincipal(subject)
+                else null
+
             saslClient = createSaslClient()
         } catch (e: Exception) {
             throw SaslAuthenticationException("Failed to configure SaslClientAuthenticator", e)
@@ -191,35 +221,40 @@ open class SaslClientAuthenticator(
     }
 
     // visible for testing
-    fun createSaslClient(): SaslClient {
-        return try {
-            Subject.doAs(
-                subject,
-                PrivilegedExceptionAction {
-                    val mechs = arrayOf(mechanism)
-                    log.debug(
-                        "Creating SaslClient: client={};service={};serviceHostname={};mechs={}",
-                        clientPrincipalName, servicePrincipal, host, Arrays.toString(mechs)
-                    )
-                    Sasl.createSaslClient(
-                        mechs, clientPrincipalName,
-                        servicePrincipal,
-                        host,
-                        configs,
-                        callbackHandler
-                    ) ?: throw SaslAuthenticationException("Failed to create SaslClient with mechanism $mechanism")
-                } as PrivilegedExceptionAction<SaslClient>)
-        } catch (e: PrivilegedActionException) {
-            throw SaslAuthenticationException("Failed to create SaslClient with mechanism $mechanism", e.cause)
-        }
+    fun createSaslClient(): SaslClient = try {
+        Subject.doAs(
+            subject,
+            PrivilegedExceptionAction {
+                val mechs = arrayOf(mechanism)
+                log.debug(
+                    "Creating SaslClient: client={};service={};serviceHostname={};mechs={}",
+                    clientPrincipalName,
+                    servicePrincipal,
+                    host,
+                    mechs.contentToString(),
+                )
+                Sasl.createSaslClient(
+                    mechs,
+                    clientPrincipalName,
+                    servicePrincipal,
+                    host,
+                    configs,
+                    callbackHandler,
+                ) ?: throw SaslAuthenticationException(
+                    "Failed to create SaslClient with mechanism $mechanism"
+                )
+            } as PrivilegedExceptionAction<SaslClient>)
+    } catch (e: PrivilegedActionException) {
+        throw SaslAuthenticationException("Failed to create SaslClient with mechanism $mechanism", e.cause)
     }
 
     /**
-     * Sends an empty message to the server to initiate the authentication process. It then evaluates server challenges
-     * via `SaslClient.evaluateChallenge` and returns client responses until authentication succeeds or fails.
+     * Sends an empty message to the server to initiate the authentication process. It then
+     * evaluates server challenges via `SaslClient.evaluateChallenge` and returns client responses
+     * until authentication succeeds or fails.
      *
-     * The messages are sent and received as size delimited bytes that consists of a 4 byte network-ordered size N
-     * followed by N bytes representing the opaque payload.
+     * The messages are sent and received as size delimited bytes that consists of a 4 byte
+     * network-ordered size N followed by N bytes representing the opaque payload.
      */
     @Throws(IOException::class)
     override fun authenticate() {
@@ -227,7 +262,8 @@ open class SaslClientAuthenticator(
 
         when (saslState) {
             SaslState.SEND_APIVERSIONS_REQUEST -> {
-                // Always use version 0 request since brokers treat requests with schema exceptions as GSSAPI tokens
+                // Always use version 0 request since brokers treat requests with schema exceptions
+                // as GSSAPI tokens
                 val apiVersionsRequest = ApiVersionsRequest.Builder().build(0.toShort())
                 send(apiVersionsRequest.toSend(nextRequestHeader(ApiKeys.API_VERSIONS, apiVersionsRequest.version())))
                 setSaslState(SaslState.RECEIVE_APIVERSIONS_RESPONSE)
@@ -237,7 +273,7 @@ open class SaslClientAuthenticator(
                 val apiVersionsResponse = receiveKafkaResponse() as ApiVersionsResponse? ?: return
 
                 setSaslAuthenticateAndHandshakeVersions(apiVersionsResponse)
-                reauthInfo.apiVersionsResponseReceivedFromBroker = apiVersionsResponse
+                reauthInfo.apiVersionsResponseFromBroker = apiVersionsResponse
                 setSaslState(SaslState.SEND_HANDSHAKE_REQUEST)
 
                 // Send handshake request with the latest supported version
@@ -267,7 +303,7 @@ open class SaslClientAuthenticator(
             }
 
             SaslState.REAUTH_PROCESS_ORIG_APIVERSIONS_RESPONSE -> {
-                setSaslAuthenticateAndHandshakeVersions(reauthInfo.apiVersionsResponseFromOriginalAuthentication)
+                setSaslAuthenticateAndHandshakeVersions(reauthInfo.apiVersionsResponseFromAuth!!)
                 setSaslState(SaslState.REAUTH_SEND_HANDSHAKE_REQUEST) // Will set immediately
 
                 // Send handshake request with the latest supported version
@@ -287,9 +323,10 @@ open class SaslClientAuthenticator(
                 setSaslState(SaslState.REAUTH_INITIAL) // Will set immediately
 
                 /*
-                 * Start SASL authentication using the configured client mechanism. Note that we start SASL
-                 * authentication to avoid adding a loop to enter the `when` statement again and therefore minimize the
-                 * changes to authentication-related code due to the changes related to re-authentication.
+                 * Start SASL authentication using the configured client mechanism. Note that we
+                 * start SASL authentication to avoid adding a loop to enter the `when` statement
+                 * again and therefore minimize the changes to authentication-related code due to
+                 * the changes related to re-authentication.
                  */
                 sendInitialToken()
                 setSaslState(SaslState.INTERMEDIATE)
@@ -302,10 +339,12 @@ open class SaslClientAuthenticator(
 
             SaslState.INTERMEDIATE -> {
                 val serverToken = receiveToken()
-                val noResponsesPending = serverToken != null && !sendSaslClientToken(serverToken, false)
-                // For versions without SASL_AUTHENTICATE header, SASL exchange may be complete after a token is sent
-                // to server. For versions with SASL_AUTHENTICATE header, server always sends a response to each
-                // SASL_AUTHENTICATE request.
+                val noResponsesPending =
+                    serverToken != null && !sendSaslClientToken(serverToken, false)
+
+                // For versions without SASL_AUTHENTICATE header, SASL exchange may be complete
+                // after a token is sent to server. For versions with SASL_AUTHENTICATE header,
+                // server always sends a response to each SASL_AUTHENTICATE request.
                 if (saslClient.isComplete) {
                     if (saslAuthenticateVersion == DISABLE_KAFKA_SASL_AUTHENTICATE_HEADER || noResponsesPending)
                         setSaslState(SaslState.COMPLETE)
@@ -321,8 +360,7 @@ open class SaslClientAuthenticator(
             SaslState.COMPLETE -> {}
             SaslState.FAILED ->
                 // Should never get here since exception would have been propagated earlier
-                throw IllegalStateException("SASL handshake has already failed")
-
+                error("SASL handshake has already failed")
             null -> {}
         }
     }
@@ -330,7 +368,11 @@ open class SaslClientAuthenticator(
     @Throws(IOException::class)
     private fun sendHandshakeRequest(version: Short) {
         val handshakeRequest = createSaslHandshakeRequest(version)
-        send(handshakeRequest.toSend(nextRequestHeader(ApiKeys.SASL_HANDSHAKE, handshakeRequest.version())))
+        send(
+            handshakeRequest.toSend(
+                nextRequestHeader(ApiKeys.SASL_HANDSHAKE, handshakeRequest.version())
+            )
+        )
     }
 
     @Throws(IOException::class)
@@ -341,11 +383,11 @@ open class SaslClientAuthenticator(
     @Throws(IOException::class)
     override fun reauthenticate(reauthenticationContext: ReauthenticationContext) {
         with(reauthenticationContext.previousAuthenticator() as SaslClientAuthenticator) {
-            val apiVersionsResponseFromOriginalAuthentication = reauthInfo.apiVersionsResponse()
+            val apiVersionsResponseFromAuth = reauthInfo.apiVersionsResponse
             close()
 
             reauthInfo.reauthenticating(
-                apiVersionsResponseFromOriginalAuthentication,
+                apiVersionsResponseFromAuth,
                 reauthenticationContext.reauthenticationBeginNanos()
             )
         }
@@ -355,13 +397,11 @@ open class SaslClientAuthenticator(
         authenticate()
     }
 
-    override fun pollResponseReceivedDuringReauthentication(): NetworkReceive? {
-        return reauthInfo.pollResponseReceivedDuringReauthentication()
-    }
+    override fun pollResponseReceivedDuringReauthentication(): NetworkReceive? =
+        reauthInfo.pollResponseReceivedDuringReauthentication()
 
-    override fun clientSessionReauthenticationTimeNanos(): Long {
-        return reauthInfo.clientSessionReauthenticationTimeNanos!!
-    }
+    override fun clientSessionReauthenticationTimeNanos(): Long? =
+        reauthInfo.clientSessionReauthenticationTime
 
     override fun reauthenticationLatencyMs(): Long? = reauthInfo.reauthenticationLatencyMs()
 
@@ -375,7 +415,10 @@ open class SaslClientAuthenticator(
         val clientId = configs[CommonClientConfigs.CLIENT_ID_CONFIG] as String?
         val requestApiKey = apiKey.id
         return RequestHeader(
-                RequestHeaderData().setRequestApiKey(requestApiKey).setRequestApiVersion(version).setClientId(clientId)
+                RequestHeaderData()
+                    .setRequestApiKey(requestApiKey)
+                    .setRequestApiVersion(version)
+                    .setClientId(clientId)
                     .setCorrelationId(nextCorrelationId()),
                 apiKey.requestHeaderVersion(version)
             ).apply {
@@ -391,8 +434,8 @@ open class SaslClientAuthenticator(
     }
 
     // Visible to override for testing
-    protected open fun setSaslAuthenticateAndHandshakeVersions(apiVersionsResponse: ApiVersionsResponse?) {
-        val authenticateVersion = apiVersionsResponse!!.apiVersion(ApiKeys.SASL_AUTHENTICATE.id)
+    protected open fun setSaslAuthenticateAndHandshakeVersions(apiVersionsResponse: ApiVersionsResponse) {
+        val authenticateVersion = apiVersionsResponse.apiVersion(ApiKeys.SASL_AUTHENTICATE.id)
         if (authenticateVersion != null) {
             saslAuthenticateVersion = authenticateVersion.maxVersion()
                 .coerceAtMost(ApiKeys.SASL_AUTHENTICATE.latestVersion())
@@ -411,7 +454,7 @@ open class SaslClientAuthenticator(
             log.debug("Set SASL client state to {}", saslState)
             if (saslState == SaslState.COMPLETE) {
                 reauthInfo.setAuthenticationEndAndSessionReauthenticationTimes(time.nanoseconds())
-                if (!reauthInfo.reauthenticating()) transportLayer.removeInterestOps(SelectionKey.OP_WRITE)
+                if (!reauthInfo.isReauthenticating) transportLayer.removeInterestOps(SelectionKey.OP_WRITE)
                 /*
                  * Re-authentication is triggered by a write, so we have to make sure that
                  * pending write is actually sent.
@@ -518,21 +561,29 @@ open class SaslClientAuthenticator(
 
     @Throws(SaslException::class)
     private fun createSaslToken(saslToken: ByteArray?, isInitial: Boolean): ByteArray? {
-        if (saslToken == null) throw IllegalSaslStateException("Error authenticating with the Kafka Broker: received a `null` saslToken.")
+        if (saslToken == null) throw IllegalSaslStateException(
+            "Error authenticating with the Kafka Broker: received a `null` saslToken."
+        )
+
         return try {
             if (isInitial && !saslClient.hasInitialResponse()) saslToken else Subject.doAs(
                 subject,
-                PrivilegedExceptionAction { saslClient.evaluateChallenge(saslToken) } as PrivilegedExceptionAction<ByteArray>)
+                PrivilegedExceptionAction {
+                    saslClient.evaluateChallenge(saslToken)
+                } as PrivilegedExceptionAction<ByteArray>)
         } catch (e: PrivilegedActionException) {
             var error = "An error: ($e) occurred when evaluating SASL token received from the Kafka Broker."
 
             val kerberosError = KerberosError.fromException(e)
             // Try to provide hints to use about what went wrong, so they can fix their configuration.
             if (kerberosError == KerberosError.SERVER_NOT_FOUND) {
-                error += " This may be caused by Java's being unable to resolve the Kafka Broker's" +
-                        " hostname correctly. You may want to try to adding" +
-                        " '-Dsun.net.spi.nameservice.provider.1=dns,sun' to your client's JVMFLAGS environment." +
-                        " Users must configure FQDN of kafka brokers when authenticating using SASL and" + " `socketChannel.socket().getInetAddress().getHostName()` must match the hostname in `principal/hostname@realm`"
+                error += " This may be caused by Java's being unable to resolve the Kafka Broker's " +
+                        "hostname correctly. You may want to try to adding " +
+                        "'-Dsun.net.spi.nameservice.provider.1=dns,sun' to your client's JVMFLAGS " +
+                        "environment. Users must configure FQDN of kafka brokers when " +
+                        "authenticating using SASL and " +
+                        "`socketChannel.socket().getInetAddress().getHostName()` must match the " +
+                        "hostname in `principal/hostname@realm`"
             }
             //Unwrap the SaslException inside `PrivilegedActionException`
             val cause = e.cause
@@ -542,7 +593,10 @@ open class SaslClientAuthenticator(
                 kerberosError != null
                 && (kerberosError.retriable() || KerberosError.isRetriableClientGssException(e))
             ) SaslException("$error Kafka Client will retry.", cause)
-            else SaslAuthenticationException("$error Kafka Client will go to AUTHENTICATION_FAILED state.", cause)
+            else SaslAuthenticationException(
+                "$error Kafka Client will go to AUTHENTICATION_FAILED state.",
+                cause,
+            )
         }
     }
 
@@ -568,50 +622,33 @@ open class SaslClientAuthenticator(
                 response
             }
         } catch (e: BufferUnderflowException) {
-            /*
-             * Account for the fact that during re-authentication there may be responses
-             * arriving for requests that were sent in the past.
-             */
-            if (reauthInfo.reauthenticating()) {
-                /*
-                 * It didn't match the current request header, so it must be unrelated to
-                 * re-authentication. Save it so it can be processed later.
-                 */
-                receive.payload()?.rewind()
-                reauthInfo.pendingAuthenticatedReceives.add(receive)
-                return null
-            }
-            log.debug("Invalid SASL mechanism response, server may be expecting only GSSAPI tokens")
-            setSaslState(SaslState.FAILED)
-            throw IllegalSaslStateException(
-                "Invalid SASL mechanism response, server may be expecting a different protocol",
-                e
-            )
+            handleKafkaResponseException(receive, e)
+            return null
         } catch (e: SchemaException) {
-            if (reauthInfo.reauthenticating()) {
-                receive.payload()?.rewind()
-                reauthInfo.pendingAuthenticatedReceives.add(receive)
-                return null
-            }
-            log.debug("Invalid SASL mechanism response, server may be expecting only GSSAPI tokens")
-            setSaslState(SaslState.FAILED)
-            throw IllegalSaslStateException(
-                "Invalid SASL mechanism response, server may be expecting a different protocol",
-                e
-            )
+            handleKafkaResponseException(receive, e)
+            return null
         } catch (e: IllegalArgumentException) {
-            if (reauthInfo.reauthenticating()) {
-                receive.payload()?.rewind()
-                reauthInfo.pendingAuthenticatedReceives.add(receive)
-                return null
-            }
-            log.debug("Invalid SASL mechanism response, server may be expecting only GSSAPI tokens")
-            setSaslState(SaslState.FAILED)
-            throw IllegalSaslStateException(
-                "Invalid SASL mechanism response, server may be expecting a different protocol",
-                e
-            )
+            handleKafkaResponseException(receive, e)
+            return null
         }
+    }
+
+    private fun handleKafkaResponseException(receive: NetworkReceive, exception: Exception) {
+        // Account for the fact that during re-authentication there may be responses
+        // arriving for requests that were sent in the past.
+        if (reauthInfo.isReauthenticating) {
+            // It didn't match the current request header, so it must be unrelated to
+            // re-authentication. Save it so it can be processed later.
+            receive.payload()?.rewind()
+            reauthInfo.pendingAuthenticatedReceives.add(receive)
+            return
+        }
+        log.debug("Invalid SASL mechanism response, server may be expecting only GSSAPI tokens")
+        setSaslState(SaslState.FAILED)
+        throw IllegalSaslStateException(
+            "Invalid SASL mechanism response, server may be expecting a different protocol",
+            exception
+        )
     }
 
     private fun handleSaslHandshakeResponse(response: SaslHandshakeResponse) {
@@ -621,25 +658,25 @@ open class SaslClientAuthenticator(
             Errors.NONE -> {}
             Errors.UNSUPPORTED_SASL_MECHANISM -> throw UnsupportedSaslMechanismException(
                 String.format(
-                    locale = Locale.getDefault(),
-                    format = "Client SASL mechanism '%s' not enabled in the server, enabled mechanisms are %s",
+                    "Client SASL mechanism '%s' not enabled in the server, enabled mechanisms are %s",
                     mechanism, response.enabledMechanisms()
                 )
             )
 
             Errors.ILLEGAL_SASL_STATE -> throw IllegalSaslStateException(
                 String.format(
-                    locale = Locale.getDefault(),
-                    format = "Unexpected handshake request with client mechanism %s, enabled mechanisms are %s",
-                    mechanism, response.enabledMechanisms()
+                    "Unexpected handshake request with client mechanism %s, enabled mechanisms are %s",
+                    mechanism,
+                    response.enabledMechanisms(),
                 )
             )
 
             else -> throw IllegalSaslStateException(
                 String.format(
-                    locale = Locale.getDefault(),
-                    format = "Unknown error code %s, client mechanism is %s, enabled mechanisms are %s",
-                    response.error(), mechanism, response.enabledMechanisms()
+                    "Unknown error code %s, client mechanism is %s, enabled mechanisms are %s",
+                    response.error(),
+                    mechanism,
+                    response.enabledMechanisms()
                 )
             )
         }
@@ -649,58 +686,88 @@ open class SaslClientAuthenticator(
      * Information related to re-authentication
      */
     private inner class ReauthInfo {
-        var apiVersionsResponseFromOriginalAuthentication: ApiVersionsResponse? = null
+
+        /**
+         * API versions response from original authentication.
+         */
+        var apiVersionsResponseFromAuth: ApiVersionsResponse? = null
+
         var reauthenticationBeginNanos: Long = 0
-        var pendingAuthenticatedReceives: MutableList<NetworkReceive> = ArrayList()
-        var apiVersionsResponseReceivedFromBroker: ApiVersionsResponse? = null
+
+        var pendingAuthenticatedReceives = mutableListOf<NetworkReceive>()
+
+        /**
+         * API versions response received from broker.
+         */
+        var apiVersionsResponseFromBroker: ApiVersionsResponse? = null
+
         var positiveSessionLifetimeMs: Long? = null
+
         var authenticationEndNanos: Long = 0
-        var clientSessionReauthenticationTimeNanos: Long? = null
+
+        /**
+         * Client session re-authentication time in nanoseconds.
+         */
+        var clientSessionReauthenticationTime: Long? = null
+
+        /**
+         * @param apiVersionsResponseFromAuth API versions response from original authentication.
+         */
         fun reauthenticating(
-            apiVersionsResponseFromOriginalAuthentication: ApiVersionsResponse?,
+            apiVersionsResponseFromAuth: ApiVersionsResponse?,
             reauthenticationBeginNanos: Long
         ) {
-            this.apiVersionsResponseFromOriginalAuthentication = Objects
-                .requireNonNull(apiVersionsResponseFromOriginalAuthentication)
+            this.apiVersionsResponseFromAuth = apiVersionsResponseFromAuth
             this.reauthenticationBeginNanos = reauthenticationBeginNanos
         }
 
-        fun reauthenticating(): Boolean {
-            return apiVersionsResponseFromOriginalAuthentication != null
-        }
+        @Deprecated(
+            message = "Use property instead",
+            replaceWith = ReplaceWith("isReauthenticating")
+        )
+        fun reauthenticating(): Boolean = isReauthenticating
 
-        fun apiVersionsResponse(): ApiVersionsResponse? {
-            return if (reauthenticating()) apiVersionsResponseFromOriginalAuthentication else apiVersionsResponseReceivedFromBroker
-        }
+        val isReauthenticating: Boolean
+            get() = apiVersionsResponseFromAuth != null
+
+        @Deprecated(
+            message = "Use property instead",
+            replaceWith = ReplaceWith("apiVersionsResponse")
+        )
+        fun apiVersionsResponse(): ApiVersionsResponse? =
+            apiVersionsResponseFromAuth ?: apiVersionsResponseFromBroker
+
+        val apiVersionsResponse: ApiVersionsResponse?
+            get() = apiVersionsResponseFromAuth ?: apiVersionsResponseFromBroker
 
         /**
-         * Return the (always non-null but possibly empty) NetworkReceive response that
-         * arrived during re-authentication that is unrelated to re-authentication, if
-         * any. This corresponds to a request sent prior to the beginning of
-         * re-authentication; the request was made when the channel was successfully
-         * authenticated, and the response arrived during the re-authentication
-         * process.
+         * Return the (always non-null but possibly empty) NetworkReceive response that arrived
+         * during re-authentication that is unrelated to re-authentication, if  any. This
+         * corresponds to a request sent prior to the beginning of re-authentication; the request
+         * was made when the channel was successfully authenticated, and the response arrived during
+         * the re-authentication process.
          *
-         * @return the (always non-null but possibly empty) NetworkReceive response
-         * that arrived during re-authentication that is unrelated to
-         * re-authentication, if any
+         * @return the (always non-null but possibly empty) NetworkReceive response that arrived
+         * during re-authentication that is unrelated to re-authentication, if any.
          */
-        fun pollResponseReceivedDuringReauthentication(): NetworkReceive? {
-            return if (pendingAuthenticatedReceives.isEmpty()) null
-            else pendingAuthenticatedReceives.removeAt(0)
-        }
+        fun pollResponseReceivedDuringReauthentication(): NetworkReceive? =
+            pendingAuthenticatedReceives.removeFirstOrNull()
 
         fun setAuthenticationEndAndSessionReauthenticationTimes(nowNanos: Long) {
             authenticationEndNanos = nowNanos
             if (positiveSessionLifetimeMs != null) {
-                // pick a random percentage between WINDOW_FACTOR (85%) and WINDOW_FACTOR + JITTER (95%) for session
-                // re-authentication
+
+                // pick a random percentage between WINDOW_FACTOR (85%) and WINDOW_FACTOR + JITTER
+                // (95%) for session re-authentication
                 val pctToUse = WINDOW_FACTOR_PERCENTAGE + RNG.nextDouble() * WINDOW_JITTER_PERCENTAGE
                 val sessionLifetimeMsToUse = (positiveSessionLifetimeMs!! * pctToUse).toLong()
-                clientSessionReauthenticationTimeNanos = authenticationEndNanos + 1000 * 1000 * sessionLifetimeMsToUse
+                clientSessionReauthenticationTime = authenticationEndNanos + 1000 * 1000 * sessionLifetimeMsToUse
+
                 log.debug(
                     "Finished {} with session expiration in {} ms and session re-authentication on or after {} ms",
-                    authenticationOrReauthenticationText(), positiveSessionLifetimeMs, sessionLifetimeMsToUse
+                    authenticationOrReauthenticationText(),
+                    positiveSessionLifetimeMs,
+                    sessionLifetimeMsToUse
                 )
             } else log.debug(
                 "Finished {} with no session expiration and no session re-authentication",
@@ -709,21 +776,25 @@ open class SaslClientAuthenticator(
         }
 
         fun reauthenticationLatencyMs(): Long? =
-            if (reauthenticating())
-                    ((authenticationEndNanos - reauthenticationBeginNanos) / 1000.0 / 1000.0).roundToLong()
+            if (isReauthenticating)
+                    ((authenticationEndNanos - reauthenticationBeginNanos) / 1000.0 / 1000.0)
+                        .roundToLong()
             else null
 
         private fun authenticationOrReauthenticationText(): String {
-            return if (reauthenticating()) "re-authentication" else "authentication"
+            return if (isReauthenticating) "re-authentication" else "authentication"
         }
     }
 
     companion object {
+
         private const val DISABLE_KAFKA_SASL_AUTHENTICATE_HEADER: Short = -1
+
         private val RNG = Random()
 
         /**
-         * Minimum percentage value for window factor to take network latency and clock drift into account.
+         * Minimum percentage value for window factor to take network latency and clock drift into
+         * account.
          *
          * This value is used for session re-authentication.
          * @see WINDOW_JITTER_PERCENTAGE
@@ -731,7 +802,8 @@ open class SaslClientAuthenticator(
         private const val WINDOW_FACTOR_PERCENTAGE = 0.85
 
         /**
-         * Percentage value for window jitter to avoid re-authentication storm across many channels simultaneously.
+         * Percentage value for window jitter to avoid re-authentication storm across many channels
+         * simultaneously.
          *
          * This value is used for session re-authentication.
          * @see WINDOW_FACTOR_PERCENTAGE
@@ -741,47 +813,52 @@ open class SaslClientAuthenticator(
         /**
          * the reserved range of correlation id for Sasl requests.
          *
-         * Noted: there is a story about reserved range. The response of LIST_OFFSET is compatible to response of
-         * SASL_HANDSHAKE. Hence, we could miss the schema error when using schema of SASL_HANDSHAKE to parse response
-         * of LIST_OFFSET. For example: the IllegalStateException caused by mismatched correlation id is thrown if
-         * following steps happens.
+         * Noted: there is a story about reserved range. The response of LIST_OFFSET is compatible
+         * to response of SASL_HANDSHAKE. Hence, we could miss the schema error when using schema of
+         * SASL_HANDSHAKE to parse response of LIST_OFFSET. For example: the IllegalStateException
+         * caused by mismatched correlation id is thrown if following steps happens.
+         *
          * 1) sent LIST_OFFSET
          * 2) sent SASL_HANDSHAKE
          * 3) receive response of LIST_OFFSET
          * 4) succeed to use schema of SASL_HANDSHAKE to parse response of LIST_OFFSET
          * 5) throw IllegalStateException due to mismatched correlation id
-         * As a simple approach, we force Sasl requests to use a reserved correlation id which is separated from those
-         * used in NetworkClient for Kafka requests. Hence, we can guarantee that every SASL request will throw
-         * SchemaException due to correlation id mismatch during reauthentication
+         *
+         * As a simple approach, we force Sasl requests to use a reserved correlation id which is
+         * separated from those used in NetworkClient for Kafka requests. Hence, we can guarantee
+         * that every SASL request will throw SchemaException due to correlation id mismatch during
+         * reauthentication.
          */
         const val MAX_RESERVED_CORRELATION_ID = Int.MAX_VALUE
 
         /**
-         * We only expect one request in-flight a time during authentication so the small range is fine.
+         * We only expect one request in-flight a time during authentication so the small range is
+         * fine.
          */
         const val MIN_RESERVED_CORRELATION_ID = MAX_RESERVED_CORRELATION_ID - 7
 
         /**
          * @return true if the correlation id is reserved for SASL request. otherwise, false
          */
-        fun isReserved(correlationId: Int): Boolean {
-            return correlationId >= MIN_RESERVED_CORRELATION_ID
-        }
+        fun isReserved(correlationId: Int): Boolean =
+            correlationId >= MIN_RESERVED_CORRELATION_ID
 
         /**
          * Returns the first Principal from Subject.
-         * @throws KafkaException if there are no Principals in the Subject.
-         * During Kerberos re-login, principal is reset on Subject. An exception is
-         * thrown so that the connection is retried after any configured backoff.
+         * @throws KafkaException if there are no Principals in the Subject. During Kerberos
+         * re-login, principal is reset on Subject. An exception is thrown so that the connection is
+         * retried after any configured backoff.
          */
         fun firstPrincipal(subject: Subject): String {
             val principals = subject.principals
+
             synchronized(principals) {
                 val iterator: Iterator<Principal> = principals.iterator()
+
                 return if (iterator.hasNext()) iterator.next().name
                 else throw KafkaException(
-                    "Principal could not be determined from Subject, this may be a transient failure due to " +
-                    "Kerberos re-login",
+                    "Principal could not be determined from Subject, this may be a transient " +
+                    "failure due to Kerberos re-login",
                 )
             }
         }

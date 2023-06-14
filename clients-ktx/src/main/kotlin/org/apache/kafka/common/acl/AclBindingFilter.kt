@@ -27,10 +27,9 @@ import org.apache.kafka.common.resource.ResourcePatternFilter
  * The API for this class is still evolving, and we may break compatibility in minor releases, i
  * necessary.
  *
- * Constructor creates an instance of this filter with the provided parameters.
- *
- * @property patternFilter pattern filter
- * @property entryFilter access control entry filter
+ * @constructor Creates an instance of this filter with the provided parameters.
+ * @property patternFilter Pattern filter
+ * @property entryFilter Access control entry filter
  */
 @Evolving
 data class AclBindingFilter(

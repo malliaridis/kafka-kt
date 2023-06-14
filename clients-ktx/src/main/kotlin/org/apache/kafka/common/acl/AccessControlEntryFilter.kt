@@ -25,12 +25,11 @@ import org.apache.kafka.common.annotation.InterfaceStability.Evolving
  * The API for this class is still evolving, and we may break compatibility in minor releases, if
  * necessary.
  *
- * Constructor creates an instance of an access control entry filter with the provided parameters.
- *
- * @param principal the principal
- * @param host the host
- * @param operation operation
- * @param permissionType permission type
+ * @constructor Creates an instance of an access control entry filter with the provided parameters.
+ * @param principal The principal
+ * @param host The host
+ * @param operation Operation
+ * @param permissionType Permission type
  */
 @Evolving
 data class AccessControlEntryFilter(

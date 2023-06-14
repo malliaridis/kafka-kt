@@ -585,12 +585,14 @@ class ConfigDef {
             if (value == null) throw ConfigException(name, null, "Value must be non-null")
             val n = value as Number
             if (min != null && n.toDouble() < min.toDouble()) throw ConfigException(
-                name, value,
-                "Value must be at least $min"
+                name = name,
+                value = value,
+                message = "Value must be at least $min",
             )
             if (max != null && n.toDouble() > max.toDouble()) throw ConfigException(
-                name, value,
-                "Value must be no more than $max"
+                name = name,
+                value = value,
+                message = "Value must be no more than $max",
             )
         }
 
@@ -799,14 +801,12 @@ class ConfigDef {
                     foundIllegalCharacters.add(s.codePointAt(i))
                 }
             }
-            if (!foundIllegalCharacters.isEmpty()) {
+            if (foundIllegalCharacters.isNotEmpty()) {
                 throw ConfigException(
                     name,
                     value,
-                    "String may not contain control sequences but had the following ASCII chars: " + join(
-                        foundIllegalCharacters,
-                        ", "
-                    )
+                    "String may not contain control sequences but had the following ASCII chars: " +
+                        foundIllegalCharacters.joinToString(", "),
                 )
             }
         }

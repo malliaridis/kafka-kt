@@ -65,14 +65,12 @@ data class ProducerRecord<K, V>(
     init {
         require(!(timestamp != null && timestamp < 0)) {
             String.format(
-                Locale.getDefault(),
                 "Invalid timestamp: %d. Timestamp should always be non-negative or null.",
                 timestamp
             )
         }
         require(!(partition != null && partition < 0)) {
             String.format(
-                Locale.getDefault(),
                 "Invalid partition: %d. Partition number should always be non-negative or null.",
                 partition
             )

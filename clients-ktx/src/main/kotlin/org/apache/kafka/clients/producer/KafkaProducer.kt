@@ -1037,7 +1037,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
             val remainingWaitMs = (maxBlockTimeMs - clusterAndWaitTime.waitedOnMetadataMs)
                 .coerceAtLeast(0)
             val cluster = clusterAndWaitTime.cluster
-            val serializedKey: ByteArray
+            val serializedKey: ByteArray?
             try {
                 serializedKey = keySerializer.serialize(
                     record.topic,
@@ -1052,10 +1052,13 @@ open class KafkaProducer<K, V> : Producer<K, V> {
                     cause = cce,
                 )
             }
-            val serializedValue: ByteArray
+            val serializedValue: ByteArray?
             try {
-                serializedValue =
-                    valueSerializer.serialize(record.topic, record.headers, record.value)
+                serializedValue = valueSerializer.serialize(
+                    topic = record.topic,
+                    headers = record.headers,
+                    data = record.value,
+                )
             } catch (cce: ClassCastException) {
                 throw SerializationException(
                     message = "Can't convert value of class ${record.value?:Nothing::class.java.name}" +
@@ -1073,7 +1076,10 @@ open class KafkaProducer<K, V> : Producer<K, V> {
             val headers = record.headers.toArray()
             val serializedSize = AbstractRecords.estimateSizeInBytesUpperBound(
                 apiVersions.maxUsableProduceMagic(),
-                compressionType, serializedKey, serializedValue, headers
+                compressionType,
+                serializedKey,
+                serializedValue,
+                headers,
             )
             ensureValidRecordSize(serializedSize)
             val timestamp = record.timestamp ?: nowMs
@@ -1493,7 +1499,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
     private fun partition(
         record: ProducerRecord<K, V>,
         serializedKey: ByteArray?,
-        serializedValue: ByteArray,
+        serializedValue: ByteArray?,
         cluster: Cluster
     ): Int {
         if (record.partition != null) return record.partition
@@ -1506,14 +1512,12 @@ open class KafkaProducer<K, V> : Producer<K, V> {
                 serializedValue,
                 cluster
             )
-            if (customPartition < 0) {
-                throw IllegalArgumentException(
-                    String.format(
-                        "The partitioner generated an invalid partition number: %d. Partition number should always be non-negative.",
-                        customPartition
-                    )
+            if (customPartition < 0) throw IllegalArgumentException(
+                String.format(
+                    "The partitioner generated an invalid partition number: %d. Partition number should always be non-negative.",
+                    customPartition
                 )
-            }
+            )
             return customPartition
         }
         return if (serializedKey != null && !partitionerIgnoreKeys) {
@@ -1522,9 +1526,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
                 serializedKey,
                 cluster.partitionsForTopic(record.topic).size
             )
-        } else {
-            RecordMetadata.UNKNOWN_PARTITION
-        }
+        } else RecordMetadata.UNKNOWN_PARTITION
     }
 
     private fun throwIfInvalidGroupMetadata(groupMetadata: ConsumerGroupMetadata?) {

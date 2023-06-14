@@ -45,7 +45,7 @@ class ApiVersionsResponse(
 
     override fun data(): ApiVersionsResponseData = data
 
-    fun apiVersion(apiKey: Short): ApiVersionsResponseData.ApiVersion = data.apiKeys().find(apiKey)
+    fun apiVersion(apiKey: Short): ApiVersionsResponseData.ApiVersion? = data.apiKeys().find(apiKey)
 
     override fun errorCounts(): Map<Errors, Int> =
         errorCounts(Errors.forCode(data.errorCode()))

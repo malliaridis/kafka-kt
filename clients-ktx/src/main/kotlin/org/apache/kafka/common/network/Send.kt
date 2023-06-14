@@ -6,6 +6,7 @@ import java.io.IOException
  * This interface models the in-progress sending of data.
  */
 interface Send {
+
     /**
      * Is this send complete?
      */

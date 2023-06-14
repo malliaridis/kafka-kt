@@ -192,7 +192,6 @@ abstract class AbstractResponse protected constructor(
                 ApiKeys.ALLOCATE_PRODUCER_IDS -> AllocateProducerIdsResponse.parse(responseBuffer, version)
                 else -> throw AssertionError(
                     String.format(
-                        Locale.getDefault(),
                         "ApiKey %s is not currently handled in `parseResponse`, the code should be updated to do so.",
                         apiKey,
                     )

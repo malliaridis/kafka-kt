@@ -25,9 +25,9 @@ import kotlin.collections.HashMap
  * to hold the result returned by the [Admin.describeFeatures] API.
  */
 data class FeatureMetadata(
-    private val finalizedFeatures: Map<String, FinalizedVersionRange> = HashMap(),
+    private val finalizedFeatures: Map<String, FinalizedVersionRange> = emptyMap(),
     val finalizedFeaturesEpoch: Long? = null,
-    val supportedFeatures: Map<String, SupportedVersionRange> = HashMap(),
+    val supportedFeatures: Map<String, SupportedVersionRange> = emptyMap(),
 ) {
 
     constructor(
@@ -35,9 +35,9 @@ data class FeatureMetadata(
         finalizedFeaturesEpoch: Long? = null,
         supportedFeatures: Map<String, SupportedVersionRange>? = null,
     ) : this(
-        finalizedFeatures = finalizedFeatures ?: HashMap(),
+        finalizedFeatures = finalizedFeatures ?: emptyMap(),
         finalizedFeaturesEpoch = finalizedFeaturesEpoch,
-        supportedFeatures = supportedFeatures ?: HashMap(),
+        supportedFeatures = supportedFeatures ?: emptyMap(),
     )
 
     /**
@@ -72,7 +72,6 @@ data class FeatureMetadata(
 
     override fun toString(): String {
         return String.format(
-            Locale.getDefault(),
             "FeatureMetadata{finalizedFeatures:%s, finalizedFeaturesEpoch:%s, supportedFeatures:%s}",
             mapToString(finalizedFeatures),
             finalizedFeaturesEpoch ?: "<none>",
@@ -83,11 +82,9 @@ data class FeatureMetadata(
     companion object {
         private fun <ValueType> mapToString(featureVersionsMap: Map<String, ValueType>): String {
             return String.format(
-                Locale.getDefault(),
                 "{%s}",
                 featureVersionsMap.map { (key, value) ->
                     String.format(
-                        Locale.getDefault(),
                         "(%s -> %s)",
                         key,
                         value

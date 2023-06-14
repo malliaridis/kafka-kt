@@ -33,26 +33,26 @@ class ScramServerCallbackHandler(
     private val tokenCache: DelegationTokenCache,
 ) : AuthenticateCallbackHandler {
 
-    private var saslMechanism: String? = null
+    private lateinit var saslMechanism: String
 
     override fun configure(
         configs: Map<String, *>,
-        mechanism: String,
+        saslMechanism: String,
         jaasConfigEntries: List<AppConfigurationEntry>
     ) {
-        saslMechanism = mechanism
+        this.saslMechanism = saslMechanism
     }
 
     @Throws(UnsupportedCallbackException::class)
     override fun handle(callbacks: Array<Callback>) {
-        var username: String? = null
+        lateinit var username: String
 
-        for (callback in callbacks) {
+        callbacks.forEach { callback ->
 
             if (callback is NameCallback) username = callback.defaultName
             else if (callback is DelegationTokenCredentialCallback) {
 
-                callback.scramCredential = tokenCache.credential(saslMechanism!!, username!!)
+                callback.scramCredential = tokenCache.credential(saslMechanism, username)
                 callback.tokenOwner = tokenCache.owner(username)
                 val tokenInfo = tokenCache.token(username)
 

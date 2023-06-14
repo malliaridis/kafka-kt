@@ -33,8 +33,7 @@ import org.apache.kafka.common.utils.ByteUtils
  *
  * This class is not thread-safe.
  *
- * Constructor creates a new [OutputStream] that will compress data using the LZ4 algorithm.
- *
+ * @constructor Creates a new [OutputStream] that will compress data using the LZ4 algorithm.
  * @param out The output stream to compress
  * @param blockSize Default: 4. The block size used during compression. 4=64kb, 5=256kb, 6=1mb,
  * 7=4mb. All other values will generate an exception

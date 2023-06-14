@@ -158,7 +158,7 @@ class ScramMessages {
         }
 
         override fun toMessage(): String {
-            return gs2Header() + clientFirstMessageBare()
+            return gs2Header + clientFirstMessageBare()
         }
 
         companion object {

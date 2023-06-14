@@ -48,8 +48,8 @@ import org.apache.kafka.common.utils.Utils
 class MetadataResponse internal constructor(
     private val data: MetadataResponseData,
     private val hasReliableLeaderEpochs: Boolean
-) :
-    AbstractResponse(ApiKeys.METADATA) {
+) : AbstractResponse(ApiKeys.METADATA) {
+
     @Volatile
     private var _holder: Holder? = null
 

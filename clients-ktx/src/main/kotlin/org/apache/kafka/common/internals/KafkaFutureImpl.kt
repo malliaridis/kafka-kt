@@ -215,7 +215,6 @@ class KafkaFutureImpl<T> private constructor(
             exception = e
         }
         return String.format(
-            Locale.getDefault(),
             "KafkaFuture{value=%s,exception=%s,done=%b}",
             value,
             exception,

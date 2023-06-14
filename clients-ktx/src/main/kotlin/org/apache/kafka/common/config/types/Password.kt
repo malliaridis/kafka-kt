@@ -20,8 +20,7 @@ package org.apache.kafka.common.config.types
 /**
  * A wrapper class for passwords to hide them while logging a config
  *
- * Constructor creates a new Password object
- *
+ * @constructor Creates a new Password object
  * @property value The value of a password
  */
 data class Password(val value: String) {

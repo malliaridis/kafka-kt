@@ -26,8 +26,7 @@ import org.apache.kafka.common.annotation.InterfaceStability.Evolving
  * The API for this class is still evolving, and we may break compatibility in minor releases, if
  * necessary.
  *
- * Constructor creates an instance of an access control entry with the provided parameters.
- *
+ * @constructor Creates an instance of an access control entry with the provided parameters.
  * @property principal principal
  * @property host host
  * @property operation operation, ANY is not an allowed operation

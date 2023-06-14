@@ -27,8 +27,8 @@ class ConfigException : KafkaException {
 
     constructor(
         name: Any?,
-        value: Any?,
-        message: String? = null
+        value: Any? = null,
+        message: String? = null,
     ) : super(
         message = "Invalid value $value for configuration $name${if (message == null) "" else ": $message"}"
     )

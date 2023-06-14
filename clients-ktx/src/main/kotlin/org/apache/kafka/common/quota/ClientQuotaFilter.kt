@@ -22,8 +22,7 @@ import java.util.*
 /**
  * Describes a client quota entity filter.
  *
- * Constructor creates a filter to be applied to matching client quotas.
- *
+ * @constructor Creates a filter to be applied to matching client quotas.
  * @property components the components to filter on
  * @property strict whether the filter only includes specified components
  */

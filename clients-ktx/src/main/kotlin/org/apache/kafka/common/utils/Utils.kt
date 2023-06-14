@@ -632,8 +632,8 @@ object Utils {
      */
     fun <K, V> mkString(
         map: Map<K, V>,
-        begin: String,
-        end: String,
+        begin: String = "",
+        end: String = "",
         keyValueSeparator: String,
         elementSeparator: String,
     ): String {
