@@ -75,9 +75,13 @@ class AdminApiDriver<K, V>(
     private val retryBackoffMs: Long,
     logContext: LogContext
 ) {
+
     private val log: Logger = logContext.logger(AdminApiDriver::class.java)
+
     private val lookupMap = BiMultimap<ApiRequestScope, K>()
+
     private val fulfillmentMap = BiMultimap<FulfillmentScope, K>()
+
     private val requestStates: MutableMap<ApiRequestScope, RequestState> =
         HashMap<ApiRequestScope, RequestState>()
 

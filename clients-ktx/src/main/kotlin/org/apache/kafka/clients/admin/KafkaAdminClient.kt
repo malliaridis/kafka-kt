@@ -255,13 +255,13 @@ import org.apache.kafka.common.security.scram.internals.ScramFormatter
 import org.apache.kafka.common.security.token.delegation.DelegationToken
 import org.apache.kafka.common.security.token.delegation.TokenInformation
 import org.apache.kafka.common.utils.AppInfoParser
-import org.apache.kafka.common.security.scram.internals.ScramMechanism
 import org.apache.kafka.common.utils.KafkaThread
 import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.Time
 import org.apache.kafka.common.utils.Utils
 import org.slf4j.Logger
 import kotlin.collections.HashSet
+import kotlin.math.min
 import kotlin.time.Duration.Companion.hours
 
 /**
@@ -343,8 +343,9 @@ class KafkaAdminClient private constructor(
     }
 
     /**
-     * If a default.api.timeout.ms has been explicitly specified, raise an error if it conflicts with request.timeout.ms.
-     * If no default.api.timeout.ms has been configured, then set its value as the max of the default and request.timeout.ms. Also we should probably log a warning.
+     * If a default.api.timeout.ms has been explicitly specified, raise an error if it conflicts
+     * with request.timeout.ms. If no default.api.timeout.ms has been configured, then set its value
+     * as the max of the default and request.timeout.ms. Also we should probably log a warning.
      * Otherwise, use the provided values for both configurations.
      *
      * @param config The configuration
@@ -783,7 +784,7 @@ class KafkaAdminClient private constructor(
                 val call = pendingIter.next()
                 // If the call is being retried, await the proper backoff before finding the node
                 if (now < call.nextAllowedTryMs) {
-                    pollTimeout = Math.min(pollTimeout, call.nextAllowedTryMs - now)
+                    pollTimeout = min(pollTimeout, call.nextAllowedTryMs - now)
                 } else if (maybeDrainPendingCall(call, now)) {
                     pendingIter.remove()
                 }
@@ -854,12 +855,12 @@ class KafkaAdminClient private constructor(
                             iter.remove()
                             continue
                         }
-                        pollTimeout = Math.min(pollTimeout, deadline - now)
+                        pollTimeout = min(pollTimeout, deadline - now)
                     } else {
                         nodeReadyDeadlines[node] = now + requestTimeoutMs
                     }
                     val nodeTimeout = client.pollDelayMs(node, now)
-                    pollTimeout = Math.min(pollTimeout, nodeTimeout)
+                    pollTimeout = min(pollTimeout, nodeTimeout)
                     log.trace(
                         "Client is not ready to send to {}. Must delay {} ms",
                         node,
@@ -869,16 +870,13 @@ class KafkaAdminClient private constructor(
                 }
                 // Subtract the time we spent waiting for the node to become ready from
                 // the total request time.
-                var remainingRequestTime: Int
                 val deadlineMs = nodeReadyDeadlines.remove(node)
-                if (deadlineMs == null) {
-                    remainingRequestTime = requestTimeoutMs
-                } else {
-                    remainingRequestTime = calcTimeoutMsRemainingAsInt(now, deadlineMs)
-                }
-                while (!calls.isEmpty()) {
+                val remainingRequestTime = if (deadlineMs == null) requestTimeoutMs
+                else calcTimeoutMsRemainingAsInt(now, deadlineMs)
+
+                while (calls.isNotEmpty()) {
                     val call = calls.removeAt(0)
-                    val timeoutMs = Math.min(
+                    val timeoutMs = min(
                         remainingRequestTime,
                         calcTimeoutMsRemainingAsInt(now, call.deadlineMs)
                     )
@@ -887,10 +885,14 @@ class KafkaAdminClient private constructor(
                         requestBuilder = call.createRequest(timeoutMs)
                     } catch (t: Throwable) {
                         call.fail(
-                            now, KafkaException(
+                            now,
+                            KafkaException(
                                 String.format(
-                                    "Internal error sending %s to %s.", call.callName, node
-                                ), t
+                                    "Internal error sending %s to %s.",
+                                    call.callName,
+                                    node
+                                ),
+                                t,
                             )
                         )
                         continue
@@ -3135,7 +3137,7 @@ class KafkaAdminClient private constructor(
     ) {
         log.info("Retrying to fetch metadata.")
         // Requeue the task so that we can re-attempt fetching metadata
-        context.setResponse(null)
+        context.response = null
         val metadataCall = getMetadataCall(context, nextCalls)
         runnable.call(metadataCall, time.milliseconds())
     }
@@ -4742,7 +4744,12 @@ class KafkaAdminClient private constructor(
                     JMX_PREFIX,
                     config.originalsWithPrefix(CommonClientConfigs.METRICS_CONTEXT_PREFIX)
                 )
-                metrics = Metrics(metricConfig, reporters, time, metricsContext)
+                metrics = Metrics(
+                    config = metricConfig,
+                    reporters = reporters,
+                    time = time,
+                    metricsContext = metricsContext,
+                )
                 val metricGrpPrefix = "admin-client"
                 channelBuilder = ClientUtils.createChannelBuilder(config, time, logContext)
                 selector = Selector(
@@ -4927,7 +4934,9 @@ class KafkaAdminClient private constructor(
             iterations: Int
         ): ByteArray {
             return ScramFormatter(
-                ScramMechanism.forMechanismName(publicScramMechanism.mechanismName)!!
+                org.apache.kafka.common.security.scram.internals.ScramMechanism.forMechanismName(
+                    publicScramMechanism.mechanismName
+                )!!
             ).hi(password, salt, iterations)
         }
 

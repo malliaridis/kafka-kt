@@ -186,7 +186,7 @@ class ListConsumerGroupOffsetsHandler(
 
         fun newFuture(
             groupIds: Collection<String>,
-        ): SimpleAdminApiFuture<CoordinatorKey, Map<TopicPartition, OffsetAndMetadata>> {
+        ): SimpleAdminApiFuture<CoordinatorKey, Map<TopicPartition, OffsetAndMetadata?>> {
             return AdminApiFuture.forKeys(coordinatorKeys(groupIds))
         }
 
