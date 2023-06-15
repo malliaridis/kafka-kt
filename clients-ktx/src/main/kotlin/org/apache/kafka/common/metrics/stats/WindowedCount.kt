@@ -14,35 +14,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.common.metrics.stats;
 
-import org.apache.kafka.common.metrics.MetricConfig;
+package org.apache.kafka.common.metrics.stats
 
-import java.util.List;
+import org.apache.kafka.common.metrics.MetricConfig
 
 /**
- * A {@link SampledStat} that maintains the sum of what it has seen.
- * This is a sampled version of {@link CumulativeSum}.
+ * A [SampledStat] that maintains a simple count of what it has seen.
  *
- * See also {@link WindowedCount} if you want to increment the value by 1 on each recording.
+ * This is a special kind of [WindowedSum] that always records a value of `1` instead of the
+ * provided value. In other words, it counts the number of [WindowedCount.record] invocations,
+ * instead of summing the recorded values.
+ *
+ * See also [CumulativeCount] for a non-sampled version of this metric.
  */
-public class WindowedSum extends SampledStat {
+class WindowedCount : WindowedSum() {
 
-    public WindowedSum() {
-        super(0);
+    override fun update(sample: Sample, config: MetricConfig?, value: Double, timeMs: Long) {
+        super.update(sample, config, 1.0, timeMs)
     }
-
-    @Override
-    protected void update(Sample sample, MetricConfig config, double value, long now) {
-        sample.value += value;
-    }
-
-    @Override
-    public double combine(List<Sample> samples, MetricConfig config, long now) {
-        double total = 0.0;
-        for (Sample sample : samples)
-            total += sample.value;
-        return total;
-    }
-
 }

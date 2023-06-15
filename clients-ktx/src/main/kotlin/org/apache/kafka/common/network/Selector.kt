@@ -13,6 +13,7 @@ import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.MetricName
 import org.apache.kafka.common.errors.AuthenticationException
 import org.apache.kafka.common.memory.MemoryPool
+import org.apache.kafka.common.metrics.Measurable
 import org.apache.kafka.common.metrics.MetricConfig
 import org.apache.kafka.common.metrics.Metrics
 import org.apache.kafka.common.metrics.Sensor
@@ -35,29 +36,30 @@ import kotlin.collections.HashSet
 /**
  * A nioSelector interface for doing non-blocking multi-connection network I/O.
  *
- * This class works with [NetworkSend] and [NetworkReceive] to transmit size-delimited network requests and
- * responses.
+ * This class works with [NetworkSend] and [NetworkReceive] to transmit size-delimited network
+ * requests and responses.
  *
  * A connection can be added to the nioSelector associated with an integer id by doing
  *
- * <pre>
- * nioSelector.connect(&quot;42&quot;, new InetSocketAddress(&quot;google.com&quot;, server.port), 64000, 64000);
- * </pre>
+ * ```java
+ * nioSelector.connect("42", new InetSocketAddress("google.com", server.port), 64000, 64000);
+ * ```
  *
- * The connect call does not block on the creation of the TCP connection, so the connect method only begins initiating
- * the connection. The successful invocation of this method does not mean a valid connection has been established.
+ * The connect call does not block on the creation of the TCP connection, so the connect method only
+ * begins initiating the connection. The successful invocation of this method does not mean a valid
+ * connection has been established.
  *
- * Sending requests, receiving responses, processing connection completions, and disconnections on the existing
- * connections are all done using the `poll()` call.
+ * Sending requests, receiving responses, processing connection completions, and disconnections on
+ * the existing connections are all done using the `poll()` call.
  *
- * <pre>
+ * ```java
  * nioSelector.send(new NetworkSend(myDestination, myBytes));
  * nioSelector.send(new NetworkSend(myOtherDestination, myOtherBytes));
  * nioSelector.poll(TIMEOUT_MS);
- * </pre>
+ * ```
  *
- * The nioSelector maintains several lists that are reset by each call to `poll()` which are available via
- * various getters. These are reset by each call to `poll()`.
+ * The nioSelector maintains several lists that are reset by each call to `poll()` which are
+ * available via various getters. These are reset by each call to `poll()`.
  *
  * This class is not thread safe!
  */
@@ -73,34 +75,33 @@ class Selector private constructor(
     private val delayedClosingChannels: LinkedHashMap<String, DelayedAuthenticationFailureClose>?,
     private val log: Logger,
 ) : Selectable, AutoCloseable {
-    private enum class CloseMode(// discard any outstanding receives, no disconnect notification
-        var notifyDisconnect: Boolean
-    ) {
-        GRACEFUL(true),
-
-        // process outstanding buffered receives, notify disconnect
-        NOTIFY_ONLY(true),
-
-        // discard any outstanding receives, notify disconnect
-        DISCARD_NO_NOTIFY(false)
-
-    }
 
     private var nioSelector: java.nio.channels.Selector? = null
+
     private val channels: MutableMap<String, KafkaChannel> = HashMap()
+
     private val explicitlyMutedChannels: MutableSet<KafkaChannel?> = HashSet()
 
     //package-private for testing
     internal var isOutOfMemory: Boolean = false
         private set
+
     private val completedSends: MutableList<NetworkSend> = ArrayList()
+
     private val completedReceives: LinkedHashMap<String, NetworkReceive> = LinkedHashMap()
+
     private val immediatelyConnectedKeys: MutableSet<SelectionKey?> = HashSet()
+
     private val closingChannels: MutableMap<String?, KafkaChannel> = HashMap()
+
     private var keysWithBufferedRead: MutableSet<SelectionKey?> = HashSet()
+
     private val disconnected: MutableMap<String, ChannelState> = HashMap()
+
     private val connected: MutableList<String> = ArrayList()
+
     private val failedSends: MutableList<String> = ArrayList()
+
     private lateinit var sensors: SelectorMetrics
 
     //package-private for testing
@@ -111,10 +112,14 @@ class Selector private constructor(
 
     /**
      * Create a new nioSelector
-     * @param maxReceiveSize Max size in bytes of a single network receive (use [NetworkReceive.UNLIMITED] for no limit)
-     * @param connectionMaxIdleMs Max idle connection time (use [NO_IDLE_TIMEOUT_MS] to disable idle timeout)
-     * @param failedAuthenticationDelayMs Minimum time by which failed authentication response and channel close should be delayed by.
-     * Use [NO_FAILED_AUTHENTICATION_DELAY] to disable this delay.
+     *
+     * @param maxReceiveSize Max size in bytes of a single network receive (use
+     * [NetworkReceive.UNLIMITED] for no limit)
+     * @param connectionMaxIdleMs Max idle connection time (use [NO_IDLE_TIMEOUT_MS] to disable idle
+     * timeout)
+     * @param failedAuthenticationDelayMs Minimum time by which failed authentication response and
+     * channel close should be delayed by. Use [NO_FAILED_AUTHENTICATION_DELAY] to disable this
+     * delay.
      * @param metrics Registry for Selector metrics
      * @param time Time implementation
      * @param metricGrpPrefix Prefix for the group of metrics registered by Selector
@@ -143,9 +148,11 @@ class Selector private constructor(
         recordTimePerConnection = recordTimePerConnection,
         channelBuilder = channelBuilder,
         memoryPool = memoryPool,
-        idleExpiryManager = if (connectionMaxIdleMs < 0) null else IdleExpiryManager(time, connectionMaxIdleMs),
+        idleExpiryManager = if (connectionMaxIdleMs < 0) null
+        else IdleExpiryManager(time, connectionMaxIdleMs),
         lowMemThreshold = (0.1 * memoryPool.size()).toLong(),
-        delayedClosingChannels = if (failedAuthenticationDelayMs > NO_FAILED_AUTHENTICATION_DELAY) LinkedHashMap()
+        delayedClosingChannels =
+        if (failedAuthenticationDelayMs > NO_FAILED_AUTHENTICATION_DELAY) LinkedHashMap()
         else null,
         log = logContext.logger(Selector::class.java),
     ) {
@@ -158,9 +165,8 @@ class Selector private constructor(
     }
 
     /**
-     * Begin connecting to the given address and add the connection to this nioSelector associated with the given id
-     * number.
-     *
+     * Begin connecting to the given address and add the connection to this nioSelector associated
+     * with the given id number.
      *
      * Note that this call only initiates the connection, which will be completed on a future [poll]
      * call. Check [connected] to see which (if any) connections have completed after a given poll call.
@@ -226,20 +232,19 @@ class Selector private constructor(
     }
 
     /**
-     * Register the nioSelector with an existing channel
-     * Use this on server-side, when a connection is accepted by a different thread but processed by the Selector
+     * Register the nioSelector with an existing channel.
      *
+     * Use this on server-side, when a connection is accepted by a different thread but processed by
+     * the Selector.
      *
-     * If a connection already exists with the same connection id in `channels` or `closingChannels`,
-     * an exception is thrown. Connection ids must be chosen to avoid conflict when remote ports are reused.
-     * Kafka brokers add an incrementing index to the connection id to avoid reuse in the timing window
-     * where an existing connection may not yet have been closed by the broker when a new connection with
-     * the same remote host:port is processed.
+     * If a connection already exists with the same connection id in `channels` or
+     * `closingChannels`, an exception is thrown. Connection ids must be chosen to avoid conflict
+     * when remote ports are reused. Kafka brokers add an incrementing index to the connection id to
+     * avoid reuse in the timing window where an existing connection may not yet have been closed by
+     * the broker when a new connection with the same remote host:port is processed.
      *
-     *
-     * If a `KafkaChannel` cannot be created for this connection, the `socketChannel` is closed
-     * and its selection key cancelled.
-     *
+     * If a `KafkaChannel` cannot be created for this connection, the `socketChannel` is closed and
+     * its selection key cancelled.
      */
     @Throws(IOException::class)
     fun register(id: String, socketChannel: SocketChannel) {
@@ -249,20 +254,29 @@ class Selector private constructor(
         // Default to empty client information as the ApiVersionsRequest is not
         // mandatory. In this case, we still want to account for the connection.
         val metadataRegistry = this.channel(id)!!.channelMetadataRegistry()
-        if (metadataRegistry.clientInformation() == null) metadataRegistry.registerClientInformation(ClientInformation.EMPTY)
+        if (metadataRegistry.clientInformation() == null)
+            metadataRegistry.registerClientInformation(ClientInformation.EMPTY)
     }
 
     private fun ensureNotRegistered(id: String) {
         check(!channels.containsKey(id)) { "There is already a connection for id $id" }
-        check(!closingChannels.containsKey(id)) { "There is already a connection for id $id that is still being closed" }
+        check(!closingChannels.containsKey(id)) {
+            "There is already a connection for id $id that is still being closed"
+        }
     }
 
     @Throws(IOException::class)
-    internal fun registerChannel(id: String, socketChannel: SocketChannel, interestedOps: Int): SelectionKey {
+    internal fun registerChannel(
+        id: String,
+        socketChannel: SocketChannel,
+        interestedOps: Int,
+    ): SelectionKey {
         val key = socketChannel.register(nioSelector, interestedOps)
         val channel = buildAndAttachKafkaChannel(socketChannel, id, key)
+
         channels[id] = channel
         idleExpiryManager?.update(channel.id(), time.nanoseconds())
+
         return key
     }
 
@@ -274,11 +288,11 @@ class Selector private constructor(
     ): KafkaChannel {
         return try {
             val channel = channelBuilder.buildChannel(
-                id,
-                key,
-                maxReceiveSize,
-                memoryPool,
-                SelectorChannelMetadataRegistry()
+                id = id,
+                key = key,
+                maxReceiveSize = maxReceiveSize,
+                memoryPool = memoryPool,
+                metadataRegistry = SelectorChannelMetadataRegistry(),
             )
             key.attach(channel)
             channel
@@ -304,12 +318,11 @@ class Selector private constructor(
      */
     override fun close() {
         val connections: MutableList<String> = ArrayList(channels.keys)
-        val firstException = AtomicReference<Throwable>()
+        val firstException = AtomicReference<Throwable?>()
         Utils.closeAllQuietly(
-            firstException,
-            "release connections",
-            *connections.map { AutoCloseable { close(it) }}
-                .toTypedArray()
+            firstException = firstException,
+            name = "release connections",
+            closeables = connections.map { AutoCloseable { close(it) }},
         )
 
         // If there is any exception thrown in close(id), we should still be able
@@ -357,33 +370,37 @@ class Selector private constructor(
     }
 
     /**
-     * Do whatever I/O can be done on each connection without blocking. This includes completing connections, completing
-     * disconnections, initiating new sends, or making progress on in-progress sends or receives.
+     * Do whatever I/O can be done on each connection without blocking. This includes completing
+     * connections, completing disconnections, initiating new sends, or making progress on
+     * in-progress sends or receives.
      *
-     * When this call is completed the user can check for completed sends, receives, connections or disconnects using
-     * [completedSends], [completedReceives], [connected], [disconnected]. These
-     * lists will be cleared at the beginning of each `poll` call and repopulated by the call if there is
-     * any completed I/O.
+     * When this call is completed the user can check for completed sends, receives, connections or
+     * disconnects using [completedSends], [completedReceives], [connected], [disconnected]. These
+     * lists will be cleared at the beginning of each `poll` call and repopulated by the call if
+     * there is any completed I/O.
      *
-     * In the "Plaintext" setting, we are using socketChannel to read & write to the network. But for the "SSL" setting,
-     * we encrypt the data before we use socketChannel to write data to the network, and decrypt before we return the responses.
-     * This requires additional buffers to be maintained as we are reading from network, since the data on the wire is encrypted
-     * we won't be able to read exact no.of bytes as kafka protocol requires. We read as many bytes as we can, up to SSLEngine's
-     * application buffer size. This means we might be reading additional bytes than the requested size.
-     * If there is no further data to read from socketChannel selector won't invoke that channel and we have additional bytes
-     * in the buffer. To overcome this issue we added "keysWithBufferedRead" map which tracks channels which have data in the SSL
-     * buffers. If there are channels with buffered data that can by processed, we set "timeout" to 0 and process the data even
-     * if there is no more data to read from the socket.
+     * In the "Plaintext" setting, we are using socketChannel to read & write to the network. But
+     * for the "SSL" setting, we encrypt the data before we use socketChannel to write data to the
+     * network, and decrypt before we return the responses. This requires additional buffers to be
+     * maintained as we are reading from network, since the data on the wire is encrypted we won't
+     * be able to read exact no.of bytes as kafka protocol requires. We read as many bytes as we
+     * can, up to SSLEngine's application buffer size. This means we might be reading additional
+     * bytes than the requested size. If there is no further data to read from socketChannel
+     * selector won't invoke that channel and we have additional bytes in the buffer. To overcome
+     * this issue we added "keysWithBufferedRead" map which tracks channels which have data in the
+     * SSL buffers. If there are channels with buffered data that can by processed, we set "timeout"
+     * to 0 and process the data even if there is no more data to read from the socket.
      *
-     * At most one entry is added to "completedReceives" for a channel in each poll. This is necessary to guarantee that
-     * requests from a channel are processed on the broker in the order they are sent. Since outstanding requests added
-     * by SocketServer to the request queue may be processed by different request handler threads, requests on each
-     * channel must be processed one-at-a-time to guarantee ordering.
+     * At most one entry is added to "completedReceives" for a channel in each poll. This is
+     * necessary to guarantee that requests from a channel are processed on the broker in the order
+     * they are sent. Since outstanding requests added by SocketServer to the request queue may be
+     * processed by different request handler threads, requests on each channel must be processed
+     * one-at-a-time to guarantee ordering.
      *
      * @param timeout The amount of time to wait, in milliseconds, which must be non-negative
      * @throws IllegalArgumentException If `timeout` is negative
-     * @throws IllegalStateException If a send is given for which we have no existing connection or for which there is
-     * already an in-progress send
+     * @throws IllegalStateException If a send is given for which we have no existing connection or
+     * for which there is already an in-progress send
      */
     @Throws(IOException::class)
     override fun poll(timeout: Long) {
@@ -392,7 +409,10 @@ class Selector private constructor(
         val madeReadProgressLastCall = isMadeReadProgressLastPoll
         clear()
         val dataInBuffers = keysWithBufferedRead.isNotEmpty()
-        if (immediatelyConnectedKeys.isNotEmpty() || madeReadProgressLastCall && dataInBuffers) timeoutVariable = 0
+
+        if (immediatelyConnectedKeys.isNotEmpty() || madeReadProgressLastCall && dataInBuffers)
+            timeoutVariable = 0
+
         if (!memoryPool.isOutOfMemory && isOutOfMemory) {
             //we have recovered from memory pressure. unmute any channel not explicitly muted for other reasons
             log.trace("Broker no longer low on memory - unmuting incoming sockets")
@@ -462,7 +482,8 @@ class Selector private constructor(
             sensors.maybeRegisterConnectionMetrics(nodeId)
             idleExpiryManager?.update(nodeId, currentTimeNanos)
             try {
-                /* complete any connections that have finished their handshake (either normally or immediately) */
+                // complete any connections that have finished their handshake (either normally or
+                // immediately)
                 if (isImmediatelyConnected || key!!.isConnectable) {
                     if (channel.finishConnect()) {
                         connected.add(nodeId)
@@ -886,7 +907,12 @@ class Selector private constructor(
     private fun openOrClosingChannelOrFail(id: String): KafkaChannel {
         var channel = channels[id]
         if (channel == null) channel = closingChannels[id]
-        checkNotNull(channel) { "Attempt to retrieve channel for which there is no connection. Connection id " + id + " existing connections " + channels.keys }
+
+        checkNotNull(channel) {
+            "Attempt to retrieve channel for which there is no connection. Connection id $id " +
+                    "existing connections ${channels.keys}"
+        }
+
         return channel
     }
 
@@ -898,16 +924,16 @@ class Selector private constructor(
     }
 
     /**
-     * Return the channel associated with this connection or `null` if there is no channel associated with the
-     * connection.
+     * Return the channel associated with this connection or `null` if there is no channel
+     * associated with the connection.
      */
     fun channel(id: String?): KafkaChannel? {
         return channels[id]
     }
 
     /**
-     * Return the channel with the specified id if it was disconnected, but not yet closed
-     * since there are outstanding messages to be processed.
+     * Return the channel with the specified id if it was disconnected, but not yet closed since
+     * there are outstanding messages to be processed.
      */
     fun closingChannel(id: String?): KafkaChannel? {
         return closingChannels[id]
@@ -919,14 +945,14 @@ class Selector private constructor(
      * 2) If idle expiry manager is enabled, return the least recently updated channel
      * 3) Otherwise return any of the channels
      *
-     * This method is used to close a channel to accommodate a new channel on the inter-broker listener
-     * when broker-wide `max.connections` limit is enabled.
+     * This method is used to close a channel to accommodate a new channel on the inter-broker
+     * listener when broker-wide `max.connections` limit is enabled.
      */
     fun lowestPriorityChannel(): KafkaChannel? {
         var channel: KafkaChannel? = null
         if (closingChannels.isNotEmpty()) {
             channel = closingChannels.values.iterator().next()
-        } else if (idleExpiryManager != null && !idleExpiryManager.lruConnections.isEmpty()) {
+        } else if (idleExpiryManager != null && idleExpiryManager.lruConnections.isNotEmpty()) {
             val channelId = idleExpiryManager.lruConnections.keys.iterator().next()
             channel = channel(channelId)
         } else if (channels.isNotEmpty()) {
@@ -957,7 +983,9 @@ class Selector private constructor(
         networkReceive: NetworkReceive,
         currentTimeMs: Long,
     ) {
-        check(!hasCompletedReceive(channel)) { "Attempting to add second completed receive to channel " + channel.id() }
+        check(!hasCompletedReceive(channel)) {
+            "Attempting to add second completed receive to channel " + channel.id()
+        }
         completedReceives[channel.id()] = networkReceive
         sensors.recordCompletedReceive(channel.id(), networkReceive.size().toLong(), currentTimeMs)
     }
@@ -1013,30 +1041,51 @@ class Selector private constructor(
         metricGrpPrefix: String,
         private val metricTags: MutableMap<String, String>,
         private val metricsPerConnection: Boolean
-    ) :
-        AutoCloseable {
+    ) : AutoCloseable {
+
         private val metricGrpName: String
+
         private val perConnectionMetricGrpName: String
+
         val connectionClosed: Sensor
+
         val connectionCreated: Sensor
+
         val successfulAuthentication: Sensor
+
         val successfulReauthentication: Sensor
+
         val successfulAuthenticationNoReauth: Sensor
+
         val reauthenticationLatency: Sensor
+
         val failedAuthentication: Sensor
+
         val failedReauthentication: Sensor
+
         val bytesTransferred: Sensor
+
         val bytesSent: Sensor
+
         val requestsSent: Sensor
+
         val bytesReceived: Sensor
+
         val responsesReceived: Sensor
+
         val selectTime: Sensor
+
         val ioTime: Sensor
+
         val connectionsByCipher: IntGaugeSuite<CipherInformation?>
+
         val connectionsByClient: IntGaugeSuite<ClientInformation?>
 
-        /* Names of metrics that are not registered through sensors */
+        /**
+         * Names of metrics that are not registered through sensors
+         */
         private val topLevelMetricNames: MutableList<MetricName> = ArrayList()
+
         private val sensors: MutableList<Sensor> = ArrayList()
 
         init {
@@ -1088,11 +1137,14 @@ class Selector private constructor(
                     descriptiveName = "successful re-authentication of connections",
                 )
             )
-            successfulAuthenticationNoReauth = sensor("successful-authentication-no-reauth:$tagsSuffix")
+            successfulAuthenticationNoReauth =
+                sensor("successful-authentication-no-reauth:$tagsSuffix")
+
             val successfulAuthenticationNoReauthMetricName = metrics.metricName(
                 "successful-authentication-no-reauth-total",
                 metricGrpName,
-                "The total number of connections with successful authentication where the client does not support re-authentication",
+                "The total number of connections with successful authentication where " +
+                        "the client does not support re-authentication",
                 metricTags,
             )
             successfulAuthenticationNoReauth.add(successfulAuthenticationNoReauthMetricName, CumulativeSum())
@@ -1210,10 +1262,11 @@ class Selector private constructor(
                 )
             )
             metricName = metrics.metricName(
-                "io-wait-time-ns-avg",
-                metricGrpName,
-                "The average length of time the I/O thread spent waiting for a socket ready for reads or writes in nanoseconds.",
-                metricTags
+                name = "io-wait-time-ns-avg",
+                group = metricGrpName,
+                description = "The average length of time the I/O thread spent waiting for a socket " +
+                        "ready for reads or writes in nanoseconds.",
+                tags = metricTags,
             )
             selectTime.add(metricName, Avg())
             selectTime.add(createIOThreadRatioMeterLegacy(metrics, metricGrpName, metricTags, "io-wait", "waiting"))
@@ -1228,44 +1281,49 @@ class Selector private constructor(
             ioTime.add(metricName, Avg())
             ioTime.add(createIOThreadRatioMeterLegacy(metrics, metricGrpName, metricTags, "io", "doing I/O"))
             ioTime.add(createIOThreadRatioMeter(metrics, metricGrpName, metricTags, "io", "doing I/O"))
-            connectionsByCipher = IntGaugeSuite(log, "sslCiphers", metrics,
-                { cipherInformation: CipherInformation? ->
-                    val tags: MutableMap<String?, String?> =
-                        LinkedHashMap()
-                    tags["cipher"] = cipherInformation!!.cipher()
-                    tags["protocol"] = cipherInformation.protocol()
-                    tags.putAll(metricTags)
+            connectionsByCipher = IntGaugeSuite(
+                log = log,
+                suiteName = "sslCiphers",
+                metrics = metrics,
+                metricNameCalculator = { cipherInformation ->
                     metrics.metricName(
-                        "connections",
-                        metricGrpName,
-                        "The number of connections with this SSL cipher and protocol.",
-                        tags
+                        name = "connections",
+                        group = metricGrpName,
+                        description = "The number of connections with this SSL cipher and protocol.",
+                        tags = mapOf(
+                            "cipher" to cipherInformation!!.cipher(),
+                            "protocol" to cipherInformation.protocol(),
+                        ) + metricTags
                     )
                 },
-                100
+                maxEntries = 100,
             )
-            connectionsByClient = IntGaugeSuite(log, "clients", metrics,
-                { clientInformation: ClientInformation? ->
-                    val tags: MutableMap<String?, String?> =
-                        LinkedHashMap()
-                    tags["clientSoftwareName"] = clientInformation!!.softwareName()
-                    tags["clientSoftwareVersion"] = clientInformation.softwareVersion()
-                    tags.putAll(metricTags)
+            connectionsByClient = IntGaugeSuite(
+                log = log,
+                suiteName = "clients",
+                metrics = metrics,
+                metricNameCalculator = { clientInformation ->
                     metrics.metricName(
-                        "connections",
-                        metricGrpName,
-                        "The number of connections with this client and version.",
-                        tags
+                        name = "connections",
+                        group = metricGrpName,
+                        description = "The number of connections with this client and version.",
+                        tags = mapOf(
+                            "clientSoftwareName" to clientInformation!!.softwareName(),
+                            "clientSoftwareVersion" to clientInformation.softwareVersion(),
+                        ) + metricTags,
                     )
                 },
-                100
+                maxEntries = 100,
             )
             metricName = metrics.metricName(
                 "connection-count", metricGrpName, "The current number of active connections.",
                 metricTags
             )
             topLevelMetricNames.add(metricName)
-            metrics.addMetric(metricName) { _, _ -> channels.size.toDouble() }
+            metrics.addMetric(
+                metricName = metricName,
+                metricValueProvider = Measurable { _, _ -> channels.size.toDouble() },
+            )
         }
 
         private fun createMeter(
@@ -1288,7 +1346,16 @@ class Selector private constructor(
                 String.format("The total number of %s", descriptiveName),
                 metricTags
             )
-            return stat?.let { Meter(it, rateMetricName, totalMetricName) } ?: Meter(rateMetricName, totalMetricName)
+            return stat?.let {
+                Meter(
+                    rateMetricName = rateMetricName,
+                    totalMetricName = totalMetricName,
+                    rateStat = it,
+                )
+            } ?: Meter(
+                rateMetricName = rateMetricName,
+                totalMetricName = totalMetricName,
+            )
         }
 
         private fun createMeter(
@@ -1302,10 +1369,13 @@ class Selector private constructor(
         }
 
         /**
-         * This method generates `time-total` metrics but has a couple of deficiencies: no `-ns` suffix and no dash between basename
-         * and `time-toal` suffix.
+         * This method generates `time-total` metrics but has a couple of deficiencies: no `-ns`
+         * suffix and no dash between basename and `time-toal` suffix.
          */
-        @Deprecated("use {{@link #createIOThreadRatioMeter(Metrics, String, Map, String, String)}} for new metrics instead")
+        @Deprecated(
+            message = "use {{@link #createIOThreadRatioMeter(Metrics, String, Map, String, " +
+                    "String)}} for new metrics instead",
+        )
         private fun createIOThreadRatioMeterLegacy(
             metrics: Metrics,
             groupName: String,
@@ -1325,7 +1395,11 @@ class Selector private constructor(
                 String.format("*Deprecated* The total time the I/O thread spent %s", action),
                 metricTags
             )
-            return Meter(TimeUnit.NANOSECONDS, rateMetricName, totalMetricName)
+            return Meter(
+                rateMetricName = rateMetricName,
+                totalMetricName = totalMetricName,
+                unit = TimeUnit.NANOSECONDS,
+            )
         }
 
         private fun createIOThreadRatioMeter(
@@ -1346,11 +1420,19 @@ class Selector private constructor(
                 String.format("The total time the I/O thread spent %s", action),
                 metricTags
             )
-            return Meter(TimeUnit.NANOSECONDS, rateMetricName, totalMetricName)
+            return Meter(
+                rateMetricName = rateMetricName,
+                totalMetricName = totalMetricName,
+                unit = TimeUnit.NANOSECONDS,
+            )
         }
 
         private fun sensor(name: String, vararg parents: Sensor): Sensor {
-            val sensor = metrics.sensor(name, *parents)
+            val sensor = metrics.sensor(
+                name = name,
+                parents = parents
+            )
+
             sensors.add(sensor)
             return sensor
         }
@@ -1425,9 +1507,19 @@ class Selector private constructor(
                     )
                     val nodeTimeName = "node-$connectionId.latency"
                     val nodeRequestTime = sensor(nodeTimeName)
-                    metricName = metrics.metricName("request-latency-avg", perConnectionMetricGrpName, tags)
+
+                    metricName = metrics.metricName(
+                        name = "request-latency-avg",
+                        group = perConnectionMetricGrpName,
+                        tags = tags
+                    )
                     nodeRequestTime.add(metricName, Avg())
-                    metricName = metrics.metricName("request-latency-max", perConnectionMetricGrpName, tags)
+
+                    metricName = metrics.metricName(
+                        name = "request-latency-max",
+                        group = perConnectionMetricGrpName,
+                        tags = tags,
+                    )
                     nodeRequestTime.add(metricName, Max())
                 }
             }
@@ -1545,6 +1637,18 @@ class Selector private constructor(
     // package-private for testing
     fun delayedClosingChannels(): MutableMap<*, *>? {
         return delayedClosingChannels
+    }
+    private enum class CloseMode(// discard any outstanding receives, no disconnect notification
+        var notifyDisconnect: Boolean
+    ) {
+        GRACEFUL(true),
+
+        // process outstanding buffered receives, notify disconnect
+        NOTIFY_ONLY(true),
+
+        // discard any outstanding receives, notify disconnect
+        DISCARD_NO_NOTIFY(false)
+
     }
 
     companion object {

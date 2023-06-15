@@ -14,20 +14,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.common
+
+package org.apache.kafka.common.metrics
 
 /**
- * A metric tracked for monitoring purposes.
+ * An upper or lower bound for metrics.
  */
-interface Metric {
+data class Quota(
+    val bound: Double,
+    val isUpperBound: Boolean,
+) {
 
-    /**
-     * A name for this metric
-     */
-    fun metricName(): MetricName
+    @Deprecated(
+        message = "Use property instead",
+        replaceWith = ReplaceWith("bound")
+    )
+    fun bound(): Double = bound
 
-    /**
-     * The value of the metric, which may be measurable or a non-measurable gauge
-     */
-    fun metricValue(): Any?
+    fun acceptable(value: Double): Boolean {
+        return isUpperBound && value <= bound || !isUpperBound && value >= bound
+    }
+
+    override fun toString(): String {
+        return (if (isUpperBound) "upper=" else "lower=") + bound
+    }
+
+    companion object {
+
+        fun upperBound(upperBound: Double): Quota = Quota(upperBound, true)
+
+        fun lowerBound(lowerBound: Double): Quota = Quota(lowerBound, false)
+    }
 }

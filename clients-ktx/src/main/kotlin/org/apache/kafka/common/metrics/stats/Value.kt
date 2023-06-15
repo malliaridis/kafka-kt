@@ -14,24 +14,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.common.metrics.stats;
 
-import org.apache.kafka.common.metrics.MeasurableStat;
-import org.apache.kafka.common.metrics.MetricConfig;
+package org.apache.kafka.common.metrics.stats
+
+import org.apache.kafka.common.metrics.MeasurableStat
+import org.apache.kafka.common.metrics.MetricConfig
 
 /**
  * An instantaneous value.
  */
-public class Value implements MeasurableStat {
-    private double value = 0;
+class Value : MeasurableStat {
 
-    @Override
-    public double measure(MetricConfig config, long now) {
-        return value;
-    }
+    private var value = 0.0
 
-    @Override
-    public void record(MetricConfig config, double value, long timeMs) {
-        this.value = value;
+    override fun measure(config: MetricConfig, now: Long): Double = value
+
+    override fun record(config: MetricConfig, value: Double, timeMs: Long) {
+        this.value = value
     }
 }

@@ -37,12 +37,8 @@ class SystemTime : Time {
 
     @Throws(InterruptedException::class)
     override fun waitObject(obj: Any, condition: Supplier<Boolean>, deadlineMs: Long) {
-        val lock = ReentrantLock()
-        val lockCondition = lock.newCondition()
-
         lock.withLock {
-            while (true) {
-                if (condition.get()) return
+            while (!condition.get()) {
                 val currentTimeMs = milliseconds()
 
                 if (currentTimeMs >= deadlineMs)
@@ -50,6 +46,12 @@ class SystemTime : Time {
 
                 lockCondition.await(deadlineMs - currentTimeMs, TimeUnit.MILLISECONDS)
             }
+            lockCondition.signalAll()
         }
+    }
+
+    companion object {
+        private val lock = ReentrantLock()
+        private val lockCondition = lock.newCondition()
     }
 }

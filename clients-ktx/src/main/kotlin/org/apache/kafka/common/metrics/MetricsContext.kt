@@ -46,9 +46,9 @@ interface MetricsContext {
     /**
      * Returns the labels for this metrics context.
      *
-     * @return the map of label keys and values; never null but possibly empty
+     * @return the map of label keys and values; never `null` but possibly empty
      */
-    fun contextLabels(): Map<String, String>
+    fun contextLabels(): Map<String, String?>
 
     companion object {
 

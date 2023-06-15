@@ -327,21 +327,32 @@ open class KafkaProducer<K, V> : Producer<K, V> {
             )
             log = logContext.logger(KafkaProducer::class.java)
             log.trace("Starting the Kafka producer")
-            val metricTags = Collections.singletonMap("client-id", clientId)
-            val metricConfig =
-                MetricConfig().samples(config.getInt(ProducerConfig.METRICS_NUM_SAMPLES_CONFIG))
-                    .timeWindow(
-                        config.getLong(ProducerConfig.METRICS_SAMPLE_WINDOW_MS_CONFIG),
-                        TimeUnit.MILLISECONDS
-                    )
-                    .recordLevel(Sensor.RecordingLevel.forName(config.getString(ProducerConfig.METRICS_RECORDING_LEVEL_CONFIG)))
-                    .tags(metricTags)
+
+            val metricConfig = MetricConfig().apply {
+                samples = config.getInt(ProducerConfig.METRICS_NUM_SAMPLES_CONFIG)
+                timeWindowMs = TimeUnit.MILLISECONDS.convert(
+                    config.getLong(ProducerConfig.METRICS_SAMPLE_WINDOW_MS_CONFIG),
+                    TimeUnit.MILLISECONDS
+                )
+                recordingLevel = Sensor.RecordingLevel.forName(
+                    config.getString(ProducerConfig.METRICS_RECORDING_LEVEL_CONFIG)
+                )
+
+                tags = Collections.singletonMap("client-id", clientId)
+            }
+
             val reporters = CommonClientConfigs.metricsReporters(clientId, config)
             val metricsContext: MetricsContext = KafkaMetricsContext(
                 JMX_PREFIX,
                 config.originalsWithPrefix(CommonClientConfigs.METRICS_CONTEXT_PREFIX)
             )
-            metrics = Metrics(metricConfig, reporters, time, metricsContext)
+
+            metrics = Metrics(
+                config = metricConfig,
+                reporters = reporters,
+                time = time,
+                metricsContext = metricsContext,
+            )
             producerMetrics = KafkaProducerMetrics(metrics)
             partitioner = config.getConfiguredInstance(
                 ProducerConfig.PARTITIONER_CLASS_CONFIG,
@@ -349,8 +360,10 @@ open class KafkaProducer<K, V> : Producer<K, V> {
                 Collections.singletonMap<String, Any>(ProducerConfig.CLIENT_ID_CONFIG, clientId)
             )
             warnIfPartitionerDeprecated()
+
             partitionerIgnoreKeys = config.getBoolean(ProducerConfig.PARTITIONER_IGNORE_KEYS_CONFIG)
             val retryBackoffMs = config.getLong(ProducerConfig.RETRY_BACKOFF_MS_CONFIG)
+
             if (keySerializer == null) {
                 this.keySerializer = config.getConfiguredInstance(
                     ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,

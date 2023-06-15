@@ -14,20 +14,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.common
+
+package org.apache.kafka.common.metrics.stats
+
+import org.apache.kafka.common.metrics.MetricConfig
+import kotlin.math.max
 
 /**
- * A metric tracked for monitoring purposes.
+ * A [SampledStat] that gives the max over its samples.
  */
-interface Metric {
+class Max : SampledStat(Double.NEGATIVE_INFINITY) {
 
-    /**
-     * A name for this metric
-     */
-    fun metricName(): MetricName
+    override fun update(sample: Sample, config: MetricConfig?, value: Double, timeMs: Long) {
+        sample.value = max(sample.value, value)
+    }
 
-    /**
-     * The value of the metric, which may be measurable or a non-measurable gauge
-     */
-    fun metricValue(): Any?
+    override fun combine(samples: List<Sample>, config: MetricConfig?, now: Long): Double {
+        var max = Double.NEGATIVE_INFINITY
+        var count: Long = 0
+
+        for (sample in samples) {
+            max = max(max, sample.value)
+            count += sample.eventCount
+        }
+
+        return if (count == 0L) Double.NaN else max
+    }
 }

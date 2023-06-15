@@ -18,16 +18,28 @@
 package org.apache.kafka.common.metrics
 
 /**
- * A measurable quantity that can be registered as a metric
+ * A implementation of MetricsContext, it encapsulates required metrics context properties for Kafka
+ * services and clients.
+ *
+ * @constructor Create a MetricsContext with namespace, service or client properties.
+ * @param namespace value for _namespace key
+ * @property contextLabels contextLabels additional entries to add to the context.
+ * values will be converted to string using Object.toString()
  */
-fun interface Measurable : MetricValueProvider<Double> {
+class KafkaMetricsContext(
+    namespace: String?,
+    contextLabels: Map<String, Any?> = emptyMap(),
+) : MetricsContext {
 
     /**
-     * Measure this quantity and return the result as a double.
-     *
-     * @param config The configuration for this metric
-     * @param now The POSIX time in milliseconds the measurement is being taken
-     * @return The measured value
+     * Client or Service's contextLabels map.
      */
-    fun measure(config: MetricConfig, now: Long): Double
+    private val contextLabels: Map<String, String?>
+
+    init {
+        this.contextLabels = mapOf(MetricsContext.NAMESPACE to namespace) +
+                contextLabels.mapValues { it.value?.toString() }
+    }
+
+    override fun contextLabels(): Map<String, String?> = contextLabels
 }

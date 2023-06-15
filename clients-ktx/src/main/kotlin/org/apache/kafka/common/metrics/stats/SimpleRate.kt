@@ -14,35 +14,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.common.metrics.stats;
 
-import java.util.List;
+package org.apache.kafka.common.metrics.stats
 
-import org.apache.kafka.common.metrics.MetricConfig;
+import org.apache.kafka.common.metrics.MetricConfig
+import kotlin.math.max
 
 /**
- * A {@link SampledStat} that gives the max over its samples.
+ * A simple rate the rate is incrementally calculated
+ * based on the elapsed time between the earliest reading
+ * and now.
+ *
+ * An exception is made for the first window, which is
+ * considered of fixed size. This avoids the issue of
+ * an artificially high rate when the gap between readings
+ * is close to 0.
  */
-public final class Max extends SampledStat {
+class SimpleRate : Rate() {
 
-    public Max() {
-        super(Double.NEGATIVE_INFINITY);
+    override fun windowSize(config: MetricConfig, now: Long): Long {
+        stat.purgeObsoleteSamples(config, now)
+        val elapsed = now - stat.oldest(now).lastWindowMs
+
+        return max(elapsed, config.timeWindowMs)
     }
-
-    @Override
-    protected void update(Sample sample, MetricConfig config, double value, long now) {
-        sample.value = Math.max(sample.value, value);
-    }
-
-    @Override
-    public double combine(List<Sample> samples, MetricConfig config, long now) {
-        double max = Double.NEGATIVE_INFINITY;
-        long count = 0;
-        for (Sample sample : samples) {
-            max = Math.max(max, sample.value);
-            count += sample.eventCount;
-        }
-        return count == 0 ? Double.NaN : max;
-    }
-
 }

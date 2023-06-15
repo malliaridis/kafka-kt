@@ -14,22 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.common.metrics.stats;
 
-import org.apache.kafka.common.metrics.MetricConfig;
+package org.apache.kafka.common.metrics.stats
+
+import org.apache.kafka.common.metrics.MetricConfig
 
 /**
- * A {@link SampledStat} that maintains a simple count of what it has seen.
- * This is a special kind of {@link WindowedSum} that always records a value of {@code 1} instead of the provided value.
- * In other words, it counts the number of
- * {@link WindowedCount#record(MetricConfig, double, long)} invocations,
- * instead of summing the recorded values.
+ * A non-sampled version of [WindowedCount] maintained over all time.
  *
- * See also {@link CumulativeCount} for a non-sampled version of this metric.
+ * This is a special kind of [CumulativeSum] that always records `1` instead of the provided value.
+ * In other words, it counts the number of [CumulativeCount.record] invocations, instead of summing
+ * the recorded values.
  */
-public class WindowedCount extends WindowedSum {
-    @Override
-    protected void update(Sample sample, MetricConfig config, double value, long now) {
-        super.update(sample, config, 1.0, now);
+class CumulativeCount : CumulativeSum() {
+
+    override fun record(config: MetricConfig, value: Double, timeMs: Long) {
+        super.record(config, 1.0, timeMs)
     }
 }

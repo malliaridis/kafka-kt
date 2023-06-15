@@ -57,15 +57,12 @@ interface MetricsReporter : Reconfigurable, AutoCloseable {
     override fun close()
 
     // default methods for backwards compatibility with reporters that only implement Configurable
-    override fun reconfigurableConfigs(): Set<String> {
-        return emptySet()
-    }
+    override fun reconfigurableConfigs(): Set<String> = emptySet()
 
     @Throws(ConfigException::class)
-    override fun validateReconfiguration(configs: Map<String, *>) {
-    }
+    override fun validateReconfiguration(configs: Map<String, *>) = Unit
 
-    override fun reconfigure(configs: Map<String, *>) {}
+    override fun reconfigure(configs: Map<String, *>) = Unit
 
     /**
      * Sets the context labels for the service or library exposing metrics. This will be called
@@ -74,6 +71,5 @@ interface MetricsReporter : Reconfigurable, AutoCloseable {
      * @param metricsContext the metric context
      */
     @Evolving
-    fun contextChange(metricsContext: MetricsContext) {
-    }
+    fun contextChange(metricsContext: MetricsContext) = Unit
 }

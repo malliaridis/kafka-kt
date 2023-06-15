@@ -14,26 +14,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.common.metrics.stats;
 
-import org.apache.kafka.common.metrics.MetricConfig;
+package org.apache.kafka.common.metrics.stats
+
+import org.apache.kafka.common.metrics.MeasurableStat
+import org.apache.kafka.common.metrics.MetricConfig
 
 /**
- * A simple rate the rate is incrementally calculated
- * based on the elapsed time between the earliest reading
- * and now.
+ * An non-sampled cumulative total maintained over all time. This is a non-sampled version of
+ * [WindowedSum].
  *
- * An exception is made for the first window, which is
- * considered of fixed size. This avoids the issue of
- * an artificially high rate when the gap between readings
- * is close to 0.
+ * See also [CumulativeCount] if you just want to increment the value by 1 on each recording.
  */
-public class SimpleRate extends Rate {
+open class CumulativeSum : MeasurableStat {
 
-    @Override
-    public long windowSize(MetricConfig config, long now) {
-        stat.purgeObsoleteSamples(config, now);
-        long elapsed = now - stat.oldest(now).lastWindowMs;
-        return Math.max(elapsed, config.timeWindowMs());
+    private var total: Double
+
+    constructor() {
+        total = 0.0
     }
+
+    constructor(value: Double) {
+        total = value
+    }
+
+    override fun record(config: MetricConfig, value: Double, now: Long) {
+        total += value
+    }
+
+    override fun measure(config: MetricConfig, now: Long): Double = total
+
+    override fun toString(): String = "CumulativeSum(total=$total)"
 }

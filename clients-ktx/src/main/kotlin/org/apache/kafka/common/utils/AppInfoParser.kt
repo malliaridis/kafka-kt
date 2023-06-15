@@ -85,18 +85,18 @@ object AppInfoParser {
         if (metrics == null) return
 
         metrics.addMetric(
-            metricName(metrics, "version"),
-            ImmutableValue(appInfo.version),
+            metricName = metricName(metrics, "version"),
+            metricValueProvider = ImmutableValue(appInfo.version),
         )
 
         metrics.addMetric(
-            metricName(metrics, "commit-id"),
-            ImmutableValue(appInfo.commitId),
+            metricName = metricName(metrics, "commit-id"),
+            metricValueProvider = ImmutableValue(appInfo.commitId),
         )
 
         metrics.addMetric(
-            metricName(metrics, "start-time-ms"),
-            ImmutableValue<Long?>(appInfo.startTimeMs),
+            metricName = metricName(metrics, "start-time-ms"),
+            metricValueProvider = ImmutableValue(appInfo.startTimeMs),
         )
     }
 

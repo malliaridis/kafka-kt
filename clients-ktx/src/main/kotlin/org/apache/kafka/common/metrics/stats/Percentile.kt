@@ -14,36 +14,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.common.metrics.stats;
 
-import java.util.List;
+package org.apache.kafka.common.metrics.stats
 
-import org.apache.kafka.common.metrics.MetricConfig;
+import org.apache.kafka.common.MetricName
 
-/**
- * A {@link SampledStat} that maintains a simple average over its samples.
- */
-public class Avg extends SampledStat {
+data class Percentile(
+    val name: MetricName,
+    val percentile: Double,
+) {
+    @Deprecated(
+        message = "Use property instead",
+        replaceWith = ReplaceWith("name")
+    )
+    fun name(): MetricName = name
 
-    public Avg() {
-        super(0.0);
-    }
-
-    @Override
-    protected void update(Sample sample, MetricConfig config, double value, long now) {
-        sample.value += value;
-    }
-
-    @Override
-    public double combine(List<Sample> samples, MetricConfig config, long now) {
-        double total = 0.0;
-        long count = 0;
-        for (Sample s : samples) {
-            total += s.value;
-            count += s.eventCount;
-        }
-        return count == 0 ? Double.NaN : total / count;
-    }
-
+    @Deprecated(
+        message = "Use property instead",
+        replaceWith = ReplaceWith("percentile")
+    )
+    fun percentile(): Double = percentile
 }
-

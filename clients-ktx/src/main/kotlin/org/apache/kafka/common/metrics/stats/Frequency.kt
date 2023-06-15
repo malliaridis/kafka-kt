@@ -14,53 +14,49 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.common.metrics.stats;
 
+package org.apache.kafka.common.metrics.stats
 
-import org.apache.kafka.common.MetricName;
+import org.apache.kafka.common.MetricName
 
 /**
- * Definition of a frequency metric used in a {@link Frequencies} compound statistic.
+ * Definition of a frequency metric used in a [Frequencies] compound statistic.
+ *
+ * @constructor Create an instance with the given name and center point value.
+ * @property name the name of the frequency metric
+ * @property centerValue the value identifying the [Frequencies] bucket to be reported
  */
-public class Frequency {
-
-    private final MetricName name;
-    private final double centerValue;
-
-    /**
-     * Create an instance with the given name and center point value.
-     *
-     * @param name        the name of the frequency metric; may not be null
-     * @param centerValue the value identifying the {@link Frequencies} bucket to be reported
-     */
-    public Frequency(MetricName name, double centerValue) {
-        this.name = name;
-        this.centerValue = centerValue;
-    }
+data class Frequency(
+    val name: MetricName,
+    val centerValue: Double,
+) {
 
     /**
      * Get the name of this metric.
      *
      * @return the metric name; never null
      */
-    public MetricName name() {
-        return this.name;
-    }
+    @Deprecated(
+        message = "Use property instead",
+        replaceWith = ReplaceWith("name")
+    )
+    fun name(): MetricName = name
 
     /**
      * Get the value of this metrics center point.
      *
      * @return the center point value
      */
-    public double centerValue() {
-        return this.centerValue;
-    }
+    @Deprecated(
+        message = "Use property instead",
+        replaceWith = ReplaceWith("centerValue")
+    )
+    fun centerValue(): Double = centerValue
 
-    @Override
-    public String toString() {
+    override fun toString(): String {
         return "Frequency(" +
-            "name=" + name +
-            ", centerValue=" + centerValue +
-            ')';
+                "name=$name" +
+                ", centerValue=$centerValue" +
+                ')'
     }
 }

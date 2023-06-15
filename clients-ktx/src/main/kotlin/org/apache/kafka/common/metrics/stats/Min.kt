@@ -14,35 +14,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.common.metrics.stats;
 
-import java.util.List;
+package org.apache.kafka.common.metrics.stats
 
-import org.apache.kafka.common.metrics.MetricConfig;
+import org.apache.kafka.common.metrics.MetricConfig
+import kotlin.math.min
 
 /**
- * A {@link SampledStat} that gives the min over its samples.
+ * A [SampledStat] that gives the min over its samples.
  */
-public class Min extends SampledStat {
-
-    public Min() {
-        super(Double.MAX_VALUE);
+class Min : SampledStat(Double.MAX_VALUE) {
+    override fun update(sample: Sample, config: MetricConfig?, value: Double, now: Long) {
+        sample.value = min(sample.value, value)
     }
 
-    @Override
-    protected void update(Sample sample, MetricConfig config, double value, long now) {
-        sample.value = Math.min(sample.value, value);
-    }
-
-    @Override
-    public double combine(List<Sample> samples, MetricConfig config, long now) {
-        double min = Double.MAX_VALUE;
-        long count = 0;
-        for (Sample sample : samples) {
-            min = Math.min(min, sample.value);
-            count += sample.eventCount;
+    override fun combine(samples: List<Sample>, config: MetricConfig?, now: Long): Double {
+        var min = Double.MAX_VALUE
+        var count: Long = 0
+        for (sample in samples) {
+            min = min(min, sample.value)
+            count += sample.eventCount
         }
-        return count == 0 ? Double.NaN : min;
+        return if (count == 0L) Double.NaN else min
     }
-
 }

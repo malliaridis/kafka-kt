@@ -14,27 +14,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.common.metrics.stats;
 
-import org.apache.kafka.common.MetricName;
+package org.apache.kafka.common.metrics.stats
 
-public class Percentile {
+import org.apache.kafka.common.metrics.MetricConfig
 
-    private final MetricName name;
-    private final double percentile;
+/**
+ * A [SampledStat] that maintains the sum of what it has seen. This is a sampled version of
+ * [CumulativeSum].
+ *
+ * See also [WindowedCount] if you want to increment the value by 1 on each recording.
+ */
+open class WindowedSum : SampledStat(0.0) {
 
-    public Percentile(MetricName name, double percentile) {
-        super();
-        this.name = name;
-        this.percentile = percentile;
+    override fun update(sample: Sample, config: MetricConfig?, value: Double, timeMs: Long) {
+        sample.value += value
     }
 
-    public MetricName name() {
-        return this.name;
+    override fun combine(samples: List<Sample>, config: MetricConfig?, now: Long): Double {
+        var total = 0.0
+        for (sample in samples) total += sample.value
+        return total
     }
-
-    public double percentile() {
-        return this.percentile;
-    }
-
 }
