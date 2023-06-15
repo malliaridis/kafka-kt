@@ -15,11 +15,32 @@
  * limitations under the License.
  */
 
-package org.apache.kafka.common.security.kerberors
+package org.apache.kafka.common.network
 
-import java.io.IOException
+data class CipherInformation(
+    val cipher: String,
+    val protocol: String,
+) {
 
-class BadFormatString internal constructor(
-    message: String?,
-    error: Throwable? = null,
-): IOException(message, error)
+    constructor(
+        cipher: String? = null,
+        protocol: String? = null,
+    ) : this(
+        cipher = if (cipher.isNullOrEmpty()) "unknown" else cipher,
+        protocol = if (protocol.isNullOrEmpty()) "unknown" else protocol,
+    )
+
+    @Deprecated(
+        message = "Use property instead",
+        replaceWith = ReplaceWith("cipher")
+    )
+    fun cipher(): String = cipher
+
+    @Deprecated(
+        message = "Use property instead",
+        replaceWith = ReplaceWith("protocol")
+    )
+    fun protocol(): String = protocol
+
+    override fun toString(): String = "CipherInformation(cipher=$cipher, protocol=$protocol)"
+}

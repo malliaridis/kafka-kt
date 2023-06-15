@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.kafka.common.security.kerberors
+package org.apache.kafka.common.security.kerberos
 
 import java.lang.reflect.Method
 import org.apache.kafka.common.KafkaException

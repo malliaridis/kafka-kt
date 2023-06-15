@@ -41,7 +41,7 @@ import org.apache.kafka.common.requests.SaslHandshakeResponse
 import org.apache.kafka.common.security.auth.AuthenticateCallbackHandler
 import org.apache.kafka.common.security.auth.KafkaPrincipal
 import org.apache.kafka.common.security.auth.KafkaPrincipalSerde
-import org.apache.kafka.common.security.kerberors.KerberosError
+import org.apache.kafka.common.security.kerberos.KerberosError
 import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.Time
 import org.apache.kafka.common.utils.Utils
@@ -62,96 +62,6 @@ open class SaslClientAuthenticator(
     private val time: Time,
     logContext: LogContext
 ) : Authenticator {
-
-    /**
-     * The internal state transitions for initial authentication of a channel are declared in order,
-     * starting with [SEND_APIVERSIONS_REQUEST] and ending in either [COMPLETE] or [FAILED].
-     *
-     * Re-authentication of a channel starts with the state
-     * - [REAUTH_PROCESS_ORIG_APIVERSIONS_RESPONSE] and then flows to
-     * - [REAUTH_SEND_HANDSHAKE_REQUEST] followed by
-     * - [REAUTH_RECEIVE_HANDSHAKE_OR_OTHER_RESPONSE] and then
-     * - [REAUTH_INITIAL];
-     *
-     * after that the flow joins the authentication flow at the [INTERMEDIATE] state and ends at
-     * either [COMPLETE] or [FAILED].
-     */
-    enum class SaslState {
-
-        /**
-         * Initial state for authentication: client sends ApiVersionsRequest in this state when
-         * authenticating.
-         */
-        SEND_APIVERSIONS_REQUEST,
-
-        /**
-         * Awaiting ApiVersionsResponse from server.
-         */
-        RECEIVE_APIVERSIONS_RESPONSE,
-
-        /**
-         *
-         * Received ApiVersionsResponse, send SaslHandshake request.
-         */
-        SEND_HANDSHAKE_REQUEST,
-
-        /**
-         * Awaiting SaslHandshake response from server when authenticating.
-         */
-        RECEIVE_HANDSHAKE_RESPONSE,
-
-        /**
-         * Initial authentication state starting SASL token exchange for configured mechanism, send
-         * first token.
-         */
-        INITIAL,
-
-        /**
-         * Intermediate state during SASL token exchange, process challenges and send responses.
-         */
-        INTERMEDIATE,
-
-        /**
-         * Sent response to last challenge. If using SaslAuthenticate, wait for authentication
-         * status from server, else COMPLETE.
-         */
-        CLIENT_COMPLETE,
-
-        /**
-         * Authentication sequence complete. If using SaslAuthenticate, this state implies
-         * successful authentication.
-         */
-        COMPLETE,
-
-        /**
-         * Failed authentication due to an error at some stage.
-         */
-        FAILED,
-
-        /**
-         * Initial state for re-authentication: process ApiVersionsResponse from original
-         * authentication.
-         */
-        REAUTH_PROCESS_ORIG_APIVERSIONS_RESPONSE,
-
-        /**
-         * Processed original ApiVersionsResponse, send SaslHandshake request as part of
-         * re-authentication.
-         */
-        REAUTH_SEND_HANDSHAKE_REQUEST,
-
-        /**
-         * Awaiting SaslHandshake response from server when re-authenticating, and may receive
-         * other, in-flight responses sent prior to start of re-authentication as well.
-         */
-        REAUTH_RECEIVE_HANDSHAKE_OR_OTHER_RESPONSE,
-
-        /**
-         * Initial re-authentication state starting SASL token exchange for configured mechanism,
-         * send first token.
-         */
-        REAUTH_INITIAL
-    }
 
     private val saslClient: SaslClient
 
@@ -784,6 +694,96 @@ open class SaslClientAuthenticator(
         private fun authenticationOrReauthenticationText(): String {
             return if (isReauthenticating) "re-authentication" else "authentication"
         }
+    }
+
+    /**
+     * The internal state transitions for initial authentication of a channel are declared in order,
+     * starting with [SEND_APIVERSIONS_REQUEST] and ending in either [COMPLETE] or [FAILED].
+     *
+     * Re-authentication of a channel starts with the state
+     * - [REAUTH_PROCESS_ORIG_APIVERSIONS_RESPONSE] and then flows to
+     * - [REAUTH_SEND_HANDSHAKE_REQUEST] followed by
+     * - [REAUTH_RECEIVE_HANDSHAKE_OR_OTHER_RESPONSE] and then
+     * - [REAUTH_INITIAL];
+     *
+     * after that the flow joins the authentication flow at the [INTERMEDIATE] state and ends at
+     * either [COMPLETE] or [FAILED].
+     */
+    enum class SaslState {
+
+        /**
+         * Initial state for authentication: client sends ApiVersionsRequest in this state when
+         * authenticating.
+         */
+        SEND_APIVERSIONS_REQUEST,
+
+        /**
+         * Awaiting ApiVersionsResponse from server.
+         */
+        RECEIVE_APIVERSIONS_RESPONSE,
+
+        /**
+         *
+         * Received ApiVersionsResponse, send SaslHandshake request.
+         */
+        SEND_HANDSHAKE_REQUEST,
+
+        /**
+         * Awaiting SaslHandshake response from server when authenticating.
+         */
+        RECEIVE_HANDSHAKE_RESPONSE,
+
+        /**
+         * Initial authentication state starting SASL token exchange for configured mechanism, send
+         * first token.
+         */
+        INITIAL,
+
+        /**
+         * Intermediate state during SASL token exchange, process challenges and send responses.
+         */
+        INTERMEDIATE,
+
+        /**
+         * Sent response to last challenge. If using SaslAuthenticate, wait for authentication
+         * status from server, else COMPLETE.
+         */
+        CLIENT_COMPLETE,
+
+        /**
+         * Authentication sequence complete. If using SaslAuthenticate, this state implies
+         * successful authentication.
+         */
+        COMPLETE,
+
+        /**
+         * Failed authentication due to an error at some stage.
+         */
+        FAILED,
+
+        /**
+         * Initial state for re-authentication: process ApiVersionsResponse from original
+         * authentication.
+         */
+        REAUTH_PROCESS_ORIG_APIVERSIONS_RESPONSE,
+
+        /**
+         * Processed original ApiVersionsResponse, send SaslHandshake request as part of
+         * re-authentication.
+         */
+        REAUTH_SEND_HANDSHAKE_REQUEST,
+
+        /**
+         * Awaiting SaslHandshake response from server when re-authenticating, and may receive
+         * other, in-flight responses sent prior to start of re-authentication as well.
+         */
+        REAUTH_RECEIVE_HANDSHAKE_OR_OTHER_RESPONSE,
+
+        /**
+         * Initial re-authentication state starting SASL token exchange for configured mechanism,
+         * send first token.
+         */
+        REAUTH_INITIAL
     }
 
     companion object {

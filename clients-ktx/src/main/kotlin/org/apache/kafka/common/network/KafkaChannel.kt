@@ -15,118 +15,68 @@ import org.apache.kafka.common.security.auth.KafkaPrincipalSerde
 import org.apache.kafka.common.utils.Utils
 
 /**
- * A Kafka connection either existing on a client (which could be a broker in an
- * inter-broker scenario) and representing the channel to a remote broker or the
- * reverse (existing on a broker and representing the channel to a remote
- * client, which could be a broker in an inter-broker scenario).
- *
+ * A Kafka connection either existing on a client (which could be a broker in an inter-broker
+ * scenario) and representing the channel to a remote broker or the reverse (existing on a broker
+ * and representing the channel to a remote client, which could be a broker in an inter-broker
+ * scenario).
  *
  * Each instance has the following:
  *
- *  * a unique ID identifying it in the `KafkaClient` instance via which
- * the connection was made on the client-side or in the instance where it was
- * accepted on the server-side
- *  * a reference to the underlying [TransportLayer] to allow reading and
- * writing
- *  * an [Authenticator] that performs the authentication (or
- * re-authentication, if that feature is enabled and it applies to this
- * connection) by reading and writing directly from/to the same
- * [TransportLayer].
- *  * a [MemoryPool] into which responses are read (typically the JVM
- * heap for clients, though smaller pools can be used for brokers and for
- * testing out-of-memory scenarios)
- *  * a [NetworkReceive] representing the current incomplete/in-progress
- * request (from the server-side perspective) or response (from the client-side
- * perspective) being read, if applicable; or a non-null value that has had no
- * data read into it yet or a null value if there is no in-progress
- * request/response (either could be the case)
- *  * a [Send] representing the current request (from the client-side
- * perspective) or response (from the server-side perspective) that is either
- * waiting to be sent or partially sent, if applicable, or null
- *  * a [ChannelMuteState] to document if the channel has been muted due
- * to memory pressure or other reasons
+ * - a unique ID identifying it in the `KafkaClient` instance via which the connection was made on
+ *   the client-side or in the instance where it was accepted on the server-side
+ * - a reference to the underlying [TransportLayer] to allow reading and writing
+ * - an [Authenticator] that performs the authentication (or re-authentication, if that feature is
+ *   enabled and it applies to this connection) by reading and writing directly from/to the same
+ *   [TransportLayer].
+ * - a [MemoryPool] into which responses are read (typically the JVM heap for clients, though
+ *   smaller pools can be used for brokers and for testing out-of-memory scenarios)
+ * - a [NetworkReceive] representing the current incomplete/in-progress request (from the
+ *   server-side perspective) or response (from the client-side perspective) being read, if
+ *   applicable; or a non-null value that has had no data read into it yet or a null value if there
+ *   is no in-progress request/response (either could be the case)
+ * - a [Send] representing the current request (from the client-side perspective) or response (from
+ *   the server-side perspective) that is either waiting to be sent or partially sent, if
+ *   applicable, or null
+ * - a [ChannelMuteState] to document if the channel has been muted due to memory pressure or other
+ *   reasons
  *
  */
 open class KafkaChannel(
-    private val id: String,
+    val id: String,
     private val transportLayer: TransportLayer,
     private val authenticatorCreator: Supplier<Authenticator>,
     private val maxReceiveSize: Int,
     private val memoryPool: MemoryPool,
-    private val metadataRegistry: ChannelMetadataRegistry
+    private val metadataRegistry: ChannelMetadataRegistry?
 ) : AutoCloseable {
 
-    /**
-     * Mute States for KafkaChannel:
-     *
-     *  *  NOT_MUTED: Channel is not muted. This is the default state.
-     *  *  MUTED: Channel is muted. Channel must be in this state to be unmuted.
-     *  *  MUTED_AND_RESPONSE_PENDING: (SocketServer only) Channel is muted and SocketServer has not sent a response
-     * back to the client yet (acks != 0) or is currently waiting to receive a
-     * response from the API layer (acks == 0).
-     *  *  MUTED_AND_THROTTLED: (SocketServer only) Channel is muted and throttling is in progress due to quota
-     * violation.
-     *  *  MUTED_AND_THROTTLED_AND_RESPONSE_PENDING: (SocketServer only) Channel is muted, throttling is in progress,
-     * and a response is currently pending.
-     *
-     */
-    enum class ChannelMuteState {
-        NOT_MUTED,
-        MUTED,
-        MUTED_AND_RESPONSE_PENDING,
-        MUTED_AND_THROTTLED,
-        MUTED_AND_THROTTLED_AND_RESPONSE_PENDING
-    }
-
-    /** Socket server events that will change the mute state:
-     *
-     *  *  REQUEST_RECEIVED: A request has been received from the client.
-     *  *  RESPONSE_SENT: A response has been sent out to the client (ack != 0) or SocketServer has heard back from
-     * the API layer (acks = 0)
-     *  *  THROTTLE_STARTED: Throttling started due to quota violation.
-     *  *  THROTTLE_ENDED: Throttling ended.
-     *
-     *
-     * Valid transitions on each event are:
-     *
-     *  *  REQUEST_RECEIVED: MUTED => MUTED_AND_RESPONSE_PENDING
-     *  *  RESPONSE_SENT:    MUTED_AND_RESPONSE_PENDING => MUTED, MUTED_AND_THROTTLED_AND_RESPONSE_PENDING =>
-     *  MUTED_AND_THROTTLED
-     *  *  THROTTLE_STARTED: MUTED_AND_RESPONSE_PENDING => MUTED_AND_THROTTLED_AND_RESPONSE_PENDING
-     *  *  THROTTLE_ENDED:   MUTED_AND_THROTTLED => MUTED, MUTED_AND_THROTTLED_AND_RESPONSE_PENDING =>
-     *  MUTED_AND_RESPONSE_PENDING
-     *
-     */
-    enum class ChannelMuteEvent {
-        REQUEST_RECEIVED,
-        RESPONSE_SENT,
-        THROTTLE_STARTED,
-        THROTTLE_ENDED
-    }
-
-    private var authenticator: Authenticator
+    private var authenticator: Authenticator = authenticatorCreator.get()
 
     // Tracks accumulated network thread time. This is updated on the network thread.
     // The values are read and reset after each response is sent.
     private var networkThreadTimeNanos = 0L
+
     private var receive: NetworkReceive? = null
+
     private var send: NetworkSend? = null
 
     // Track connection and mute state of channels to enable outstanding requests on channels to be
     // processed after the channel is disconnected.
     private var disconnected = false
-    private var muteState: ChannelMuteState
-    private var state: ChannelState
-    private var remoteAddress: SocketAddress? = null
-    private var successfulAuthentications = 0
-    private var midWrite = false
-    private var lastReauthenticationStartNanos: Long = 0
 
-    init {
-        authenticator = authenticatorCreator.get()
-        muteState = ChannelMuteState.NOT_MUTED
-        state = ChannelState.NOT_CONNECTED
-    }
+    var muteState: ChannelMuteState = ChannelMuteState.NOT_MUTED
+        private set
+
+    var state: ChannelState = ChannelState.NOT_CONNECTED
+
+    private var remoteAddress: SocketAddress? = null
+
+    var successfulAuthentications = 0
+        private set
+
+    private var midWrite = false
+
+    private var lastReauthenticationStartNanos: Long = 0
 
     @Throws(IOException::class)
     override fun close() {
@@ -188,13 +138,16 @@ open class KafkaChannel(
         transportLayer.disconnect()
     }
 
+    @Deprecated("Use property instead")
     fun state(state: ChannelState) {
         this.state = state
     }
 
-    fun state(): ChannelState {
-        return state
-    }
+    @Deprecated(
+        message = "Use property instead",
+        replaceWith = ReplaceWith("state")
+    )
+    fun state(): ChannelState = state
 
     @Throws(IOException::class)
     fun finishConnect(): Boolean {
@@ -220,13 +173,13 @@ open class KafkaChannel(
     val isConnected: Boolean
         get() = transportLayer.isConnected
 
-    fun id(): String {
-        return id
-    }
+    @Deprecated(
+        message = "Use property instead",
+        replaceWith = ReplaceWith("id")
+    )
+    fun id(): String = id
 
-    fun selectionKey(): SelectionKey {
-        return transportLayer.selectionKey()
-    }
+    fun selectionKey(): SelectionKey = transportLayer.selectionKey()
 
     /**
      * externally muting a channel should be done via selector to ensure proper state handling
@@ -291,17 +244,18 @@ open class KafkaChannel(
         check(stateChanged) { "Cannot transition from " + muteState.name + " for " + event.name }
     }
 
-    fun muteState(): ChannelMuteState {
-        return muteState
-    }
+    @Deprecated(
+        message = "Use property instead",
+        replaceWith = ReplaceWith("muteState")
+    )
+    fun muteState(): ChannelMuteState = muteState
 
     /**
      * Delay channel close on authentication failure. This will remove all read/write operations from the channel until
      * [completeCloseOnAuthenticationFailure] is called to finish up the channel close.
      */
-    private fun delayCloseOnAuthenticationFailure() {
+    private fun delayCloseOnAuthenticationFailure() =
         transportLayer.removeInterestOps(SelectionKey.OP_WRITE)
-    }
 
     /**
      * Finish up any processing on [prepare] failure.
@@ -314,36 +268,35 @@ open class KafkaChannel(
         authenticator.handleAuthenticationFailure()
     }
 
+    /**
+     * Returns true if this channel has been explicitly muted using [KafkaChannel.mute]
+     */
     val isMuted: Boolean
-        /**
-         * Returns true if this channel has been explicitly muted using [KafkaChannel.mute]
-         */
         get() = muteState != ChannelMuteState.NOT_MUTED
+
     val isInMutableState: Boolean
-        get() =//some requests do not require memory, so if we do not know what the current (or future) request is
+        //some requests do not require memory, so if we do not know what the current (or future) request is
         //(receive == null) we dont mute. we also dont mute if whatever memory required has already been
         //successfully allocated (if none is required for the currently-being-read request
-            //receive.memoryAllocated() is expected to return true)
-            if (receive == null || receive!!.memoryAllocated()) false else transportLayer.ready()
-    //also cannot mute if underlying transport is not in the ready state
+        //receive.memoryAllocated() is expected to return true)
+        //also cannot mute if underlying transport is not in the ready state
+        get() =
+            if (receive == null || receive!!.memoryAllocated()) false
+            else transportLayer.ready()
 
-    fun ready(): Boolean {
-        return transportLayer.ready() && authenticator.complete()
-    }
+    fun ready(): Boolean = transportLayer.ready() && authenticator.complete()
 
-    fun hasSend(): Boolean {
-        return send != null
-    }
+    fun hasSend(): Boolean = send != null
 
     /**
-     * Returns the address to which this channel's socket is connected or `null` if the socket has never been connected.
+     * Returns the address to which this channel's socket is connected or `null` if the socket has
+     * never been connected.
      *
-     * If the socket was connected prior to being closed, then this method will continue to return the
-     * connected address after the socket is closed.
+     * If the socket was connected prior to being closed, then this method will continue to return
+     * the connected address after the socket is closed.
      */
-    fun socketAddress(): InetAddress? {
-        return transportLayer.socketChannel()?.socket()?.inetAddress
-    }
+    fun socketAddress(): InetAddress? =
+        transportLayer.socketChannel()?.socket()?.inetAddress
 
     fun socketDescription(): String {
         val socket = transportLayer.socketChannel()?.socket()
@@ -352,7 +305,8 @@ open class KafkaChannel(
 
     fun setSend(send: NetworkSend?) {
         check(this.send == null) {
-            "Attempt to begin a send operation with prior send operation still in progress, connection id is $id"
+            "Attempt to begin a send operation with prior send operation still in progress, " +
+                    "connection id is $id"
         }
         this.send = send
         transportLayer.addInterestOps(SelectionKey.OP_WRITE)
@@ -372,15 +326,14 @@ open class KafkaChannel(
 
     @Throws(IOException::class)
     fun read(): Long {
-        if (receive == null) {
-            receive = NetworkReceive(
-                source = id,
-                maxSize = maxReceiveSize,
-                memoryPool = memoryPool,
-            )
-        }
+        val receive = receive ?: NetworkReceive(
+            source = id,
+            maxSize = maxReceiveSize,
+            memoryPool = memoryPool,
+        ).also { receive = it }
+
         val bytesReceived = receive(receive)
-        if (receive!!.requiredMemoryAmountKnown() && !receive!!.memoryAllocated() && isInMutableState) {
+        if (receive.requiredMemoryAmountKnown() && !receive.memoryAllocated() && isInMutableState) {
             //pool must be out of memory, mute ourselves.
             mute()
         }
@@ -404,9 +357,9 @@ open class KafkaChannel(
 
     @Throws(IOException::class)
     fun write(): Long {
-        if (send == null) return 0
+        val send = send ?: return 0
         midWrite = true
-        return send!!.writeTo(transportLayer)
+        return send.writeTo(transportLayer)
     }
 
     /**
@@ -445,77 +398,63 @@ open class KafkaChannel(
     }
 
     /**
-     * @return true if underlying transport has bytes remaining to be read from any underlying intermediate buffers.
+     * @return true if underlying transport has bytes remaining to be read from any underlying
+     * intermediate buffers.
      */
     fun hasBytesBuffered(): Boolean {
         return transportLayer.hasBytesBuffered()
     }
 
     override fun equals(other: Any?): Boolean {
-        if (this === other) {
-            return true
-        }
-        if (other == null || javaClass != other.javaClass) {
-            return false
-        }
-        val that = other as KafkaChannel
-        return id == that.id
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+        other as KafkaChannel
+        return id == other.id
     }
 
-    override fun hashCode(): Int {
-        return id.hashCode()
-    }
+    override fun hashCode(): Int = id.hashCode()
 
-    override fun toString(): String {
-        return super.toString() + " id=" + id
-    }
+    override fun toString(): String = "${super.toString()} id=$id"
 
     /**
-     * Return the number of times this instance has successfully authenticated. This
-     * value can only exceed 1 when re-authentication is enabled and it has
-     * succeeded at least once.
+     * Return the number of times this instance has successfully authenticated. This value can only
+     * exceed 1 when re-authentication is enabled and it has succeeded at least once.
      *
      * @return the number of times this instance has successfully authenticated
      */
-    fun successfulAuthentications(): Int {
-        return successfulAuthentications
-    }
+    @Deprecated(
+        message = "Use property instead",
+        replaceWith = ReplaceWith("successfulAuthentications")
+    )
+    fun successfulAuthentications(): Int = successfulAuthentications
 
     /**
-     * If this is a server-side connection that has an expiration time and at least
-     * 1 second has passed since the prior re-authentication (if any) started then
-     * begin the process of re-authenticating the connection and return true,
-     * otherwise return false
+     * If this is a server-side connection that has an expiration time and at least 1 second has
+     * passed since the prior re-authentication (if any) started then begin the process of
+     * re-authenticating the connection and return `true`, otherwise return `false`.
      *
-     * @param saslHandshakeNetworkReceive
-     * the mandatory [NetworkReceive] containing the
-     * `SaslHandshakeRequest` that has been received on the server
-     * and that initiates re-authentication.
-     * @param nowNanosSupplier
-     * `Supplier` of the current time. The value must be in
-     * nanoseconds as per `System.nanoTime()` and is therefore only
-     * useful when compared to such a value -- it's absolute value is
-     * meaningless.
-     *
-     * @return true if this is a server-side connection that has an expiration time
-     * and at least 1 second has passed since the prior re-authentication
-     * (if any) started to indicate that the re-authentication process has
-     * begun, otherwise false
-     * @throws AuthenticationException
-     * if re-authentication fails due to invalid credentials or other
-     * security configuration errors
-     * @throws IOException
-     * if read/write fails due to an I/O error
-     * @throws IllegalStateException
-     * if this channel is not "ready"
+     * @param saslHandshakeNetworkReceive the mandatory [NetworkReceive] containing the
+     * `SaslHandshakeRequest` that has been received on the server and that initiates
+     * re-authentication.
+     * @param nowNanosSupplier `Supplier` of the current time. The value must be in nanoseconds as
+     * per `System.nanoTime()` and is therefore only useful when compared to such a value -- it's
+     * absolute value is meaningless.
+     * @return true if this is a server-side connection that has an expiration time and at least 1
+     * second has passed since the prior re-authentication (if any) started to indicate that the
+     * re-authentication process has begun, otherwise `false`
+     * @throws AuthenticationException if re-authentication fails due to invalid credentials or
+     * other security configuration errors
+     * @throws IOException if read/write fails due to an I/O error
+     * @throws IllegalStateException if this channel is not "ready"
      */
     @Throws(AuthenticationException::class, IOException::class)
     fun maybeBeginServerReauthentication(
-        saslHandshakeNetworkReceive: NetworkReceive?,
+        saslHandshakeNetworkReceive: NetworkReceive,
         nowNanosSupplier: Supplier<Long>
     ): Boolean {
         check(ready()) {
-            "KafkaChannel should be \"ready\" when processing SASL Handshake for potential re-authentication"
+            "KafkaChannel should be \"ready\" when processing SASL Handshake for potential " +
+                    "re-authentication"
         }
 
         /*
@@ -537,40 +476,39 @@ open class KafkaChannel(
          * Cannot re-authenticate more than once every second; an attempt to do so will
          * result in the SASL handshake network receive being processed normally, which
          * results in a failure result being sent to the client.
-         */if (lastReauthenticationStartNanos != 0L
+         */
+        if (
+            lastReauthenticationStartNanos != 0L
             && nowNanos - lastReauthenticationStartNanos < MIN_REAUTH_INTERVAL_ONE_SECOND_NANOS
         ) return false
 
         lastReauthenticationStartNanos = nowNanos
         swapAuthenticatorsAndBeginReauthentication(
-            ReauthenticationContext(authenticator, saslHandshakeNetworkReceive, nowNanos)
+            ReauthenticationContext(
+                previousAuthenticator = authenticator,
+                networkReceive = saslHandshakeNetworkReceive,
+                reauthenticationBeginNanos = nowNanos,
+            )
         )
         return true
     }
 
     /**
-     * If this is a client-side connection that is not muted, there is no
-     * in-progress write, and there is a session expiration time defined that has
-     * past then begin the process of re-authenticating the connection and return
-     * true, otherwise return false
+     * If this is a client-side connection that is not muted, there is no in-progress write, and
+     * there is a session expiration time defined that has past then begin the process of
+     * re-authenticating the connection and return `true`, otherwise return `false`
      *
-     * @param nowNanosSupplier
-     * `Supplier` of the current time. The value must be in
-     * nanoseconds as per `System.nanoTime()` and is therefore only
-     * useful when compared to such a value -- it's absolute value is
-     * meaningless.
+     * @param nowNanosSupplier `Supplier` of the current time. The value must be in nanoseconds as
+     * per `System.nanoTime()` and is therefore only useful when compared to such a value -- it's
+     * absolute value is meaningless.
      *
-     * @return true if this is a client-side connection that is not muted, there is
-     * no in-progress write, and there is a session expiration time defined
-     * that has past to indicate that the re-authentication process has
-     * begun, otherwise false
-     * @throws AuthenticationException
-     * if re-authentication fails due to invalid credentials or other
-     * security configuration errors
-     * @throws IOException
-     * if read/write fails due to an I/O error
-     * @throws IllegalStateException
-     * if this channel is not "ready"
+     * @return true if this is a client-side connection that is not muted, there is no in-progress
+     * write, and there is a session expiration time defined that has past to indicate that the
+     * re-authentication process has begun, otherwise false
+     * @throws AuthenticationException if re-authentication fails due to invalid credentials or
+     * other security configuration errors
+     * @throws IOException if read/write fails due to an I/O error
+     * @throws IllegalStateException if this channel is not "ready"
      */
     @Throws(AuthenticationException::class, IOException::class)
     fun maybeBeginClientReauthentication(nowNanosSupplier: Supplier<Long>): Boolean {
@@ -588,32 +526,35 @@ open class KafkaChannel(
          */
         val nowNanos = nowNanosSupplier.get()
         if (nowNanos < reAuthenticationNanos) return false
-        swapAuthenticatorsAndBeginReauthentication(ReauthenticationContext(authenticator, receive, nowNanos))
+        swapAuthenticatorsAndBeginReauthentication(
+            ReauthenticationContext(
+                previousAuthenticator = authenticator,
+                networkReceive = receive,
+                reauthenticationBeginNanos = nowNanos
+            )
+        )
         receive = null
         return true
     }
 
     /**
-     * Return the number of milliseconds that elapsed while re-authenticating this
-     * session from the perspective of this instance, if applicable, otherwise null.
-     * The server-side perspective will yield a lower value than the client-side
-     * perspective of the same re-authentication because the client-side observes an
-     * additional network round-trip.
+     * Return the number of milliseconds that elapsed while re-authenticating this session from the
+     * perspective of this instance, if applicable, otherwise `null`. The server-side perspective
+     * will yield a lower value than the client-side perspective of the same re-authentication
+     * because the client-side observes an additional network round-trip.
      *
-     * @return the number of milliseconds that elapsed while re-authenticating this
-     * session from the perspective of this instance, if applicable,
-     * otherwise null
+     * @return the number of milliseconds that elapsed while re-authenticating this session from the
+     * perspective of this instance, if applicable, otherwise `null`
      */
     fun reauthenticationLatencyMs(): Long? = authenticator.reauthenticationLatencyMs()
 
     /**
-     * Return true if this is a server-side channel and the given time is past the
-     * session expiration time, if any, otherwise false
+     * Return true if this is a server-side channel and the given time is past the session
+     * expiration time, if any, otherwise false
      *
-     * @param nowNanos
-     * the current time in nanoseconds as per `System.nanoTime()`
-     * @return true if this is a server-side channel and the given time is past the
-     * session expiration time, if any, otherwise false
+     * @param nowNanos the current time in nanoseconds as per `System.nanoTime()`
+     * @return true if this is a server-side channel and the given time is past the session
+     * expiration time, if any, otherwise false
      */
     fun serverAuthenticationSessionExpired(nowNanos: Long): Boolean {
         val serverSessionExpirationTimeNanos = authenticator.serverSessionExpirationTimeNanos()
@@ -621,27 +562,25 @@ open class KafkaChannel(
     }
 
     /**
-     * Return the (always non-null but possibly empty) client-side
-     * [NetworkReceive] response that arrived during re-authentication but
-     * is unrelated to re-authentication. This corresponds to a request sent
-     * prior to the beginning of re-authentication; the request was made when the
-     * channel was successfully authenticated, and the response arrived during the
-     * re-authentication process.
+     * Return the (always non-null but possibly empty) client-side [NetworkReceive] response that
+     * arrived during re-authentication but is unrelated to re-authentication. This corresponds to a
+     * request sent prior to the beginning of re-authentication; the request was made when the
+     * channel was successfully authenticated, and the response arrived during the re-authentication
+     * process.
      *
-     * @return client-side [NetworkReceive] response that arrived during
-     * re-authentication that is unrelated to re-authentication. This may
-     * be empty.
+     * @return client-side [NetworkReceive] response that arrived during re-authentication that is
+     * unrelated to re-authentication. This may be empty.
      */
     fun pollResponseReceivedDuringReauthentication(): NetworkReceive? {
         return authenticator.pollResponseReceivedDuringReauthentication()
     }
 
     /**
-     * Return true if this is a server-side channel and the connected client has
-     * indicated that it supports re-authentication, otherwise false
+     * Return true if this is a server-side channel and the connected client has indicated that it
+     * supports re-authentication, otherwise `false`
      *
-     * @return true if this is a server-side channel and the connected client has
-     * indicated that it supports re-authentication, otherwise false
+     * @return true if this is a server-side channel and the connected client has indicated that it
+     * supports re-authentication, otherwise `false`
      */
     fun connectedClientSupportsReauthentication(): Boolean {
         return authenticator.connectedClientSupportsReauthentication()
@@ -655,8 +594,51 @@ open class KafkaChannel(
         authenticator.reauthenticate(reauthenticationContext)
     }
 
-    fun channelMetadataRegistry(): ChannelMetadataRegistry {
-        return metadataRegistry
+    fun channelMetadataRegistry(): ChannelMetadataRegistry? = metadataRegistry
+
+    /**
+     * Mute States for KafkaChannel:
+     *
+     * - NOT_MUTED: Channel is not muted. This is the default state.
+     * - MUTED: Channel is muted. Channel must be in this state to be unmuted.
+     * - MUTED_AND_RESPONSE_PENDING: (SocketServer only) Channel is muted and SocketServer has not
+     *   sent a response back to the client yet (acks != 0) or is currently waiting to receive a
+     *   response from the API layer (acks == 0).
+     * - MUTED_AND_THROTTLED: (SocketServer only) Channel is muted and throttling is in progress due
+     *   to quota violation.
+     * - MUTED_AND_THROTTLED_AND_RESPONSE_PENDING: (SocketServer only) Channel is muted, throttling
+     *   is in progress, and a response is currently pending.
+     */
+    enum class ChannelMuteState {
+        NOT_MUTED,
+        MUTED,
+        MUTED_AND_RESPONSE_PENDING,
+        MUTED_AND_THROTTLED,
+        MUTED_AND_THROTTLED_AND_RESPONSE_PENDING
+    }
+
+    /** Socket server events that will change the mute state:
+     *
+     * - REQUEST_RECEIVED: A request has been received from the client.
+     * - RESPONSE_SENT: A response has been sent out to the client (ack != 0) or SocketServer has
+     *   heard back from the API layer (acks = 0)
+     * - THROTTLE_STARTED: Throttling started due to quota violation.
+     * - THROTTLE_ENDED: Throttling ended.
+     *
+     * Valid transitions on each event are:
+     *
+     * - REQUEST_RECEIVED: MUTED => MUTED_AND_RESPONSE_PENDING
+     * - RESPONSE_SENT:    MUTED_AND_RESPONSE_PENDING => MUTED,
+     *   MUTED_AND_THROTTLED_AND_RESPONSE_PENDING =>  MUTED_AND_THROTTLED
+     * - THROTTLE_STARTED: MUTED_AND_RESPONSE_PENDING => MUTED_AND_THROTTLED_AND_RESPONSE_PENDING
+     * - THROTTLE_ENDED:   MUTED_AND_THROTTLED => MUTED, MUTED_AND_THROTTLED_AND_RESPONSE_PENDING =>
+     *   MUTED_AND_RESPONSE_PENDING
+     */
+    enum class ChannelMuteEvent {
+        REQUEST_RECEIVED,
+        RESPONSE_SENT,
+        THROTTLE_STARTED,
+        THROTTLE_ENDED
     }
 
     companion object {

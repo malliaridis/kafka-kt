@@ -14,40 +14,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.common.network;
 
-import java.io.IOException;
+package org.apache.kafka.common.network
 
-public class NetworkSend implements Send {
-    private final String destinationId;
-    private final Send send;
+class DefaultChannelMetadataRegistry : ChannelMetadataRegistry {
 
-    public NetworkSend(String destinationId, Send send) {
-        this.destinationId = destinationId;
-        this.send = send;
+    private var cipherInformation: CipherInformation? = null
+
+    private var clientInformation: ClientInformation? = null
+
+    override fun registerCipherInformation(cipherInformation: CipherInformation?) {
+        if (this.cipherInformation != null)
+            this.cipherInformation = cipherInformation
     }
 
-    public String destinationId() {
-        return destinationId;
+    override fun cipherInformation(): CipherInformation? = cipherInformation
+
+    override fun registerClientInformation(clientInformation: ClientInformation?) {
+        this.clientInformation = clientInformation
     }
 
-    public Send send() {
-        return send;
-    }
+    override fun clientInformation(): ClientInformation? = clientInformation
 
-    @Override
-    public boolean completed() {
-        return send.completed();
+    override fun close() {
+        cipherInformation = null
+        clientInformation = null
     }
-
-    @Override
-    public long writeTo(TransferableChannel channel) throws IOException {
-        return send.writeTo(channel);
-    }
-
-    @Override
-    public long size() {
-        return send.size();
-    }
-
 }

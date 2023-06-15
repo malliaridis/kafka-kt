@@ -15,8 +15,35 @@
  * limitations under the License.
  */
 
-package org.apache.kafka.common.security.kerberors
+package org.apache.kafka.common.network
 
 import java.io.IOException
 
-class NoMatchingRule internal constructor(message: String?) : IOException(message)
+class NetworkSend(
+    val destinationId: String,
+    val send: Send
+) : Send {
+
+    @Deprecated(
+        message = "Use property instead",
+        replaceWith = ReplaceWith("destinationId")
+    )
+    fun destinationId(): String = destinationId
+
+    @Deprecated(
+        message = "Use property instead",
+        replaceWith = ReplaceWith("send")
+    )
+    fun send(): Send = send
+
+    override fun completed(): Boolean = send.completed()
+
+    @Throws(IOException::class)
+    override fun writeTo(channel: TransferableChannel): Long {
+        return send.writeTo(channel)
+    }
+
+    override fun size(): Long {
+        return send.size()
+    }
+}

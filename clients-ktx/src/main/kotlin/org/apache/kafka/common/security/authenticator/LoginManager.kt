@@ -226,11 +226,8 @@ class LoginManager private constructor(
                     val loginMetadata =
                         LoginMetadata(jaasContext.name, loginClass, loginCallbackClass, configs)
 
-                    loginManager = STATIC_INSTANCES[loginMetadata]
-                    if (loginManager == null) {
-                        loginManager =
-                            LoginManager(jaasContext, saslMechanism, configs, loginMetadata)
-                        STATIC_INSTANCES[loginMetadata] = loginManager
+                    loginManager = STATIC_INSTANCES.computeIfAbsent(loginMetadata) {
+                        LoginManager(jaasContext, saslMechanism, configs, loginMetadata)
                     }
                 }
                 SecurityUtils.addConfiguredSecurityProviders(configs)

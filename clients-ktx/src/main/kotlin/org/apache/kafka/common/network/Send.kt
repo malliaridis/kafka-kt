@@ -13,14 +13,14 @@ interface Send {
     fun completed(): Boolean
 
     /**
-     * Write some as-yet unwritten bytes from this send to the provided channel. It may take multiple calls for the send
-     * to be completely written
+     * Write some as-yet unwritten bytes from this send to the provided channel. It may take
+     * multiple calls for the send to be completely written
      * @param channel The Channel to write to
      * @return The number of bytes written
      * @throws IOException If the write fails
      */
     @Throws(IOException::class)
-    fun writeTo(channel: TransferableChannel?): Long
+    fun writeTo(channel: TransferableChannel): Long
 
     /**
      * Size of the send

@@ -104,9 +104,9 @@ class Selector private constructor(
 
     private lateinit var sensors: SelectorMetrics
 
-    //package-private for testing
-    //indicates if the previous call to poll was able to make progress in reading already-buffered data.
-    //this is used to prevent tight loops when memory is not available to read any more data
+    // package-private for testing
+    // indicates if the previous call to poll was able to make progress in reading already-buffered
+    // data. This is used to prevent tight loops when memory is not available to read any more data
     internal var isMadeReadProgressLastPoll = true
         private set
 
@@ -169,7 +169,8 @@ class Selector private constructor(
      * with the given id number.
      *
      * Note that this call only initiates the connection, which will be completed on a future [poll]
-     * call. Check [connected] to see which (if any) connections have completed after a given poll call.
+     * call. Check [connected] to see which (if any) connections have completed after a given poll
+     * call.
      * @param id The id for the new connection
      * @param address The address to connect to
      * @param sendBufferSize The send buffer for the new connection
@@ -210,8 +211,8 @@ class Selector private constructor(
         }
     }
 
-    // Visible to allow test cases to override. In particular, we use this to implement a blocking connect
-    // in order to simulate "immediately connected" sockets.
+    // Visible to allow test cases to override. In particular, we use this to implement a blocking
+    // connect in order to simulate "immediately connected" sockets.
     @Throws(IOException::class)
     internal fun doConnect(channel: SocketChannel, address: InetSocketAddress?): Boolean {
         return try {
@@ -222,12 +223,21 @@ class Selector private constructor(
     }
 
     @Throws(IOException::class)
-    private fun configureSocketChannel(socketChannel: SocketChannel, sendBufferSize: Int, receiveBufferSize: Int) {
+    private fun configureSocketChannel(
+        socketChannel: SocketChannel,
+        sendBufferSize: Int,
+        receiveBufferSize: Int,
+    ) {
         socketChannel.configureBlocking(false)
         val socket = socketChannel.socket()
         socket.keepAlive = true
-        if (sendBufferSize != Selectable.USE_DEFAULT_BUFFER_SIZE) socket.sendBufferSize = sendBufferSize
-        if (receiveBufferSize != Selectable.USE_DEFAULT_BUFFER_SIZE) socket.receiveBufferSize = receiveBufferSize
+
+        if (sendBufferSize != Selectable.USE_DEFAULT_BUFFER_SIZE)
+            socket.sendBufferSize = sendBufferSize
+
+        if (receiveBufferSize != Selectable.USE_DEFAULT_BUFFER_SIZE)
+            socket.receiveBufferSize = receiveBufferSize
+
         socket.tcpNoDelay = true
     }
 
@@ -253,7 +263,7 @@ class Selector private constructor(
         sensors.connectionCreated.record()
         // Default to empty client information as the ApiVersionsRequest is not
         // mandatory. In this case, we still want to account for the connection.
-        val metadataRegistry = this.channel(id)!!.channelMetadataRegistry()
+        val metadataRegistry = this.channel(id)?.channelMetadataRegistry()!!
         if (metadataRegistry.clientInformation() == null)
             metadataRegistry.registerClientInformation(ClientInformation.EMPTY)
     }
@@ -322,7 +332,7 @@ class Selector private constructor(
         Utils.closeAllQuietly(
             firstException = firstException,
             name = "release connections",
-            closeables = connections.map { AutoCloseable { close(it) }},
+            closeables = connections.map { AutoCloseable { close(it) } },
         )
 
         // If there is any exception thrown in close(id), we should still be able
@@ -346,20 +356,23 @@ class Selector private constructor(
         val connectionId = send.destinationId()
         val channel = openOrClosingChannelOrFail(connectionId)
         if (closingChannels.containsKey(connectionId)) {
-            // ensure notification via `disconnected`, leave channel in the state in which closing was triggered
+            // ensure notification via `disconnected`, leave channel in the state in which closing
+            // was triggered
             failedSends.add(connectionId)
         } else {
             try {
                 channel.setSend(send)
             } catch (exception: Exception) {
                 // update the state for consistency, the channel will be discarded after `close`
-                channel.state(ChannelState.FAILED_SEND)
-                // ensure notification via `disconnected` when `failedSends` are processed in the next poll
+                channel.state = ChannelState.FAILED_SEND
+                // ensure notification via `disconnected` when `failedSends` are processed in the
+                // next poll
                 failedSends.add(connectionId)
                 close(channel, CloseMode.DISCARD_NO_NOTIFY)
                 if (exception !is CancelledKeyException) {
                     log.error(
-                        "Unexpected exception during send, closing connection {} and rethrowing exception {}",
+                        "Unexpected exception during send, closing connection {} and rethrowing " +
+                                "exception {}",
                         connectionId,
                         exception
                     )
@@ -414,7 +427,8 @@ class Selector private constructor(
             timeoutVariable = 0
 
         if (!memoryPool.isOutOfMemory && isOutOfMemory) {
-            //we have recovered from memory pressure. unmute any channel not explicitly muted for other reasons
+            // we have recovered from memory pressure. unmute any channel not explicitly muted for
+            // other reasons
             log.trace("Broker no longer low on memory - unmuting incoming sockets")
             for (channel in channels.values) {
                 if (channel.isInMutableState && !explicitlyMutedChannels.contains(channel)) {
@@ -432,7 +446,8 @@ class Selector private constructor(
         if (numReadyKeys > 0 || !immediatelyConnectedKeys.isEmpty() || dataInBuffers) {
             val readyKeys = nioSelector!!.selectedKeys()
 
-            // Poll from channels that have buffered data (but nothing more from the underlying socket)
+            // Poll from channels that have buffered data (but nothing more from the underlying
+            // socket)
             if (dataInBuffers) {
                 keysWithBufferedRead.removeAll(readyKeys) //so no channel gets polled twice
                 val toPoll = keysWithBufferedRead
@@ -442,7 +457,8 @@ class Selector private constructor(
 
             // Poll from channels where the underlying socket has more data
             pollSelectionKeys(readyKeys, false, endSelect)
-            // Clear all selected keys so that they are included in the ready count for the next select
+            // Clear all selected keys so that they are included in the ready count for the next
+            // select
             readyKeys.clear()
             pollSelectionKeys(immediatelyConnectedKeys, true, endSelect)
             immediatelyConnectedKeys.clear()
@@ -490,7 +506,8 @@ class Selector private constructor(
                         sensors.connectionCreated.record()
                         val socketChannel = key!!.channel() as SocketChannel
                         log.debug(
-                            "Created socket with SO_RCVBUF = {}, SO_SNDBUF = {}, SO_TIMEOUT = {} to node {}",
+                            "Created socket with SO_RCVBUF = {}, SO_SNDBUF = {}, SO_TIMEOUT = {} " +
+                                    "to node {}",
                             socketChannel.socket().receiveBufferSize,
                             socketChannel.socket().sendBufferSize,
                             socketChannel.socket().soTimeout,
@@ -505,19 +522,21 @@ class Selector private constructor(
                     channel.prepare()
                     if (channel.ready()) {
                         val readyTimeMs = time.milliseconds()
-                        val isReauthentication = channel.successfulAuthentications() > 1
+                        val isReauthentication = channel.successfulAuthentications > 1
                         if (isReauthentication) {
                             sensors.successfulReauthentication.record(1.0, readyTimeMs)
                             if (channel.reauthenticationLatencyMs() == null) log.warn(
-                                "Should never happen: re-authentication latency for a re-authenticated channel was null; continuing..."
+                                "Should never happen: re-authentication latency for a " +
+                                        "re-authenticated channel was null; continuing..."
                             ) else sensors.reauthenticationLatency
-                                .record(channel.reauthenticationLatencyMs()!!.toDouble(), readyTimeMs)
+                                .record(
+                                    channel.reauthenticationLatencyMs()!!.toDouble(),
+                                    readyTimeMs
+                                )
                         } else {
                             sensors.successfulAuthentication.record(1.0, readyTimeMs)
-                            if (!channel.connectedClientSupportsReauthentication()) sensors.successfulAuthenticationNoReauth.record(
-                                1.0,
-                                readyTimeMs
-                            )
+                            if (!channel.connectedClientSupportsReauthentication())
+                                sensors.successfulAuthenticationNoReauth.record(1.0, readyTimeMs)
                         }
                         log.debug(
                             "Successfully {}authenticated with {}",
@@ -526,9 +545,13 @@ class Selector private constructor(
                         )
                     }
                 }
-                if (channel.ready() && channel.state() == ChannelState.NOT_CONNECTED) channel.state(ChannelState.READY)
+
+                if (channel.ready() && channel.state == ChannelState.NOT_CONNECTED)
+                    channel.state = ChannelState.READY
+
                 val responseReceivedDuringReauthentication: NetworkReceive? =
                     channel.pollResponseReceivedDuringReauthentication()
+
                 responseReceivedDuringReauthentication?.let { receive: NetworkReceive ->
                     val currentTimeMs = time.milliseconds()
                     addToCompletedReceives(channel, receive, currentTimeMs)
@@ -536,7 +559,10 @@ class Selector private constructor(
 
                 //if channel is ready and has bytes to read from socket or buffer, and has no
                 //previous completed receive then read from it
-                if (channel.ready() && (key.isReadable || channel.hasBytesBuffered()) && !hasCompletedReceive(channel)
+                if (
+                    channel.ready()
+                    && (key.isReadable || channel.hasBytesBuffered())
+                    && !hasCompletedReceive(channel)
                     && !explicitlyMutedChannels.contains(channel)
                 ) {
                     attemptRead(channel)
@@ -552,7 +578,8 @@ class Selector private constructor(
                 }
 
                 /* if channel is ready write to any sockets that have space in their buffer and for which we have data */
-                val nowNanos = if (channelStartTimeNanos != 0L) channelStartTimeNanos else currentTimeNanos
+                val nowNanos =
+                    if (channelStartTimeNanos != 0L) channelStartTimeNanos else currentTimeNanos
                 try {
                     attemptWrite(key, channel, nowNanos)
                 } catch (e: Exception) {
@@ -562,27 +589,32 @@ class Selector private constructor(
 
                 /* cancel any defunct sockets */if (!key.isValid) close(channel, CloseMode.GRACEFUL)
             } catch (e: Exception) {
-                val desc = String.format("%s (channelId=%s)", channel.socketDescription(), channel.id())
-                if (e is IOException) {
-                    log.debug("Connection with {} disconnected", desc, e)
-                } else if (e is AuthenticationException) {
-                    val isReauthentication = channel.successfulAuthentications() > 0
-                    if (isReauthentication) sensors.failedReauthentication.record() else sensors.failedAuthentication.record()
+                val desc =
+                    String.format("%s (channelId=%s)", channel.socketDescription(), channel.id())
+                if (e is IOException) log.debug("Connection with {} disconnected", desc, e)
+                else if (e is AuthenticationException) {
+                    val isReauthentication = channel.successfulAuthentications > 0
+
+                    if (isReauthentication) sensors.failedReauthentication.record()
+                    else sensors.failedAuthentication.record()
+
                     var exceptionMessage = e.message
-                    if (e is DelayedResponseAuthenticationException) exceptionMessage = e.cause!!.message
+                    if (e is DelayedResponseAuthenticationException) exceptionMessage =
+                        e.cause!!.message
                     log.info(
                         "Failed {}authentication with {} ({})",
                         if (isReauthentication) "re-" else "",
                         desc,
                         exceptionMessage
                     )
-                } else {
-                    log.warn("Unexpected error from {}; closing connection", desc, e)
-                }
-                if (e is DelayedResponseAuthenticationException) maybeDelayCloseOnAuthenticationFailure(channel)
+                } else log.warn("Unexpected error from {}; closing connection", desc, e)
+
+                if (e is DelayedResponseAuthenticationException)
+                    maybeDelayCloseOnAuthenticationFailure(channel)
                 else close(
-                    channel,
-                    if (sendFailed) CloseMode.NOTIFY_ONLY else CloseMode.GRACEFUL
+                    channel = channel,
+                    closeMode = if (sendFailed) CloseMode.NOTIFY_ONLY
+                    else CloseMode.GRACEFUL
                 )
             } finally {
                 maybeRecordTimePerConnection(channel, channelStartTimeNanos)
@@ -607,8 +639,9 @@ class Selector private constructor(
         val nodeId = channel.id()
         val bytesSent = channel.write()
         val send = channel.maybeCompleteSend()
-        // We may complete the send with bytesSent < 1 if `TransportLayer.hasPendingWrites` was true and `channel.write()`
-        // caused the pending writes to be written to the socket channel buffer
+        // We may complete the send with bytesSent < 1 if `TransportLayer.hasPendingWrites` was
+        // true and `channel.write()` caused the pending writes to be written to the socket channel
+        // buffer
         if (bytesSent > 0 || send != null) {
             val currentTimeMs = time.milliseconds()
             if (bytesSent > 0) sensors.recordBytesSent(nodeId, bytesSent, currentTimeMs)
@@ -621,7 +654,8 @@ class Selector private constructor(
 
     private fun determineHandlingOrder(selectionKeys: MutableSet<SelectionKey?>): MutableCollection<SelectionKey?> {
         //it is possible that the iteration order over selectionKeys is the same every invocation.
-        //this may cause starvation of reads when memory is low. to address this we shuffle the keys if memory is low.
+        //this may cause starvation of reads when memory is low. to address this we shuffle the keys
+        // if memory is low.
         return if (!isOutOfMemory && memoryPool.availableMemory() < lowMemThreshold) {
             val shuffledKeys: MutableList<SelectionKey?> = ArrayList(selectionKeys)
             shuffledKeys.shuffle()
@@ -650,7 +684,9 @@ class Selector private constructor(
     private fun maybeReadFromClosingChannel(channel: KafkaChannel): Boolean {
         val hasPending: Boolean
         hasPending =
-            if (channel.state().state() !== ChannelState.State.READY) false else if (explicitlyMutedChannels.contains(
+            if (channel.state()
+                    .state() !== ChannelState.State.READY
+            ) false else if (explicitlyMutedChannels.contains(
                     channel
                 ) || hasCompletedReceive(channel)
             ) true else {
@@ -667,7 +703,8 @@ class Selector private constructor(
 
     // Record time spent in pollSelectionKeys for channel (moved into a method to keep checkstyle happy)
     private fun maybeRecordTimePerConnection(channel: KafkaChannel, startTimeNanos: Long) {
-        if (recordTimePerConnection) channel.addNetworkThreadTimeNanos(time.nanoseconds() - startTimeNanos)
+        if (recordTimePerConnection)
+            channel.addNetworkThreadTimeNanos(time.nanoseconds() - startTimeNanos)
     }
 
     override fun completedSends(): MutableList<NetworkSend> {
@@ -752,18 +789,14 @@ class Selector private constructor(
      * receive buffers after processing completed receives, without waiting for the next
      * poll().
      */
-    fun clearCompletedReceives() {
-        completedReceives.clear()
-    }
+    fun clearCompletedReceives() = completedReceives.clear()
 
     /**
      * Clears completed sends. This is used by SocketServer to remove references to
      * send buffers after processing completed sends, without waiting for the next
      * poll().
      */
-    fun clearCompletedSends() {
-        completedSends.clear()
-    }
+    fun clearCompletedSends() = completedSends.clear()
 
     /**
      * Clears all the results from the previous poll. This is invoked by Selector at the start of
@@ -774,8 +807,8 @@ class Selector private constructor(
      * clear `completedSends` and `completedReceives` as soon as they are processed to avoid
      * holding onto large request/response buffers from multiple connections longer than necessary.
      * Clients rely on Selector invoking [clear] at the start of each poll() since memory usage
-     * is less critical and clearing once-per-poll provides the flexibility to process these results in
-     * any order before the next poll.
+     * is less critical and clearing once-per-poll provides the flexibility to process these results
+     * in any order before the next poll.
      */
     private fun clear() {
         completedSends.clear()
@@ -783,7 +816,8 @@ class Selector private constructor(
         connected.clear()
         disconnected.clear()
 
-        // Remove closed channels after all their buffered receives have been processed or if a send was requested
+        // Remove closed channels after all their buffered receives have been processed or if a send
+        // was requested
         val it = closingChannels.entries.iterator()
         while (it.hasNext()) {
             val channel = it.next().value
@@ -847,13 +881,13 @@ class Selector private constructor(
 
     /**
      * Begin closing this connection.
-     * If 'closeMode' is `CloseMode.GRACEFUL`, the channel is disconnected here, but outstanding receives
-     * are processed. The channel is closed when there are no outstanding receives or if a send is
-     * requested. For other values of `closeMode`, outstanding receives are discarded and the channel
-     * is closed immediately.
+     * If 'closeMode' is `CloseMode.GRACEFUL`, the channel is disconnected here, but outstanding
+     * receives are processed. The channel is closed when there are no outstanding receives or if a
+     * send is requested. For other values of `closeMode`, outstanding receives are discarded and
+     * the channel is closed immediately.
      *
-     * The channel will be added to disconnect list when it is actually closed if `closeMode.notifyDisconnect`
-     * is true.
+     * The channel will be added to disconnect list when it is actually closed if
+     * `closeMode.notifyDisconnect` is true.
      */
     private fun close(channel: KafkaChannel, closeMode: CloseMode) {
         channel.disconnect()
@@ -870,7 +904,10 @@ class Selector private constructor(
         // are tracked to ensure that requests are processed one-by-one by the broker to preserve ordering.
         if (closeMode == CloseMode.GRACEFUL && maybeReadFromClosingChannel(channel)) {
             closingChannels[channel.id()] = channel
-            log.debug("Tracking closing connection {} to process outstanding requests", channel.id())
+            log.debug(
+                "Tracking closing connection {} to process outstanding requests",
+                channel.id()
+            )
         } else {
             doClose(channel, closeMode.notifyDisconnect)
         }
@@ -919,25 +956,19 @@ class Selector private constructor(
     /**
      * Return the selector channels.
      */
-    fun channels(): MutableList<KafkaChannel?> {
-        return ArrayList(channels.values)
-    }
+    fun channels(): List<KafkaChannel> = channels.values.toList()
 
     /**
      * Return the channel associated with this connection or `null` if there is no channel
      * associated with the connection.
      */
-    fun channel(id: String?): KafkaChannel? {
-        return channels[id]
-    }
+    fun channel(id: String): KafkaChannel? = channels[id]
 
     /**
      * Return the channel with the specified id if it was disconnected, but not yet closed since
      * there are outstanding messages to be processed.
      */
-    fun closingChannel(id: String?): KafkaChannel? {
-        return closingChannels[id]
-    }
+    fun closingChannel(id: String): KafkaChannel? = closingChannels[id]
 
     /**
      * Returns the lowest priority channel chosen using the following sequence:
@@ -1147,7 +1178,10 @@ class Selector private constructor(
                         "the client does not support re-authentication",
                 metricTags,
             )
-            successfulAuthenticationNoReauth.add(successfulAuthenticationNoReauthMetricName, CumulativeSum())
+            successfulAuthenticationNoReauth.add(
+                successfulAuthenticationNoReauthMetricName,
+                CumulativeSum()
+            )
             failedAuthentication = sensor("failed-authentication:$tagsSuffix")
             failedAuthentication.add(
                 createMeter(
@@ -1269,8 +1303,24 @@ class Selector private constructor(
                 tags = metricTags,
             )
             selectTime.add(metricName, Avg())
-            selectTime.add(createIOThreadRatioMeterLegacy(metrics, metricGrpName, metricTags, "io-wait", "waiting"))
-            selectTime.add(createIOThreadRatioMeter(metrics, metricGrpName, metricTags, "io-wait", "waiting"))
+            selectTime.add(
+                createIOThreadRatioMeterLegacy(
+                    metrics,
+                    metricGrpName,
+                    metricTags,
+                    "io-wait",
+                    "waiting"
+                )
+            )
+            selectTime.add(
+                createIOThreadRatioMeter(
+                    metrics,
+                    metricGrpName,
+                    metricTags,
+                    "io-wait",
+                    "waiting"
+                )
+            )
             ioTime = sensor("io-time:$tagsSuffix")
             metricName = metrics.metricName(
                 "io-time-ns-avg",
@@ -1279,8 +1329,24 @@ class Selector private constructor(
                 metricTags
             )
             ioTime.add(metricName, Avg())
-            ioTime.add(createIOThreadRatioMeterLegacy(metrics, metricGrpName, metricTags, "io", "doing I/O"))
-            ioTime.add(createIOThreadRatioMeter(metrics, metricGrpName, metricTags, "io", "doing I/O"))
+            ioTime.add(
+                createIOThreadRatioMeterLegacy(
+                    metrics,
+                    metricGrpName,
+                    metricTags,
+                    "io",
+                    "doing I/O"
+                )
+            )
+            ioTime.add(
+                createIOThreadRatioMeter(
+                    metrics,
+                    metricGrpName,
+                    metricTags,
+                    "io",
+                    "doing I/O"
+                )
+            )
             connectionsByCipher = IntGaugeSuite(
                 log = log,
                 suiteName = "sslCiphers",
@@ -1575,7 +1641,10 @@ class Selector private constructor(
      * @param channel The channel whose close is being delayed
      * @param delayMs The amount of time by which the operation should be delayed
      */
-    private inner class DelayedAuthenticationFailureClose(private val channel: KafkaChannel, delayMs: Int) {
+    private inner class DelayedAuthenticationFailureClose(
+        private val channel: KafkaChannel,
+        delayMs: Int
+    ) {
         private val endTimeNanos: Long = time.nanoseconds() + delayMs * 1000L * 1000L
         private var closed = false
 
@@ -1638,6 +1707,7 @@ class Selector private constructor(
     fun delayedClosingChannels(): MutableMap<*, *>? {
         return delayedClosingChannels
     }
+
     private enum class CloseMode(// discard any outstanding receives, no disconnect notification
         var notifyDisconnect: Boolean
     ) {

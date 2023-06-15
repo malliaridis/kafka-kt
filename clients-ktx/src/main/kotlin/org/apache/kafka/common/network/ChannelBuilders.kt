@@ -147,20 +147,15 @@ object ChannelBuilders {
     ): ChannelBuilder {
         val configs = channelBuilderConfigs(config, listenerName)
         val channelBuilder: ChannelBuilder = when (securityProtocol) {
-            SecurityProtocol.SSL -> {
-                requireNonNullMode(mode, securityProtocol)
-                SslChannelBuilder(
-                    mode,
-                    listenerName,
-                    isInterBrokerListener,
-                    logContext,
-                )
-            }
+            SecurityProtocol.SSL -> SslChannelBuilder(
+                mode,
+                listenerName,
+                isInterBrokerListener,
+                logContext,
+            )
 
             SecurityProtocol.SASL_SSL,
             SecurityProtocol.SASL_PLAINTEXT -> {
-                requireNonNullMode(mode, securityProtocol)
-
                 val jaasContexts: Map<String, JaasContext>
                 var sslClientAuthOverride: String? = null
 
@@ -220,29 +215,30 @@ object ChannelBuilders {
                     // Use server context for inter-broker client connections and client context for
                     // other clients
                     jaasContexts = mapOf(
-                        clientSaslMechanism!! to if (contextType === JaasContext.Type.CLIENT)
-                            JaasContext.loadClientContext(configs)
-                        else JaasContext.loadServerContext(
-                            listenerName!!,
-                            clientSaslMechanism,
-                            configs
-                        )
+                        clientSaslMechanism!! to
+                                if (contextType === JaasContext.Type.CLIENT)
+                                    JaasContext.loadClientContext(configs)
+                                else JaasContext.loadServerContext(
+                                    listenerName = listenerName!!,
+                                    mechanism = clientSaslMechanism,
+                                    configs = configs
+                                )
                     )
                 }
                 SaslChannelBuilder(
-                    mode,
-                    jaasContexts,
-                    securityProtocol,
-                    listenerName,
-                    isInterBrokerListener,
-                    clientSaslMechanism,
-                    saslHandshakeRequestEnable,
-                    credentialCache,
-                    tokenCache,
-                    sslClientAuthOverride,
-                    time,
-                    logContext,
-                    apiVersionSupplier
+                    mode = mode,
+                    jaasContexts = jaasContexts,
+                    securityProtocol = securityProtocol,
+                    listenerName = listenerName,
+                    isInterBrokerListener = isInterBrokerListener,
+                    clientSaslMechanism = clientSaslMechanism,
+                    handshakeRequestEnable = saslHandshakeRequestEnable,
+                    credentialCache = credentialCache,
+                    tokenCache = tokenCache,
+                    sslClientAuthOverride = sslClientAuthOverride,
+                    time = time,
+                    logContext = logContext,
+                    apiVersionSupplier = apiVersionSupplier
                 )
             }
 
@@ -279,12 +275,13 @@ object ChannelBuilders {
         }
     }
 
+    @Deprecated("There is no need for null-check for this case in Kotlin")
     private fun requireNonNullMode(mode: Mode?, securityProtocol: SecurityProtocol) =
         requireNotNull(mode) { "`mode` must be non-null if `securityProtocol` is `$securityProtocol`" }
 
     fun createPrincipalBuilder(
         configs: Map<String, *>,
-        kerberosShortNamer: KerberosShortNamer?,
+        kerberosShortNamer: KerberosShortNamer? = null,
         sslPrincipalMapper: SslPrincipalMapper? = null,
     ): KafkaPrincipalBuilder {
         val principalBuilderClass =
@@ -294,11 +291,8 @@ object ChannelBuilders {
             principalBuilderClass == null
             || principalBuilderClass == DefaultKafkaPrincipalBuilder::class.java
         ) DefaultKafkaPrincipalBuilder(kerberosShortNamer!!, sslPrincipalMapper!!)
-
-
         else if (KafkaPrincipalBuilder::class.java.isAssignableFrom(principalBuilderClass))
             newInstance(principalBuilderClass) as KafkaPrincipalBuilder
-
         else throw InvalidConfigurationException(
             "Type ${principalBuilderClass.name} is not an instance of " +
                     KafkaPrincipalBuilder::class.java.name

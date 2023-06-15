@@ -15,7 +15,7 @@ interface ChannelBuilder : AutoCloseable, Configurable {
      * @param  id  channel id
      * @param  key SelectionKey
      * @param  maxReceiveSize max size of a single receive buffer to allocate
-     * @param  memoryPool memory pool from which to allocate buffers, or null for none
+     * @param  memoryPool memory pool from which to allocate buffers, or `null` for none
      * @return KafkaChannel
      */
     @Throws(KafkaException::class)

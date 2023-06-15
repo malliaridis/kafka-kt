@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.kafka.common.security.kerberors
+package org.apache.kafka.common.security.kerberos
 
 import javax.security.auth.callback.Callback
 import javax.security.auth.callback.NameCallback

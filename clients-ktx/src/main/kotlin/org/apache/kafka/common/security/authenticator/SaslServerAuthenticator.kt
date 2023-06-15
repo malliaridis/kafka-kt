@@ -96,44 +96,6 @@ open class SaslServerAuthenticator(
     private val apiVersionSupplier: Supplier<ApiVersionsResponse>
 ) : Authenticator {
 
-    /**
-     * The internal state transitions for initial authentication of a channel on the server side are
-     * declared in order, starting with [INITIAL_REQUEST] and ending in either [COMPLETE] or
-     * [FAILED].
-     *
-     * Re-authentication of a channel on the server side starts with the state
-     * [REAUTH_PROCESS_HANDSHAKE]. It may then flow to [REAUTH_BAD_MECHANISM] before a transition to
-     * [FAILED] if re-authentication is attempted with a mechanism different than the original one;
-     * otherwise it joins the authentication flow at the [AUTHENTICATE] state and likewise ends at
-     * either [COMPLETE] or [FAILED].
-     */
-    private enum class SaslState {
-
-        // May be GSSAPI token, SaslHandshake or ApiVersions for authentication
-        INITIAL_REQUEST,
-
-        // May be SaslHandshake or ApiVersions
-        HANDSHAKE_OR_VERSIONS_REQUEST,
-
-        // After an ApiVersions request, next request must be SaslHandshake
-        HANDSHAKE_REQUEST,
-
-        // Authentication tokens (SaslHandshake v1 and above indicate SaslAuthenticate headers)
-        AUTHENTICATE,
-
-        // Authentication completed successfully
-        COMPLETE,
-
-        // Authentication failed
-        FAILED,
-
-        // Initial state for re-authentication, processes SASL handshake request
-        REAUTH_PROCESS_HANDSHAKE,
-
-        // When re-authentication requested with wrong mechanism, generate exception
-        REAUTH_BAD_MECHANISM
-    }
-
     private val enabledMechanisms: List<String>
 
     private val principalBuilder: KafkaPrincipalBuilder
@@ -889,6 +851,44 @@ open class SaslServerAuthenticator(
             return if (latencyNanos == 0L) 0L
             else (latencyNanos / 1000.0 / 1000.0).roundToLong().coerceAtLeast(1)
         }
+    }
+
+    /**
+     * The internal state transitions for initial authentication of a channel on the server side are
+     * declared in order, starting with [INITIAL_REQUEST] and ending in either [COMPLETE] or
+     * [FAILED].
+     *
+     * Re-authentication of a channel on the server side starts with the state
+     * [REAUTH_PROCESS_HANDSHAKE]. It may then flow to [REAUTH_BAD_MECHANISM] before a transition to
+     * [FAILED] if re-authentication is attempted with a mechanism different than the original one;
+     * otherwise it joins the authentication flow at the [AUTHENTICATE] state and likewise ends at
+     * either [COMPLETE] or [FAILED].
+     */
+    private enum class SaslState {
+
+        // May be GSSAPI token, SaslHandshake or ApiVersions for authentication
+        INITIAL_REQUEST,
+
+        // May be SaslHandshake or ApiVersions
+        HANDSHAKE_OR_VERSIONS_REQUEST,
+
+        // After an ApiVersions request, next request must be SaslHandshake
+        HANDSHAKE_REQUEST,
+
+        // Authentication tokens (SaslHandshake v1 and above indicate SaslAuthenticate headers)
+        AUTHENTICATE,
+
+        // Authentication completed successfully
+        COMPLETE,
+
+        // Authentication failed
+        FAILED,
+
+        // Initial state for re-authentication, processes SASL handshake request
+        REAUTH_PROCESS_HANDSHAKE,
+
+        // When re-authentication requested with wrong mechanism, generate exception
+        REAUTH_BAD_MECHANISM
     }
 
     companion object {
