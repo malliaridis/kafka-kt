@@ -44,7 +44,7 @@ object Protocol {
                 b.append(field.def.name)
                 b.append("] ")
                 if (!subTypes.containsKey(field.def.name))
-                    subTypes[field.def.name] = type.arrayElementType().get()
+                    subTypes[field.def.name] = type.arrayElementType()!!
 
             } else if (type is TaggedFields) b.append("TAG_BUFFER ")
             else {
@@ -78,7 +78,7 @@ object Protocol {
         for (field in schema.fields()) {
             fields.add(field)
             if (field.def.type.isArray) {
-                val innerType = field.def.type.arrayElementType().get()
+                val innerType = field.def.type.arrayElementType()!!
                 if (innerType is Schema) populateSchemaFields(innerType, fields)
             } else if (field.def.type is Schema)
                 populateSchemaFields(field.def.type, fields)

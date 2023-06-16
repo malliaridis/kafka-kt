@@ -856,7 +856,7 @@ enum class Errors(
          */
         fun forException(t: Throwable): Errors {
             val cause = maybeUnwrapException(t)
-            var clazz: Class<*>? = cause!!.javaClass
+            var clazz: Class<*>? = cause.javaClass
             while (clazz != null) {
                 val error = classToError[clazz]
                 if (error != null) return error
@@ -866,15 +866,17 @@ enum class Errors(
         }
 
         /**
-         * Check if a Throwable is a commonly wrapped exception type (e.g. `CompletionException`) and return
-         * the cause if so. This is useful to handle cases where exceptions may be raised from a future or a
-         * completion stage (as might be the case for requests sent to the controller in `ControllerApis`).
+         * Check if a Throwable is a commonly wrapped exception type (e.g. `CompletionException`)
+         * and return the cause if so. This is useful to handle cases where exceptions may be raised
+         * from a future or a completion stage (as might be the case for requests sent to the
+         * controller in `ControllerApis`).
          *
          * @param t The Throwable to check
-         * @return The throwable itself or its cause if it is an instance of a commonly wrapped exception type
+         * @return The throwable itself or its cause if it is an instance of a commonly wrapped
+         * exception type
          */
-        fun maybeUnwrapException(t: Throwable): Throwable? {
-            return if (t is CompletionException || t is ExecutionException) t.cause
+        fun maybeUnwrapException(t: Throwable): Throwable {
+            return if (t is CompletionException || t is ExecutionException) t.cause ?: t
             else t
         }
 

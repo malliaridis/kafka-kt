@@ -14,7 +14,7 @@ abstract class AbstractResponse protected constructor(
     val apiKey: ApiKeys,
 ) : AbstractRequestResponse {
 
-    fun toSend(header: ResponseHeader?, version: Short): Send {
+    fun toSend(header: ResponseHeader, version: Short): Send {
         return SendBuilder.buildResponseSend(header, data(), version)
     }
 
@@ -22,7 +22,7 @@ abstract class AbstractResponse protected constructor(
      * Serializes header and body without prefixing with size (unlike `toSend`, which does include a size prefix).
      */
     fun serializeWithHeader(header: ResponseHeader, version: Short): ByteBuffer {
-        return RequestUtils.serialize(header.data(), header.headerVersion(), data(), version)
+        return RequestUtils.serialize(header.data, header.headerVersion, data(), version)
     }
 
     // Visible for testing

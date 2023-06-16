@@ -19,7 +19,6 @@ package org.apache.kafka.common.requests
 
 import java.nio.ByteBuffer
 import java.util.*
-import java.util.function.Consumer
 import org.apache.kafka.common.Cluster
 import org.apache.kafka.common.Node
 import org.apache.kafka.common.PartitionInfo
@@ -27,7 +26,6 @@ import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.Uuid
 import org.apache.kafka.common.message.MetadataResponseData
 import org.apache.kafka.common.message.MetadataResponseData.MetadataResponseBroker
-import org.apache.kafka.common.message.MetadataResponseData.MetadataResponsePartition
 import org.apache.kafka.common.message.MetadataResponseData.MetadataResponseTopic
 import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.protocol.ByteBufferAccessor
@@ -47,7 +45,7 @@ import org.apache.kafka.common.utils.Utils
  */
 class MetadataResponse internal constructor(
     private val data: MetadataResponseData,
-    private val hasReliableLeaderEpochs: Boolean
+    private val hasReliableLeaderEpochs: Boolean,
 ) : AbstractResponse(ApiKeys.METADATA) {
 
     @Volatile
@@ -76,7 +74,9 @@ class MetadataResponse internal constructor(
     fun errors(): Map<String, Errors> {
         val errors: MutableMap<String, Errors> = HashMap()
         for (metadata in data.topics()) {
-            checkNotNull(metadata.name()) { "Use errorsByTopicId() when managing topic using topic id" }
+            checkNotNull(metadata.name()) {
+                "Use errorsByTopicId() when managing topic using topic id"
+            }
             if (metadata.errorCode() != Errors.NONE.code) errors[metadata.name()] =
                 Errors.forCode(metadata.errorCode())
         }
@@ -90,7 +90,9 @@ class MetadataResponse internal constructor(
     fun errorsByTopicId(): Map<Uuid, Errors> {
         val errors: MutableMap<Uuid, Errors> = HashMap()
         for (metadata in data.topics()) {
-            check(metadata.topicId() !== Uuid.ZERO_UUID) { "Use errors() when managing topic using topic name" }
+            check(metadata.topicId() !== Uuid.ZERO_UUID) {
+                "Use errors() when managing topic using topic name"
+            }
             if (metadata.errorCode() != Errors.NONE.code) errors[metadata.topicId()] =
                 Errors.forCode(metadata.errorCode())
         }
@@ -99,12 +101,12 @@ class MetadataResponse internal constructor(
 
     override fun errorCounts(): Map<Errors, Int> {
         val errorCounts = mutableMapOf<Errors, Int>()
-        data.topics().forEach(Consumer { metadata: MetadataResponseTopic ->
-            metadata.partitions().forEach(Consumer { p: MetadataResponsePartition ->
-                updateErrorCounts(errorCounts, Errors.forCode(p.errorCode()))
-            })
+        data.topics().forEach { metadata ->
+            metadata.partitions().forEach { partition ->
+                updateErrorCounts(errorCounts, Errors.forCode(partition.errorCode()))
+            }
             updateErrorCounts(errorCounts, Errors.forCode(metadata.errorCode()))
-        })
+        }
         return errorCounts
     }
 
@@ -113,9 +115,9 @@ class MetadataResponse internal constructor(
      */
     fun topicsByError(error: Errors): Set<String> {
         val errorTopics: MutableSet<String> = HashSet()
-        for (metadata in data.topics()) {
+        for (metadata in data.topics())
             if (metadata.errorCode() == error.code) errorTopics.add(metadata.name())
-        }
+
         return errorTopics
     }
 
@@ -127,7 +129,7 @@ class MetadataResponse internal constructor(
         val internalTopics: MutableSet<String> = HashSet()
         val partitions: MutableList<PartitionInfo> = ArrayList()
         val topicIds: MutableMap<String, Uuid> = mutableMapOf()
-        for (metadata in topicMetadata()) {
+        for (metadata in topicMetadata())
             if (metadata.error == Errors.NONE) {
                 if (metadata.isInternal) internalTopics.add(metadata.topic)
                 if (Uuid.ZERO_UUID != metadata.topicId) topicIds[metadata.topic] = metadata.topicId
@@ -135,7 +137,7 @@ class MetadataResponse internal constructor(
                     partitions.add(toPartitionInfo(partitionMetadata, holder.brokers))
                 }
             }
-        }
+
         return Cluster(
             clusterId = data.clusterId(),
             nodes = brokers(),
@@ -151,16 +153,13 @@ class MetadataResponse internal constructor(
     /**
      * Returns a 32-bit bitfield to represent authorized operations for this topic.
      */
-    fun topicAuthorizedOperations(topicName: String): Int {
-        return data.topics().find(topicName).topicAuthorizedOperations()
-    }
+    fun topicAuthorizedOperations(topicName: String): Int =
+        data.topics().find(topicName).topicAuthorizedOperations()
 
     /**
      * Returns a 32-bit bitfield to represent authorized operations for this cluster.
      */
-    fun clusterAuthorizedOperations(): Int {
-        return data.clusterAuthorizedOperations()
-    }
+    fun clusterAuthorizedOperations(): Int = data.clusterAuthorizedOperations()
 
     @Deprecated(
         message = "Use property access instead",
@@ -168,35 +167,21 @@ class MetadataResponse internal constructor(
     )
     private fun holder(): Holder = holder
 
-    private val holder: Holder
-        get() {
-            if (_holder == null) {
-                synchronized(data) {
-                    if (_holder == null) _holder = Holder(data)
-                }
-            }
-            return _holder!!
-        }
+    private val holder: Holder by lazy { Holder(data) }
 
     /**
      * Get all brokers returned in metadata response
      * @return the brokers
      */
-    fun brokers(): Collection<Node> {
-        return holder.brokers.values
-    }
+    fun brokers(): Collection<Node> = holder.brokers.values
 
-    fun brokersById(): Map<Int, Node> {
-        return holder.brokers
-    }
+    fun brokersById(): Map<Int, Node> = holder.brokers
 
     /**
      * Get all topic metadata returned in the metadata response
      * @return the topicMetadata
      */
-    fun topicMetadata(): Collection<TopicMetadata> {
-        return holder.topicMetadata
-    }
+    fun topicMetadata(): Collection<TopicMetadata> = holder.topicMetadata
 
     /**
      * The controller node returned in metadata response
@@ -206,9 +191,7 @@ class MetadataResponse internal constructor(
         message = "User property instead.",
         replaceWith = ReplaceWith("controller")
     )
-    fun controller(): Node? {
-        return holder.controller
-    }
+    fun controller(): Node? = holder.controller
 
     val controller: Node? = holder.controller
 
@@ -216,9 +199,7 @@ class MetadataResponse internal constructor(
      * The cluster identifier returned in the metadata response.
      * @return cluster identifier if it is present in the response, null otherwise.
      */
-    fun clusterId(): String {
-        return data.clusterId()
-    }
+    fun clusterId(): String = data.clusterId()
 
     /**
      * Check whether the leader epochs returned from the response can be relied on
@@ -228,9 +209,7 @@ class MetadataResponse internal constructor(
      *
      * @return true if the epoch can be used for validation
      */
-    fun hasReliableLeaderEpochs(): Boolean {
-        return hasReliableLeaderEpochs
-    }
+    fun hasReliableLeaderEpochs(): Boolean = hasReliableLeaderEpochs
 
     data class TopicMetadata(
         val error: Errors,
@@ -245,33 +224,25 @@ class MetadataResponse internal constructor(
             message = "Use property instead.",
             replaceWith = ReplaceWith("error")
         )
-        fun error(): Errors {
-            return error
-        }
+        fun error(): Errors = error
 
         @Deprecated(
             message = "Use property instead.",
             replaceWith = ReplaceWith("topic")
         )
-        fun topic(): String {
-            return topic
-        }
+        fun topic(): String = topic
 
         @Deprecated(
             message = "Use property instead.",
             replaceWith = ReplaceWith("topicId")
         )
-        fun topicId(): Uuid {
-            return topicId
-        }
+        fun topicId(): Uuid = topicId
 
         @Deprecated(
             message = "Use property instead.",
             replaceWith = ReplaceWith("partitionMetadata")
         )
-        fun partitionMetadata(): List<PartitionMetadata> {
-            return partitionMetadata
-        }
+        fun partitionMetadata(): List<PartitionMetadata> = partitionMetadata
 
         @Deprecated(message = "Use property instead.")
         fun authorizedOperations(authorizedOperations: Int) {
@@ -282,9 +253,7 @@ class MetadataResponse internal constructor(
             message = "Use property instead.",
             replaceWith = ReplaceWith("authorizedOperations")
         )
-        fun authorizedOperations(): Int {
-            return authorizedOperations
-        }
+        fun authorizedOperations(): Int = authorizedOperations
 
         override fun toString(): String {
             return "TopicMetadata{" +
@@ -419,14 +388,16 @@ class MetadataResponse internal constructor(
         }
     }
 
-    override fun shouldClientThrottle(version: Short): Boolean {
-        return version >= 6
-    }
+    override fun shouldClientThrottle(version: Short): Boolean = version >= 6
 
     companion object {
+
         const val NO_CONTROLLER_ID = -1
+
         const val NO_LEADER_ID = -1
+
         const val AUTHORIZED_OPERATIONS_OMITTED = Int.MIN_VALUE
+
         fun toPartitionInfo(
             metadata: PartitionMetadata,
             nodesById: Map<Int, Node>
@@ -507,9 +478,7 @@ class MetadataResponse internal constructor(
             responseData.setClusterId(clusterId)
             responseData.setControllerId(controllerId)
             responseData.setClusterAuthorizedOperations(clusterAuthorizedOperations)
-            topics.forEach(Consumer { topicMetadata: MetadataResponseTopic ->
-                responseData.topics().add(topicMetadata)
-            })
+            topics.forEach { topicMetadata -> responseData.topics().add(topicMetadata) }
             return MetadataResponse(responseData, hasReliableEpoch)
         }
     }

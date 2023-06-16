@@ -114,7 +114,7 @@ class OffsetFetchResponse : AbstractResponse {
      */
     constructor(
         throttleTimeMs: Int,
-        errors: Map<String?, Errors>,
+        errors: Map<String, Errors>,
         responseData: Map<String, Map<TopicPartition, PartitionData>>
     ) : super(ApiKeys.OFFSET_FETCH) {
 

@@ -20,39 +20,25 @@ package org.apache.kafka.common.protocol
 import java.nio.ByteBuffer
 import org.apache.kafka.common.utils.ByteUtils
 
-class ByteBufferAccessor(
-    private val buf: ByteBuffer
-) : Readable, Writable {
+class ByteBufferAccessor(private val buf: ByteBuffer) : Readable, Writable {
 
-    override fun readByte(): Byte {
-        return buf.get()
-    }
+    override fun readByte(): Byte = buf.get()
 
-    override fun readShort(): Short {
-        return buf.getShort()
-    }
+    override fun readShort(): Short = buf.getShort()
 
-    override fun readInt(): Int {
-        return buf.getInt()
-    }
+    override fun readInt(): Int = buf.getInt()
 
-    override fun readLong(): Long {
-        return buf.getLong()
-    }
+    override fun readLong(): Long = buf.getLong()
 
-    override fun readDouble(): Double {
-        return ByteUtils.readDouble(buf)
-    }
+    override fun readDouble(): Double = ByteUtils.readDouble(buf)
 
-    override fun readArray(size: Int): ByteArray {
+    override fun readArray(length: Int): ByteArray {
         val remaining = buf.remaining()
-        if (size > remaining) {
-            throw RuntimeException(
-                "Error reading byte array of $size byte(s): only $remaining" +
-                        " byte(s) available"
-            )
-        }
-        val arr = ByteArray(size)
+        if (length > remaining) throw RuntimeException(
+            "Error reading byte array of $length byte(s): only $remaining byte(s) available"
+        )
+
+        val arr = ByteArray(length)
         buf[arr]
         return arr
     }
@@ -68,24 +54,24 @@ class ByteBufferAccessor(
         return res
     }
 
-    override fun writeByte(`val`: Byte) {
-        buf.put(`val`)
+    override fun writeByte(value: Byte) {
+        buf.put(value)
     }
 
-    override fun writeShort(`val`: Short) {
-        buf.putShort(`val`)
+    override fun writeShort(value: Short) {
+        buf.putShort(value)
     }
 
-    override fun writeInt(`val`: Int) {
-        buf.putInt(`val`)
+    override fun writeInt(value: Int) {
+        buf.putInt(value)
     }
 
-    override fun writeLong(`val`: Long) {
-        buf.putLong(`val`)
+    override fun writeLong(value: Long) {
+        buf.putLong(value)
     }
 
-    override fun writeDouble(`val`: Double) {
-        ByteUtils.writeDouble(`val`, buf)
+    override fun writeDouble(value: Double) {
+        ByteUtils.writeDouble(value, buf)
     }
 
     override fun writeByteArray(arr: ByteArray) {
@@ -96,8 +82,8 @@ class ByteBufferAccessor(
         ByteUtils.writeUnsignedVarint(i, buf)
     }
 
-    override fun writeByteBuffer(src: ByteBuffer) {
-        buf.put(src.duplicate())
+    override fun writeByteBuffer(buf: ByteBuffer) {
+        this.buf.put(buf.duplicate())
     }
 
     override fun writeVarint(i: Int) {
@@ -124,7 +110,5 @@ class ByteBufferAccessor(
         buf.flip()
     }
 
-    fun buffer(): ByteBuffer {
-        return buf
-    }
+    fun buffer(): ByteBuffer = buf
 }
