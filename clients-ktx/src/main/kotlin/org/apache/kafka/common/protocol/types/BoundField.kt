@@ -14,22 +14,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.common.protocol.types;
 
-import org.apache.kafka.common.KafkaException;
+package org.apache.kafka.common.protocol.types
 
 /**
- *  Thrown if the protocol schema validation fails while parsing request or response.
+ * A field definition bound to a particular schema.
  */
-public class SchemaException extends KafkaException {
-
-    private static final long serialVersionUID = 1L;
-
-    public SchemaException(String message) {
-        super(message);
-    }
-
-    public SchemaException(String message, Throwable cause) {
-        super(message, cause);
-    }
+data class BoundField(
+    val def: Field,
+    val schema: Schema,
+    val index: Int,
+) {
+    override fun toString(): String = "${def.name}:${def.type}"
 }

@@ -15,41 +15,40 @@
  * limitations under the License.
  */
 
-package org.apache.kafka.common.protocol;
+package org.apache.kafka.common.protocol
 
-import java.util.IdentityHashMap;
+import java.util.*
 
 /**
- * The ObjectSerializationCache stores sizes and values computed during the
- * first serialization pass.  This avoids recalculating and recomputing the same
- * values during the second pass.
+ * The ObjectSerializationCache stores sizes and values computed during the first serialization
+ * pass. This avoids recalculating and recomputing the same values during the second pass.
  *
  * It is intended to be used as part of a two-pass serialization process like:
+ *
+ * ```java
  * ObjectSerializationCache cache = new ObjectSerializationCache();
  * message.size(version, cache);
  * message.write(version, cache);
+ * ```
  */
-public final class ObjectSerializationCache {
-    private final IdentityHashMap<Object, Object> map;
+class ObjectSerializationCache {
 
-    public ObjectSerializationCache() {
-        this.map = new IdentityHashMap<>();
+    private val map: IdentityHashMap<Any, Any> = IdentityHashMap()
+
+    fun setArraySizeInBytes(o: Any, size: Int) {
+        map[o] = size
     }
 
-    public void setArraySizeInBytes(Object o, Integer size) {
-        map.put(o, size);
+    fun getArraySizeInBytes(o: Any): Int? {
+        return map[o] as Int?
     }
 
-    public Integer getArraySizeInBytes(Object o) {
-        return (Integer) map.get(o);
+    fun cacheSerializedValue(o: Any, value: ByteArray) {
+        map[o] = value
     }
 
-    public void cacheSerializedValue(Object o, byte[] val) {
-        map.put(o, val);
-    }
-
-    public byte[] getSerializedValue(Object o) {
-        Object value = map.get(o);
-        return (byte[]) value;
+    fun getSerializedValue(o: Any): ByteArray? {
+        val value = map[o]
+        return value as ByteArray?
     }
 }

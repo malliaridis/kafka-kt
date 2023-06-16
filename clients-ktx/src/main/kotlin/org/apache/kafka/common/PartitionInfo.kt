@@ -127,12 +127,7 @@ data class PartitionInfo(
     /* Extract the node ids from each item in the array and format for display */
     private fun formatNodeIds(nodes: List<Node>?): String {
         val b = StringBuilder("[")
-        if (nodes != null) {
-            for (i in nodes.indices) {
-                b.append(nodes[i].idString())
-                if (i < nodes.size - 1) b.append(',')
-            }
-        }
+        if (nodes != null) b.append(nodes.joinToString(","))
         b.append("]")
         return b.toString()
     }

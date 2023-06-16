@@ -15,42 +15,19 @@
  * limitations under the License.
  */
 
-package org.apache.kafka.common.protocol.types;
+package org.apache.kafka.common.protocol.types
 
-import java.util.Arrays;
+import org.apache.kafka.common.KafkaException
 
-public class RawTaggedField {
-    private final int tag;
-    private final byte[] data;
+/**
+ * Thrown if the protocol schema validation fails while parsing request or response.
+ */
+class SchemaException(
+    message: String? = null,
+    cause: Throwable? = null,
+) : KafkaException(message = message, cause = cause) {
 
-    public RawTaggedField(int tag, byte[] data) {
-        this.tag = tag;
-        this.data = data;
-    }
-
-    public int tag() {
-        return tag;
-    }
-
-    public byte[] data() {
-        return data;
-    }
-
-    public int size() {
-        return data.length;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if ((o == null) || (!o.getClass().equals(getClass()))) {
-            return false;
-        }
-        RawTaggedField other = (RawTaggedField) o;
-        return tag == other.tag && Arrays.equals(data, other.data);
-    }
-
-    @Override
-    public int hashCode() {
-        return tag ^ Arrays.hashCode(data);
+    companion object {
+        private const val serialVersionUID = 1L
     }
 }
