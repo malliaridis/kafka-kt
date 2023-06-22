@@ -1042,7 +1042,7 @@ public class Fetcher<K, V> implements Closeable {
         Set<TopicPartition> partitionsToRetry = new HashSet<>();
         Set<String> unauthorizedTopics = new HashSet<>();
 
-        for (ListOffsetsTopicResponse topic : listOffsetsResponse.topics()) {
+        for (ListOffsetsTopicResponse topic : listOffsetsResponse.getTopics()) {
             for (ListOffsetsPartitionResponse partition : topic.partitions()) {
                 TopicPartition topicPartition = new TopicPartition(topic.name(), partition.partitionIndex());
                 Errors error = Errors.forCode(partition.errorCode());

@@ -769,7 +769,7 @@ public class KafkaConsumerTest {
 
         client.prepareResponse(body -> {
             ListOffsetsRequest request = (ListOffsetsRequest) body;
-            List<ListOffsetsPartition> partitions = request.topics().stream().flatMap(t -> {
+            List<ListOffsetsPartition> partitions = request.getTopics().stream().flatMap(t -> {
                 if (t.name().equals(topic))
                     return Stream.of(t.partitions());
                 else

@@ -41,7 +41,7 @@ import java.security.Principal
  */
 data class KafkaPrincipal(
     val principalType: String,
-    private val name: String,
+    val name: String,
 ) : Principal {
 
     @field:Volatile var tokenAuthenticated: Boolean = false

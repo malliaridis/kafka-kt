@@ -95,13 +95,13 @@ class DescribeDelegationTokenResponse : AbstractResponse {
                     ddt.tokenId(),
                     KafkaPrincipal(ddt.principalType(), ddt.principalName()),
                     KafkaPrincipal(
-                        ddt.tokenRequesterPrincipalType(),
-                        ddt.tokenRequesterPrincipalName()
+                        principalType = ddt.tokenRequesterPrincipalType(),
+                        name = ddt.tokenRequesterPrincipalName(),
                     ),
-                    ddt.renewers().map { ddtr: DescribedDelegationTokenRenewer ->
+                    ddt.renewers().map { ddtr ->
                             KafkaPrincipal(
-                                ddtr.principalType(),
-                                ddtr.principalName()
+                                principalType = ddtr.principalType(),
+                                name = ddtr.principalName(),
                             )
                         },
                     ddt.issueTimestamp(),
@@ -119,10 +119,9 @@ class DescribeDelegationTokenResponse : AbstractResponse {
 
     companion object {
 
-        fun parse(buffer: ByteBuffer, version: Short): DescribeDelegationTokenResponse {
-            return DescribeDelegationTokenResponse(
+        fun parse(buffer: ByteBuffer, version: Short): DescribeDelegationTokenResponse =
+            DescribeDelegationTokenResponse(
                 DescribeDelegationTokenResponseData(ByteBufferAccessor(buffer), version)
             )
-        }
     }
 }

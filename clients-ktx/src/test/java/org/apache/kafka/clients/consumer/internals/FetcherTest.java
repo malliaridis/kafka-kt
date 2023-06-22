@@ -1965,7 +1965,7 @@ public class FetcherTest {
 
         client.prepareResponse(body -> {
             ListOffsetsRequest request = (ListOffsetsRequest) body;
-            return request.isolationLevel() == isolationLevel;
+            return request.getIsolationLevel() == isolationLevel;
         }, listOffsetResponse(Errors.NONE, 1L, 5L));
         fetcher.resetOffsetsIfNeeded();
         consumerClient.pollNoWakeup();
@@ -3031,7 +3031,7 @@ public class FetcherTest {
                                             .setPartitionIndex(tp0.partition())
                                             .setTimestamp(fetchTimestamp)
                                             .setCurrentLeaderEpoch(ListOffsetsResponse.UNKNOWN_EPOCH))));
-                    return request.topics().equals(expectedTopics);
+                    return request.getTopics().equals(expectedTopics);
                 } else {
                     return false;
                 }
@@ -3062,7 +3062,7 @@ public class FetcherTest {
                 if (isListOffsetRequest) {
                     ListOffsetsRequest request = (ListOffsetsRequest) body;
 
-                    ListOffsetsTopic requestTopic = request.topics().get(0);
+                    ListOffsetsTopic requestTopic = request.getTopics().get(0);
                     ListOffsetsPartition expectedPartition = new ListOffsetsPartition()
                             .setPartitionIndex(tp1.partition())
                             .setTimestamp(fetchTimestamp)
@@ -3126,7 +3126,7 @@ public class FetcherTest {
         MockClient.RequestMatcher matcher = body -> {
             if (body instanceof ListOffsetsRequest) {
                 ListOffsetsRequest offsetRequest = (ListOffsetsRequest) body;
-                int epoch = offsetRequest.topics().get(0).partitions().get(0).currentLeaderEpoch();
+                int epoch = offsetRequest.getTopics().get(0).partitions().get(0).currentLeaderEpoch();
                 assertTrue(epoch != ListOffsetsResponse.UNKNOWN_EPOCH, "Expected Fetcher to set leader epoch in request");
                 assertEquals(epoch, 99, "Expected leader epoch to match epoch from metadata update");
                 return true;
@@ -5041,7 +5041,7 @@ public class FetcherTest {
         // matches any list offset request with the provided timestamp
         return body -> {
             ListOffsetsRequest req = (ListOffsetsRequest) body;
-            ListOffsetsTopic topic = req.topics().get(0);
+            ListOffsetsTopic topic = req.getTopics().get(0);
             ListOffsetsPartition partition = topic.partitions().get(0);
             return tp0.topic().equals(topic.name())
                     && tp0.partition() == partition.partitionIndex()

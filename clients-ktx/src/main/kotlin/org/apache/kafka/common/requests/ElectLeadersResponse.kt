@@ -37,15 +37,13 @@ class ElectLeadersResponse(
     override fun errorCounts(): Map<Errors, Int> {
         val counts = HashMap<Errors, Int>()
         updateErrorCounts(counts, Errors.forCode(data.errorCode()))
-        data.replicaElectionResults().forEach(
-            Consumer { result: ReplicaElectionResult ->
-                result.partitionResult().forEach(
-                    Consumer { partitionResult: PartitionResult ->
-                        updateErrorCounts(counts, Errors.forCode(partitionResult.errorCode()))
-                    }
-                )
+
+        data.replicaElectionResults().forEach { result ->
+            result.partitionResult().forEach { partitionResult ->
+                updateErrorCounts(counts, Errors.forCode(partitionResult.errorCode()))
             }
-        )
+        }
+
         return counts
     }
 
@@ -53,12 +51,12 @@ class ElectLeadersResponse(
 
     companion object {
 
-        fun parse(buffer: ByteBuffer, version: Short): ElectLeadersResponse {
-            return ElectLeadersResponse(ElectLeadersResponseData(ByteBufferAccessor(buffer), version))
-        }
+        fun parse(buffer: ByteBuffer, version: Short): ElectLeadersResponse =
+            ElectLeadersResponse(ElectLeadersResponseData(ByteBufferAccessor(buffer), version))
 
         fun electLeadersResult(data: ElectLeadersResponseData): Map<TopicPartition, Throwable?> {
             val map: MutableMap<TopicPartition, Throwable?> = HashMap()
+
             data.replicaElectionResults().forEach { topicResult ->
                 topicResult.partitionResult().forEach { partitionResult ->
                     val error = Errors.forCode(partitionResult.errorCode())

@@ -32,62 +32,13 @@ class FindCoordinatorRequest private constructor(
     version: Short
 ) : AbstractRequest(ApiKeys.FIND_COORDINATOR, version) {
 
-    class Builder(
-        private val data: FindCoordinatorRequestData,
-    ) : AbstractRequest.Builder<FindCoordinatorRequest?>(ApiKeys.FIND_COORDINATOR) {
-
-        override fun build(version: Short): FindCoordinatorRequest {
-
-            if (version < 1 && data.keyType() == CoordinatorType.TRANSACTION.id) {
-                throw UnsupportedVersionException(
-                    "Cannot create a v$version FindCoordinator request because we require " +
-                            "features supported only in 2 or later."
-                )
-            }
-
-            val batchedKeys = data.coordinatorKeys().size
-            if (version < MIN_BATCHED_VERSION) {
-                if (batchedKeys > 1) throw NoBatchedFindCoordinatorsException(
-                    "Cannot create a v$version FindCoordinator request because we require " +
-                            "features supported only in $MIN_BATCHED_VERSION or later."
-                )
-                if (batchedKeys == 1) {
-                    data.setKey(data.coordinatorKeys()[0])
-                    data.setCoordinatorKeys(emptyList())
-                }
-            } else if (batchedKeys == 0 && data.key() != null) {
-                data.setCoordinatorKeys(listOf(data.key()))
-                data.setKey("") // default value
-            }
-            return FindCoordinatorRequest(data, version)
-        }
-
-        override fun toString(): String = data.toString()
-
-        fun data(): FindCoordinatorRequestData = data
-    }
-
-    /**
-     * Indicates that it is not possible to lookup coordinators in batches with FindCoordinator. Instead
-     * coordinators must be looked up one by one.
-     */
-    class NoBatchedFindCoordinatorsException(
-        message: String? = null,
-        cause: Throwable? = null,
-    ) : UnsupportedVersionException(message = message, cause = cause) {
-
-        companion object {
-            private const val serialVersionUID = 1L
-        }
-    }
-
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse {
         val response = FindCoordinatorResponseData()
-        if (version() >= 2) response.setThrottleTimeMs(throttleTimeMs)
+        if (version >= 2) response.setThrottleTimeMs(throttleTimeMs)
 
         val error = Errors.forException(e)
 
-        return if (version() < MIN_BATCHED_VERSION)
+        return if (version < MIN_BATCHED_VERSION)
             FindCoordinatorResponse.prepareOldResponse(error, Node.noNode())
         else FindCoordinatorResponse.prepareErrorResponse(error, data.coordinatorKeys())
     }
@@ -116,13 +67,61 @@ class FindCoordinatorRequest private constructor(
         }
     }
 
+    class Builder(
+        private val data: FindCoordinatorRequestData,
+    ) : AbstractRequest.Builder<FindCoordinatorRequest>(ApiKeys.FIND_COORDINATOR) {
+
+        override fun build(version: Short): FindCoordinatorRequest {
+
+            if (version < 1 && data.keyType() == CoordinatorType.TRANSACTION.id)
+                throw UnsupportedVersionException(
+                    "Cannot create a v$version FindCoordinator request because we require " +
+                        "features supported only in 2 or later."
+                )
+
+            val batchedKeys = data.coordinatorKeys().size
+            if (version < MIN_BATCHED_VERSION) {
+                if (batchedKeys > 1) throw NoBatchedFindCoordinatorsException(
+                    "Cannot create a v$version FindCoordinator request because we require " +
+                        "features supported only in $MIN_BATCHED_VERSION or later."
+                )
+                if (batchedKeys == 1) {
+                    data.setKey(data.coordinatorKeys()[0])
+                    data.setCoordinatorKeys(emptyList())
+                }
+            } else if (batchedKeys == 0 && data.key() != null) {
+                data.setCoordinatorKeys(listOf(data.key()))
+                data.setKey("") // default value
+            }
+            return FindCoordinatorRequest(data, version)
+        }
+
+        override fun toString(): String = data.toString()
+
+        fun data(): FindCoordinatorRequestData = data
+    }
+
+    /**
+     * Indicates that it is not possible to lookup coordinators in batches with FindCoordinator.
+     * Instead, coordinators must be looked up one by one.
+     */
+    class NoBatchedFindCoordinatorsException(
+        message: String? = null,
+        cause: Throwable? = null,
+    ) : UnsupportedVersionException(message = message, cause = cause) {
+
+        companion object {
+            private const val serialVersionUID = 1L
+        }
+    }
+
     companion object {
 
         const val MIN_BATCHED_VERSION: Short = 4
 
-        fun parse(buffer: ByteBuffer?, version: Short): FindCoordinatorRequest {
+        fun parse(buffer: ByteBuffer, version: Short): FindCoordinatorRequest {
             return FindCoordinatorRequest(
-                FindCoordinatorRequestData(ByteBufferAccessor((buffer)!!), version),
+                FindCoordinatorRequestData(ByteBufferAccessor(buffer), version),
                 version
             )
         }

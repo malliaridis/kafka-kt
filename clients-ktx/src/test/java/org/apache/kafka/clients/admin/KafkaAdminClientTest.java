@@ -4946,7 +4946,7 @@ public class KafkaAdminClientTest {
                 .setTopics(Arrays.asList(topicResponse));
             env.kafkaClient().prepareResponseFrom(
                 // ensure that no max timestamp requests are retried
-                request -> request instanceof ListOffsetsRequest && ((ListOffsetsRequest) request).topics().stream()
+                request -> request instanceof ListOffsetsRequest && ((ListOffsetsRequest) request).getTopics().stream()
                     .flatMap(t -> t.partitions().stream())
                     .noneMatch(p -> p.timestamp() == ListOffsetsRequest.MAX_TIMESTAMP),
                 new ListOffsetsResponse(responseData), node);

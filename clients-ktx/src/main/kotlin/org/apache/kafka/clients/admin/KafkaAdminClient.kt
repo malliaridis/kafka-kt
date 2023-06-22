@@ -3825,7 +3825,7 @@ class KafkaAdminClient private constructor(
                     val response = abstractResponse as ListOffsetsResponse
                     val retryTopicPartitionOffsets: MutableMap<TopicPartition, OffsetSpec> =
                         HashMap()
-                    for (topic: ListOffsetsTopicResponse in response.topics()) {
+                    for (topic: ListOffsetsTopicResponse in response.topics) {
                         for (partition: ListOffsetsPartitionResponse in topic.partitions()) {
                             val tp = TopicPartition(topic.name(), partition.partitionIndex())
                             val future = (futures[tp])!!
