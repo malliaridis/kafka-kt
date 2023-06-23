@@ -36,8 +36,8 @@ abstract class AbstractRequest(
      */
     abstract class Builder<T : AbstractRequest>(
         val apiKey: ApiKeys,
-        val oldestAllowedVersion: Short = apiKey.oldestVersion(),
-        val latestAllowedVersion: Short = apiKey.latestVersion(),
+        open val oldestAllowedVersion: Short = apiKey.oldestVersion(),
+        open val latestAllowedVersion: Short = apiKey.latestVersion(),
     ) {
 
         /**
@@ -62,13 +62,13 @@ abstract class AbstractRequest(
             message = "Use property instead",
             replaceWith = ReplaceWith("oldestAllowedVersion")
         )
-        fun oldestAllowedVersion(): Short = oldestAllowedVersion
+        open fun oldestAllowedVersion(): Short = oldestAllowedVersion
 
         @Deprecated(
             message = "Use property instead",
             replaceWith = ReplaceWith("latestAllowedVersion")
         )
-        fun latestAllowedVersion(): Short = latestAllowedVersion
+        open fun latestAllowedVersion(): Short = latestAllowedVersion
 
         fun build(): T = build(latestAllowedVersion)
 

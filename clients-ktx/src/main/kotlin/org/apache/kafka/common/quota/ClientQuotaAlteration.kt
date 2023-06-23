@@ -24,8 +24,8 @@ package org.apache.kafka.common.quota
  * @property ops the alteration to perform
  */
 class ClientQuotaAlteration(
-    private val entity: ClientQuotaEntity,
-    private val ops: Collection<Op>,
+    val entity: ClientQuotaEntity,
+    val ops: Collection<Op>,
 ) {
 
     /**
