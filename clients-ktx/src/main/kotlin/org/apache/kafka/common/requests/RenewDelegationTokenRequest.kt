@@ -36,7 +36,7 @@ class RenewDelegationTokenRequest(
         return RenewDelegationTokenResponse(
             RenewDelegationTokenResponseData()
                 .setThrottleTimeMs(throttleTimeMs)
-                .setErrorCode(Errors.forException(e).code())
+                .setErrorCode(Errors.forException(e).code)
         )
     }
 

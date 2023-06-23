@@ -55,7 +55,7 @@ abstract class AbstractResponse protected constructor(
 
     protected fun apiErrorCounts(errors: Map<*, ApiError>): Map<Errors, Int> {
         val errorCounts: MutableMap<Errors, Int> = EnumMap(Errors::class.java)
-        for (apiError in errors.values) updateErrorCounts(errorCounts, apiError.error())
+        for (apiError in errors.values) updateErrorCounts(errorCounts, apiError.error)
         return errorCounts
     }
 

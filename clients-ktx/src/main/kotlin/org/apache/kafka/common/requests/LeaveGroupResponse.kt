@@ -57,11 +57,11 @@ class LeaveGroupResponse : AbstractResponse {
         else {
             if (data.members().size != 1) throw UnsupportedVersionException(
                 "LeaveGroup response version $version can only contain one member, " +
-                    "got ${data.members().size} members."
+                        "got ${data.members().size} members."
             )
 
             val topLevelError = Errors.forCode(data.errorCode())
-            val errorCode = getError(topLevelError, data.members()).code()
+            val errorCode = getError(topLevelError, data.members()).code
             this.data = LeaveGroupResponseData().setErrorCode(errorCode)
         }
     }

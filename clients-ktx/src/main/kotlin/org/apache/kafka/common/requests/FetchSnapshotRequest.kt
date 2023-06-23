@@ -35,7 +35,7 @@ class FetchSnapshotRequest(
         return FetchSnapshotResponse(
             FetchSnapshotResponseData()
                 .setThrottleTimeMs(throttleTimeMs)
-                .setErrorCode(Errors.forException(e).code())
+                .setErrorCode(Errors.forException(e).code)
         )
     }
 

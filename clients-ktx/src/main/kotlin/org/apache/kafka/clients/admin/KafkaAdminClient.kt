@@ -3225,12 +3225,12 @@ class KafkaAdminClient private constructor(
         @Synchronized
         fun addError(throwable: Throwable?, node: Node) {
             val error = ApiError.fromThrowable(throwable)
-            if (error.message() == null || error.message().isEmpty()) {
-                errors.add(error.error().exception("Error listing groups on $node"))
+            if (error.message == null || error.message.isEmpty()) {
+                errors.add(error.error.exception("Error listing groups on $node"))
             } else {
                 errors.add(
-                    error.error()
-                        .exception("Error listing groups on " + node + ": " + error.message())
+                    error.error
+                        .exception("Error listing groups on " + node + ": " + error.message)
                 )
             }
         }
@@ -4276,7 +4276,7 @@ class KafkaAdminClient private constructor(
             override fun handleResponse(abstractResponse: AbstractResponse) {
                 val response = abstractResponse as UpdateFeaturesResponse
                 val topLevelError = response.topLevelError()
-                when (topLevelError.error()) {
+                when (topLevelError.error) {
                     Errors.NONE -> {
                         for (result: UpdatableFeatureResult in response.data().results()) {
                             val future = updateFutures[result.feature()]
@@ -4297,7 +4297,7 @@ class KafkaAdminClient private constructor(
                         )
                     }
 
-                    Errors.NOT_CONTROLLER -> handleNotControllerError(topLevelError.error())
+                    Errors.NOT_CONTROLLER -> handleNotControllerError(topLevelError.error)
                     else -> for (entry: Map.Entry<String, KafkaFutureImpl<Unit>> in updateFutures.entries) {
                         entry.value.completeExceptionally(topLevelError.exception())
                     }

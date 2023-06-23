@@ -80,7 +80,7 @@ class DescribeProducersHandler(
         failed: MutableMap<TopicPartition, Throwable>,
         unmapped: MutableList<TopicPartition>
     ) {
-        when (apiError.error()) {
+        when (apiError.error) {
             Errors.NOT_LEADER_OR_FOLLOWER -> options.brokerId?.let { brokerId ->
                 // Typically these errors are retriable, but if the user specified the brokerId
                 // explicitly, then they are fatal.
@@ -91,7 +91,7 @@ class DescribeProducersHandler(
                     brokerId,
                     apiError.exception()
                 )
-                failed[topicPartition] = apiError.error().exception(
+                failed[topicPartition] = apiError.error.exception(
                     "Failed to describe active producers for partition $topicPartition on" +
                             " brokerId $brokerId"
                 )
@@ -141,7 +141,7 @@ class DescribeProducersHandler(
                     topicPartition,
                     apiError.exception(),
                 )
-                failed[topicPartition] = apiError.error().exception(
+                failed[topicPartition] = apiError.error.exception(
                     "Failed to describe active producers for partition $topicPartition due to" +
                             " unexpected error"
                 )

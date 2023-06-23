@@ -486,7 +486,7 @@ class NetworkClient(
 
     private fun doSend(clientRequest: ClientRequest, isInternalRequest: Boolean, now: Long, request: AbstractRequest) {
         val destination = clientRequest.destination()
-        val header = clientRequest.makeHeader(request.version())
+        val header = clientRequest.makeHeader(request.version)
         if (log.isDebugEnabled) {
             log.debug(
                 "Sending {} request with header {} and timeout {} to node {}: {}",
@@ -850,7 +850,7 @@ class NetworkClient(
     ) {
         val node = req.destination
         if (apiVersionsResponse.data().errorCode() != Errors.NONE.code) {
-            if (req.request.version().toInt() == 0 || apiVersionsResponse.data()
+            if (req.request.version.toInt() == 0 || apiVersionsResponse.data()
                     .errorCode() != Errors.UNSUPPORTED_VERSION.code
             ) {
                 log.warn(

@@ -17,11 +17,9 @@
 
 package org.apache.kafka.server.authorizer
 
-import java.util.*
 import org.apache.kafka.common.acl.AclBinding
 import org.apache.kafka.common.annotation.InterfaceStability.Evolving
 import org.apache.kafka.common.errors.ApiException
-
 
 @Evolving
 data class AclDeleteResult(

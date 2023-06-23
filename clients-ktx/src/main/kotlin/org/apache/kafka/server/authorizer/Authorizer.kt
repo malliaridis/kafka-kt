@@ -246,47 +246,47 @@ interface Authorizer : Configurable, Closeable {
 
         acls(aclFilter).forEach { binding ->
 
-            if (binding.entry().host() != hostAddr && binding.entry().host() != "*") return@forEach
+            if (binding.entry.host != hostAddr && binding.entry.host != "*") return@forEach
 
-            if (SecurityUtils.parseKafkaPrincipal(binding.entry().principal()) != principal
-                && binding.entry().principal() != "User:*"
+            if (SecurityUtils.parseKafkaPrincipal(binding.entry.principal) != principal
+                && binding.entry.principal != "User:*"
             ) return@forEach
 
-            if (binding.entry().operation() != op
-                && binding.entry().operation() != AclOperation.ALL
+            if (binding.entry.operation != op
+                && binding.entry.operation != AclOperation.ALL
             ) return@forEach
 
-            if (binding.entry().permissionType() == AclPermissionType.DENY) {
-                when (binding.pattern().patternType()) {
+            if (binding.entry.permissionType == AclPermissionType.DENY) {
+                when (binding.pattern.patternType) {
                     PatternType.LITERAL -> {
                         // If wildcard deny exists, return deny directly
-                        if (binding.pattern().name() == ResourcePattern.WILDCARD_RESOURCE)
+                        if (binding.pattern.name == ResourcePattern.WILDCARD_RESOURCE)
                             return AuthorizationResult.DENIED
 
-                        denyPatterns[PatternType.LITERAL]!!.add(binding.pattern().name())
+                        denyPatterns[PatternType.LITERAL]!!.add(binding.pattern.name)
                     }
 
                     PatternType.PREFIXED ->
-                        denyPatterns[PatternType.PREFIXED]!!.add(binding.pattern().name())
+                        denyPatterns[PatternType.PREFIXED]!!.add(binding.pattern.name)
 
                     else -> {}
                 }
                 return@forEach
             }
 
-            if (binding.entry().permissionType() != AclPermissionType.ALLOW) return@forEach
+            if (binding.entry.permissionType != AclPermissionType.ALLOW) return@forEach
 
-            when (binding.pattern().patternType()) {
+            when (binding.pattern.patternType) {
                 PatternType.LITERAL -> {
-                    if (binding.pattern().name() == ResourcePattern.WILDCARD_RESOURCE) {
+                    if (binding.pattern.name == ResourcePattern.WILDCARD_RESOURCE) {
                         hasWildCardAllow = true
                         return@forEach
                     }
-                    allowPatterns[PatternType.LITERAL]!!.add(binding.pattern().name())
+                    allowPatterns[PatternType.LITERAL]!!.add(binding.pattern.name)
                 }
 
                 PatternType.PREFIXED ->
-                    allowPatterns[PatternType.PREFIXED]!!.add(binding.pattern().name())
+                    allowPatterns[PatternType.PREFIXED]!!.add(binding.pattern.name)
 
                 else -> {}
             }

@@ -35,7 +35,7 @@ class DescribeLogDirsRequest(
         return DescribeLogDirsResponse(
             DescribeLogDirsResponseData()
                 .setThrottleTimeMs(throttleTimeMs)
-                .setErrorCode(Errors.forException(e).code())
+                .setErrorCode(Errors.forException(e).code)
         )
     }
 

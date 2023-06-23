@@ -32,7 +32,7 @@ class InitProducerIdRequest private constructor(
 
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse? {
         val response = InitProducerIdResponseData()
-            .setErrorCode(Errors.forException(e).code())
+            .setErrorCode(Errors.forException(e).code)
             .setProducerId(RecordBatch.NO_PRODUCER_ID)
             .setProducerEpoch(RecordBatch.NO_PRODUCER_EPOCH)
             .setThrottleTimeMs(0)

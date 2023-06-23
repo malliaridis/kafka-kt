@@ -41,7 +41,7 @@ class JoinGroupRequest(
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse {
         val data = JoinGroupResponseData()
             .setThrottleTimeMs(throttleTimeMs)
-            .setErrorCode(Errors.forException(e).code())
+            .setErrorCode(Errors.forException(e).code)
             .setGenerationId(UNKNOWN_GENERATION_ID)
             .setProtocolName(UNKNOWN_PROTOCOL_NAME)
             .setLeader(UNKNOWN_MEMBER_ID)

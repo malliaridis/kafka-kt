@@ -111,8 +111,8 @@ class AlterClientQuotasResponse(
             result.forEach { (key, cause) ->
                 entries.add(
                     AlterClientQuotasResponseData.EntryData()
-                        .setErrorCode(cause.error().code)
-                        .setErrorMessage(cause.message())
+                        .setErrorCode(cause.error.code)
+                        .setErrorMessage(cause.message)
                         .setEntity(toEntityData(key))
                 )
             }

@@ -47,7 +47,7 @@ class ElectLeadersRequest private constructor(
             for (partitionId in topic.partitions()) {
                 val partitionResult = PartitionResult()
                 partitionResult.setPartitionId(partitionId!!)
-                partitionResult.setErrorCode(error.code())
+                partitionResult.setErrorCode(error.code)
                 partitionResult.setErrorMessage(message)
                 electionResult.partitionResult().add(partitionResult)
             }

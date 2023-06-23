@@ -53,7 +53,7 @@ class LeaderAndIsrRequest internal constructor(
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): LeaderAndIsrResponse {
         val responseData = LeaderAndIsrResponseData()
         val error = Errors.forException(e)
-        responseData.setErrorCode(error.code())
+        responseData.setErrorCode(error.code)
         if (version < 5) {
             val partitions = partitionStates().map { partition ->
                 LeaderAndIsrPartitionError()

@@ -26,7 +26,7 @@ import org.apache.kafka.common.annotation.InterfaceStability.Evolving
  * necessary.
  */
 @Evolving
-enum class ResourceType(private val code: Byte) {
+enum class ResourceType(val code: Byte) {
 
     /**
      * Represents any ResourceType which this client cannot understand, perhaps because this client
@@ -72,6 +72,10 @@ enum class ResourceType(private val code: Byte) {
     /**
      * Return the code of this resource.
      */
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("code"),
+    )
     fun code(): Byte {
         return code
     }

@@ -288,7 +288,7 @@ class FetchResponse(private val data: FetchResponseData) : AbstractResponse(ApiK
 
             return FetchResponseData()
                 .setThrottleTimeMs(throttleTimeMs)
-                .setErrorCode(error.code())
+                .setErrorCode(error.code)
                 .setSessionId(sessionId)
                 .setResponses(topicResponseList)
         }
