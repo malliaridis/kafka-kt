@@ -66,7 +66,7 @@ interface RecordBatch : Iterable<Record> {
      *
      * @return The timestamp type
      */
-    fun timestampType(): TimestampType?
+    fun timestampType(): TimestampType
 
     /**
      * Get the base offset contained in this record batch. For magic version prior to 2, the base

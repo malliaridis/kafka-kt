@@ -14,23 +14,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.common.record;
 
-public class ConvertedRecords<T extends Records> {
+package org.apache.kafka.common.record
 
-    private final T records;
-    private final RecordConversionStats recordConversionStats;
+import org.apache.kafka.common.network.TransferableChannel
+import java.io.IOException
 
-    public ConvertedRecords(T records, RecordConversionStats recordConversionStats) {
-        this.records = records;
-        this.recordConversionStats = recordConversionStats;
-    }
+class DefaultRecordsSend<T : TransferableRecords>(
+    records: T,
+    maxBytesToWrite: Int = records.sizeInBytes(),
+) : RecordsSend<T>(records, maxBytesToWrite) {
 
-    public T records() {
-        return records;
-    }
-
-    public RecordConversionStats recordConversionStats() {
-        return recordConversionStats;
-    }
+    @Throws(IOException::class)
+    override fun writeTo(
+        channel: TransferableChannel,
+        previouslyWritten: Long,
+        remaining: Int
+    ): Long = records().writeTo(
+        channel = channel,
+        position = previouslyWritten,
+        length = remaining
+    )
 }

@@ -394,10 +394,14 @@ open class DefaultRecord internal constructor(
 
                 // then skip header
                 val numHeaders = readVarInt(skipBuffer, input, bytesRemaining)
-                if (numHeaders < 0) throw InvalidRecordException("Found invalid number of record headers $numHeaders")
+                if (numHeaders < 0) throw InvalidRecordException(
+                    "Found invalid number of record headers $numHeaders"
+                )
                 for (i in 0 until numHeaders) {
                     val headerKeySize = skipLengthDelimitedField(skipBuffer, input, bytesRemaining)
-                    if (headerKeySize < 0) throw InvalidRecordException("Invalid negative header key size $headerKeySize")
+                    if (headerKeySize < 0) throw InvalidRecordException(
+                        "Invalid negative header key size $headerKeySize"
+                    )
 
                     // headerValueSize
                     skipLengthDelimitedField(skipBuffer, input, bytesRemaining)

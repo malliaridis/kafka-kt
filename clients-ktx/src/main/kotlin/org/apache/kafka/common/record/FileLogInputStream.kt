@@ -46,7 +46,7 @@ class FileLogInputStream internal constructor(
 
     @Throws(IOException::class)
     override fun nextBatch(): FileChannelRecordBatch? {
-        val channel = records.channel()
+        val channel = records.channel
 
         if (start >= end - Records.HEADER_SIZE_UP_TO_MAGIC) return null
 
@@ -60,7 +60,7 @@ class FileLogInputStream internal constructor(
         // V0 has the smallest overhead, stricter checking is done later
         if (size < LegacyRecord.RECORD_OVERHEAD_V0) throw CorruptRecordException(
                 "Found record size $size smaller than minimum record overhead (" +
-                        "${LegacyRecord.RECORD_OVERHEAD_V0}) in file ${records.file()}."
+                        "${LegacyRecord.RECORD_OVERHEAD_V0}) in file ${records.file}."
         )
 
         if (start > end - Records.LOG_OVERHEAD - size) return null
@@ -83,7 +83,7 @@ class FileLogInputStream internal constructor(
     abstract class FileChannelRecordBatch internal constructor(
         protected val offset: Long,
         protected val magic: Byte,
-        protected val fileRecords: FileRecords?,
+        protected val fileRecords: FileRecords,
         val position: Int,
         protected val batchSize: Int
     ) : AbstractRecordBatch() {
@@ -94,7 +94,7 @@ class FileLogInputStream internal constructor(
 
         override fun compressionType(): CompressionType = loadBatchHeader().compressionType()
 
-        override fun timestampType(): TimestampType? = loadBatchHeader().timestampType()
+        override fun timestampType(): TimestampType = loadBatchHeader().timestampType()
 
         override fun checksum(): Long = loadBatchHeader().checksum()
 
@@ -126,7 +126,7 @@ class FileLogInputStream internal constructor(
         }
 
         override fun writeTo(buffer: ByteBuffer) {
-            val channel = fileRecords!!.channel()
+            val channel = fileRecords.channel
             try {
                 val limit = buffer.limit()
                 buffer.limit(buffer.position() + sizeInBytes())
@@ -160,7 +160,7 @@ class FileLogInputStream internal constructor(
         }
 
         private fun loadBatchWithSize(size: Int, description: String): RecordBatch {
-            val channel = fileRecords!!.channel()
+            val channel = fileRecords.channel
             return try {
                 val buffer = ByteBuffer.allocate(size)
                 readFullyOrFail(channel, buffer, position.toLong(), description)
@@ -178,8 +178,8 @@ class FileLogInputStream internal constructor(
             if (this === other) return true
             if (other == null || javaClass != other.javaClass) return false
             val that = other as FileChannelRecordBatch
-            val channel = fileRecords?.channel()
-            val thatChannel = if (that.fileRecords == null) null else that.fileRecords.channel()
+            val channel = fileRecords.channel
+            val thatChannel = that.fileRecords.channel
             return offset == that.offset
                     && position == that.position
                     && batchSize == that.batchSize
@@ -187,9 +187,9 @@ class FileLogInputStream internal constructor(
         }
 
         override fun hashCode(): Int {
-            val channel = fileRecords?.channel()
+            val channel = fileRecords.channel
             var result = java.lang.Long.hashCode(offset)
-            result = 31 * result + (channel?.hashCode() ?: 0)
+            result = 31 * result + channel.hashCode()
             result = 31 * result + position
             result = 31 * result + batchSize
             return result

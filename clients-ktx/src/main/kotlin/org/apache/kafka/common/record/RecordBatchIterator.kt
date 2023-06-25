@@ -17,26 +17,26 @@
 
 package org.apache.kafka.common.record
 
+import org.apache.kafka.common.KafkaException
+import org.apache.kafka.common.errors.CorruptRecordException
+import org.apache.kafka.common.utils.AbstractIterator
+import java.io.EOFException
 import java.io.IOException
-import org.apache.kafka.common.network.TransferableChannel
 
-/**
- * Represents a record set which can be transferred to a channel
- * @see Records
- *
- * @see UnalignedRecords
- */
-interface TransferableRecords : BaseRecords {
+internal class RecordBatchIterator<T : RecordBatch>(
+    private val logInputStream: LogInputStream<T>,
+) : AbstractIterator<T>() {
 
-    /**
-     * Attempts to write the contents of this buffer to a channel.
-     *
-     * @param channel The channel to write to
-     * @param position The position in the buffer to write from
-     * @param length The number of bytes to write
-     * @return The number of bytes actually written
-     * @throws IOException For any IO errors
-     */
-    @Throws(IOException::class)
-    fun writeTo(channel: TransferableChannel, position: Long, length: Int): Long
+    override fun makeNext(): T? {
+        return try {
+            logInputStream.nextBatch() ?: allDone()
+        } catch (e: EOFException) {
+            throw CorruptRecordException(
+                "Unexpected EOF while attempting to read the next batch",
+                e,
+            )
+        } catch (e: IOException) {
+            throw KafkaException(cause = e)
+        }
+    }
 }

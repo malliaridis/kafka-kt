@@ -14,23 +14,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.common.record;
 
-import org.apache.kafka.common.network.TransferableChannel;
+package org.apache.kafka.common.record
 
-import java.io.IOException;
+/**
+ * The timestamp type of the records.
+ */
+enum class TimestampType(
+    val id: Int,
+    val altName: String,
+) {
 
-public class DefaultRecordsSend<T extends TransferableRecords> extends RecordsSend<T> {
-    public DefaultRecordsSend(T records) {
-        this(records, records.sizeInBytes());
-    }
+    NO_TIMESTAMP_TYPE(-1, "NoTimestampType"),
 
-    public DefaultRecordsSend(T records, int maxBytesToWrite) {
-        super(records, maxBytesToWrite);
-    }
+    CREATE_TIME(0, "CreateTime"),
 
-    @Override
-    protected long writeTo(TransferableChannel channel, long previouslyWritten, int remaining) throws IOException {
-        return records().writeTo(channel, previouslyWritten, remaining);
+    LOG_APPEND_TIME(1, "LogAppendTime");
+
+    override fun toString(): String = altName
+
+    companion object {
+
+        fun forName(name: String): TimestampType = values().firstOrNull { it.altName == name }
+                ?: throw NoSuchElementException("Invalid timestamp type $name")
     }
 }

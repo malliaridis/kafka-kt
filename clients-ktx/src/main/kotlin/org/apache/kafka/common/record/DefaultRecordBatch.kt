@@ -134,25 +134,15 @@ class DefaultRecordBatch internal constructor(
         return buffer.getLong(BASE_OFFSET_OFFSET)
     }
 
-    override fun lastOffset(): Long {
-        return baseOffset() + lastOffsetDelta()
-    }
+    override fun lastOffset(): Long = baseOffset() + lastOffsetDelta()
 
-    override fun producerId(): Long {
-        return buffer.getLong(PRODUCER_ID_OFFSET)
-    }
+    override fun producerId(): Long = buffer.getLong(PRODUCER_ID_OFFSET)
 
-    override fun producerEpoch(): Short {
-        return buffer.getShort(PRODUCER_EPOCH_OFFSET)
-    }
+    override fun producerEpoch(): Short = buffer.getShort(PRODUCER_EPOCH_OFFSET)
 
-    override fun baseSequence(): Int {
-        return buffer.getInt(BASE_SEQUENCE_OFFSET)
-    }
+    override fun baseSequence(): Int = buffer.getInt(BASE_SEQUENCE_OFFSET)
 
-    private fun lastOffsetDelta(): Int {
-        return buffer.getInt(LAST_OFFSET_DELTA_OFFSET)
-    }
+    private fun lastOffsetDelta(): Int = buffer.getInt(LAST_OFFSET_DELTA_OFFSET)
 
     override fun lastSequence(): Int {
         val baseSequence = baseSequence()
@@ -164,17 +154,11 @@ class DefaultRecordBatch internal constructor(
         return CompressionType.forId(attributes().toInt() and COMPRESSION_CODEC_MASK.toInt())
     }
 
-    override fun sizeInBytes(): Int {
-        return Records.LOG_OVERHEAD + buffer.getInt(LENGTH_OFFSET)
-    }
+    override fun sizeInBytes(): Int = Records.LOG_OVERHEAD + buffer.getInt(LENGTH_OFFSET)
 
-    private fun count(): Int {
-        return buffer.getInt(RECORDS_COUNT_OFFSET)
-    }
+    private fun count(): Int = buffer.getInt(RECORDS_COUNT_OFFSET)
 
-    override fun countOrNull(): Int {
-        return count()
-    }
+    override fun countOrNull(): Int = count()
 
     override fun writeTo(buffer: ByteBuffer) {
         buffer.put(this.buffer.duplicate())
@@ -199,9 +183,7 @@ class DefaultRecordBatch internal constructor(
     override val isControlBatch: Boolean
         get() = (attributes().toInt() and CONTROL_FLAG_MASK) > 0
 
-    override fun partitionLeaderEpoch(): Int {
-        return buffer.getInt(PARTITION_LEADER_EPOCH_OFFSET)
-    }
+    override fun partitionLeaderEpoch(): Int = buffer.getInt(PARTITION_LEADER_EPOCH_OFFSET)
 
     fun recordInputStream(bufferSupplier: BufferSupplier): DataInputStream {
         val buffer = buffer.duplicate()
@@ -316,8 +298,10 @@ class DefaultRecordBatch internal constructor(
         // while we can save memory footprint of not decompressing the full record set ahead of time
     }
 
-    override fun streamingIterator(bufferSupplier: BufferSupplier): CloseableIterator<Record> {
-        return if (isCompressed) compressedIterator(bufferSupplier, false)
+    override fun streamingIterator(
+        decompressionBufferSupplier: BufferSupplier,
+    ): CloseableIterator<Record> {
+        return if (isCompressed) compressedIterator(decompressionBufferSupplier, false)
         else uncompressedIterator()
     }
 
@@ -346,21 +330,16 @@ class DefaultRecordBatch internal constructor(
         buffer.putInt(PARTITION_LEADER_EPOCH_OFFSET, epoch)
     }
 
-    override fun checksum(): Long {
-        return ByteUtils.readUnsignedInt(buffer, CRC_OFFSET)
-    }
+    override fun checksum(): Long = ByteUtils.readUnsignedInt(buffer, CRC_OFFSET)
 
     override val isValid: Boolean
         get() = sizeInBytes() >= RECORD_BATCH_OVERHEAD && checksum() == computeChecksum()
 
-    private fun computeChecksum(): Long {
-        return Crc32C.compute(buffer, ATTRIBUTES_OFFSET, buffer.limit() - ATTRIBUTES_OFFSET)
-    }
+    private fun computeChecksum(): Long =
+        Crc32C.compute(buffer, ATTRIBUTES_OFFSET, buffer.limit() - ATTRIBUTES_OFFSET)
 
-    private fun attributes(): Byte {
-        // note we're not using the second byte of attributes
-        return buffer.getShort(ATTRIBUTES_OFFSET).toByte()
-    }
+    // note we're not using the second byte of attributes
+    private fun attributes(): Byte = buffer.getShort(ATTRIBUTES_OFFSET).toByte()
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -369,9 +348,7 @@ class DefaultRecordBatch internal constructor(
         return (buffer == that.buffer)
     }
 
-    override fun hashCode(): Int {
-        return buffer.hashCode()
-    }
+    override fun hashCode(): Int = buffer.hashCode()
 
     override fun toString(): String {
         return "RecordBatch(magic=${magic()}" +
@@ -489,7 +466,7 @@ class DefaultRecordBatch internal constructor(
     internal class DefaultFileChannelRecordBatch(
         offset: Long,
         magic: Byte,
-        fileRecords: FileRecords?,
+        fileRecords: FileRecords,
         position: Int,
         batchSize: Int
     ) : FileChannelRecordBatch(offset, magic, fileRecords, position, batchSize) {

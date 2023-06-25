@@ -17,26 +17,30 @@
 
 package org.apache.kafka.common.record
 
-import java.io.IOException
 import org.apache.kafka.common.network.TransferableChannel
+import java.io.IOException
+import java.nio.channels.FileChannel
+import kotlin.math.min
 
 /**
- * Represents a record set which can be transferred to a channel
- * @see Records
- *
- * @see UnalignedRecords
+ * Represents a file record set which is not necessarily offset-aligned.
  */
-interface TransferableRecords : BaseRecords {
+class UnalignedFileRecords(
+    private val channel: FileChannel,
+    private val position: Long,
+    private val size: Int,
+) : UnalignedRecords {
 
-    /**
-     * Attempts to write the contents of this buffer to a channel.
-     *
-     * @param channel The channel to write to
-     * @param position The position in the buffer to write from
-     * @param length The number of bytes to write
-     * @return The number of bytes actually written
-     * @throws IOException For any IO errors
-     */
+    override fun sizeInBytes(): Int = size
+
     @Throws(IOException::class)
-    fun writeTo(channel: TransferableChannel, position: Long, length: Int): Long
+    override fun writeTo(
+        destChannel: TransferableChannel,
+        previouslyWritten: Long,
+        remaining: Int,
+    ): Long {
+        val position = position + previouslyWritten
+        val count = min(remaining.toLong(), sizeInBytes() - previouslyWritten)
+        return destChannel.transferFrom(channel, position, count)
+    }
 }

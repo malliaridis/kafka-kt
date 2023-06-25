@@ -83,7 +83,7 @@ interface Records : TransferableRecords {
      * @return A [ConvertedRecords] instance which may or may not contain the same instance in its
      * records field.
      */
-    fun downConvert(toMagic: Byte, firstOffset: Long, time: Time?): ConvertedRecords<out Records>
+    fun downConvert(toMagic: Byte, firstOffset: Long, time: Time): ConvertedRecords<out Records>
 
     /**
      * Get an iterator over the records in this log. Note that this generally requires

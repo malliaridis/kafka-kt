@@ -222,27 +222,21 @@ object Utils {
      * @param buffer The buffer to read from
      * @param size The number of bytes to read into the array
      */
-    fun toArray(buffer: ByteBuffer, size: Int): ByteArray {
-        return toArray(buffer, 0, size)
-    }
+    fun toArray(buffer: ByteBuffer, size: Int): ByteArray = toArray(buffer, 0, size)
 
     /**
      * Convert a ByteBuffer to a nullable array.
      * @param buffer The buffer to convert
      * @return The resulting array or null if the buffer is null
      */
-    fun toNullableArray(buffer: ByteBuffer?): ByteArray? {
-        return buffer?.let { toArray(it) }
-    }
+    fun toNullableArray(buffer: ByteBuffer?): ByteArray? = buffer?.let { toArray(it) }
 
     /**
      * Wrap an array as a nullable ByteBuffer.
      * @param array The nullable array to wrap
      * @return The wrapping ByteBuffer or null if array is null
      */
-    fun wrapNullable(array: ByteArray?): ByteBuffer? {
-        return if (array == null) null else ByteBuffer.wrap(array)
-    }
+    fun wrapNullable(array: ByteArray?): ByteBuffer? = array?.let { ByteBuffer.wrap(array) }
 
     /**
      * Read a byte array from the given offset and size in the buffer
@@ -1115,9 +1109,8 @@ object Utils {
      */
     fun sizeDelimited(buffer: ByteBuffer, start: Int): ByteBuffer? {
         val size = buffer.getInt(start)
-        return if (size < 0) {
-            null
-        } else {
+        return if (size < 0) null
+        else {
             var b = buffer.duplicate()
             b.position(start + 4)
             b = b.slice()

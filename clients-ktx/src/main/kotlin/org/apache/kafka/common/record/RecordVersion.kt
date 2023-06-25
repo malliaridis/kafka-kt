@@ -14,43 +14,39 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.common.record;
+
+package org.apache.kafka.common.record
 
 /**
  * Defines the record format versions supported by Kafka.
  *
- * For historical reasons, the record format version is also known as `magic` and `message format version`. Note that
- * the version actually applies to the {@link RecordBatch} (instead of the {@link Record}). Finally, the
- * `message.format.version` topic config confusingly expects an ApiVersion instead of a RecordVersion.
+ * For historical reasons, the record format version is also known as `magic` and
+ * `message format version`. Note that the version actually applies to the [RecordBatch] (instead of
+ * the [Record]). Finally, the `message.format.version` topic config confusingly expects an
+ * ApiVersion instead of a RecordVersion.
  */
-public enum RecordVersion {
-    V0(0), V1(1), V2(2);
+enum class RecordVersion(val value: Byte) {
 
-    private static final RecordVersion[] VALUES = values();
+    V0(0.toByte()),
 
-    public final byte value;
+    V1(1.toByte()),
 
-    RecordVersion(int value) {
-        this.value = (byte) value;
-    }
+    V2(2.toByte());
 
     /**
      * Check whether this version precedes another version.
      *
      * @return true only if the magic value is less than the other's
      */
-    public boolean precedes(RecordVersion other) {
-        return this.value < other.value;
-    }
+    fun precedes(other: RecordVersion): Boolean = value < other.value
 
-    public static RecordVersion lookup(byte value) {
-        if (value < 0 || value >= VALUES.length)
-            throw new IllegalArgumentException("Unknown record version: " + value);
-        return VALUES[value];
-    }
+    companion object {
 
-    public static RecordVersion current() {
-        return V2;
-    }
+        fun lookup(value: Byte): RecordVersion {
+            require(!(value < 0 || value >= values().size)) { "Unknown record version: $value" }
+            return values()[value.toInt()]
+        }
 
+        fun current(): RecordVersion = V2
+    }
 }

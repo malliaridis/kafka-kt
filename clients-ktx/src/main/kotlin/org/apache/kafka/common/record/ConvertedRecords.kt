@@ -14,33 +14,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.common.record;
 
-import java.util.NoSuchElementException;
+package org.apache.kafka.common.record
 
-/**
- * The timestamp type of the records.
- */
-public enum TimestampType {
-    NO_TIMESTAMP_TYPE(-1, "NoTimestampType"), CREATE_TIME(0, "CreateTime"), LOG_APPEND_TIME(1, "LogAppendTime");
+class ConvertedRecords<T : Records>(
+    val records: T,
+    val recordConversionStats: RecordConversionStats,
+) {
 
-    public final int id;
-    public final String name;
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("records"),
+    )
+    fun records(): T = records
 
-    TimestampType(int id, String name) {
-        this.id = id;
-        this.name = name;
-    }
-
-    public static TimestampType forName(String name) {
-        for (TimestampType t : values())
-            if (t.name.equals(name))
-                return t;
-        throw new NoSuchElementException("Invalid timestamp type " + name);
-    }
-
-    @Override
-    public String toString() {
-        return name;
-    }
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("recordConversionStats"),
+    )
+    fun recordConversionStats(): RecordConversionStats = recordConversionStats
 }

@@ -17,26 +17,31 @@
 
 package org.apache.kafka.common.record
 
-import java.io.IOException
 import org.apache.kafka.common.network.TransferableChannel
+import org.apache.kafka.common.utils.Utils.tryWriteTo
+import java.io.IOException
+import java.nio.ByteBuffer
+import java.util.*
 
 /**
- * Represents a record set which can be transferred to a channel
- * @see Records
- *
- * @see UnalignedRecords
+ * Represents a memory record set which is not necessarily offset-aligned
  */
-interface TransferableRecords : BaseRecords {
+class UnalignedMemoryRecords(private val buffer: ByteBuffer) : UnalignedRecords {
 
-    /**
-     * Attempts to write the contents of this buffer to a channel.
-     *
-     * @param channel The channel to write to
-     * @param position The position in the buffer to write from
-     * @param length The number of bytes to write
-     * @return The number of bytes actually written
-     * @throws IOException For any IO errors
-     */
+    fun buffer(): ByteBuffer = buffer.duplicate()
+
+    override fun sizeInBytes(): Int = buffer.remaining()
+
     @Throws(IOException::class)
-    fun writeTo(channel: TransferableChannel, position: Long, length: Int): Long
+    override fun writeTo(channel: TransferableChannel, position: Long, length: Int): Long {
+        require(position <= Int.MAX_VALUE) {
+            "position should not be greater than Integer.MAX_VALUE: $position"
+        }
+        require(position + length <= buffer.limit()) {
+            "position+length should not be greater than buffer.limit(), position: $position" +
+                    ", length: $length, buffer.limit(): ${buffer.limit()}"
+        }
+
+        return tryWriteTo(channel, position.toInt(), length, buffer)
+    }
 }
