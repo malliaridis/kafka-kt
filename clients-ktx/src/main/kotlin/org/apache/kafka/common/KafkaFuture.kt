@@ -115,7 +115,7 @@ abstract class KafkaFuture<T> : Future<T> {
      * @param action the action to preform
      * @return the new future
      */
-    abstract fun whenComplete(action: BiConsumer<in T, in Throwable>): KafkaFuture<T>
+    abstract fun whenComplete(action: BiConsumer<in T?, in Throwable?>): KafkaFuture<T>
 
     /**
      * If not already completed, sets the value returned by get() and related methods to the given
@@ -192,6 +192,28 @@ abstract class KafkaFuture<T> : Future<T> {
          * throw an exception, which one gets returned is arbitrarily chosen.
          */
         fun allOf(vararg futures: KafkaFuture<*>): KafkaFuture<Unit> {
+            val result = KafkaFutureImpl<Unit>()
+
+            CompletableFuture.allOf(
+                *futures.map { kafkaFuture ->
+                    kafkaFuture.toCompletionStage() as CompletableFuture<*>
+                }.toTypedArray()
+            ).whenComplete { _, ex: Throwable? ->
+                if (ex == null) result.complete(Unit)
+                else {
+                    // Have to unwrap the CompletionException which allOf() introduced
+                    result.completeExceptionally(ex.cause!!)
+                }
+            }
+            return result
+        }
+
+        /**
+         * Returns a new KafkaFuture that is completed when all the given futures have completed.
+         * If any future throws an exception, the returned future returns it.  If multiple futures
+         * throw an exception, which one gets returned is arbitrarily chosen.
+         */
+        fun allOf(futures: Collection<KafkaFuture<*>>): KafkaFuture<Unit> {
             val result = KafkaFutureImpl<Unit>()
 
             CompletableFuture.allOf(

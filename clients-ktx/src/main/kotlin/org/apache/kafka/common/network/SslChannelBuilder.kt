@@ -43,7 +43,7 @@ import org.slf4j.Logger
  */
 open class SslChannelBuilder(
     private val mode: Mode,
-    private val listenerName: ListenerName,
+    private val listenerName: ListenerName?,
     private val isInterBrokerListener: Boolean,
     logContext: LogContext
 ) : ChannelBuilder, ListenerReconfigurable {

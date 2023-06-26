@@ -87,7 +87,7 @@ open class SaslServerAuthenticator(
     private val connectionId: String,
     private val subjects: Map<String, Subject>,
     kerberosNameParser: KerberosShortNamer?,
-    private val listenerName: ListenerName,
+    private val listenerName: ListenerName?,
     private val securityProtocol: SecurityProtocol,
     private val transportLayer: TransportLayer,
     private val connectionsMaxReauthMsByMechanism: Map<String?, Long>,
@@ -324,11 +324,11 @@ open class SaslServerAuthenticator(
             else null
 
         val context = SaslAuthenticationContext(
-            saslServer!!,
-            securityProtocol,
-            clientAddress(),
-            listenerName.value(),
-            sslSession
+            server = saslServer!!,
+            securityProtocol = securityProtocol,
+            clientAddress = clientAddress(),
+            listenerName = listenerName?.value,
+            sslSession = sslSession
         )
         val principal = principalBuilder.build(context)
         if (ScramMechanism.isScram(saslMechanism) && java.lang.Boolean.parseBoolean(
@@ -365,7 +365,7 @@ open class SaslServerAuthenticator(
 
     @Throws(IOException::class)
     override fun reauthenticate(reauthenticationContext: ReauthenticationContext) {
-        val saslHandshakeReceive = reauthenticationContext.networkReceive()
+        val saslHandshakeReceive = reauthenticationContext.networkReceive
             ?: throw IllegalArgumentException(
                 "Invalid saslHandshakeReceive in server-side re-authentication context: null"
             )
@@ -459,11 +459,14 @@ open class SaslServerAuthenticator(
             val apiKey = header.apiKey()
             val version = header.apiVersion()
             val requestContext = RequestContext(
-                header,
-                connectionId, clientAddress(),
-                KafkaPrincipal.ANONYMOUS,
-                listenerName,
-                securityProtocol, ClientInformation.EMPTY, false
+                header = header,
+                connectionId = connectionId,
+                clientAddress = clientAddress(),
+                principal = KafkaPrincipal.ANONYMOUS,
+                listenerName = listenerName,
+                securityProtocol = securityProtocol,
+                clientInformation = ClientInformation.EMPTY,
+                fromPrivilegedListener = false
             )
             val requestAndSize = requestContext.parseRequest(requestBuffer)
             if (apiKey != ApiKeys.SASL_AUTHENTICATE) {
@@ -472,8 +475,8 @@ open class SaslServerAuthenticator(
                 )
 
                 buildResponseOnAuthenticateFailure(
-                    requestContext,
-                    requestAndSize.request.getErrorResponse(e)
+                    context = requestContext,
+                    response = requestAndSize.request.getErrorResponse(e)!!,
                 )
                 throw e
             }
@@ -702,7 +705,7 @@ open class SaslServerAuthenticator(
      */
     private fun buildResponseOnAuthenticateFailure(
         context: RequestContext,
-        response: AbstractResponse
+        response: AbstractResponse,
     ) {
         authenticationFailureSend = context.buildResponseSend(response)
     }

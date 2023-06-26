@@ -32,7 +32,7 @@ class ListTransactionsRequest private constructor(
 
     override fun data(): ListTransactionsRequestData = data
 
-    override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): ListTransactionsResponse? {
+    override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): ListTransactionsResponse {
         val error = Errors.forException(e)
         val response = ListTransactionsResponseData()
             .setErrorCode(error.code)

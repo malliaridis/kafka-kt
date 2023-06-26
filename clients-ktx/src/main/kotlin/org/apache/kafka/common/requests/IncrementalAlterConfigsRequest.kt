@@ -35,7 +35,7 @@ class IncrementalAlterConfigsRequest(
 
     override fun data(): IncrementalAlterConfigsRequestData = data
 
-    override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse? {
+    override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse {
         val (error, message) = ApiError.fromThrowable(e)
 
         val response = IncrementalAlterConfigsResponseData()

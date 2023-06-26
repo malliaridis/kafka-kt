@@ -39,7 +39,7 @@ class SaslHandshakeRequest(
 
     override fun data(): SaslHandshakeRequestData = data
 
-    override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse? {
+    override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse {
         val response = SaslHandshakeResponseData()
         response.setErrorCode(ApiError.fromThrowable(e).error.code)
         return SaslHandshakeResponse(response)

@@ -22,6 +22,7 @@ import org.apache.kafka.clients.admin.internals.AdminApiHandler.ApiResult
 import org.apache.kafka.clients.admin.internals.AdminApiHandler.Batched
 import org.apache.kafka.common.Node
 import org.apache.kafka.common.message.LeaveGroupRequestData.MemberIdentity
+import org.apache.kafka.common.message.LeaveGroupResponseData.MemberResponse
 import org.apache.kafka.common.protocol.Errors
 import org.apache.kafka.common.requests.AbstractResponse
 import org.apache.kafka.common.requests.FindCoordinatorRequest.CoordinatorType
@@ -36,12 +37,17 @@ class RemoveMembersFromConsumerGroupHandler(
     logContext: LogContext
 ) : Batched<CoordinatorKey, Map<MemberIdentity, Errors>>() {
 
-    private val groupId: CoordinatorKey = CoordinatorKey.byGroupId(groupId)
+    private val groupId: CoordinatorKey
 
-    private val log: Logger = logContext.logger(RemoveMembersFromConsumerGroupHandler::class.java)
+    private val log: Logger
 
-    private val lookupStrategy: AdminApiLookupStrategy<CoordinatorKey> =
-        CoordinatorStrategy(CoordinatorType.GROUP, logContext)
+    private val lookupStrategy: AdminApiLookupStrategy<CoordinatorKey>
+
+    init {
+        this.groupId = CoordinatorKey.byGroupId(groupId)
+        log = logContext.logger(RemoveMembersFromConsumerGroupHandler::class.java)
+        lookupStrategy = CoordinatorStrategy(CoordinatorType.GROUP, logContext)
+    }
 
     override fun apiName(): String = "leaveGroup"
 
@@ -67,20 +73,22 @@ class RemoveMembersFromConsumerGroupHandler(
         response: AbstractResponse
     ): ApiResult<CoordinatorKey, Map<MemberIdentity, Errors>> {
         validateKeys(keys)
-        response as LeaveGroupResponse
-        val error = response.topLevelError()
+        val res = response as LeaveGroupResponse
+        val error = res.topLevelError()
         return if (error !== Errors.NONE) {
-            val failed: MutableMap<CoordinatorKey, Throwable> = HashMap()
-            val groupsToUnmap: MutableSet<CoordinatorKey> = HashSet()
+            val failed = mutableMapOf<CoordinatorKey, Throwable>()
+            val groupsToUnmap = mutableSetOf<CoordinatorKey>()
+
             handleGroupError(groupId, error, failed, groupsToUnmap)
             ApiResult(emptyMap(), failed, ArrayList(groupsToUnmap))
         } else {
-            val memberErrors: MutableMap<MemberIdentity, Errors> = HashMap()
-            response.memberResponses().forEach { memberResponse ->
-                memberErrors[MemberIdentity()
-                    .setMemberId(memberResponse.memberId())
-                    .setGroupInstanceId(memberResponse.groupInstanceId())] =
-                    Errors.forCode(memberResponse.errorCode())
+            val memberErrors = mutableMapOf<MemberIdentity, Errors>()
+            for (memberResponse: MemberResponse in res.memberResponses()) {
+                memberErrors[
+                    MemberIdentity()
+                        .setMemberId(memberResponse.memberId())
+                        .setGroupInstanceId(memberResponse.groupInstanceId())
+                ] = Errors.forCode(memberResponse.errorCode())
             }
             ApiResult.completed(groupId, memberErrors)
         }
@@ -90,7 +98,7 @@ class RemoveMembersFromConsumerGroupHandler(
         groupId: CoordinatorKey,
         error: Errors,
         failed: MutableMap<CoordinatorKey, Throwable>,
-        groupsToUnmap: MutableSet<CoordinatorKey>
+        groupsToUnmap: MutableSet<CoordinatorKey>,
     ) {
         when (error) {
             Errors.GROUP_AUTHORIZATION_FAILED -> {
@@ -99,15 +107,15 @@ class RemoveMembersFromConsumerGroupHandler(
                     groupId.idValue,
                     error
                 )
-                failed[groupId] = error.exception!!
+                failed[groupId] = error.exception
             }
 
-            Errors.COORDINATOR_LOAD_IN_PROGRESS ->
-                // If the coordinator is in the middle of loading, then we just need to retry
-                log.debug(
-                    "`LeaveGroup` request for group id {} failed because the coordinator " +
-                            "is still in the process of loading state. Will retry", groupId.idValue
-                )
+            // If the coordinator is in the middle of loading, then we just need to retry
+            Errors.COORDINATOR_LOAD_IN_PROGRESS -> log.debug(
+                "`LeaveGroup` request for group id {} failed because the coordinator " +
+                        "is still in the process of loading state. Will retry",
+                groupId.idValue,
+            )
 
             Errors.COORDINATOR_NOT_AVAILABLE, Errors.NOT_COORDINATOR -> {
                 // If the coordinator is unavailable or there was a coordinator change, then we unmap
@@ -116,18 +124,18 @@ class RemoveMembersFromConsumerGroupHandler(
                     "`LeaveGroup` request for group id {} returned error {}. " +
                             "Will attempt to find the coordinator again and retry",
                     groupId.idValue,
-                    error
+                    error,
                 )
                 groupsToUnmap.add(groupId)
             }
-            Errors.NONE -> {} // Catch before `else` to avoid NullPointerException
+
             else -> {
                 log.error(
                     "`LeaveGroup` request for group id {} failed due to unexpected error {}",
                     groupId.idValue,
-                    error
+                    error,
                 )
-                failed[groupId] = error.exception!!
+                failed[groupId] = error.exception
             }
         }
     }
@@ -135,9 +143,8 @@ class RemoveMembersFromConsumerGroupHandler(
     companion object {
 
         fun newFuture(
-            groupId: String
-        ): SimpleAdminApiFuture<CoordinatorKey, Map<MemberIdentity, Errors>> {
-            return AdminApiFuture.forKeys(setOf(CoordinatorKey.byGroupId(groupId)))
-        }
+            groupId: String,
+        ): SimpleAdminApiFuture<CoordinatorKey, Map<MemberIdentity, Errors>> =
+            AdminApiFuture.forKeys(setOf(CoordinatorKey.byGroupId(groupId)))
     }
 }

@@ -4908,16 +4908,16 @@ class KafkaAdminClient private constructor(
         @Throws(InvalidKeyException::class, NoSuchAlgorithmException::class)
         private fun getScramCredentialUpsertion(u: UserScramCredentialUpsertion): ScramCredentialUpsertion {
             val retval = ScramCredentialUpsertion()
-            return retval.setName(u.user())
-                .setMechanism(u.credentialInfo().mechanism().type())
-                .setIterations(u.credentialInfo().iterations())
+            return retval.setName(u.user)
+                .setMechanism(u.credentialInfo.mechanism.type)
+                .setIterations(u.credentialInfo.iterations)
                 .setSalt(u.salt())
                 .setSaltedPassword(
                     getSaltedPassword(
-                        u.credentialInfo().mechanism(),
-                        u.password(),
-                        u.salt(),
-                        u.credentialInfo().iterations()
+                        u.credentialInfo.mechanism,
+                        u.password,
+                        u.salt,
+                        u.credentialInfo.iterations
                     )
                 )
         }

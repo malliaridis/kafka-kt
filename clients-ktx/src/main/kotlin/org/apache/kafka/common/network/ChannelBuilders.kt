@@ -148,10 +148,10 @@ object ChannelBuilders {
         val configs = channelBuilderConfigs(config, listenerName)
         val channelBuilder: ChannelBuilder = when (securityProtocol) {
             SecurityProtocol.SSL -> SslChannelBuilder(
-                mode,
-                listenerName,
-                isInterBrokerListener,
-                logContext,
+                mode = mode,
+                listenerName = listenerName,
+                isInterBrokerListener = isInterBrokerListener,
+                logContext = logContext,
             )
 
             SecurityProtocol.SASL_SSL,

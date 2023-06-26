@@ -658,9 +658,9 @@ interface Admin : AutoCloseable {
      *  * [org.apache.kafka.common.errors.ReassignmentInProgressException]
      * if a partition reassignment is currently in progress
      *  * [org.apache.kafka.common.errors.BrokerNotAvailableException]
-     * if the requested [NewPartitions.assignments] contain a broker that is currently unavailable.
+     * if the requested [NewPartitions.newAssignments] contain a broker that is currently unavailable.
      *  * [org.apache.kafka.common.errors.InvalidReplicationFactorException]
-     * if no [NewPartitions.assignments] are given and it is impossible for the broker to assign
+     * if no [NewPartitions.newAssignments] are given and it is impossible for the broker to assign
      * replicas with the topics replication factor.
      *  * Subclasses of [org.apache.kafka.common.KafkaException]
      * if the request is invalid in some way.

@@ -39,5 +39,5 @@ interface AuthenticationContext {
     /**
      * Name of the listener used for the connection.
      */
-    fun listenerName(): String
+    fun listenerName(): String?
 }

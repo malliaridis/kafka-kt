@@ -53,7 +53,7 @@ class ListOffsetsRequest private constructor(
         duplicatePartitions = duplicates
     }
 
-    override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse? {
+    override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse {
         val versionId = version
         val errorCode = Errors.forException(e).code
         val responses: MutableList<ListOffsetsTopicResponse> = ArrayList()

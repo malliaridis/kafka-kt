@@ -32,7 +32,7 @@ class RenewDelegationTokenRequest(
 
     override fun data(): RenewDelegationTokenRequestData = data
 
-    override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse? {
+    override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse {
         return RenewDelegationTokenResponse(
             RenewDelegationTokenResponseData()
                 .setThrottleTimeMs(throttleTimeMs)

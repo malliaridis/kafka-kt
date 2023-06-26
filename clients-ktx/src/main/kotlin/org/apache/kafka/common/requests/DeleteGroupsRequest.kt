@@ -31,7 +31,7 @@ class DeleteGroupsRequest(
     version: Short,
 ) : AbstractRequest(ApiKeys.DELETE_GROUPS, version) {
 
-    override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse? {
+    override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse {
         val error = Errors.forException(e)
         val groupResults = DeletableGroupResultCollection()
         for (groupId in data.groupsNames()) {

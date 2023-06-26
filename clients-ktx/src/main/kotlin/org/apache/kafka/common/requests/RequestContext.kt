@@ -36,7 +36,7 @@ class RequestContext(
     val connectionId: String,
     val clientAddress: InetAddress,
     val principal: KafkaPrincipal,
-    val listenerName: ListenerName,
+    val listenerName: ListenerName?,
     val securityProtocol: SecurityProtocol,
     val clientInformation: ClientInformation,
     val fromPrivilegedListener: Boolean,
@@ -102,7 +102,7 @@ class RequestContext(
         else header.apiVersion()
     }
 
-    override fun listenerName(): String = listenerName.value()
+    override fun listenerName(): String? = listenerName?.value
 
     override fun securityProtocol(): SecurityProtocol = securityProtocol
 

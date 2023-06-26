@@ -26,7 +26,7 @@ class SaslAuthenticationContext(
     val server: SaslServer,
     private val securityProtocol: SecurityProtocol,
     private val clientAddress: InetAddress,
-    private val listenerName: String,
+    private val listenerName: String?,
     val sslSession: SSLSession? = null
 ) : AuthenticationContext {
 
@@ -51,5 +51,5 @@ class SaslAuthenticationContext(
 
     override fun clientAddress(): InetAddress = clientAddress
 
-    override fun listenerName(): String = listenerName
+    override fun listenerName(): String? = listenerName
 }

@@ -71,7 +71,7 @@ open class SaslChannelBuilder(
     private val mode: Mode,
     private val jaasContexts: Map<String, JaasContext>,
     private val securityProtocol: SecurityProtocol,
-    private val listenerName: ListenerName,
+    private val listenerName: ListenerName?,
     private val isInterBrokerListener: Boolean,
     private val clientSaslMechanism: String,
     private val handshakeRequestEnable: Boolean,

@@ -31,7 +31,7 @@ class DescribeLogDirsRequest(
 
     override fun data(): DescribeLogDirsRequestData = data
 
-    override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse? {
+    override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse {
         return DescribeLogDirsResponse(
             DescribeLogDirsResponseData()
                 .setThrottleTimeMs(throttleTimeMs)

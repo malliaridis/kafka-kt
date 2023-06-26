@@ -39,17 +39,17 @@ class RemoveMembersFromConsumerGroupResult internal constructor(
      */
     fun all(): KafkaFuture<Void?> {
         val result = KafkaFutureImpl<Void?>()
-        future.whenComplete { memberErrors: Map<MemberIdentity, Errors>, throwable: Throwable? ->
-            if (throwable != null) {
-                result.completeExceptionally(throwable)
-            } else {
+        future.whenComplete { memberErrors, throwable ->
+            if (throwable != null) result.completeExceptionally(throwable)
+            else {
+                requireNotNull(memberErrors)
                 if (removeAll()) {
                     for ((key, value) in memberErrors) {
-                        val exception: Exception? = value.exception()
+                        val exception: Exception = value.exception
                         if (exception != null) {
                             val ex: Throwable = KafkaException(
-                                "Encounter exception when trying to remove: "
-                                        + key, exception
+                                message = "Encounter exception when trying to remove: $key",
+                                cause = exception,
                             )
                             result.completeExceptionally(ex)
                             return@whenComplete
@@ -80,17 +80,14 @@ class RemoveMembersFromConsumerGroupResult internal constructor(
         require(!removeAll()) { "The method: memberResult is not applicable in 'removeAll' mode" }
         require(memberInfos.contains(member)) { "Member $member was not included in the original request" }
         val result = KafkaFutureImpl<Void?>()
-        future.whenComplete { memberErrors: Map<MemberIdentity, Errors>, throwable: Throwable? ->
-            if (throwable != null) {
-                result.completeExceptionally(throwable)
-            } else if (!maybeCompleteExceptionally(
-                    memberErrors,
+        future.whenComplete { memberErrors, throwable ->
+            if (throwable != null) result.completeExceptionally(throwable)
+            else if (!maybeCompleteExceptionally(
+                    requireNotNull(memberErrors),
                     member.toMemberIdentity(),
                     result
                 )
-            ) {
-                result.complete(null)
-            }
+            ) result.complete(null)
         }
         return result
     }
@@ -111,7 +108,5 @@ class RemoveMembersFromConsumerGroupResult internal constructor(
         } else false
     }
 
-    private fun removeAll(): Boolean {
-        return memberInfos.isEmpty()
-    }
+    private fun removeAll(): Boolean = memberInfos.isEmpty()
 }

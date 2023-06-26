@@ -72,7 +72,7 @@ class KafkaFutureImpl<T> private constructor(
         return thenApply(function as BaseFunction<T, R>)
     }
 
-    override fun whenComplete(action: BiConsumer<in T, in Throwable>): KafkaFuture<T> {
+    override fun whenComplete(action: BiConsumer<in T?, in Throwable?>): KafkaFuture<T> {
         val tCompletableFuture = completableFuture.whenComplete(
             java.util.function.BiConsumer { a: T, b: Throwable ->
                 try {

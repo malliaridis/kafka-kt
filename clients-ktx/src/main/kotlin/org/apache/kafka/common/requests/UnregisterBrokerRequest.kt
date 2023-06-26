@@ -30,7 +30,7 @@ class UnregisterBrokerRequest(
 
     override fun data(): UnregisterBrokerRequestData = data
 
-    override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): UnregisterBrokerResponse? {
+    override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): UnregisterBrokerResponse {
         val error = Errors.forException(e)
         return UnregisterBrokerResponse(
             UnregisterBrokerResponseData()

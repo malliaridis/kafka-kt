@@ -57,7 +57,7 @@ class TxnOffsetCommitRequest(
         return data
     }
 
-    override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): TxnOffsetCommitResponse? {
+    override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): TxnOffsetCommitResponse {
         val responseTopicData = getErrorResponseTopics(
             data.topics(), Errors.forException(e)
         )

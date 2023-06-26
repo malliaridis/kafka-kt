@@ -60,6 +60,7 @@ class ApiVersionsResponse(
 
     fun zkMigrationReady(): Boolean = data.zkMigrationReady()
 
+    @Suppress("TooManyFunctions")
     companion object {
 
         const val UNKNOWN_FINALIZED_FEATURES_EPOCH = -1L
@@ -100,10 +101,10 @@ class ApiVersionsResponse(
             finalizedFeatures: Map<String?, Short>,
             finalizedFeaturesEpoch: Long,
             controllerApiVersions: NodeApiVersions?,
-            listenerType: ListenerType?
+            listenerType: ListenerType,
         ): ApiVersionsResponse {
             val apiKeys = if (controllerApiVersions != null) intersectForwardableApis(
-                listenerType, minRecordVersion, controllerApiVersions.allSupportedApiVersions()
+                listenerType, minRecordVersion, controllerApiVersions.supportedVersions
             )
             else filterApis(minRecordVersion, listenerType)
 
@@ -137,7 +138,7 @@ class ApiVersionsResponse(
 
         fun filterApis(
             minRecordVersion: RecordVersion,
-            listenerType: ListenerType?
+            listenerType: ListenerType,
         ): ApiVersionCollection {
             val apiKeys = ApiVersionCollection()
 
@@ -166,7 +167,7 @@ class ApiVersionsResponse(
          * @return commonly agreed ApiVersion collection
          */
         fun intersectForwardableApis(
-            listenerType: ListenerType?,
+            listenerType: ListenerType,
             minRecordVersion: RecordVersion,
             activeControllerApiVersions: Map<ApiKeys, ApiVersionsResponseData.ApiVersion>
         ): ApiVersionCollection {

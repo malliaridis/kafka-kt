@@ -23,8 +23,8 @@ import org.apache.kafka.common.security.auth.KafkaPrincipal
 import org.apache.kafka.common.security.auth.SecurityProtocol
 
 /**
- * Request context interface that provides data from request header as well as connection
- * and authentication information to plugins.
+ * Request context interface that provides data from request header as well as connection and
+ * authentication information to plugins.
  */
 @Evolving
 interface AuthorizableRequestContext {
@@ -32,7 +32,7 @@ interface AuthorizableRequestContext {
     /**
      * Returns name of listener on which request was received.
      */
-    fun listenerName(): String
+    fun listenerName(): String?
 
     /**
      * Returns the security protocol for the listener on which request was received.
