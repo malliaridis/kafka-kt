@@ -20,7 +20,7 @@ package org.apache.kafka.common.errors
 /**
  * Indicates that a request timed out.
  */
-class TimeoutException(
+open class TimeoutException(
     message: String? = null,
     cause: Throwable? = null,
 ) : RetriableException(message = message, cause = cause) {

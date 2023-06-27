@@ -19,9 +19,11 @@ package org.apache.kafka.clients.producer
 
 /**
  * A callback interface that the user can implement to allow code to execute when the request is
- * complete. This callback will generally execute in the background I/O thread, so it should be fast.
+ * complete. This callback will generally execute in the background I/O thread, so it should be
+ * fast.
  */
 interface Callback {
+
     /**
      * A callback method the user can implement to provide asynchronous handling of request
      * completion. This method will be called when the record sent to the server has been
@@ -53,5 +55,5 @@ interface Callback {
      * - TimeoutException
      * - UnknownTopicOrPartitionException
      */
-    fun onCompletion(metadata: RecordMetadata?, exception: Exception?)
+    fun onCompletion(metadata: RecordMetadata, exception: Exception?)
 }

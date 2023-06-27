@@ -14,13 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.clients.producer;
 
-import java.util.Map;
+package org.apache.kafka.clients.producer
 
-import org.apache.kafka.clients.producer.internals.StickyPartitionCache;
-import org.apache.kafka.common.Cluster;
-
+import org.apache.kafka.clients.producer.internals.StickyPartitionCache
+import org.apache.kafka.common.Cluster
 
 /**
  * NOTE this partitioner is deprecated and shouldn't be used.  To use default partitioning logic
@@ -28,21 +26,22 @@ import org.apache.kafka.common.Cluster;
  * See KIP-794 for more info.
  *
  * The partitioning strategy:
- * <ul>
- * <li>If a partition is specified in the record, use it
- * <li>Otherwise choose the sticky partition that changes when the batch is full.
- * 
- * NOTE: In contrast to the DefaultPartitioner, the record key is NOT used as part of the partitioning strategy in this
- *       partitioner. Records with the same key are not guaranteed to be sent to the same partition.
- * 
+ *
+ * - If a partition is specified in the record, use it
+ * - Otherwise choose the sticky partition that changes when the batch is full.
+ *
+ * NOTE: In contrast to the DefaultPartitioner, the record key is NOT used as part of the
+ * partitioning strategy in this partitioner. Records with the same key are not guaranteed to be
+ * sent to the same partition.
+ *
  * See KIP-480 for details about sticky partitioning.
  */
-@Deprecated
-public class UniformStickyPartitioner implements Partitioner {
+@Deprecated("")
+class UniformStickyPartitioner : Partitioner {
 
-    private final StickyPartitionCache stickyPartitionCache = new StickyPartitionCache();
+    private val stickyPartitionCache = StickyPartitionCache()
 
-    public void configure(Map<String, ?> configs) {}
+    override fun configure(configs: Map<String, *>) = Unit
 
     /**
      * Compute the partition for the given record.
@@ -54,18 +53,25 @@ public class UniformStickyPartitioner implements Partitioner {
      * @param valueBytes serialized value to partition on or null
      * @param cluster The current cluster metadata
      */
-    public int partition(String topic, Object key, byte[] keyBytes, Object value, byte[] valueBytes, Cluster cluster) {
-        return stickyPartitionCache.partition(topic, cluster);
+    override fun partition(
+        topic: String,
+        key: Any?,
+        keyBytes: ByteArray?,
+        value: Any?,
+        valueBytes: ByteArray?,
+        cluster: Cluster
+    ): Int {
+        return stickyPartitionCache.partition(topic, cluster)
     }
 
-    public void close() {}
-    
+    override fun close() {}
+
     /**
-     * If a batch completed for the current sticky partition, change the sticky partition. 
+     * If a batch completed for the current sticky partition, change the sticky partition.
      * Alternately, if no sticky partition has been determined, set one.
      */
-    @SuppressWarnings("deprecation")
-    public void onNewBatch(String topic, Cluster cluster, int prevPartition) {
-        stickyPartitionCache.nextPartition(topic, cluster, prevPartition);
+    @Suppress("deprecation")
+    override fun onNewBatch(topic: String?, cluster: Cluster?, prevPartition: Int) {
+        stickyPartitionCache.nextPartition(topic, cluster, prevPartition)
     }
 }

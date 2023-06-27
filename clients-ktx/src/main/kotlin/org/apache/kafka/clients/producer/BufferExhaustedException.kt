@@ -14,23 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.clients.producer;
 
-import org.apache.kafka.common.errors.TimeoutException;
+package org.apache.kafka.clients.producer
+
+import org.apache.kafka.common.errors.TimeoutException
 
 /**
- * This exception is thrown if the producer cannot allocate memory for a record within max.block.ms due to the buffer
- * being too full.
+ * This exception is thrown if the producer cannot allocate memory for a record within max.block.ms
+ * due to the buffer being too full.
  *
- * In earlier versions a TimeoutException was thrown instead of this. To keep existing catch-clauses working
- * this class extends TimeoutException.
- *
+ * In earlier versions a TimeoutException was thrown instead of this. To keep existing catch-clauses
+ * working this class extends TimeoutException.
  */
-public class BufferExhaustedException extends TimeoutException {
+class BufferExhaustedException(message: String?) : TimeoutException(message) {
 
-    private static final long serialVersionUID = 1L;
-
-    public BufferExhaustedException(String message) {
-        super(message);
+    companion object {
+        private const val serialVersionUID = 1L
     }
 }

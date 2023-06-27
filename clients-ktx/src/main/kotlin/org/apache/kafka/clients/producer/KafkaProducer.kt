@@ -890,7 +890,6 @@ open class KafkaProducer<K, V> : Producer<K, V> {
      * stored in the buffer of records waiting to be sent. This allows sending many records in
      * parallel without blocking to wait for the response after each one.
      *
-     *
      * The result of the send is a [RecordMetadata] specifying the partition the record was sent to,
      * the offset it was assigned and the timestamp of the record. If the producer is configured
      * with acks = 0, the [RecordMetadata] will have offset = -1 because the producer does not wait
@@ -1001,7 +1000,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
 
     // Verify that this producer instance has not been closed. This method throws
     // IllegalStateException if the producer has already been closed.
-    private fun throwIfProducerClosed() = check(sender == null || !sender.isRunning) {
+    private fun throwIfProducerClosed() = check(sender != null && sender.isRunning) {
         "Cannot perform operation after producer has been closed"
     }
 

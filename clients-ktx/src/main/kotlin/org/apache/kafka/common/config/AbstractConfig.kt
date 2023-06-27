@@ -147,7 +147,7 @@ open class AbstractConfig(
     fun getString(key: String): String = get(key)
 
     fun typeOf(key: String): ConfigDef.Type? {
-        val configKey = definition.configKeys()[key] ?: return null
+        val configKey = definition.configKeys[key] ?: return null
         return configKey.type
     }
 

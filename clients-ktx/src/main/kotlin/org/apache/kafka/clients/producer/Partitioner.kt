@@ -14,18 +14,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.clients.producer;
 
-import org.apache.kafka.common.Configurable;
-import org.apache.kafka.common.Cluster;
+package org.apache.kafka.clients.producer
 
-import java.io.Closeable;
+import org.apache.kafka.common.Cluster
+import org.apache.kafka.common.Configurable
+import java.io.Closeable
 
 /**
  * Partitioner Interface
  */
-public interface Partitioner extends Configurable, Closeable {
-
+interface Partitioner : Configurable, Closeable {
     /**
      * Compute the partition for the given record.
      *
@@ -36,24 +35,31 @@ public interface Partitioner extends Configurable, Closeable {
      * @param valueBytes The serialized value to partition on or null
      * @param cluster The current cluster metadata
      */
-    int partition(String topic, Object key, byte[] keyBytes, Object value, byte[] valueBytes, Cluster cluster);
+    fun partition(
+        topic: String,
+        key: Any?,
+        keyBytes: ByteArray?,
+        value: Any?,
+        valueBytes: ByteArray?,
+        cluster: Cluster,
+    ): Int
 
     /**
      * This is called when partitioner is closed.
      */
-    void close();
+    override fun close()
 
     /**
-     * Note this method is only implemented in DefatultPartitioner and UniformStickyPartitioner which
-     * are now deprecated.  See KIP-794 for more info.
+     * Note this method is only implemented in DefatultPartitioner and UniformStickyPartitioner
+     * which are now deprecated.  See KIP-794 for more info.
      *
-     * Notifies the partitioner a new batch is about to be created. When using the sticky partitioner,
-     * this method can change the chosen sticky partition for the new batch.
+     * Notifies the partitioner a new batch is about to be created. When using the sticky
+     * partitioner, this method can change the chosen sticky partition for the new batch.
      * @param topic The topic name
      * @param cluster The current cluster metadata
-     * @param prevPartition The partition previously selected for the record that triggered a new batch
+     * @param prevPartition The partition previously selected for the record that triggered a new
+     * batch
      */
-    @Deprecated
-    default void onNewBatch(String topic, Cluster cluster, int prevPartition) {
-    }
+    @Deprecated("")
+    fun onNewBatch(topic: String?, cluster: Cluster?, prevPartition: Int) = Unit
 }
