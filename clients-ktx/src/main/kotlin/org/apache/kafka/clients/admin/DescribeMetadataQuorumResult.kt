@@ -17,7 +17,21 @@
 
 package org.apache.kafka.clients.admin
 
+import org.apache.kafka.common.KafkaFuture
+
 /**
- * Options for [Admin.describeMetadataQuorum]
+ * The result of [Admin.describeMetadataQuorum]
  */
-class DescribeMetadataQuorumOptions : AbstractOptions<DescribeMetadataQuorumOptions>()
+data class DescribeMetadataQuorumResult internal constructor(
+    val quorumInfo: KafkaFuture<QuorumInfo>,
+) {
+
+    /**
+     * Returns a future containing the QuorumInfo
+     */
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("quorumInfo"),
+    )
+    fun quorumInfo(): KafkaFuture<QuorumInfo> = quorumInfo
+}

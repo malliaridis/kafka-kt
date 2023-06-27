@@ -17,7 +17,26 @@
 
 package org.apache.kafka.clients.admin
 
+import org.apache.kafka.common.annotation.InterfaceStability.Evolving
+
 /**
- * Options for [Admin.describeMetadataQuorum]
+ * Options for [Admin.describeConsumerGroups].
+ *
+ * The API of this class is evolving, see [Admin] for details.
  */
-class DescribeMetadataQuorumOptions : AbstractOptions<DescribeMetadataQuorumOptions>()
+@Evolving
+class DescribeConsumerGroupsOptions : AbstractOptions<DescribeConsumerGroupsOptions>() {
+    var includeAuthorizedOperations = false
+
+    @Deprecated("User property instead")
+    fun includeAuthorizedOperations(includeAuthorizedOperations: Boolean): DescribeConsumerGroupsOptions {
+        this.includeAuthorizedOperations = includeAuthorizedOperations
+        return this
+    }
+
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("includeAuthorizedOperations"),
+    )
+    fun includeAuthorizedOperations(): Boolean = includeAuthorizedOperations
+}

@@ -50,9 +50,9 @@ class DescribeUserScramCredentialsResult internal constructor(
                 /* Check to make sure every individual described user succeeded. Note that a
                  * successfully described user is one that appears with *either* a NONE error code
                  * or a RESOURCE_NOT_FOUND error code. The RESOURCE_NOT_FOUND means the client
-                 *  explicitly requested a describe of that particular user but it could not be
-                 *  described because it does not exist; such a user will not appear as a key in the
-                 *  returned map.
+                 * explicitly requested a describe of that particular user but it could not be
+                 * described because it does not exist; such a user will not appear as a key in the
+                 * returned map.
                  */
                 val firstFailedDescribe = data!!.results().firstOrNull { result ->
                     result.errorCode() != Errors.NONE.code

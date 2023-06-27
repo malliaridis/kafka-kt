@@ -17,7 +17,22 @@
 
 package org.apache.kafka.clients.admin
 
+import org.apache.kafka.common.KafkaFuture
+import org.apache.kafka.common.acl.AclBinding
+import org.apache.kafka.common.annotation.InterfaceStability.Evolving
+
 /**
- * Options for [Admin.describeMetadataQuorum]
+ * The result of the [KafkaAdminClient.describeAcls] call.
+ *
+ * The API of this class is evolving, see [Admin] for details.
  */
-class DescribeMetadataQuorumOptions : AbstractOptions<DescribeMetadataQuorumOptions>()
+@Evolving
+class DescribeAclsResult internal constructor(
+    private val future: KafkaFuture<Collection<AclBinding>>,
+) {
+
+    /**
+     * Return a future containing the ACLs requested.
+     */
+    fun values(): KafkaFuture<Collection<AclBinding>> = future
+}

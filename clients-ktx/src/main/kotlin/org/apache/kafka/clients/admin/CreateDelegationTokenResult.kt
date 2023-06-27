@@ -17,7 +17,22 @@
 
 package org.apache.kafka.clients.admin
 
+import org.apache.kafka.common.KafkaFuture
+import org.apache.kafka.common.annotation.InterfaceStability.Evolving
+import org.apache.kafka.common.security.token.delegation.DelegationToken
+
 /**
- * Options for [Admin.describeMetadataQuorum]
+ * The result of the [KafkaAdminClient.createDelegationToken] call.
+ *
+ * The API of this class is evolving, see [Admin] for details.
  */
-class DescribeMetadataQuorumOptions : AbstractOptions<DescribeMetadataQuorumOptions>()
+@Evolving
+class CreateDelegationTokenResult internal constructor(
+    val delegationToken: KafkaFuture<DelegationToken>,
+) {
+
+    /**
+     * Returns a future which yields a delegation token
+     */
+    fun delegationToken(): KafkaFuture<DelegationToken> = delegationToken
+}

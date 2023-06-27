@@ -17,7 +17,33 @@
 
 package org.apache.kafka.clients.admin
 
+import org.apache.kafka.common.annotation.InterfaceStability.Evolving
+
 /**
- * Options for [Admin.describeMetadataQuorum]
+ * Options for [Admin.alterClientQuotas].
+ *
+ * The API of this class is evolving, see [Admin] for details.
  */
-class DescribeMetadataQuorumOptions : AbstractOptions<DescribeMetadataQuorumOptions>()
+@Evolving
+class AlterClientQuotasOptions : AbstractOptions<AlterClientQuotasOptions>() {
+
+    var validateOnly = false
+
+    /**
+     * Returns whether the request should be validated without altering the configs.
+     */
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("validateOnly"),
+    )
+    fun validateOnly(): Boolean = validateOnly
+
+    /**
+     * Sets whether the request should be validated without altering the configs.
+     */
+    @Deprecated("User property instead")
+    fun validateOnly(validateOnly: Boolean): AlterClientQuotasOptions {
+        this.validateOnly = validateOnly
+        return this
+    }
+}

@@ -17,7 +17,12 @@
 
 package org.apache.kafka.clients.admin
 
+import org.apache.kafka.common.annotation.InterfaceStability.Evolving
+
 /**
- * Options for [Admin.describeMetadataQuorum]
+ * Options for [Admin.describeLogDirs]
+ *
+ * The API of this class is evolving, see [Admin] for details.
  */
-class DescribeMetadataQuorumOptions : AbstractOptions<DescribeMetadataQuorumOptions>()
+@Evolving
+class DescribeLogDirsOptions : AbstractOptions<DescribeLogDirsOptions>()

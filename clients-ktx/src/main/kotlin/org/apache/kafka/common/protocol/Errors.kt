@@ -745,8 +745,8 @@ enum class Errors(
     /**
      * The instance of the exception.
      */
-    val exception: ApiException
-        get() = _exception!! // Throw NullPointerException if exception from Errors.NONE is accessed
+    val exception: ApiException?
+        get() = _exception // Throw NullPointerException if exception from Errors.NONE is accessed
 
     init {
         this.code = code.toShort()

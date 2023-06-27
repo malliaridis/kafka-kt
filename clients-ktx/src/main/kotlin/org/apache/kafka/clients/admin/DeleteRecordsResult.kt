@@ -17,7 +17,26 @@
 
 package org.apache.kafka.clients.admin
 
+import org.apache.kafka.common.KafkaFuture
+import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.annotation.InterfaceStability.Evolving
+
 /**
- * Options for [Admin.describeMetadataQuorum]
+ * The result of the [Admin.deleteRecords] call.
+ *
+ * The API of this class is evolving, see [Admin] for details.
  */
-class DescribeMetadataQuorumOptions : AbstractOptions<DescribeMetadataQuorumOptions>()
+@Evolving
+class DeleteRecordsResult(private val futures: Map<TopicPartition, KafkaFuture<DeletedRecords>>) {
+
+    /**
+     * Return a map from topic partition to futures which can be used to check the status of
+     * individual deletions.
+     */
+    fun lowWatermarks(): Map<TopicPartition, KafkaFuture<DeletedRecords>> = futures
+
+    /**
+     * Return a future which succeeds only if all the records deletions succeed.
+     */
+    fun all(): KafkaFuture<Unit> = KafkaFuture.allOf(futures.values)
+}

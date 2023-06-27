@@ -17,7 +17,15 @@
 
 package org.apache.kafka.clients.admin
 
+import org.apache.kafka.common.KafkaFuture
+
 /**
- * Options for [Admin.describeMetadataQuorum]
+ * The result of the [Admin.describeFeatures] call.
+ *
+ * The API of this class is evolving, see [Admin] for details.
  */
-class DescribeMetadataQuorumOptions : AbstractOptions<DescribeMetadataQuorumOptions>()
+class DescribeFeaturesResult internal constructor(
+    private val future: KafkaFuture<FeatureMetadata>
+) {
+    fun featureMetadata(): KafkaFuture<FeatureMetadata> = future
+}

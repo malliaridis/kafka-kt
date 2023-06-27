@@ -17,7 +17,23 @@
 
 package org.apache.kafka.clients.admin
 
+import org.apache.kafka.common.annotation.InterfaceStability.Evolving
+
 /**
- * Options for [Admin.describeMetadataQuorum]
+ * Represents information about deleted records
+ *
+ * The API for this class is still evolving and we may break compatibility in minor releases, if
+ * necessary.
+ *
+ * @constructor Create an instance of this class with the provided parameters.
+ * @property lowWatermark "low watermark" for the topic partition on which the deletion was
+ * executed
  */
-class DescribeMetadataQuorumOptions : AbstractOptions<DescribeMetadataQuorumOptions>()
+@Evolving
+data class DeletedRecords(val lowWatermark: Long) {
+
+    /**
+     * Return the "low watermark" for the topic partition on which the deletion was executed
+     */
+    fun lowWatermark(): Long = lowWatermark
+}

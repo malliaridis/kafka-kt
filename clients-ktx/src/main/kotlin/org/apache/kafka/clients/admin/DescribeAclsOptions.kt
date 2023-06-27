@@ -17,7 +17,23 @@
 
 package org.apache.kafka.clients.admin
 
+import org.apache.kafka.common.annotation.InterfaceStability.Evolving
+
 /**
- * Options for [Admin.describeMetadataQuorum]
+ * Options for [Admin.describeAcls].
+ *
+ * The API of this class is evolving, see [Admin] for details.
  */
-class DescribeMetadataQuorumOptions : AbstractOptions<DescribeMetadataQuorumOptions>()
+@Evolving
+class DescribeAclsOptions : AbstractOptions<DescribeAclsOptions>() {
+
+    /**
+     * Set the timeout in milliseconds for this operation or `null` if the default api timeout for
+     * the AdminClient should be used.
+     */
+    // This method is retained to keep binary compatibility with 0.11
+    fun timeoutMs(timeoutMs: Int?): DescribeAclsOptions {
+        this.timeoutMs = timeoutMs
+        return this
+    }
+}

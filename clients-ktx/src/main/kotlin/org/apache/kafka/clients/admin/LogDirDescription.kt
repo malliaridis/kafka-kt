@@ -25,7 +25,7 @@ import org.apache.kafka.common.requests.DescribeLogDirsResponse
  * A description of a log directory on a particular broker.
  */
 class LogDirDescription(
-    private val error: ApiException,
+    private val error: ApiException?,
     private val replicaInfos: Map<TopicPartition, ReplicaInfo>,
     totalBytes: Long = DescribeLogDirsResponse.UNKNOWN_VOLUME_BYTES,
     usableBytes: Long = DescribeLogDirsResponse.UNKNOWN_VOLUME_BYTES,
@@ -51,7 +51,7 @@ class LogDirDescription(
      * - `UnknownServerException` - The server experienced an unexpected error when processing the
      * request.
      */
-    fun error(): ApiException = error
+    fun error(): ApiException? = error
 
     /**
      * A map from topic partition to replica information for that partition in this log directory.

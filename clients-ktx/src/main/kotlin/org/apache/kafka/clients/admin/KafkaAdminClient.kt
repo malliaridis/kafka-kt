@@ -4948,9 +4948,8 @@ class KafkaAdminClient private constructor(
             subLevelErrors: Map<K, Errors>,
             subKey: K,
             keyNotFoundMsg: String,
-        ): Throwable {
-            val error = requireNotNull(subLevelErrors[subKey]) { keyNotFoundMsg }
-            return error.exception
-        }
+        ): Throwable? = subLevelErrors.getOrElse(subKey) {
+            return IllegalArgumentException(keyNotFoundMsg)
+        }.exception
     }
 }
