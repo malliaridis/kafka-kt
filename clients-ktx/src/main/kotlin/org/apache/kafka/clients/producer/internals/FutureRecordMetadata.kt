@@ -86,7 +86,7 @@ class FutureRecordMetadata(
     }
 
     fun value(): RecordMetadata = nextRecordMetadata?.value() ?: RecordMetadata(
-        topicPartition = result.topicPartition(),
+        topicPartition = result.topicPartition,
         baseOffset = result.baseOffset(),
         batchIndex = batchIndex,
         timestamp = timestamp(),

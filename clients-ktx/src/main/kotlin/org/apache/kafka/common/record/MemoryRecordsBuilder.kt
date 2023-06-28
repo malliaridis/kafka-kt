@@ -49,7 +49,7 @@ class MemoryRecordsBuilder(
     // underlying ByteBuffer.
     private val bufferStream: ByteBufferOutputStream,
     val magic: Byte,
-    private val compressionType: CompressionType,
+    val compressionType: CompressionType,
     private val timestampType: TimestampType,
     private val baseOffset: Long,
     private val logAppendTime: Long,
@@ -128,7 +128,7 @@ class MemoryRecordsBuilder(
         this.bufferStream.position(initialPosition + batchHeaderSizeInBytes)
         appendStream = DataOutputStream(compressionType.wrapForOutput(this.bufferStream, magic))
 
-        if (hasDeleteHorizonMs()) baseTimestamp = deleteHorizonMs
+        if (hasDeleteHorizonMs) baseTimestamp = deleteHorizonMs
     }
 
     /**
@@ -184,15 +184,47 @@ class MemoryRecordsBuilder(
         writeLimit = writeLimit,
     )
 
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("buffer"),
+    )
     fun buffer(): ByteBuffer = bufferStream.buffer
 
+    val buffer: ByteBuffer
+        get() = bufferStream.buffer
+
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("initialCapacity"),
+    )
     fun initialCapacity(): Int = bufferStream.initialCapacity
 
+    val initialCapacity: Int
+        get() = bufferStream.initialCapacity
+
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("compressionRatio"),
+    )
     fun compressionRatio(): Double = actualCompressionRatio.toDouble()
 
+    val compressionRatio: Double
+        get() = actualCompressionRatio.toDouble()
+
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("compressionType"),
+    )
     fun compressionType(): CompressionType = compressionType
 
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("hasDeleteHorizonMs"),
+    )
     fun hasDeleteHorizonMs(): Boolean = magic >= RecordBatch.MAGIC_VALUE_V2 && deleteHorizonMs >= 0L
+
+    val hasDeleteHorizonMs: Boolean
+        get() = magic >= RecordBatch.MAGIC_VALUE_V2 && deleteHorizonMs >= 0L
 
     /**
      * Close this builder and return the resulting buffer.
@@ -292,7 +324,7 @@ class MemoryRecordsBuilder(
 
     fun abort() {
         closeForRecordAppends()
-        buffer().position(initialPosition)
+        buffer.position(initialPosition)
         aborted = true
     }
 
@@ -317,7 +349,7 @@ class MemoryRecordsBuilder(
         closeForRecordAppends()
 
         if (numRecords.toLong() == 0L) {
-            buffer().position(initialPosition)
+            buffer.position(initialPosition)
             builtRecords = MemoryRecords.EMPTY
         } else {
             if (magic > RecordBatch.MAGIC_VALUE_V1) actualCompressionRatio =
@@ -325,7 +357,7 @@ class MemoryRecordsBuilder(
             else if (compressionType !== CompressionType.NONE) actualCompressionRatio =
                 writeLegacyCompressedWrapperHeader().toFloat() / uncompressedRecordsSizeInBytes
 
-            val buffer = buffer().duplicate()
+            val buffer = buffer.duplicate()
             buffer.flip()
             buffer.position(initialPosition)
             builtRecords = MemoryRecords.readableRecords(buffer.slice())
@@ -381,7 +413,7 @@ class MemoryRecordsBuilder(
             sequence = baseSequence,
             isTransactional = isTransactional,
             isControlBatch = isControlBatch,
-            isDeleteHorizonSet = hasDeleteHorizonMs(),
+            isDeleteHorizonSet = hasDeleteHorizonMs,
             partitionLeaderEpoch = partitionLeaderEpoch,
             numRecords = numRecords,
         )
@@ -539,10 +571,10 @@ class MemoryRecordsBuilder(
         record: SimpleRecord,
     ) = appendWithOffset(
         offset = offset,
-        timestamp = record.timestamp(),
-        key = record.key(),
-        value = record.value(),
-        headers = record.headers(),
+        timestamp = record.timestamp,
+        key = record.key,
+        value = record.value,
+        headers = record.headers,
     )
 
     /**
@@ -764,23 +796,23 @@ class MemoryRecordsBuilder(
     fun appendUncheckedWithOffset(offset: Long, record: SimpleRecord) {
         if (magic >= RecordBatch.MAGIC_VALUE_V2) {
             val offsetDelta = (offset - baseOffset).toInt()
-            val timestamp = record.timestamp()
+            val timestamp = record.timestamp
             if (baseTimestamp == null) baseTimestamp = timestamp
             val sizeInBytes = DefaultRecord.writeTo(
                 appendStream!!,
                 offsetDelta,
                 timestamp - baseTimestamp!!,
-                record.key(),
-                record.value(),
-                record.headers()
+                record.key,
+                record.value,
+                record.headers
             )
             recordWritten(offset, timestamp, sizeInBytes)
         } else {
             val legacyRecord = LegacyRecord.create(
                 magic,
-                record.timestamp(),
-                toNullableArray(record.key()),
-                toNullableArray(record.value())
+                record.timestamp,
+                toNullableArray(record.key),
+                toNullableArray(record.value)
             )
             appendUncheckedWithOffset(offset, legacyRecord)
         }
@@ -911,12 +943,12 @@ class MemoryRecordsBuilder(
     ): Boolean = hasRoomFor(timestamp, wrapNullable(key), wrapNullable(value), headers)
 
     /**
-     * Check if we have room for a new record containing the given key/value pair. If no records have been
-     * appended, then this returns true.
+     * Check if we have room for a new record containing the given key/value pair. If no records
+     * have been appended, then this returns true.
      *
-     * Note that the return value is based on the estimate of the bytes written to the compressor, which may not be
-     * accurate if compression is used. When this happens, the following append may cause dynamic buffer
-     * re-allocation in the underlying byte buffer stream.
+     * Note that the return value is based on the estimate of the bytes written to the compressor,
+     * which may not be accurate if compression is used. When this happens, the following append may
+     * cause dynamic buffer re-allocation in the underlying byte buffer stream.
      */
     fun hasRoomFor(
         timestamp: Long,
@@ -926,7 +958,8 @@ class MemoryRecordsBuilder(
     ): Boolean {
         if (isFull) return false
 
-        // We always allow at least one record to be appended (the ByteBufferOutputStream will grow as needed)
+        // We always allow at least one record to be appended (the ByteBufferOutputStream will grow
+        // as needed)
         if (numRecords == 0) return true
         val recordSize: Int = if (magic < RecordBatch.MAGIC_VALUE_V2)
             Records.LOG_OVERHEAD + LegacyRecord.recordSize(magic, key, value)

@@ -61,5 +61,5 @@ interface Partitioner : Configurable, Closeable {
      * batch
      */
     @Deprecated("")
-    fun onNewBatch(topic: String?, cluster: Cluster?, prevPartition: Int) = Unit
+    fun onNewBatch(topic: String, cluster: Cluster, prevPartition: Int) = Unit
 }

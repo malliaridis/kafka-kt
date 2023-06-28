@@ -55,5 +55,5 @@ interface Callback {
      * - TimeoutException
      * - UnknownTopicOrPartitionException
      */
-    fun onCompletion(metadata: RecordMetadata, exception: Exception?)
+    fun onCompletion(metadata: RecordMetadata?, exception: Exception?)
 }
