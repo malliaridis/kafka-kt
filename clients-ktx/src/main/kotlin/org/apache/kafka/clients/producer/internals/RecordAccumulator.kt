@@ -824,7 +824,7 @@ class RecordAccumulator(
                 // This is a partition for which leader is not known, but messages are available to
                 // send. Note that entries are currently not removed from batches when deque is
                 // empty.
-                unknownLeaderTopics.add(part.topic())
+                unknownLeaderTopics.add(part.topic)
             } else {
                 if (queueSizes != null) queueSizes[queueSizesIndex] = dequeSize
                 if (partitionAvailabilityTimeoutMs > 0) {

@@ -76,9 +76,7 @@ interface Time {
     /**
      * Get a timer which is bound to this time instance and expires after the given timeout
      */
-    fun timer(timeoutMs: Long): Timer? {
-        return Timer(this, timeoutMs)
-    }
+    fun timer(timeoutMs: Long): Timer = Timer(this, timeoutMs)
 
     /**
      * Get a timer which is bound to this time instance and expires after the given timeout

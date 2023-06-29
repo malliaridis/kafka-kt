@@ -14,41 +14,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.clients.consumer;
 
-import org.apache.kafka.common.TopicPartition;
+package org.apache.kafka.clients.consumer
 
-import java.util.Map;
-import java.util.Set;
+import org.apache.kafka.common.TopicPartition
 
 /**
  * No reset policy has been defined, and the offsets for these partitions are either larger or smaller
  * than the range of offsets the server has for the given partition.
  */
-public class OffsetOutOfRangeException extends InvalidOffsetException {
+class OffsetOutOfRangeException(
+    message: String? = null,
+    val offsetOutOfRangePartitions: Map<TopicPartition, Long>,
+) : InvalidOffsetException(message) {
 
-    private static final long serialVersionUID = 1L;
-    private final Map<TopicPartition, Long> offsetOutOfRangePartitions;
-
-    public OffsetOutOfRangeException(Map<TopicPartition, Long> offsetOutOfRangePartitions) {
-        this("Offsets out of range with no configured reset policy for partitions: " +
-            offsetOutOfRangePartitions, offsetOutOfRangePartitions);
-    }
-
-    public OffsetOutOfRangeException(String message, Map<TopicPartition, Long> offsetOutOfRangePartitions) {
-        super(message);
-        this.offsetOutOfRangePartitions = offsetOutOfRangePartitions;
-    }
+    constructor(offsetOutOfRangePartitions: Map<TopicPartition, Long>) : this(
+        message = "Offsets out of range with no configured reset policy for partitions: " +
+                offsetOutOfRangePartitions,
+        offsetOutOfRangePartitions = offsetOutOfRangePartitions,
+    )
 
     /**
      * Get a map of the topic partitions and the respective out-of-range fetch offsets.
      */
-    public Map<TopicPartition, Long> offsetOutOfRangePartitions() {
-        return offsetOutOfRangePartitions;
-    }
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("offsetOutOfRangePartitions"),
+    )
+    fun offsetOutOfRangePartitions(): Map<TopicPartition, Long> = offsetOutOfRangePartitions
 
-    @Override
-    public Set<TopicPartition> partitions() {
-        return offsetOutOfRangePartitions.keySet();
+    override fun partitions(): Set<TopicPartition> = offsetOutOfRangePartitions.keys
+
+    companion object {
+        private const val serialVersionUID = 1L
     }
 }

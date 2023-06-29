@@ -24,11 +24,13 @@ import org.apache.kafka.common.record.Record
 import org.apache.kafka.common.utils.AbstractIterator
 
 class RecordHeaders private constructor(
-    private val headers: MutableList<Header> = mutableListOf()
+    private val headers: MutableList<Header> = mutableListOf(),
 ) : Headers {
 
     @Volatile
     private var isReadOnly = false
+
+    constructor() : this(headers = mutableListOf())
 
     constructor(headers: Iterable<Header>) : this(headers.toMutableList())
 

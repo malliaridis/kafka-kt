@@ -14,41 +14,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.clients.consumer;
 
-import org.apache.kafka.common.TopicPartition;
+package org.apache.kafka.clients.consumer
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import org.apache.kafka.common.TopicPartition
 
 /**
  * Indicates that there is no stored offset for a partition and no defined offset
  * reset policy.
  */
-public class NoOffsetForPartitionException extends InvalidOffsetException {
+class NoOffsetForPartitionException : InvalidOffsetException {
+    private val partitions: Set<TopicPartition>
 
-    private static final long serialVersionUID = 1L;
-
-    private final Set<TopicPartition> partitions;
-
-    public NoOffsetForPartitionException(TopicPartition partition) {
-        super("Undefined offset with no reset policy for partition: " + partition);
-        this.partitions = Collections.singleton(partition);
+    constructor(partition: TopicPartition) : super(
+        "Undefined offset with no reset policy for partition: $partition"
+    ) {
+        partitions = setOf(partition)
     }
 
-    public NoOffsetForPartitionException(Collection<TopicPartition> partitions) {
-        super("Undefined offset with no reset policy for partitions: " + partitions);
-        this.partitions = Collections.unmodifiableSet(new HashSet<>(partitions));
+    constructor(partitions: Collection<TopicPartition>) : super(
+        "Undefined offset with no reset policy for partitions: $partitions"
+    ) {
+        this.partitions = partitions.toSet()
     }
 
     /**
      * returns all partitions for which no offests are defined.
+     *
      * @return all partitions without offsets
      */
-    public Set<TopicPartition> partitions() {
-        return partitions;
-    }
+    override fun partitions(): Set<TopicPartition> = partitions
 
+    companion object {
+        private const val serialVersionUID = 1L
+    }
 }

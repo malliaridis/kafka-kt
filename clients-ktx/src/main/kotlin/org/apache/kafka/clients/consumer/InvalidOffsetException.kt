@@ -15,11 +15,18 @@
  * limitations under the License.
  */
 
-package org.apache.kafka.message;
+package org.apache.kafka.clients.consumer
+
+import org.apache.kafka.common.KafkaException
+import org.apache.kafka.common.TopicPartition
 
 /**
- * Generates a clause.
+ * Thrown when the offset for a set of partitions is invalid (either undefined or out of range),
+ * and no reset policy has been configured.
+ * @see NoOffsetForPartitionException
+ *
+ * @see OffsetOutOfRangeException
  */
-public interface ClauseGenerator {
-    void generate(Versions versions);
+abstract class InvalidOffsetException(message: String?) : KafkaException(message) {
+    abstract fun partitions(): Set<TopicPartition>
 }

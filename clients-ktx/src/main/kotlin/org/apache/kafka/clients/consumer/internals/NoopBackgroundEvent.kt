@@ -15,29 +15,13 @@
  * limitations under the License.
  */
 
-package org.apache.kafka.message;
+package org.apache.kafka.clients.consumer.internals
 
-import java.io.BufferedWriter;
-import java.io.IOException;
+import org.apache.kafka.clients.consumer.internals.events.BackgroundEvent
 
-public interface TypeClassGenerator {
-    /**
-     * The short name of the type class file we are generating. For example,
-     * ApiMessageType.java.
-     */
-    String outputName();
-
-    /**
-     * Registers a message spec with the generator.
-     *
-     * @param spec      The spec to register.
-     */
-    void registerMessageType(MessageSpec spec);
-
-    /**
-     * Generate the type, and then write it out.
-     *
-     * @param writer    The writer to write out the state to.
-     */
-    void generateAndWrite(BufferedWriter writer) throws IOException;
+/**
+ * Noop event. Intentionally left it here for demonstration purpose.
+ */
+class NoopBackgroundEvent(val message: String) : BackgroundEvent(EventType.NOOP) {
+    override fun toString(): String = "${javaClass}_$message"
 }

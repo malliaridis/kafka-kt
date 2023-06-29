@@ -655,8 +655,8 @@ public abstract class ConsumerCoordinatorTest {
                     public void onSuccess(ClientResponse value, RequestFuture<Object> future) {}
 
                     @Override
-                    public void onFailure(RuntimeException e, RequestFuture<Object> future) {
-                        assertTrue(e instanceof DisconnectException, "Unexpected exception type: " + e.getClass());
+                    public void onFailure(RuntimeException exception, RequestFuture<Object> future) {
+                        assertTrue(exception instanceof DisconnectException, "Unexpected exception type: " + exception.getClass());
                         assertTrue(coordinator.coordinatorUnknown());
                         asyncCallbackInvoked.set(true);
                     }

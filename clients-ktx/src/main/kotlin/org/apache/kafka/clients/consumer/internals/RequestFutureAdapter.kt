@@ -14,19 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.clients.consumer.internals;
 
-import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
-import org.apache.kafka.common.TopicPartition;
+package org.apache.kafka.clients.consumer.internals
 
-import java.util.Collection;
+/**
+ * Adapt from a request future of one type to another.
+ *
+ * @property F Type to adapt from
+ * @property T Type to adapt to
+ */
+abstract class RequestFutureAdapter<F, T> {
 
-public class NoOpConsumerRebalanceListener implements ConsumerRebalanceListener {
+    abstract fun onSuccess(value: F, future: RequestFuture<T>)
 
-    @Override
-    public void onPartitionsAssigned(Collection<TopicPartition> partitions) {}
-
-    @Override
-    public void onPartitionsRevoked(Collection<TopicPartition> partitions) {}
-
+    open fun onFailure(
+        exception: RuntimeException,
+        future: RequestFuture<T>,
+    ) = future.raise(exception)
 }

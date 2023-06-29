@@ -23,7 +23,7 @@ import org.apache.kafka.common.TopicPartition
  * A callback interface that the user can implement to trigger custom actions when a commit request
  * completes. The callback may be executed in any thread calling [Consumer.poll].
  */
-interface OffsetCommitCallback {
+fun interface OffsetCommitCallback {
 
     /**
      * A callback method the user can implement to provide asynchronous handling of commit request

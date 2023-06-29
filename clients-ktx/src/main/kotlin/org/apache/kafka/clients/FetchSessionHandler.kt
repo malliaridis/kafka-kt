@@ -232,7 +232,7 @@ open class FetchSessionHandler(logContext: LogContext, node: Int) {
             if (data.topicId == Uuid.ZERO_UUID) {
                 partitionsWithoutTopicIds++
             } else {
-                topicNames.putIfAbsent(data.topicId, topicPartition.topic())
+                topicNames.putIfAbsent(data.topicId, topicPartition.topic)
             }
         }
 

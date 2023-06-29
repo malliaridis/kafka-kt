@@ -28,8 +28,8 @@ import org.apache.kafka.common.requests.AbstractRequest
 interface KafkaClient : Closeable {
 
     /**
-     * Check if we are currently ready to send another request to the given node but don't attempt to connect if we
-     * aren't.
+     * Check if we are currently ready to send another request to the given node but don't attempt
+     * to connect if we aren't.
      *
      * @param node The node to check
      * @param now The current timestamp
@@ -37,19 +37,20 @@ interface KafkaClient : Closeable {
     fun isReady(node: Node, now: Long): Boolean
 
     /**
-     * Initiate a connection to the given node (if necessary), and return true if already connected. The readiness of a
-     * node will change only when poll is invoked.
+     * Initiate a connection to the given node (if necessary), and return true if already connected.
+     * The readiness of a node will change only when poll is invoked.
      *
      * @param node The node to connect to.
      * @param now The current time
-     * @return true iff we are ready to immediately initiate the sending of another request to the given node.
+     * @return true iff we are ready to immediately initiate the sending of another request to the
+     * given node.
      */
     fun ready(node: Node, now: Long): Boolean
 
     /**
-     * Return the number of milliseconds to wait, based on the connection state, before attempting to send data. When
-     * disconnected, this respects the reconnect backoff time. When connecting or connected, this handles slow/stalled
-     * connections.
+     * Return the number of milliseconds to wait, based on the connection state, before attempting
+     * to send data. When disconnected, this respects the reconnect backoff time. When connecting or
+     * connected, this handles slow/stalled connections.
      *
      * @param node The node to check
      * @param now The current timestamp
@@ -58,9 +59,9 @@ interface KafkaClient : Closeable {
     fun connectionDelay(node: Node, now: Long): Long
 
     /**
-     * Return the number of milliseconds to wait, based on the connection state and the throttle time, before
-     * attempting to send data. If the connection has been established but being throttled, return throttle delay.
-     * Otherwise, return connection delay.
+     * Return the number of milliseconds to wait, based on the connection state and the throttle
+     * time, before attempting to send data. If the connection has been established but being
+     * throttled, return throttle delay. Otherwise, return connection delay.
      *
      * @param node the connection to check
      * @param now the current time in ms
@@ -68,9 +69,9 @@ interface KafkaClient : Closeable {
     fun pollDelayMs(node: Node, now: Long): Long
 
     /**
-     * Check if the connection of the node has failed, based on the connection state. Such connection failure are
-     * usually transient and can be resumed in the next [ready] }
-     * call, but there are cases where transient failures needs to be caught and re-acted upon.
+     * Check if the connection of the node has failed, based on the connection state. Such
+     * connection failure are usually transient and can be resumed in the next [ready] call, but
+     * there are cases where transient failures needs to be caught and re-acted upon.
      *
      * @param node the node to check
      * @return true iff the connection has failed and the node is disconnected
@@ -78,8 +79,8 @@ interface KafkaClient : Closeable {
     fun connectionFailed(node: Node): Boolean
 
     /**
-     * Check if authentication to this node has failed, based on the connection state. Authentication failures are
-     * propagated without any retries.
+     * Check if authentication to this node has failed, based on the connection state.
+     * Authentication failures are propagated without any retries.
      *
      * @param node the node to check
      * @return an AuthenticationException iff authentication has failed, null otherwise
@@ -96,35 +97,36 @@ interface KafkaClient : Closeable {
     /**
      * Do actual reads and writes from sockets.
      *
-     * @param timeout The maximum amount of time to wait for responses in ms, must be non-negative. The implementation
-     * is free to use a lower value if appropriate (common reasons for this are a lower request or
-     * metadata update timeout)
+     * @param timeout The maximum amount of time to wait for responses in ms, must be non-negative.
+     * The implementation is free to use a lower value if appropriate (common reasons for this are a
+     * lower request or metadata update timeout)
+     *
      * @param now The current time in ms
      * @throws IllegalStateException If a request is sent to an unready node
      */
     fun poll(timeout: Long, now: Long): List<ClientResponse>
 
     /**
-     * Disconnects the connection to a particular node, if there is one.
-     * Any pending ClientRequests for this connection will receive disconnections.
+     * Disconnects the connection to a particular node, if there is one. Any pending ClientRequests
+     * for this connection will receive disconnections.
      *
      * @param nodeId The id of the node
      */
     fun disconnect(nodeId: String)
 
     /**
-     * Closes the connection to a particular node (if there is one).
-     * All requests on the connection will be cleared.  ClientRequest callbacks will not be invoked
-     * for the cleared requests, nor will they be returned from poll().
+     * Closes the connection to a particular node (if there is one). All requests on the connection
+     * will be cleared.  ClientRequest callbacks will not be invoked for the cleared requests, nor
+     * will they be returned from poll().
      *
      * @param nodeId The id of the node
      */
     fun close(nodeId: String)
 
     /**
-     * Choose the node with the fewest outstanding requests. This method will prefer a node with an existing connection,
-     * but will potentially choose a node for which we don't yet have a connection if all existing connections are in
-     * use.
+     * Choose the node with the fewest outstanding requests. This method will prefer a node with an
+     * existing connection, but will potentially choose a node for which we don't yet have a
+     * connection if all existing connections are in use.
      *
      * @param now The current time in ms
      * @return The node with the fewest in-flight requests.
@@ -149,13 +151,14 @@ interface KafkaClient : Closeable {
     fun inFlightRequestCount(nodeId: String): Int
 
     /**
-     * Return true if there is at least one in-flight request for a particular node and false otherwise.
+     * Return `true` if there is at least one in-flight request for a particular node and `false`
+     * otherwise.
      */
     fun hasInFlightRequests(nodeId: String): Boolean
 
     /**
-     * Return true if there is at least one node with connection in the READY state and not throttled. Returns false
-     * otherwise.
+     * Return `true` if there is at least one node with connection in the READY state and not
+     * throttled. Returns `false` otherwise.
      *
      * @param now the current time
      */
@@ -188,9 +191,10 @@ interface KafkaClient : Closeable {
      * @param requestBuilder the request builder to use
      * @param createdTimeMs the time in milliseconds to use as the creation time of the request
      * @param expectResponse true iff we expect a response
-     * @param requestTimeoutMs Upper bound time in milliseconds to await a response before disconnecting the socket and
-     * cancelling the request. The request may get cancelled sooner if the socket disconnects
-     * for any reason including if another pending request to the same node timed out first.
+     * @param requestTimeoutMs Upper bound time in milliseconds to await a response before
+     * disconnecting the socket and cancelling the request. The request may get cancelled sooner if
+     * the socket disconnects for any reason including if another pending request to the same node
+     * timed out first.
      * @param callback the callback to invoke when we get a response
      */
     fun newClientRequest(
@@ -199,8 +203,8 @@ interface KafkaClient : Closeable {
         createdTimeMs: Long,
         expectResponse: Boolean,
         requestTimeoutMs: Int,
-        callback: RequestCompletionHandler?
-    ): ClientRequest?
+        callback: RequestCompletionHandler?,
+    ): ClientRequest
 
     /**
      * Initiates shutdown of this client. This method may be invoked from another thread while this

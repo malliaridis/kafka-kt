@@ -49,7 +49,7 @@ interface ConsumerPartitionAssignor {
      * @param topics Topics subscribed to through [KafkaConsumer.subscribe] and variants
      * @return nullable subscription user data
      */
-    fun subscriptionUserData(topics: Set<String?>?): ByteBuffer? {
+    fun subscriptionUserData(topics: Set<String>): ByteBuffer? {
         return null
     }
 
@@ -159,9 +159,9 @@ interface ConsumerPartitionAssignor {
         }
     }
 
-    class Assignment(
+    data class Assignment(
         val partitions: List<TopicPartition>,
-        val userData: ByteBuffer? = null
+        val userData: ByteBuffer? = null,
     ) {
 
         @Deprecated(

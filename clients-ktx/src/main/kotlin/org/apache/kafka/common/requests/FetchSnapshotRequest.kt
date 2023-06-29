@@ -78,7 +78,7 @@ class FetchSnapshotRequest(
                 .setTopics(
                     listOf(
                         FetchSnapshotRequestData.TopicSnapshot()
-                            .setName(topicPartition.topic())
+                            .setName(topicPartition.topic)
                             .setPartitions(listOf(partitionSnapshot))
                     )
                 )

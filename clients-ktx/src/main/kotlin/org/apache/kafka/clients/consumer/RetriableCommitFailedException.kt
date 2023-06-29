@@ -14,19 +14,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.clients.consumer.internals;
 
-/**
- * Adapt from a request future of one type to another.
- *
- * @param <F> Type to adapt from
- * @param <T> Type to adapt to
- */
-public abstract class RequestFutureAdapter<F, T> {
+package org.apache.kafka.clients.consumer
 
-    public abstract void onSuccess(F value, RequestFuture<T> future);
+import org.apache.kafka.common.errors.RetriableException
 
-    public void onFailure(RuntimeException e, RequestFuture<T> future) {
-        future.raise(e);
+class RetriableCommitFailedException(
+    message: String? =
+        "Offset commit failed with a retriable exception. You should retry committing the latest " +
+            "consumed offsets.",
+    cause: Throwable? = null,
+) : RetriableException(message, cause) {
+
+    companion object {
+        private const val serialVersionUID = 1L
     }
 }

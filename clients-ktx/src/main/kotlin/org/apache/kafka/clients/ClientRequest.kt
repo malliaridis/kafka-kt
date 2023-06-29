@@ -39,13 +39,13 @@ import org.apache.kafka.common.requests.RequestHeader
  */
 data class ClientRequest(
     val destination: String,
-    private val requestBuilder: AbstractRequest.Builder<*>,
+    val requestBuilder: AbstractRequest.Builder<*>,
     val correlationId: Int,
-    private val clientId: String,
+    val clientId: String,
     val createdTimeMs: Long,
-    private val expectResponse: Boolean,
+    val expectResponse: Boolean,
     val requestTimeoutMs: Int,
-    val callback: RequestCompletionHandler
+    val callback: RequestCompletionHandler,
 ) {
     @Deprecated(
         message = "User property instead",

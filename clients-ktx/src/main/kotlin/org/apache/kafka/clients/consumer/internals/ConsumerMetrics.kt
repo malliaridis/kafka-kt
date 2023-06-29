@@ -15,19 +15,29 @@
  * limitations under the License.
  */
 
-package org.apache.kafka.common.errors
+package org.apache.kafka.clients.consumer.internals
 
-import org.apache.kafka.common.KafkaException
+import org.apache.kafka.common.MetricNameTemplate
+import org.apache.kafka.common.metrics.Metrics
 
-/**
- * Exception used to indicate preemption of a blocking operation by an external thread.
- * For example, [org.apache.kafka.clients.consumer.KafkaConsumer.wakeup]
- * can be used to break out of an active [org.apache.kafka.clients.consumer.KafkaConsumer.poll],
- * which would raise an instance of this exception.
- */
-class WakeupException : KafkaException() {
+class ConsumerMetrics(metricsTags: Set<String> = emptySet(), metricGrpPrefix: String) {
+
+    var fetcherMetrics: FetcherMetricsRegistry = FetcherMetricsRegistry(metricsTags, metricGrpPrefix)
+
+    private val allTemplates: List<MetricNameTemplate>
+        get() = fetcherMetrics.allTemplates.toList()
 
     companion object {
-        private const val serialVersionUID = 1L
+        @JvmStatic
+        fun main(args: Array<String>) {
+            val tags = setOf("client-id")
+            val metrics = ConsumerMetrics(tags, "consumer")
+            println(
+                Metrics.toHtmlTable(
+                    "kafka.consumer",
+                    metrics.allTemplates
+                )
+            )
+        }
     }
 }

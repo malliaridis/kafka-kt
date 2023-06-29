@@ -119,32 +119,27 @@ open class AbstractConfig(
     ): Map<String, Any?> = emptyMap()
 
     @Suppress("UNCHECKED_CAST")
-    protected operator fun <T> get(key: String): T {
-        if (!values.containsKey(key))
-            throw ConfigException(String.format("Unknown configuration '%s'", key))
-
+    protected operator fun <T> get(key: String): T? {
+        if (!values.containsKey(key)) throw ConfigException("Unknown configuration '$key'")
         used.add(key)
-
-        return values[key] as T
+        return values[key] as T?
     }
 
-    fun ignore(key: String) {
-        used.add(key)
-    }
+    fun ignore(key: String) = used.add(key)
 
-    fun getShort(key: String): Short = get(key)
+    fun getShort(key: String): Short? = get(key)
 
-    fun getInt(key: String): Int = get(key)
+    fun getInt(key: String): Int? = get(key)
 
-    fun getLong(key: String): Long = get(key)
+    fun getLong(key: String): Long? = get(key)
 
-    fun getDouble(key: String): Double = get(key)
+    fun getDouble(key: String): Double? = get(key)
 
-    fun getList(key: String): List<String> = get(key)
+    fun getList(key: String): List<String>? = get(key)
 
-    fun getBoolean(key: String): Boolean = get(key)
+    fun getBoolean(key: String): Boolean? = get(key)
 
-    fun getString(key: String): String = get(key)
+    fun getString(key: String): String? = get(key)
 
     fun typeOf(key: String): ConfigDef.Type? {
         val configKey = definition.configKeys[key] ?: return null
@@ -152,13 +147,13 @@ open class AbstractConfig(
     }
 
     fun documentationOf(key: String): String? {
-        val configKey = definition.configKeys()[key] ?: return null
+        val configKey = definition.configKeys[key] ?: return null
         return configKey.documentation
     }
 
-    fun getPassword(key: String): Password = get(key)
+    fun getPassword(key: String): Password? = get(key)
 
-    fun getClass(key: String): Class<*> = get(key)
+    fun getClass(key: String): Class<*>? = get(key)
 
     fun unused(): Set<String> {
         val keys = mutableSetOf<String>()
@@ -191,27 +186,20 @@ open class AbstractConfig(
 
         originals.forEach { (key, value) ->
             if (value !is String) throw ClassCastException(
-                "Non-string value found in original settings for key $key: " +
-                        value?.javaClass?.name
+                "Non-string value found in original settings for key $key: " + value.javaClass.name
             )
             copy[key] = value
         }
         return copy
     }
+
     /**
      * Gets all original settings with the given prefix.
      *
-     * @param prefix the prefix to use as a filter
-     * @param strip  strip the prefix before adding to the output if set true
+     * @param prefix The prefix to use as a filter
+     * @param strip Whether to strip the prefix before adding to the output. Defaults to `true`.
      * @return a Map containing the settings with the prefix
      */
-    /**
-     * Gets all original settings with the given prefix, stripping the prefix before adding it to the output.
-     *
-     * @param prefix the prefix to use as a filter
-     * @return a Map containing the settings with the prefix
-     */
-    @JvmOverloads
     fun originalsWithPrefix(prefix: String, strip: Boolean = true): Map<String, Any> {
         val result: MutableMap<String, Any> = RecordingMap(prefix, false)
 
@@ -225,22 +213,22 @@ open class AbstractConfig(
     }
 
     /**
-     * Put all keys that do not start with `prefix` and their parsed values in the result map and then
-     * put all the remaining keys with the prefix stripped and their parsed values in the result map.
-     *
+     * Put all keys that do not start with `prefix` and their parsed values in the result map and
+     * then put all the remaining keys with the prefix stripped and their parsed values in the
+     * result map.
      *
      * This is useful if one wants to allow prefixed configs to override default ones.
      *
-     *
      * Two forms of prefixes are supported:
      *
-     *  * listener.name.{listenerName}.some.prop: If the provided prefix is `listener.name.{listenerName}.`,
-     * the key `some.prop` with the value parsed using the definition of `some.prop` is returned.
-     *  * listener.name.{listenerName}.{mechanism}.some.prop: If the provided prefix is `listener.name.{listenerName}.`,
-     * the key `{mechanism}.some.prop` with the value parsed using the definition of `some.prop` is returned.
-     * This is used to provide per-mechanism configs for a broker listener (e.g sasl.jaas.config)
+     * - listener.name.{listenerName}.some.prop: If the provided prefix is
+     *   `listener.name.{listenerName}.`, the key `some.prop` with the value parsed using the
+     *   definition of `some.prop` is returned.
+     * - listener.name.{listenerName}.{mechanism}.some.prop: If the provided prefix is
+     *   `listener.name.{listenerName}.`, the key `{mechanism}.some.prop` with the value parsed
+     *   using the definition of `some.prop` is returned.
      *
-     *
+     * This is used to provide per-mechanism configs for a broker listener (e.g sasl.jaas.config).
      */
     fun valuesWithPrefixOverride(prefix: String): Map<String, Any?> {
         val result: MutableMap<String, Any?> = RecordingMap(values(), prefix, true)
@@ -268,12 +256,11 @@ open class AbstractConfig(
     }
 
     /**
-     * If at least one key with `prefix` exists, all prefixed values will be parsed and put into map.
-     * If no value with `prefix` exists all unprefixed values will be returned.
+     * If at least one key with `prefix` exists, all prefixed values will be parsed and put into
+     * map. If no value with `prefix` exists all unprefixed values will be returned.
      *
-     *
-     * This is useful if one wants to allow prefixed configs to override default ones, but wants to use either
-     * only prefixed configs or only regular configs, but not mix them.
+     * This is useful if one wants to allow prefixed configs to override default ones, but wants to
+     * use either only prefixed configs or only regular configs, but not mix them.
      */
     fun valuesWithPrefixAllOrNothing(prefix: String): Map<String, Any?> {
         val withPrefix = originalsWithPrefix(prefix, true)
@@ -297,11 +284,10 @@ open class AbstractConfig(
         val nonInternalConfigs: MutableMap<String, Any?> = RecordingMap()
 
         values.forEach { (key, value) ->
-            val configKey: ConfigKey? = definition.configKeys[key]
+            val configKey = definition.configKeys[key]
 
-            if (configKey == null || !configKey.internalConfig) {
+            if (configKey == null || !configKey.internalConfig)
                 nonInternalConfigs[key] = value
-            }
         }
 
         return nonInternalConfigs
@@ -312,9 +298,7 @@ open class AbstractConfig(
         b.append(javaClass.simpleName)
         b.append(" values: ")
         b.append(Utils.NL)
-        for (entry: Map.Entry<String?, Any?> in TreeMap(
-            values
-        ).entries) {
+        for (entry in TreeMap(values).entries) {
             b.append('\t')
             b.append(entry.key)
             b.append(" = ")
@@ -329,13 +313,13 @@ open class AbstractConfig(
      */
     fun logUnused() {
         val unusedkeys = unused()
-        if (!unusedkeys.isEmpty()) {
+        if (unusedkeys.isNotEmpty()) {
             log.warn("These configurations '{}' were supplied but are not used yet.", unusedkeys)
         }
     }
 
     private fun <T> getConfiguredInstance(
-        klass: Any,
+        klass: Any?,
         t: Class<T>,
         configPairs: Map<String, Any?>
     ): T {
@@ -351,7 +335,9 @@ open class AbstractConfig(
 
             is Class<*> -> Utils.newInstance(klass as Class<T>)
 
-            else -> throw KafkaException("Unexpected element of type ${klass.javaClass.name}, expected String or Class")
+            else -> throw KafkaException(
+                "Unexpected element of type ${klass?.javaClass?.name}, expected String or Class"
+            )
         }
         try {
             if (!t.isInstance(o)) throw KafkaException("$klass is not an instance of ${t.name}")
@@ -368,30 +354,18 @@ open class AbstractConfig(
     }
 
     /**
-     * Get a configured instance of the give class specified by the given configuration key. If the object implements
-     * Configurable configure it using the configuration.
+     * Get a configured instance of the give class specified by the given configuration key. If the
+     * object implements [Configurable] configure it using the configuration.
      *
      * @param key The configuration key for the class
-     * @param t   The interface the class should implement
-     * @return A configured instance of the class
-     */
-    fun <T> getConfiguredInstance(key: String, t: Class<T>): T {
-        return getConfiguredInstance(key, t, emptyMap<String, Any>())
-    }
-
-    /**
-     * Get a configured instance of the give class specified by the given configuration key. If the object implements
-     * Configurable configure it using the configuration.
-     *
-     * @param key             The configuration key for the class
-     * @param t               The interface the class should implement
+     * @param t The interface the class should implement
      * @param configOverrides override origin configs
      * @return A configured instance of the class
      */
     fun <T> getConfiguredInstance(
         key: String,
         t: Class<T>,
-        configOverrides: Map<String, Any?>
+        configOverrides: Map<String, Any?> = emptyMap<String, Any>(),
     ): T {
         val c = getClass(key)
         return getConfiguredInstance(c, t, originals(configOverrides))
@@ -407,7 +381,7 @@ open class AbstractConfig(
      * @return The list of configured instances
      */
     fun <T> getConfiguredInstances(key: String, t: Class<T>): List<T> {
-        return getConfiguredInstances<T>(key, t, emptyMap<String, Any>())
+        return getConfiguredInstances(key, t, emptyMap())
     }
 
     /**
@@ -430,12 +404,13 @@ open class AbstractConfig(
     }
 
     /**
-     * Get a list of configured instances of the given class specified by the given configuration key. The configuration
-     * may specify either null or an empty string to indicate no configured instances. In both cases, this method
-     * returns an empty list to indicate no configured instances.
+     * Get a list of configured instances of the given class specified by the given configuration
+     * key. The configuration may specify either null or an empty string to indicate no configured
+     * instances. In both cases, this method returns an empty list to indicate no configured
+     * instances.
      *
-     * @param classNames      The list of class names of the instances to create
-     * @param t               The interface the class should implement
+     * @param classNames The list of class names of the instances to create
+     * @param t The interface the class should implement
      * @param configOverrides Configuration overrides to use.
      * @return The list of configured instances
      */

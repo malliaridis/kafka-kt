@@ -45,7 +45,7 @@ class ClientResponse(
     val receivedTimeMs: Long,
     val disconnected: Boolean,
     val versionMismatch: UnsupportedVersionException?,
-    val authenticationException: AuthenticationException,
+    val authenticationException: AuthenticationException?,
     val responseBody: AbstractResponse?,
 ) {
     val requestLatencyMs: Long = receivedTimeMs - createdTimeMs
@@ -72,7 +72,7 @@ class ClientResponse(
         message = "User property instead",
         replaceWith = ReplaceWith("authenticationException"),
     )
-    fun authenticationException(): AuthenticationException = authenticationException
+    fun authenticationException(): AuthenticationException? = authenticationException
 
     @Deprecated(
         message = "User property instead",

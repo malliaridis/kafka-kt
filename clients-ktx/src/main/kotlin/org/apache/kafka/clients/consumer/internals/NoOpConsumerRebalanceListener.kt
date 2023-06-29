@@ -15,22 +15,14 @@
  * limitations under the License.
  */
 
-package org.apache.kafka.message;
+package org.apache.kafka.clients.consumer.internals
 
-import java.io.BufferedWriter;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener
+import org.apache.kafka.common.TopicPartition
 
-public interface MessageClassGenerator {
-    /**
-     * The short name of the converter class we are generating.  For example,
-     * FetchRequestDataJsonConverter.java.
-     */
-    String outputName(MessageSpec spec);
+class NoOpConsumerRebalanceListener : ConsumerRebalanceListener {
 
-    /**
-     * Generate the convertere, and then write it out.
-     *
-     * @param spec      The message to generate a converter for.
-     * @param writer    The writer to write out the state to.
-     */
-    void generateAndWrite(MessageSpec spec, BufferedWriter writer) throws Exception;
+    override fun onPartitionsAssigned(partitions: Collection<TopicPartition>) = Unit
+
+    override fun onPartitionsRevoked(partitions: Collection<TopicPartition>) = Unit
 }
