@@ -347,7 +347,7 @@ open class FetchSessionHandler(logContext: LogContext, node: Int) {
         }
     }
 
-    open fun newBuilder(): Builder? = Builder()
+    open fun newBuilder(): Builder = Builder()
 
     /**
      * A builder that allows for presizing the PartitionData hashmap, and avoiding making a

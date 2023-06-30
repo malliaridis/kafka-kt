@@ -84,14 +84,14 @@ class MetadataRequest(
         }
 
         constructor(
-            topics: List<String?>?,
+            topics: List<String>?,
             allowAutoTopicCreation: Boolean,
             allowedVersion: Short,
         ) : this(topics, allowAutoTopicCreation, allowedVersion, allowedVersion)
 
         @JvmOverloads
         constructor(
-            topics: List<String?>?,
+            topics: List<String>?,
             allowAutoTopicCreation: Boolean,
             minVersion: Short = ApiKeys.METADATA.oldestVersion(),
             maxVersion: Short = ApiKeys.METADATA.latestVersion(),

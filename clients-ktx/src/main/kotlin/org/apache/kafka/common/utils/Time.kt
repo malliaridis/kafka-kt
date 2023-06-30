@@ -81,9 +81,7 @@ interface Time {
     /**
      * Get a timer which is bound to this time instance and expires after the given timeout
      */
-    fun timer(timeout: Duration): Timer? {
-        return timer(timeout.toMillis())
-    }
+    fun timer(timeout: Duration): Timer = timer(timeout.toMillis())
 
     companion object {
         val SYSTEM: Time = SystemTime()

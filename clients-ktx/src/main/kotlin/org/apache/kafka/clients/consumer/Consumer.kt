@@ -259,7 +259,7 @@ interface Consumer<K, V> : Closeable {
     /**
      * @see KafkaConsumer.currentLag
      */
-    fun currentLag(topicPartition: TopicPartition): OptionalLong
+    fun currentLag(topicPartition: TopicPartition): Long?
 
     /**
      * @see KafkaConsumer.groupMetadata

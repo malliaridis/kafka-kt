@@ -261,7 +261,7 @@ class ConsumerCoordinator(
 
     private fun invokePartitionsAssigned(assignedPartitions: SortedSet<TopicPartition>): Exception? {
         log.info("Adding newly assigned partitions: {}", assignedPartitions.joinToString(", "))
-        val listener = subscriptions.rebalanceListener()
+        val listener = subscriptions.rebalanceListener!!
         try {
             val startMs = time.milliseconds()
             listener.onPartitionsAssigned(assignedPartitions)
@@ -285,13 +285,13 @@ class ConsumerCoordinator(
 
     private fun invokePartitionsRevoked(revokedPartitions: SortedSet<TopicPartition>): Exception? {
         log.info("Revoke previously assigned partitions {}", join(revokedPartitions, ", "))
-        val revokePausedPartitions = subscriptions.pausedPartitions()
+        val revokePausedPartitions = subscriptions.pausedPartitions().toMutableSet()
         revokePausedPartitions.retainAll(revokedPartitions)
         if (revokePausedPartitions.isNotEmpty()) log.info(
             "The pause flag in partitions [{}] will be removed due to revocation.",
             revokePausedPartitions.joinToString(", "),
         )
-        val listener = subscriptions.rebalanceListener()
+        val listener = subscriptions.rebalanceListener!!
         try {
             val startMs = time.milliseconds()
             listener.onPartitionsRevoked(revokedPartitions)
@@ -313,13 +313,13 @@ class ConsumerCoordinator(
 
     private fun invokePartitionsLost(lostPartitions: SortedSet<TopicPartition>): Exception? {
         log.info("Lost previously assigned partitions {}", lostPartitions.joinToString(", "))
-        val lostPausedPartitions = subscriptions.pausedPartitions()
+        val lostPausedPartitions = subscriptions.pausedPartitions().toMutableSet()
         lostPausedPartitions.retainAll(lostPartitions)
         if (lostPausedPartitions.isNotEmpty()) log.info(
             "The pause flag in partitions [{}] will be removed due to partition lost.",
             lostPausedPartitions.joinToString(", "),
         )
-        val listener = subscriptions.rebalanceListener()
+        val listener = subscriptions.rebalanceListener!!
         try {
             val startMs = time.milliseconds()
             listener.onPartitionsLost(lostPartitions)
@@ -1013,7 +1013,7 @@ class ConsumerCoordinator(
         client.disableWakeups()
         try {
             maybeAutoCommitOffsetsSync(timer)
-            while (pendingAsyncCommits.get() > 0 && timer.notExpired()) {
+            while (pendingAsyncCommits.get() > 0 && timer.isNotExpired) {
                 ensureCoordinatorReady(timer)
                 client.poll(timer)
                 invokeCompletedOffsetCommitCallbacks()

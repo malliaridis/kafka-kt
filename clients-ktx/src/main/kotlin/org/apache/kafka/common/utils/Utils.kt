@@ -823,9 +823,7 @@ object Utils {
     @SafeVarargs
     fun <K, V> mkMap(vararg entries: Map.Entry<K, V>): Map<K, V> {
         val result = LinkedHashMap<K, V>()
-        for ((key, value) in entries) {
-            result[key] = value
-        }
+        for ((key, value) in entries) result[key] = value
         return result
     }
 

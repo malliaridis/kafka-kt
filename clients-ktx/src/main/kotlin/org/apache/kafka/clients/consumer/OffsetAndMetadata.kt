@@ -38,7 +38,7 @@ class OffsetAndMetadata(
     val leaderEpoch: Int? = null,
     // The server converts null metadata to an empty string. So we store it as an empty string
     // as well on the client to be consistent.
-    val metadata: String = OffsetFetchResponse.NO_METADATA
+    val metadata: String = OffsetFetchResponse.NO_METADATA,
 ) : Serializable {
 
     init {
@@ -68,9 +68,7 @@ class OffsetAndMetadata(
      *
      * @return the leader epoch or empty if not known
      */
-    fun leaderEpoch(): Int? {
-        return if (leaderEpoch == null || leaderEpoch < 0) null else leaderEpoch
-    }
+    fun leaderEpoch(): Int? = if (leaderEpoch == null || leaderEpoch < 0) null else leaderEpoch
 
     override fun toString(): String {
         return "OffsetAndMetadata{" +
