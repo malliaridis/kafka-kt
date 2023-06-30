@@ -64,7 +64,7 @@ object AppInfoParser {
     }
 
     @Synchronized
-    fun unregisterAppInfo(prefix: String, id: String, metrics: Metrics?) {
+    fun unregisterAppInfo(prefix: String, id: String?, metrics: Metrics?) {
         val server = ManagementFactory.getPlatformMBeanServer()
         try {
             val name = ObjectName("$prefix:type=app-info,id=" + jmxSanitize(id))

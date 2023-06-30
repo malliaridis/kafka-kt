@@ -233,9 +233,9 @@ class NetworkClient(
     )
 
     init {
-        /* It would be better if we could pass `DefaultMetadataUpdater` from the public constructor, but it's not
-         * possible because `DefaultMetadataUpdater` is an inner class and it can only be instantiated after the
-         * super constructor is invoked.
+        /* It would be better if we could pass `DefaultMetadataUpdater` from the public constructor,
+         * but it's not possible because `DefaultMetadataUpdater` is an inner class and it can only
+         * be instantiated after the super constructor is invoked.
          */
         if (metadataUpdater == null) {
             require(metadata != null) { "`metadata` must not be null" }

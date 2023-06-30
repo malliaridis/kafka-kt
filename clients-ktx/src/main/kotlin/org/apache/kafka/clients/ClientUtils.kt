@@ -115,7 +115,7 @@ object ClientUtils {
         logContext: LogContext,
     ): ChannelBuilder {
         val securityProtocol =
-            SecurityProtocol.forName(config.getString(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG))
+            SecurityProtocol.forName(config.getString(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG)!!)
         val clientSaslMechanism = config.getString(SaslConfigs.SASL_MECHANISM)
 
         return clientChannelBuilder(

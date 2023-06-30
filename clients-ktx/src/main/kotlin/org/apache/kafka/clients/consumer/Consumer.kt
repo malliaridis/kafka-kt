@@ -77,12 +77,12 @@ interface Consumer<K, V> : Closeable {
      * @see KafkaConsumer.poll
      */
     @Deprecated("")
-    fun poll(timeout: Long): ConsumerRecords<K, V>
+    fun poll(timeout: Long): ConsumerRecords<K?, V?>
 
     /**
      * @see KafkaConsumer.poll
      */
-    fun poll(timeout: Duration): ConsumerRecords<K, V>
+    fun poll(timeout: Duration): ConsumerRecords<K?, V?>
 
     /**
      * @see KafkaConsumer.commitSync
@@ -112,14 +112,14 @@ interface Consumer<K, V> : Closeable {
     /**
      * @see KafkaConsumer.commitAsync
      */
-    fun commitAsync(callback: OffsetCommitCallback)
+    fun commitAsync(callback: OffsetCommitCallback?)
 
     /**
      * @see KafkaConsumer.commitAsync
      */
     fun commitAsync(
         offsets: Map<TopicPartition, OffsetAndMetadata>,
-        callback: OffsetCommitCallback
+        callback: OffsetCommitCallback?,
     )
 
     /**
@@ -167,7 +167,7 @@ interface Consumer<K, V> : Closeable {
     /**
      * @see KafkaConsumer.committed
      */
-    fun committed(partitions: Set<TopicPartition>): Map<TopicPartition, OffsetAndMetadata>
+    fun committed(partitions: Set<TopicPartition>): Map<TopicPartition, OffsetAndMetadata?>
 
     /**
      * @see KafkaConsumer.committed
@@ -175,7 +175,7 @@ interface Consumer<K, V> : Closeable {
     fun committed(
         partitions: Set<TopicPartition>,
         timeout: Duration
-    ): Map<TopicPartition, OffsetAndMetadata>
+    ): Map<TopicPartition, OffsetAndMetadata?>
 
     /**
      * @see KafkaConsumer.metrics
@@ -220,15 +220,17 @@ interface Consumer<K, V> : Closeable {
     /**
      * @see KafkaConsumer.offsetsForTimes
      */
-    fun offsetsForTimes(timestampsToSearch: Map<TopicPartition, Long>): Map<TopicPartition, OffsetAndTimestamp>
+    fun offsetsForTimes(
+        timestampsToSearch: Map<TopicPartition, Long>,
+    ): Map<TopicPartition, OffsetAndTimestamp?>
 
     /**
      * @see KafkaConsumer.offsetsForTimes
      */
     fun offsetsForTimes(
         timestampsToSearch: Map<TopicPartition, Long>,
-        timeout: Duration
-    ): Map<TopicPartition, OffsetAndTimestamp>
+        timeout: Duration,
+    ): Map<TopicPartition, OffsetAndTimestamp?>
 
     /**
      * @see KafkaConsumer.beginningOffsets
@@ -274,7 +276,7 @@ interface Consumer<K, V> : Closeable {
     /**
      * @see KafkaConsumer.enforceRebalance
      */
-    fun enforceRebalance(reason: String)
+    fun enforceRebalance(reason: String? = null)
 
     /**
      * @see KafkaConsumer.close

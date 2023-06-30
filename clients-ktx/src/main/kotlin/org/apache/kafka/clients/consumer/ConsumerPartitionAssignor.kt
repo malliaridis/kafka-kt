@@ -269,7 +269,7 @@ interface ConsumerPartitionAssignor {
          */
         fun getAssignorInstances(
             assignorClasses: List<String>,
-            configs: Map<String, Any>,
+            configs: Map<String, Any?>,
         ): List<ConsumerPartitionAssignor> {
 
             if (assignorClasses.isEmpty()) return emptyList()

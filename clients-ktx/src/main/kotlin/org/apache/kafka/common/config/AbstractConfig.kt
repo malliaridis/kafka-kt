@@ -74,7 +74,7 @@ import org.slf4j.LoggerFactory
  */
 open class AbstractConfig(
     private val definition: ConfigDef,
-    originals: Map<String, Any>,
+    originals: Map<String, Any?>,
     configProviderProps: Map<String, Any> = emptyMap(),
     doLog: Boolean = true
 ) {
@@ -466,10 +466,10 @@ open class AbstractConfig(
      */
     private fun resolveConfigVariables(
         configProviderProps: Map<String, Any>?,
-        originals: Map<String, Any>
+        originals: Map<String, Any?>,
     ): Map<String, Any> {
 
-        val resolvedOriginals = mutableMapOf<String, Any>()
+        val resolvedOriginals = mutableMapOf<String, Any?>()
         // As variable configs are strings, parse the originals and obtain the potential variable configs.
         val indirectVariables = extractPotentialVariables(originals)
         resolvedOriginals.putAll(originals)
@@ -486,7 +486,7 @@ open class AbstractConfig(
             val configTransformer = ConfigTransformer(providers)
             val result = configTransformer.transform(indirectVariables)
 
-            if (result.data().isNotEmpty()) resolvedOriginals.putAll(result.data())
+            if (result.data.isNotEmpty()) resolvedOriginals.putAll(result.data)
         }
 
         providers.values.forEach { x: ConfigProvider? ->
@@ -498,9 +498,9 @@ open class AbstractConfig(
 
     private fun configProviderProperties(
         configProviderPrefix: String,
-        providerConfigProperties: Map<String, Any>,
-    ): Map<String, Any> {
-        val result = mutableMapOf<String, Any>()
+        providerConfigProperties: Map<String, Any?>,
+    ): Map<String, Any?> {
+        val result = mutableMapOf<String, Any?>()
 
         providerConfigProperties.forEach { (key, value) ->
             if (key.startsWith(configProviderPrefix) && key.length > configProviderPrefix.length) {
@@ -523,7 +523,7 @@ open class AbstractConfig(
      */
     private fun instantiateConfigProviders(
         indirectConfigs: Map<String, String>,
-        providerConfigProperties: Map<String, Any>
+        providerConfigProperties: Map<String, Any?>
     ): Map<String, ConfigProvider> {
 
         val configProviders = indirectConfigs[CONFIG_PROVIDERS_CONFIG]
@@ -547,7 +547,7 @@ open class AbstractConfig(
             try {
                 val prefix = "$CONFIG_PROVIDERS_CONFIG.$key$CONFIG_PROVIDERS_PARAM"
 
-                val configProperties: Map<String, Any> =
+                val configProperties: Map<String, Any?> =
                     configProviderProperties(prefix, providerConfigProperties)
 
                 val provider = Utils.newInstance(
@@ -626,8 +626,8 @@ open class AbstractConfig(
      * mutations are not applied to the originals.
      */
     private class ResolvingMap<V>(
-        resolved: Map<String, V>,
-        private val originals: Map<String, Any>
+        resolved: Map<String, V?>,
+        private val originals: Map<String, Any?>
     ) : HashMap<String, V>(resolved) {
 
         override operator fun get(key: String): V? {

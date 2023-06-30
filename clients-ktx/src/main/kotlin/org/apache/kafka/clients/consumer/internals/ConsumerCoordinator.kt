@@ -1039,7 +1039,7 @@ class ConsumerCoordinator(
 
     fun commitOffsetsAsync(
         offsets: Map<TopicPartition, OffsetAndMetadata>,
-        callback: OffsetCommitCallback?
+        callback: OffsetCommitCallback?,
     ): RequestFuture<Unit>? {
         invokeCompletedOffsetCommitCallbacks()
         var future: RequestFuture<Unit>? = null

@@ -89,7 +89,6 @@ class MetadataRequest(
             allowedVersion: Short,
         ) : this(topics, allowAutoTopicCreation, allowedVersion, allowedVersion)
 
-        @JvmOverloads
         constructor(
             topics: List<String>?,
             allowAutoTopicCreation: Boolean,

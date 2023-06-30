@@ -36,7 +36,9 @@ import org.apache.kafka.common.metrics.Sensor
 import org.apache.kafka.common.requests.JoinGroupRequest
 import org.apache.kafka.common.security.auth.SecurityProtocol
 import org.apache.kafka.common.serialization.Deserializer
+import org.apache.kafka.common.utils.Utils
 import org.apache.kafka.common.utils.Utils.enumOptions
+import org.apache.kafka.common.utils.Utils.propsToMap
 import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -87,10 +89,10 @@ class ConsumerConfig : AbstractConfig {
 
     constructor(props: Properties) : super(
         definition = CONFIG,
-        originals = props.toMap() as Map<String, Any>,
+        originals = propsToMap(props),
     )
 
-    constructor(props: Map<String, Any>) : super(
+    constructor(props: Map<String, Any?>) : super(
         definition = CONFIG,
         originals = props,
     )

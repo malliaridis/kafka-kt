@@ -36,6 +36,7 @@ import org.apache.kafka.common.record.CompressionType
 import org.apache.kafka.common.security.auth.SecurityProtocol
 import org.apache.kafka.common.serialization.Serializer
 import org.apache.kafka.common.utils.Utils.enumOptions
+import org.apache.kafka.common.utils.Utils.propsToMap
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.util.*
@@ -49,7 +50,7 @@ class ProducerConfig : AbstractConfig {
 
     constructor(props: Properties) : super(
         definition = CONFIG,
-        originals = props.toMap() as Map<String, Any>,
+        originals = propsToMap(props),
     )
 
     constructor(props: Map<String, Any>) : super(
@@ -76,11 +77,8 @@ class ProducerConfig : AbstractConfig {
     }
 
     private fun maybeOverrideClientId(configs: MutableMap<String, Any?>) {
-        val refinedClientId: String
-        val userConfiguredClientId = this.originals().containsKey(CLIENT_ID_CONFIG)
-        refinedClientId = if (userConfiguredClientId) getString(CLIENT_ID_CONFIG)
-        else {
-            val transactionalId: String = getString(TRANSACTIONAL_ID_CONFIG)
+        val refinedClientId: String = getString(CLIENT_ID_CONFIG) ?: run {
+            val transactionalId: String = getString(TRANSACTIONAL_ID_CONFIG)!!
             "producer-$transactionalId"
         }
         configs[CLIENT_ID_CONFIG] = refinedClientId
@@ -88,10 +86,10 @@ class ProducerConfig : AbstractConfig {
 
     private fun postProcessAndValidateIdempotenceConfigs(configs: MutableMap<String, Any?>) {
         val originalConfigs: Map<String, Any?> = originals()
-        val acksStr = parseAcks(getString(ACKS_CONFIG))
+        val acksStr = parseAcks(getString(ACKS_CONFIG)!!)
         configs[ACKS_CONFIG] = acksStr
         val userConfiguredIdempotence = originals().containsKey(ENABLE_IDEMPOTENCE_CONFIG)
-        var idempotenceEnabled = getBoolean(ENABLE_IDEMPOTENCE_CONFIG)
+        var idempotenceEnabled = getBoolean(ENABLE_IDEMPOTENCE_CONFIG)!!
         var shouldDisableIdempotence = false
 
         // For idempotence producers, values for `retries` and `acks` and
@@ -119,7 +117,7 @@ class ProducerConfig : AbstractConfig {
                 )
                 shouldDisableIdempotence = true
             }
-            val inFlightConnection = getInt(MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION)
+            val inFlightConnection = getInt(MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION)!!
             if (MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION_FOR_IDEMPOTENCE < inFlightConnection) {
                 if (userConfiguredIdempotence) throw ConfigException(
                     "Must set $MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION to at most 5 to use the " +

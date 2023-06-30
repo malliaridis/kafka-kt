@@ -21,7 +21,7 @@ import java.net.InetAddress
 import java.net.UnknownHostException
 import java.util.*
 
-interface HostResolver {
+fun interface HostResolver {
 
     @Throws(UnknownHostException::class)
     fun resolve(host: String?): Array<InetAddress>
