@@ -85,22 +85,17 @@ class NetworkClient(
     connectionSetupTimeoutMs: Long,
     connectionSetupTimeoutMaxMs: Long,
     private val time: Time,
-    private val discoverBrokerVersions: Boolean,
+    val discoverBrokerVersions: Boolean,
     private val apiVersions: ApiVersions,
     private val throttleTimeSensor: Sensor? = null,
     logContext: LogContext,
-    hostResolver: HostResolver?
+    hostResolver: HostResolver,
 ) : KafkaClient {
-
-    private enum class State {
-        ACTIVE,
-        CLOSING,
-        CLOSED
-    }
 
     private val log: Logger
 
     private val randOffset: Random = Random()
+
     private val metadataUpdater: MetadataUpdater
 
     /**
@@ -118,7 +113,8 @@ class NetworkClient(
      */
     private var correlation: Int = 0
 
-    private val nodesNeedingApiVersionsFetch: MutableMap<String, ApiVersionsRequest.Builder> = HashMap()
+    private val nodesNeedingApiVersionsFetch: MutableMap<String, ApiVersionsRequest.Builder> =
+        HashMap()
     private val abortedSends: MutableList<ClientResponse> = LinkedList()
     private val state: AtomicReference<State> = AtomicReference(State.ACTIVE)
 
@@ -248,7 +244,7 @@ class NetworkClient(
             connectionSetupTimeoutMs,
             connectionSetupTimeoutMaxMs,
             logContext,
-            hostResolver
+            hostResolver,
         )
         log = logContext.logger(NetworkClient::class.java)
     }
@@ -285,7 +281,10 @@ class NetworkClient(
      */
     override fun disconnect(nodeId: String) {
         if (connectionStates.isDisconnected(nodeId)) {
-            log.debug("Client requested disconnect from node {}, which is already disconnected", nodeId)
+            log.debug(
+                "Client requested disconnect from node {}, which is already disconnected",
+                nodeId
+            )
             return
         }
         log.info("Client requested disconnect from node {}", nodeId)
@@ -295,13 +294,17 @@ class NetworkClient(
         connectionStates.disconnected(nodeId, now)
     }
 
-    private fun cancelInFlightRequests(nodeId: String, now: Long, responses: MutableCollection<ClientResponse>?) {
+    private fun cancelInFlightRequests(
+        nodeId: String,
+        now: Long,
+        responses: MutableCollection<ClientResponse>?
+    ) {
         val inFlightRequests = inFlightRequests.clearAll(nodeId)
         for (request: InFlightRequest in inFlightRequests) {
             if (log.isDebugEnabled) {
                 log.debug(
                     "Cancelled in-flight {} request with correlation id {} due to node {} being disconnected " +
-                    "(elapsed time since creation: {}ms, elapsed time since send: {}ms, request timeout: {}ms): {}",
+                            "(elapsed time since creation: {}ms, elapsed time since send: {}ms, request timeout: {}ms): {}",
                     request.header.apiKey(), request.header.correlationId(), nodeId,
                     request.timeElapsedSinceCreateMs(now), request.timeElapsedSinceSendMs(now),
                     request.requestTimeoutMs, request.request
@@ -383,11 +386,10 @@ class NetworkClient(
      * propagated without any retries.
      *
      * @param node the node to check
-     * @return an AuthenticationException iff authentication has failed, null otherwise
+     * @return an AuthenticationException iff authentication has failed, `null` otherwise
      */
-    override fun authenticationException(node: Node): AuthenticationException {
-        return connectionStates.authenticationException(node.idString())
-    }
+    override fun authenticationException(node: Node): AuthenticationException? =
+        connectionStates.authenticationException(node.idString())
 
     /**
      * Check if the node with the given id is ready to send more requests.
@@ -423,14 +425,27 @@ class NetworkClient(
     }
 
     // package-private for testing
-    fun sendInternalMetadataRequest(builder: MetadataRequest.Builder?, nodeConnectionId: String, now: Long) {
-        val clientRequest = newClientRequest(nodeConnectionId, builder, now, true)
-        doSend(clientRequest, true, now)
+    fun sendInternalMetadataRequest(
+        builder: MetadataRequest.Builder?,
+        nodeConnectionId: String,
+        now: Long,
+    ) {
+        val clientRequest = newClientRequest(
+            nodeId = nodeConnectionId,
+            requestBuilder = builder,
+            createdTimeMs = now,
+            expectResponse = true,
+        )
+        doSend(
+            clientRequest = clientRequest,
+            isInternalRequest = true,
+            now = now,
+        )
     }
 
     private fun doSend(clientRequest: ClientRequest, isInternalRequest: Boolean, now: Long) {
         ensureActive()
-        val nodeId = clientRequest.destination()
+        val nodeId = clientRequest.destination
         if (!isInternalRequest) {
             // If this request came from outside the NetworkClient, validate
             // that we can send data.  If the request is internal, we trust
@@ -438,7 +453,12 @@ class NetworkClient(
             // will be slightly different for some internal requests (for
             // example, ApiVersionsRequests can be sent prior to being in
             // READY state.)
-            check(canSendRequest(nodeId, now)) { "Attempt to send a request to node $nodeId which is not ready." }
+            check(
+                canSendRequest(
+                    nodeId,
+                    now
+                )
+            ) { "Attempt to send a request to node $nodeId which is not ready." }
         }
         val builder = clientRequest.requestBuilder()
         try {
@@ -448,19 +468,20 @@ class NetworkClient(
             // the case when sending the initial ApiVersionRequest which fetches the version
             // information itself.  It is also the case when discoverBrokerVersions is set to false.
             if (versionInfo == null) {
-                version = builder.latestAllowedVersion()
+                version = builder.latestAllowedVersion
                 if (discoverBrokerVersions && log.isTraceEnabled) log.trace(
                     "No version information found when sending {} with correlation id {} to node {}. " +
                             "Assuming version {}.",
-                    clientRequest.apiKey(),
-                    clientRequest.correlationId(),
+                    clientRequest.apiKey,
+                    clientRequest.correlationId,
                     nodeId,
                     version
                 )
             } else {
                 version = versionInfo.latestUsableVersion(
-                    clientRequest.apiKey(), builder.oldestAllowedVersion(),
-                    builder.latestAllowedVersion()
+                    apiKey = clientRequest.apiKey,
+                    oldestAllowedVersion = builder.oldestAllowedVersion,
+                    latestAllowedVersion = builder.latestAllowedVersion,
                 )
             }
             // The call to build may also throw UnsupportedVersionException, if there are essential
@@ -470,40 +491,55 @@ class NetworkClient(
             // If the version is not supported, skip sending the request over the wire.
             // Instead, simply add it to the local queue of aborted requests.
             log.debug(
-                "Version mismatch when attempting to send {} with correlation id {} to {}", builder,
-                clientRequest.correlationId(), clientRequest.destination(), unsupportedVersionException
+                "Version mismatch when attempting to send {} with correlation id {} to {}",
+                builder,
+                clientRequest.correlationId,
+                clientRequest.destination,
+                unsupportedVersionException
             )
             val clientResponse = ClientResponse(
-                clientRequest.makeHeader(builder.latestAllowedVersion()),
-                clientRequest.callback(), clientRequest.destination(), now, now,
-                false, unsupportedVersionException, null, null
+                requestHeader = clientRequest.makeHeader(builder.latestAllowedVersion),
+                callback = clientRequest.callback,
+                destination = clientRequest.destination,
+                createdTimeMs = now,
+                receivedTimeMs = now,
+                disconnected = false,
+                versionMismatch = unsupportedVersionException,
             )
             if (!isInternalRequest) abortedSends.add(clientResponse)
-            else if (clientRequest.apiKey() == ApiKeys.METADATA)
+            else if (clientRequest.apiKey == ApiKeys.METADATA)
                 metadataUpdater.handleFailedRequest(now, unsupportedVersionException)
         }
     }
 
-    private fun doSend(clientRequest: ClientRequest, isInternalRequest: Boolean, now: Long, request: AbstractRequest) {
-        val destination = clientRequest.destination()
+    private fun doSend(
+        clientRequest: ClientRequest,
+        isInternalRequest: Boolean,
+        now: Long,
+        request: AbstractRequest,
+    ) {
+        val destination = clientRequest.destination
         val header = clientRequest.makeHeader(request.version)
-        if (log.isDebugEnabled) {
-            log.debug(
-                "Sending {} request with header {} and timeout {} to node {}: {}",
-                clientRequest.apiKey(), header, clientRequest.requestTimeoutMs(), destination, request
-            )
-        }
+        if (log.isDebugEnabled) log.debug(
+            "Sending {} request with header {} and timeout {} to node {}: {}",
+            clientRequest.apiKey,
+            header,
+            clientRequest.requestTimeoutMs,
+            destination,
+            request,
+        )
+
         val send = request.toSend(header)
         val inFlightRequest = InFlightRequest(
-            clientRequest,
-            header,
-            isInternalRequest,
-            request,
-            send,
-            now
+            clientRequest = clientRequest,
+            header = header,
+            isInternalRequest = isInternalRequest,
+            request = request,
+            send = send,
+            sendTimeMs = now,
         )
         inFlightRequests.add(inFlightRequest)
-        selector.send(NetworkSend(clientRequest.destination(), send))
+        selector.send(NetworkSend(clientRequest.destination, send))
     }
 
     /**
@@ -527,7 +563,7 @@ class NetworkClient(
         }
         val metadataTimeout = metadataUpdater.maybeUpdate(now)
         try {
-            selector.poll(Utils.min(timeout, metadataTimeout, defaultRequestTimeoutMs.toLong()))
+            selector.poll(minOf(timeout, metadataTimeout, defaultRequestTimeoutMs.toLong()))
         } catch (e: IOException) {
             log.error("Unexpected error during I/O", e)
         }
@@ -642,7 +678,10 @@ class NetworkClient(
                 val currInflight = inFlightRequests.count(node.idString())
                 if (currInflight == 0) {
                     // if we find an established connection with no in-flight requests we can stop right away
-                    log.trace("Found least loaded node {} connected with no in-flight requests", node)
+                    log.trace(
+                        "Found least loaded node {} connected with no in-flight requests",
+                        node
+                    )
                     return node
                 } else if (currInflight < inflight) {
                     // otherwise if this is the best we have found so far, record that
@@ -785,9 +824,9 @@ class NetworkClient(
     private fun handleCompletedSends(responses: MutableList<ClientResponse>, now: Long) {
         // if no response is expected then when the send is completed, return it
         for (send: NetworkSend in selector.completedSends()) {
-            val request = inFlightRequests.lastSent(send.destinationId())
+            val request = inFlightRequests.lastSent(send.destinationId)
             if (!request.expectResponse) {
-                inFlightRequests.completeLastSent(send.destinationId())
+                inFlightRequests.completeLastSent(send.destinationId)
                 responses.add(request.completed(null, now))
             }
         }
@@ -802,12 +841,19 @@ class NetworkClient(
      * @param nodeId the id of the node
      * @param now The current time
      */
-    private fun maybeThrottle(response: AbstractResponse, apiVersion: Short, nodeId: String, now: Long) {
+    private fun maybeThrottle(
+        response: AbstractResponse,
+        apiVersion: Short,
+        nodeId: String,
+        now: Long
+    ) {
         val throttleTimeMs = response.throttleTimeMs()
         if (throttleTimeMs > 0 && response.shouldClientThrottle(apiVersion)) {
             connectionStates.throttle(nodeId, now + throttleTimeMs)
             log.trace(
-                "Connection to node {} is throttled for {} ms until timestamp {}", nodeId, throttleTimeMs,
+                "Connection to node {} is throttled for {} ms until timestamp {}",
+                nodeId,
+                throttleTimeMs,
                 now + throttleTimeMs
             )
         }
@@ -887,8 +933,11 @@ class NetworkClient(
         log.debug(
             "Node {} has finalized features epoch: {}, finalized features: {}, supported features: {}," +
                     "API versions: {}.",
-            node, apiVersionsResponse.data().finalizedFeaturesEpoch(), apiVersionsResponse.data().finalizedFeatures(),
-            apiVersionsResponse.data().supportedFeatures(), nodeVersionInfo
+            node,
+            apiVersionsResponse.data().finalizedFeaturesEpoch(),
+            apiVersionsResponse.data().finalizedFeatures(),
+            apiVersionsResponse.data().supportedFeatures(),
+            nodeVersionInfo
         )
     }
 
@@ -954,7 +1003,7 @@ class NetworkClient(
     private fun initiateConnect(node: Node, now: Long) {
         val nodeConnectionId = node.idString()
         try {
-            connectionStates.connecting(nodeConnectionId, now, node.host())
+            connectionStates.connecting(nodeConnectionId, now, node.host)
             val address = connectionStates.currentAddress(nodeConnectionId)
             log.debug("Initiating connection to node {} using address {}", node, address)
             selector.connect(
@@ -974,26 +1023,24 @@ class NetworkClient(
 
     internal inner class DefaultMetadataUpdater(
         /* the current cluster metadata */
-        private val metadata: Metadata
+        private val metadata: Metadata,
     ) : MetadataUpdater {
+
         // Defined if there is a request in progress, null otherwise
         private var inProgress: InProgressData? = null
-        override fun fetchNodes(): List<Node?> {
-            return metadata.fetch().nodes()
-        }
 
-        override fun isUpdateDue(now: Long): Boolean {
-            return !hasFetchInProgress() && metadata.timeToNextUpdate(now) == 0L
-        }
+        override fun fetchNodes(): List<Node?> = metadata.fetch().nodes
 
-        private fun hasFetchInProgress(): Boolean {
-            return inProgress != null
-        }
+        override fun isUpdateDue(now: Long): Boolean =
+            !hasFetchInProgress() && metadata.timeToNextUpdate(now) == 0L
+
+        private fun hasFetchInProgress(): Boolean = inProgress != null
 
         override fun maybeUpdate(now: Long): Long {
             // should we update our metadata?
             val timeToNextMetadataUpdate = metadata.timeToNextUpdate(now)
-            val waitForMetadataFetch = (if (hasFetchInProgress()) defaultRequestTimeoutMs else 0).toLong()
+            val waitForMetadataFetch =
+                (if (hasFetchInProgress()) defaultRequestTimeoutMs else 0).toLong()
             val metadataTimeout = timeToNextMetadataUpdate.coerceAtLeast(waitForMetadataFetch)
             if (metadataTimeout > 0) {
                 return metadataTimeout
@@ -1047,22 +1094,17 @@ class NetworkClient(
             // If any partition has leader with missing listeners, log up to ten of these partitions
             // for diagnosing broker configuration issues.
             // This could be a transient issue if listeners were added dynamically to brokers.
-            val missingListenerPartitions = response.topicMetadata()
-                .stream()
-                .flatMap { topicMetadata: MetadataResponse.TopicMetadata ->
-                    topicMetadata.partitionMetadata
-                        .stream()
-                        .filter { partitionMetadata: PartitionMetadata ->
-                            partitionMetadata.error == Errors.LISTENER_NOT_FOUND
-                        }
-                        .map { partitionMetadata: PartitionMetadata ->
-                            TopicPartition(
-                                topicMetadata.topic,
-                                partitionMetadata.partition
-                            )
-                        }
+            val missingListenerPartitions = response.topicMetadata().flatMap { topicMetadata ->
+                topicMetadata.partitionMetadata.filter { partitionMetadata ->
+                    partitionMetadata.error == Errors.LISTENER_NOT_FOUND
+                }.map { partitionMetadata ->
+                    TopicPartition(
+                        topic = topicMetadata.topic,
+                        partition = partitionMetadata.partition
+                    )
+                }
             }
-                .collect(Collectors.toList())
+
             if (missingListenerPartitions.isNotEmpty()) {
                 val count = missingListenerPartitions.size
                 log.warn(
@@ -1082,10 +1124,18 @@ class NetworkClient(
             // When talking to the startup phase of a broker, it is possible to receive an empty metadata set, which
             // we should retry later.
             if (response.brokers().isEmpty()) {
-                log.trace("Ignoring empty metadata response with correlation id {}.", requestHeader!!.correlationId())
+                log.trace(
+                    "Ignoring empty metadata response with correlation id {}.",
+                    requestHeader!!.correlationId()
+                )
                 metadata.failedUpdate(now)
             } else {
-                metadata.update(inProgress!!.requestVersion, response, inProgress!!.isPartialUpdate, now)
+                metadata.update(
+                    inProgress!!.requestVersion,
+                    response,
+                    inProgress!!.isPartialUpdate,
+                    now
+                )
             }
             inProgress = null
         }
@@ -1118,7 +1168,10 @@ class NetworkClient(
                     val metadataRequest = requestAndVersion.requestBuilder
                     log.debug("Sending metadata request {} to node {}", metadataRequest, node)
                     sendInternalMetadataRequest(metadataRequest, nodeConnectionId, now)
-                    inProgress = InProgressData(requestAndVersion.requestVersion, requestAndVersion.isPartialUpdate)
+                    inProgress = InProgressData(
+                        requestAndVersion.requestVersion,
+                        requestAndVersion.isPartialUpdate
+                    )
                     defaultRequestTimeoutMs.toLong()
                 }
                 // If there's any connection establishment underway, wait until it completes. This prevents
@@ -1129,6 +1182,7 @@ class NetworkClient(
                     // have such application level configuration, using reconnect backoff instead.
                     reconnectBackoffMs
                 }
+
                 connectionStates.canConnect(nodeConnectionId, now) -> {
                     // We don't have a connection to this node right now, make one
                     log.debug("Initialize connection to node {} for sending metadata request", node)
@@ -1152,15 +1206,15 @@ class NetworkClient(
         nodeId: String,
         requestBuilder: AbstractRequest.Builder<*>?,
         createdTimeMs: Long,
-        expectResponse: Boolean
+        expectResponse: Boolean,
     ): ClientRequest {
         return newClientRequest(
-            nodeId,
-            requestBuilder,
-            createdTimeMs,
-            expectResponse,
-            defaultRequestTimeoutMs,
-            null
+            nodeId = nodeId,
+            requestBuilder = requestBuilder,
+            createdTimeMs = createdTimeMs,
+            expectResponse = expectResponse,
+            requestTimeoutMs = defaultRequestTimeoutMs,
+            callback = null,
         )
     }
 
@@ -1183,29 +1237,36 @@ class NetworkClient(
         callback: RequestCompletionHandler?
     ): ClientRequest {
         return ClientRequest(
-            nodeId, requestBuilder, nextCorrelationId(), clientId, createdTimeMs, expectResponse,
-            requestTimeoutMs, callback
+            destination = nodeId,
+            requestBuilder = requestBuilder,
+            correlationId = nextCorrelationId(),
+            clientId = clientId,
+            createdTimeMs = createdTimeMs,
+            expectResponse = expectResponse,
+            requestTimeoutMs = requestTimeoutMs,
+            callback = callback,
         )
     }
 
-    fun discoverBrokerVersions(): Boolean {
-        return discoverBrokerVersions
-    }
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("discoverBrokerVersions"),
+    )
+    fun discoverBrokerVersions(): Boolean = discoverBrokerVersions
 
     internal class InFlightRequest(
         val header: RequestHeader,
-        requestTimeoutMs: Int,
+        val requestTimeoutMs: Long,
         val createdTimeMs: Long,
         val destination: String,
-        val callback: RequestCompletionHandler,
+        val callback: RequestCompletionHandler?,
         val expectResponse: Boolean,
         // used to flag requests which are initiated internally by NetworkClient
         val isInternalRequest: Boolean,
         val request: AbstractRequest,
         val send: Send,
-        val sendTimeMs: Long
+        val sendTimeMs: Long,
     ) {
-        val requestTimeoutMs: Long
 
         constructor(
             clientRequest: ClientRequest,
@@ -1215,60 +1276,71 @@ class NetworkClient(
             send: Send,
             sendTimeMs: Long
         ) : this(
-            header,
-            clientRequest.requestTimeoutMs(),
-            clientRequest.createdTimeMs(),
-            clientRequest.destination(),
-            clientRequest.callback(),
-            clientRequest.expectResponse(),
-            isInternalRequest,
-            request,
-            send,
-            sendTimeMs
+            header = header,
+            requestTimeoutMs = clientRequest.requestTimeoutMs.toLong(),
+            createdTimeMs = clientRequest.createdTimeMs,
+            destination = clientRequest.destination,
+            callback = clientRequest.callback,
+            expectResponse = clientRequest.expectResponse,
+            isInternalRequest = isInternalRequest,
+            request = request,
+            send = send,
+            sendTimeMs = sendTimeMs,
         )
 
-        init {
-            this.requestTimeoutMs = requestTimeoutMs.toLong()
-        }
+        fun timeElapsedSinceSendMs(currentTimeMs: Long): Long =
+            (currentTimeMs - sendTimeMs).coerceAtLeast(0)
 
-        fun timeElapsedSinceSendMs(currentTimeMs: Long): Long {
-            return Math.max(0, currentTimeMs - sendTimeMs)
-        }
+        fun timeElapsedSinceCreateMs(currentTimeMs: Long): Long =
+            (currentTimeMs - createdTimeMs).coerceAtLeast(0)
 
-        fun timeElapsedSinceCreateMs(currentTimeMs: Long): Long {
-            return Math.max(0, currentTimeMs - createdTimeMs)
-        }
+        fun completed(response: AbstractResponse?, timeMs: Long): ClientResponse = ClientResponse(
+            requestHeader = header,
+            callback = callback,
+            destination = destination,
+            createdTimeMs = createdTimeMs,
+            receivedTimeMs = timeMs,
+            disconnected = false,
+            responseBody = response,
+        )
 
-        fun completed(response: AbstractResponse?, timeMs: Long): ClientResponse {
-            return ClientResponse(
-                header, callback, destination, createdTimeMs, timeMs,
-                false, null, null, response
-            )
-        }
+        fun disconnected(
+            timeMs: Long,
+            authenticationException: AuthenticationException?,
+        ): ClientResponse = ClientResponse(
+            requestHeader = header,
+            callback = callback,
+            destination = destination,
+            createdTimeMs = createdTimeMs,
+            receivedTimeMs = timeMs,
+            disconnected = true,
+            authenticationException = authenticationException,
+        )
 
-        fun disconnected(timeMs: Long, authenticationException: AuthenticationException?): ClientResponse {
-            return ClientResponse(
-                header, callback, destination, createdTimeMs, timeMs,
-                true, null, authenticationException, null
-            )
-        }
+        override fun toString(): String =
+            "InFlightRequest(header=$header" +
+                    ", destination=$destination" +
+                    ", expectResponse=$expectResponse" +
+                    ", createdTimeMs=$createdTimeMs" +
+                    ", sendTimeMs=$sendTimeMs" +
+                    ", isInternalRequest=$isInternalRequest" +
+                    ", request=$request" +
+                    ", callback=$callback" +
+                    ", send=$send)"
+    }
 
-        override fun toString(): String {
-            return ("InFlightRequest(header=" + header +
-                    ", destination=" + destination +
-                    ", expectResponse=" + expectResponse +
-                    ", createdTimeMs=" + createdTimeMs +
-                    ", sendTimeMs=" + sendTimeMs +
-                    ", isInternalRequest=" + isInternalRequest +
-                    ", request=" + request +
-                    ", callback=" + callback +
-                    ", send=" + send + ")")
-        }
+    private enum class State {
+        ACTIVE,
+        CLOSING,
+        CLOSED,
     }
 
     companion object {
 
-        fun parseResponse(responseBuffer: ByteBuffer, requestHeader: RequestHeader): AbstractResponse {
+        fun parseResponse(
+            responseBuffer: ByteBuffer,
+            requestHeader: RequestHeader,
+        ): AbstractResponse {
             try {
                 return AbstractResponse.parseResponse(responseBuffer, requestHeader)
             } catch (exception: BufferUnderflowException) {

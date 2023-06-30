@@ -760,36 +760,34 @@ enum class Errors(
         message = "Use property instead.",
         replaceWith = ReplaceWith("exception"),
     )
-    fun exception(): ApiException = exception
+    fun exception(): ApiException? = exception
 
     /**
      * Create an instance of the ApiException that contains the given error message.
      *
-     * @param message    The message string to set.
-     * @return           The exception.
+     * @param message The message string to set.
+     * @return The exception.
      * @throws NullPointerException if called for [Errors.NONE].
      */
     fun exception(message: String?): ApiException {
         return if (message == null) {
             // If no error message was specified, return an exception with the default error message.
-            exception
+            exception!!
         } else builder(message)!!
         // Return an exception with the given error message.
     }
 
     /**
-     * Returns the class name of the exception or null if this is `Errors.NONE`.
+     * Returns the class name of the exception or `null` if this is `Errors.NONE`.
      */
     @Deprecated(
         message = "Use property instead.",
         replaceWith = ReplaceWith("exceptionName"),
     )
-    fun exceptionName(): String? {
-        return _exception?.javaClass?.name
-    }
+    fun exceptionName(): String? = _exception?.javaClass?.name
 
     /**
-     * The class name of the exception or null if this is `Errors.NONE`.
+     * The class name of the exception or `null` if this is `Errors.NONE`.
      */
     val exceptionName: String?
         get() = _exception?.javaClass?.name
@@ -875,7 +873,7 @@ enum class Errors(
          * @return The throwable itself or its cause if it is an instance of a commonly wrapped
          * exception type
          */
-        fun maybeUnwrapException(t: Throwable): Throwable {
+        fun maybeUnwrapException(t: Throwable?): Throwable? {
             return if (t is CompletionException || t is ExecutionException) t.cause ?: t
             else t
         }

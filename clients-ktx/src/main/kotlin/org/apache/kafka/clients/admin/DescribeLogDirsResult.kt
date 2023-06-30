@@ -56,7 +56,7 @@ class DescribeLogDirsResult internal constructor(
                 replicaInfos = logDir.replicaInfos().mapValues { (_, value) ->
                     DescribeLogDirsResponse.ReplicaInfo(
                         size = value.size(),
-                        offsetLag = value.offsetLag(),
+                        offsetLag = value.offsetLag,
                         isFuture = value.isFuture,
                     )
                 },

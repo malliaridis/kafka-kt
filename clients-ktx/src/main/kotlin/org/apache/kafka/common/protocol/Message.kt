@@ -96,9 +96,5 @@ interface Message {
      *
      * @return A copy of the message which does not share any mutable fields.
      */
-    @Deprecated(
-        message = "Use data class copy() instead.",
-        replaceWith = ReplaceWith("copy()"),
-    )
     fun duplicate(): Message
 }

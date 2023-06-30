@@ -31,7 +31,7 @@ class ListConsumerGroupOffsetsOptions : AbstractOptions<ListConsumerGroupOffsets
     var topicPartitions: List<TopicPartition>? = null
         private set
 
-    private var requireStable = false
+    var requireStable = false
         private set
 
     /**

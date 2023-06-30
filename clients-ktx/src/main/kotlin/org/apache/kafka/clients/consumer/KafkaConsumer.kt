@@ -699,7 +699,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
             clientId = config.getString(CommonClientConfigs.CLIENT_ID_CONFIG)!!
 
             // If group.instance.id is set, we will append it to the log context.
-            val logContext: LogContext = LogContext(
+            val logContext = LogContext(
                 if (groupRebalanceConfig.groupInstanceId != null)
                     "[Consumer instanceId=${groupRebalanceConfig.groupInstanceId}, " +
                             "clientId=$clientId, groupId=$groupId] "

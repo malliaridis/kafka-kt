@@ -45,7 +45,7 @@ data class ClientRequest(
     val createdTimeMs: Long,
     val expectResponse: Boolean,
     val requestTimeoutMs: Int,
-    val callback: RequestCompletionHandler,
+    val callback: RequestCompletionHandler?,
 ) {
     @Deprecated(
         message = "User property instead",
@@ -63,7 +63,7 @@ data class ClientRequest(
         get() =  requestBuilder.apiKey
 
     fun makeHeader(version: Short): RequestHeader {
-        val requestApiKey = apiKey()
+        val requestApiKey = apiKey
         return RequestHeader(
             RequestHeaderData()
                 .setRequestApiKey(requestApiKey.id)
@@ -88,7 +88,7 @@ data class ClientRequest(
         message = "User property instead",
         replaceWith = ReplaceWith("callback"),
     )
-    fun callback(): RequestCompletionHandler = callback
+    fun callback(): RequestCompletionHandler? = callback
 
     @Deprecated(
         message = "User property instead",

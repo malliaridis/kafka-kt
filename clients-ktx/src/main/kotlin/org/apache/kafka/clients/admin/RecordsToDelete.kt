@@ -34,7 +34,7 @@ data class RecordsToDelete(val beforeOffset: Long) {
      */
     @Deprecated(
         message = "User property instead",
-        replaceWith = ReplaceWith("offset"),
+        replaceWith = ReplaceWith("beforeOffset"),
     )
     fun beforeOffset(): Long = beforeOffset
 

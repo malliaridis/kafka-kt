@@ -353,7 +353,7 @@ class Selector private constructor(
      * @param send The request to send
      */
     override fun send(send: NetworkSend) {
-        val connectionId = send.destinationId()
+        val connectionId = send.destinationId
         val channel = openOrClosingChannelOrFail(connectionId)
         if (closingChannels.containsKey(connectionId)) {
             // ensure notification via `disconnected`, leave channel in the state in which closing

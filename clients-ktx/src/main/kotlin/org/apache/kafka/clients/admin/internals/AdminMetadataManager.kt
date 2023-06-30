@@ -61,7 +61,7 @@ class AdminMetadataManager private constructor(
 
     inner class AdminMetadataUpdater : MetadataUpdater {
         override fun fetchNodes(): List<Node?> {
-            return cluster.nodes()
+            return cluster.nodes
         }
 
         override fun isUpdateDue(now: Long): Boolean {
@@ -125,7 +125,7 @@ class AdminMetadataManager private constructor(
                 log.debug("Metadata is not usable: failed to get metadata.", exception)
                 throw exception
             }
-            if (cluster.nodes().isEmpty()) {
+            if (cluster.nodes.isEmpty()) {
                 log.trace("Metadata is not ready: bootstrap nodes have not been initialized yet.")
                 return false
             }
@@ -222,7 +222,7 @@ class AdminMetadataManager private constructor(
         }
         state = State.QUIESCENT
         authException = null
-        if (!cluster.nodes().isEmpty()) {
+        if (!cluster.nodes.isEmpty()) {
             this.cluster = cluster
         }
     }

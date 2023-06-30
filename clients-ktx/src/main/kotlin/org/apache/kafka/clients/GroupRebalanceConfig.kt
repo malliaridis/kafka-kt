@@ -38,30 +38,30 @@ data class GroupRebalanceConfig(
         config: AbstractConfig,
         protocolType: ProtocolType,
     ) : this(
-        sessionTimeoutMs = config.getInt(CommonClientConfigs.SESSION_TIMEOUT_MS_CONFIG),
+        sessionTimeoutMs = config.getInt(CommonClientConfigs.SESSION_TIMEOUT_MS_CONFIG)!!,
 
         // Consumer and Connect use different config names for defining rebalance timeout
         rebalanceTimeoutMs =
             if (protocolType == ProtocolType.CONSUMER)
-                config.getInt(CommonClientConfigs.MAX_POLL_INTERVAL_MS_CONFIG)
-            else config.getInt(CommonClientConfigs.REBALANCE_TIMEOUT_MS_CONFIG),
+                config.getInt(CommonClientConfigs.MAX_POLL_INTERVAL_MS_CONFIG)!!
+            else config.getInt(CommonClientConfigs.REBALANCE_TIMEOUT_MS_CONFIG)!!,
 
-        heartbeatIntervalMs = config.getInt(CommonClientConfigs.HEARTBEAT_INTERVAL_MS_CONFIG),
-        groupId = config.getString(CommonClientConfigs.GROUP_ID_CONFIG),
+        heartbeatIntervalMs = config.getInt(CommonClientConfigs.HEARTBEAT_INTERVAL_MS_CONFIG)!!,
+        groupId = config.getString(CommonClientConfigs.GROUP_ID_CONFIG)!!,
 
         // Static membership is only introduced in consumer API.
         groupInstanceId = if (protocolType == ProtocolType.CONSUMER) {
-            val groupInstanceId = config.getString(CommonClientConfigs.GROUP_INSTANCE_ID_CONFIG)
+            val groupInstanceId = config.getString(CommonClientConfigs.GROUP_INSTANCE_ID_CONFIG)!!
             JoinGroupRequest.validateGroupInstanceId(groupInstanceId)
             groupInstanceId
         } else null,
 
-        retryBackoffMs = config.getLong(CommonClientConfigs.RETRY_BACKOFF_MS_CONFIG),
+        retryBackoffMs = config.getLong(CommonClientConfigs.RETRY_BACKOFF_MS_CONFIG)!!,
 
         // Internal leave group config is only defined in Consumer.
         leaveGroupOnClose =
             if (protocolType == ProtocolType.CONSUMER)
-                config.getBoolean("internal.leave.group.on.close")
+                config.getBoolean("internal.leave.group.on.close")!!
             else true,
     )
 

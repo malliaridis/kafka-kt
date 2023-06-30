@@ -1377,7 +1377,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
      * Get the full set of internal metrics maintained by the producer.
      */
     override fun metrics(): Map<MetricName, Metric?> {
-        return Collections.unmodifiableMap(metrics.metrics())
+        return Collections.unmodifiableMap(metrics.metrics)
     }
 
     /**

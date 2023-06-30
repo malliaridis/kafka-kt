@@ -63,7 +63,7 @@ class UserScramCredentialUpsertion(
      */
     @Deprecated(
         message = "User property instead",
-        replaceWith = ReplaceWith("info"),
+        replaceWith = ReplaceWith("credentialInfo"),
     )
     fun credentialInfo(): ScramCredentialInfo = credentialInfo
 

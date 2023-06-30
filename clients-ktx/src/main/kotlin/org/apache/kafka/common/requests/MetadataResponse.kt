@@ -93,8 +93,8 @@ class MetadataResponse internal constructor(
             check(metadata.topicId() !== Uuid.ZERO_UUID) {
                 "Use errors() when managing topic using topic name"
             }
-            if (metadata.errorCode() != Errors.NONE.code) errors[metadata.topicId()] =
-                Errors.forCode(metadata.errorCode())
+            if (metadata.errorCode() != Errors.NONE.code)
+                errors[metadata.topicId()] = Errors.forCode(metadata.errorCode())
         }
         return errors
     }

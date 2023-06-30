@@ -44,9 +44,9 @@ class ClientResponse(
     createdTimeMs: Long,
     val receivedTimeMs: Long,
     val disconnected: Boolean,
-    val versionMismatch: UnsupportedVersionException?,
-    val authenticationException: AuthenticationException?,
-    val responseBody: AbstractResponse?,
+    val versionMismatch: UnsupportedVersionException? = null,
+    val authenticationException: AuthenticationException? = null,
+    val responseBody: AbstractResponse? = null,
 ) {
     val requestLatencyMs: Long = receivedTimeMs - createdTimeMs
 

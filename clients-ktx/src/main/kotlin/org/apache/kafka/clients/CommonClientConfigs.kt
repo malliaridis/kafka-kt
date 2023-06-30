@@ -302,13 +302,13 @@ object CommonClientConfigs {
     }
 
     fun postValidateSaslMechanismConfig(config: AbstractConfig) {
-        val securityProtocol = SecurityProtocol.forName(config.getString(SECURITY_PROTOCOL_CONFIG))
-        val clientSaslMechanism: String = config.getString(SaslConfigs.SASL_MECHANISM)
+        val securityProtocol = SecurityProtocol.forName(config.getString(SECURITY_PROTOCOL_CONFIG)!!)
+        val clientSaslMechanism = config.getString(SaslConfigs.SASL_MECHANISM)
         if (
             securityProtocol === SecurityProtocol.SASL_PLAINTEXT
             || securityProtocol === SecurityProtocol.SASL_SSL
         ) {
-            if (clientSaslMechanism.isEmpty()) throw ConfigException(
+            if (clientSaslMechanism.isNullOrEmpty()) throw ConfigException(
                 name = SaslConfigs.SASL_MECHANISM,
                 message = "When the $SECURITY_PROTOCOL_CONFIG configuration enables SASL, " +
                         "mechanism must be non-null and non-empty string."
@@ -336,7 +336,7 @@ object CommonClientConfigs {
                 clientIdOverride,
             ).toMutableList()
         if (
-            config.getBoolean(AUTO_INCLUDE_JMX_REPORTER_CONFIG)
+            config.getBoolean(AUTO_INCLUDE_JMX_REPORTER_CONFIG) == true
             && reporters.none { reporter -> (JmxReporter::class.java == reporter.javaClass) }
         ) {
             val jmxReporter = JmxReporter()
