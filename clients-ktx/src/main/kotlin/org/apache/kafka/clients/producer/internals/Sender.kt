@@ -802,12 +802,12 @@ class Sender(
      * Transfer the record batches into a list of produce requests on a per-node basis
      */
     private fun sendProduceRequests(collated: Map<Int, List<ProducerBatch>>, now: Long) {
-        for (entry in collated.entries) sendProduceRequest(
+        for ((destination, batches) in collated) sendProduceRequest(
             now = now,
-            destination = entry.key,
+            destination = destination,
             acks = acks,
             timeout = requestTimeoutMs,
-            batches = entry.value,
+            batches = batches,
         )
     }
 

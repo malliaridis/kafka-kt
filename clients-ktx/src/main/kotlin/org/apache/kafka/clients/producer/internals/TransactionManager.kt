@@ -1184,13 +1184,12 @@ class TransactionManager(
         offsets: Map<TopicPartition, OffsetAndMetadata>,
         groupMetadata: ConsumerGroupMetadata
     ): TxnOffsetCommitHandler {
-        for (entry: Map.Entry<TopicPartition, OffsetAndMetadata> in offsets.entries) {
-            val offsetAndMetadata = entry.value
+        for ((partition, offsetAndMetadata) in offsets) {
             val committedOffset = CommittedOffset(
                 offsetAndMetadata.offset,
                 offsetAndMetadata.metadata, offsetAndMetadata.leaderEpoch()
             )
-            pendingTxnOffsetCommits[entry.key] = committedOffset
+            pendingTxnOffsetCommits[partition] = committedOffset
         }
         val builder = TxnOffsetCommitRequest.Builder(
             transactionalId = transactionalId,
@@ -1425,9 +1424,7 @@ class TransactionManager(
             val unauthorizedTopics: MutableSet<String> = HashSet()
             retryBackoffMs = this@TransactionManager.retryBackoffMs
 
-            for (topicPartitionErrorEntry: Map.Entry<TopicPartition, Errors> in errors.entries) {
-                val topicPartition = topicPartitionErrorEntry.key
-                val error = topicPartitionErrorEntry.value
+            for ((topicPartition, error) in errors) {
                 if (error === Errors.NONE) continue
                 else if (
                     error === Errors.COORDINATOR_NOT_AVAILABLE
@@ -1707,7 +1704,7 @@ class TransactionManager(
                 errors
             )
 
-            for ((topicPartition, error) in errors.entries) {
+            for ((topicPartition, error) in errors) {
                 if (error === Errors.NONE) pendingTxnOffsetCommits.remove(topicPartition)
                 else if (
                     error === Errors.COORDINATOR_NOT_AVAILABLE

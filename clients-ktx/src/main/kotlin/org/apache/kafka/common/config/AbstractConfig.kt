@@ -298,11 +298,11 @@ open class AbstractConfig(
         b.append(javaClass.simpleName)
         b.append(" values: ")
         b.append(Utils.NL)
-        for (entry in TreeMap(values).entries) {
+        for ((key, value) in TreeMap(values)) {
             b.append('\t')
-            b.append(entry.key)
+            b.append(key)
             b.append(" = ")
-            b.append(entry.value)
+            b.append(value)
             b.append(Utils.NL)
         }
         log.info(b.toString())
@@ -449,9 +449,8 @@ open class AbstractConfig(
         // Variables are tuples of the form "${providerName:[path:]key}". From the configMap we extract the subset of configs with string
         // values as potential variables.
         val configMapAsString: MutableMap<String, String> = HashMap()
-        for (entry: Map.Entry<*, *> in configMap.entries) {
-            if (entry.value is String) configMapAsString[entry.key as String] =
-                entry.value as String
+        for ((key, value) in configMap) {
+            if (value is String) configMapAsString[key as String] = value
         }
         return configMapAsString
     }

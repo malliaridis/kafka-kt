@@ -532,32 +532,26 @@ class KafkaAdminClient private constructor(
         }
 
         fun handleTimeoutFailure(now: Long, cause: Throwable?) {
-            if (log.isDebugEnabled) {
-                log.debug(
-                    "{} timed out at {} after {} attempt(s)", this, now, tries,
-                    Exception(prettyPrintException(cause))
-                )
-            }
-            if (cause is TimeoutException) {
-                handleFailure(cause)
-            } else {
-                handleFailure(
-                    TimeoutException(
-                        (this.toString() + " timed out at " + now
-                                + " after " + tries + " attempt(s)"), cause
-                    )
-                )
-            }
+            if (log.isDebugEnabled) log.debug(
+                "{} timed out at {} after {} attempt(s)",
+                this,
+                now,
+                tries,
+                Exception(prettyPrintException(cause))
+            )
+            if (cause is TimeoutException) handleFailure(cause)
+            else handleFailure(
+                TimeoutException("$this timed out at $now after $tries attempt(s)", cause)
+            )
         }
 
         /**
          * Create an AbstractRequest.Builder for this Call.
          *
          * @param timeoutMs The timeout in milliseconds.
-         *
-         * @return          The AbstractRequest builder.
+         * @return The AbstractRequest builder.
          */
-        abstract fun createRequest(timeoutMs: Int): AbstractRequest.Builder<*>?
+        abstract fun createRequest(timeoutMs: Int): AbstractRequest.Builder<*>
 
         /**
          * Process the call response.
@@ -876,7 +870,7 @@ class KafkaAdminClient private constructor(
                     }
                     val clientRequest = client.newClientRequest(
                         nodeId = node.idString(),
-                        requestBuilder = requestBuilder,
+                        requestBuilder = requestBuilder!!,
                         createdTimeMs = now,
                         expectResponse = true,
                         requestTimeoutMs = timeoutMs,
@@ -909,9 +903,7 @@ class KafkaAdminClient private constructor(
          */
         private fun timeoutCallsInFlight(processor: TimeoutProcessor) {
             var numTimedOut = 0
-            for (entry: Map.Entry<String, Call> in callsInFlight.entries) {
-                val call = entry.value
-                val nodeId = entry.key
+            for ((nodeId, call) in callsInFlight) {
                 if (processor.callHasExpired(call)) {
                     log.info("Disconnecting from {} due to timeout while awaiting {}", nodeId, call)
                     client.disconnect(nodeId)
@@ -1763,7 +1755,7 @@ class KafkaAdminClient private constructor(
                 // Handle server responses for particular topics.
                 val cluster = response.buildCluster()
                 val errors = response.errors()
-                for ((topicName, future) in topicFutures.entries) {
+                for ((topicName, future) in topicFutures) {
                     val topicError = errors[topicName]
                     if (topicError != null) {
                         future.completeExceptionally(topicError.exception!!)
@@ -1848,7 +1840,7 @@ class KafkaAdminClient private constructor(
                 // Handle server responses for particular topics.
                 val cluster = response.buildCluster()
                 val errors = response.errorsByTopicId()
-                for ((topicId, future) in topicFutures.entries) {
+                for ((topicId, future) in topicFutures) {
                     val topicName = cluster.topicName(topicId)
                     if (topicName == null) {
                         future.completeExceptionally(
@@ -2151,9 +2143,8 @@ class KafkaAdminClient private constructor(
                             Errors.forCode(filterResult.errorCode()),
                             filterResult.errorMessage()
                         )
-                        if (error.isFailure) {
-                            future.completeExceptionally(error.exception())
-                        } else {
+                        if (error.isFailure) future.completeExceptionally(error.exception())
+                        else {
                             val filterResults = mutableListOf<DeleteAclsResult.FilterResult>()
                             for (matchingAcl in filterResult.matchingAcls()) {
                                 val aclError = ApiError(
@@ -2197,9 +2188,7 @@ class KafkaAdminClient private constructor(
             }
         }
         val now = time.milliseconds()
-        for (entry: Map.Entry<Int?, Map<ConfigResource, KafkaFutureImpl<Config>?>> in brokerFutures.entries) {
-            val broker = entry.key
-            val unified = entry.value
+        for ((broker, unified) in brokerFutures) {
             runnable.call(
                 object : Call(
                     callName = "describeConfigs",
@@ -2218,8 +2207,8 @@ class KafkaAdminClient private constructor(
                                             .setConfigurationKeys(null)
                                     }
                                 )
-                                .setIncludeSynonyms(options.includeSynonyms())
-                                .setIncludeDocumentation(options.includeDocumentation())
+                                .setIncludeSynonyms(options.includeSynonyms)
+                                .setIncludeDocumentation(options.includeDocumentation)
                         )
                     }
 
@@ -3417,28 +3406,21 @@ class KafkaAdminClient private constructor(
     ): AlterPartitionReassignmentsResult {
         val futures = mutableMapOf<TopicPartition, KafkaFutureImpl<Unit>>()
         val topicsToReassignments = TreeMap<String, MutableMap<Int, NewPartitionReassignment?>>()
-        for (entry: Map.Entry<TopicPartition, NewPartitionReassignment?> in reassignments.entries) {
-            val topic = entry.key.topic
-            val partition = entry.key.partition
+        for ((key, reassignment) in reassignments) {
+            val topic = key.topic
+            val partition = key.partition
             val topicPartition = TopicPartition(topic, partition)
-            val reassignment = entry.value
             val future = KafkaFutureImpl<Unit>()
             futures[topicPartition] = future
-            if (topicNameIsUnrepresentable(topic)) {
-                future.completeExceptionally(
-                    InvalidTopicException(
-                        ("The given topic name '" +
-                                topic + "' cannot be represented in a request.")
-                    )
+            if (topicNameIsUnrepresentable(topic)) future.completeExceptionally(
+                InvalidTopicException(
+                    "The given topic name '$topic' cannot be represented in a request."
                 )
-            } else if (topicPartition.partition < 0) {
-                future.completeExceptionally(
-                    InvalidTopicException(
-                        ("The given partition index " +
-                                topicPartition.partition + " is not valid.")
-                    )
+            ) else if (topicPartition.partition < 0) future.completeExceptionally(
+                InvalidTopicException(
+                    "The given partition index ${topicPartition.partition} is not valid."
                 )
-            } else {
+            ) else {
                 var partitionReassignments = topicsToReassignments[topicPartition.topic]
                 if (partitionReassignments == null) {
                     partitionReassignments = TreeMap()
@@ -3453,11 +3435,12 @@ class KafkaAdminClient private constructor(
             deadlineMs = calcDeadlineMs(now, options.timeoutMs),
             nodeProvider = ControllerNodeProvider(),
         ) {
+
             override fun createRequest(timeoutMs: Int): AlterPartitionReassignmentsRequest.Builder {
                 val data = AlterPartitionReassignmentsRequestData()
 
                 topicsToReassignments.forEach { (topicName, partitionsToReassignments) ->
-                    val reassignablePartitions: MutableList<ReassignablePartition> = ArrayList()
+                    val reassignablePartitions = mutableListOf<ReassignablePartition>()
 
                     partitionsToReassignments.forEach { (partitionIndex, reassignment) ->
                         val reassignablePartition = ReassignablePartition()
@@ -3486,8 +3469,7 @@ class KafkaAdminClient private constructor(
                     )
 
                     Errors.NOT_CONTROLLER -> handleNotControllerError(topLevelError)
-                    else -> for (topicResponse: ReassignableTopicResponse in response.data()
-                        .responses()) {
+                    else -> for (topicResponse in response.data().responses()) {
                         val topicName = topicResponse.name()
                         for (partition in topicResponse.partitions()) {
                             errors[TopicPartition(topicName, partition.partitionIndex())] =
@@ -4213,7 +4195,7 @@ class KafkaAdminClient private constructor(
     ): UpdateFeaturesResult {
         require(featureUpdates.isNotEmpty()) { "Feature updates can not be null or empty." }
         val updateFutures = mutableMapOf<String, KafkaFutureImpl<Unit>>()
-        for ((feature, _) in featureUpdates.entries) {
+        for ((feature, _) in featureUpdates) {
             require(feature.isNotBlank()) { "Provided feature can not be empty." }
             updateFutures[feature] = KafkaFutureImpl()
         }
@@ -4225,7 +4207,7 @@ class KafkaAdminClient private constructor(
         ) {
             override fun createRequest(timeoutMs: Int): UpdateFeaturesRequest.Builder {
                 val featureUpdatesRequestData = FeatureUpdateKeyCollection()
-                for ((feature, update) in featureUpdates.entries) {
+                for ((feature, update) in featureUpdates) {
                     val requestItem = FeatureUpdateKey()
                     requestItem.setFeature(feature)
                     requestItem.setMaxVersionLevel(update.maxVersionLevel)

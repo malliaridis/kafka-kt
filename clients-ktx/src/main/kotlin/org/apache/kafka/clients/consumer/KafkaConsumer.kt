@@ -2232,7 +2232,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
     ): Map<TopicPartition, OffsetAndTimestamp?> {
         acquireAndEnsureOpen()
         try {
-            for ((key, value) in timestampsToSearch.entries) {
+            for ((key, value) in timestampsToSearch) {
                 // we explicitly exclude the earliest and latest offset here so the timestamp in the
                 // returned OffsetAndTimestamp is always positive.
                 require(value >= 0) {

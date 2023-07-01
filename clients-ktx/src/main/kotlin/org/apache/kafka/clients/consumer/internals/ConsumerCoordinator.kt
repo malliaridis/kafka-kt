@@ -698,7 +698,7 @@ class ConsumerCoordinator(
     ) {
         val totalRevokedPartitions: MutableSet<TopicPartition> = HashSet()
         val totalAddedPartitions: SortedSet<TopicPartition> = TreeSet(COMPARATOR)
-        for ((key, assignment) in assignments.entries) {
+        for ((key, assignment) in assignments) {
             val addedPartitions = assignment.partitions.toMutableSet()
             addedPartitions.removeAll(ownedPartitions[key]!!.toSet())
 
@@ -1264,9 +1264,7 @@ class ConsumerCoordinator(
 
         // create the offset commit request
         val requestTopicDataMap = mutableMapOf<String, OffsetCommitRequestTopic>()
-        for (entry in offsets.entries) {
-            val topicPartition = entry.key
-            val offsetAndMetadata = entry.value
+        for ((topicPartition, offsetAndMetadata) in offsets) {
             if (offsetAndMetadata.offset < 0) return RequestFuture.failure(
                 IllegalArgumentException("Invalid offset: ${offsetAndMetadata.offset}")
             )
@@ -1553,7 +1551,7 @@ class ConsumerCoordinator(
             val responseData = response.partitionDataMap(rebalanceConfig.groupId)
             val offsets: MutableMap<TopicPartition, OffsetAndMetadata?> = HashMap(responseData.size)
             val unstableTxnOffsetTopicPartitions = mutableSetOf<TopicPartition>()
-            for ((tp, partitionData) in responseData.entries) {
+            for ((tp, partitionData) in responseData) {
                 if (partitionData.hasError()) {
                     val error = partitionData.error
                     log.debug("Failed to fetch offset for partition {}: {}", tp, error.message())

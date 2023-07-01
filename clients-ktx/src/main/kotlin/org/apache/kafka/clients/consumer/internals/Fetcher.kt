@@ -183,9 +183,7 @@ class Fetcher<K, V>(
         // Update metrics in case there was an assignment change
         sensors.maybeUpdateAssignment(subscriptions)
         val fetchRequestMap = prepareFetchRequests()
-        for (entry in fetchRequestMap.entries) {
-            val fetchTarget = entry.key
-            val data = entry.value
+        for ((fetchTarget, data) in fetchRequestMap) {
             val maxVersion = if (!data.canUseTopicIds) 12.toShort()
             else ApiKeys.FETCH.latestVersion()
 
@@ -210,7 +208,7 @@ class Fetcher<K, V>(
             // listener because the future may have been fulfilled on another thread (e.g. during a
             // disconnection being handled by the heartbeat thread) which will mean the listener
             // will be invoked synchronously.
-            nodesWithPendingFetchRequests.add(entry.key.id)
+            nodesWithPendingFetchRequests.add(fetchTarget.id)
             future.addListener(object : RequestFutureListener<ClientResponse> {
                 override fun onSuccess(value: ClientResponse) = synchronized(this@Fetcher) {
                     try {
@@ -238,7 +236,7 @@ class Fetcher<K, V>(
                             sensors = sensors,
                             partitions = partitions,
                         )
-                        for ((partition, partitionData) in responseData.entries) {
+                        for ((partition, partitionData) in responseData) {
 
                             val requestData = data.sessionPartitions[partition]
 
@@ -351,7 +349,7 @@ class Fetcher<K, V>(
                     // if there were errors, we need to check whether they were fatal or whether
                     // we should just retry
                     log.debug("Topic metadata fetch included errors: {}", errors)
-                    for ((topic, error) in errors.entries) {
+                    for ((topic, error) in errors) {
                         if (error === Errors.INVALID_TOPIC_EXCEPTION)
                             throw InvalidTopicException("Topic '$topic' is invalid")
                         else if (error === Errors.UNKNOWN_TOPIC_OR_PARTITION)
@@ -964,9 +962,7 @@ class Fetcher<K, V>(
         partitionsToRetry: MutableSet<TopicPartition>
     ): Map<Node?, Map<TopicPartition, ListOffsetsPartition?>> {
         val partitionDataMap: MutableMap<TopicPartition, ListOffsetsPartition?> = HashMap()
-        for (entry: Map.Entry<TopicPartition, Long> in timestampsToSearch.entries) {
-            val tp = entry.key
-            val offset = entry.value
+        for ((tp, offset) in timestampsToSearch) {
             val leaderAndEpoch = metadata.currentLeader(tp)
             if (leaderAndEpoch.leader == null) {
                 log.debug("Leader for partition {} is unknown for fetching offset {}", tp, offset)
@@ -1880,12 +1876,11 @@ class Fetcher<K, V>(
                 sensors.recordsFetched.record(fetchMetrics.fetchRecords.toDouble())
 
                 // also record per-topic metrics
-                for (entry: Map.Entry<String, FetchMetrics> in topicFetchMetrics.entries) {
-                    val metric = entry.value
+                for ((key, metric) in topicFetchMetrics) {
                     sensors.recordTopicFetchMetrics(
-                        entry.key,
-                        metric.fetchBytes,
-                        metric.fetchRecords,
+                        topic = key,
+                        bytes = metric.fetchBytes,
+                        records = metric.fetchRecords,
                     )
                 }
             }

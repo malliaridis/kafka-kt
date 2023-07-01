@@ -838,10 +838,9 @@ class NetworkClient(
      * @param now The current time
      */
     private fun handleDisconnections(responses: MutableList<ClientResponse>, now: Long) {
-        for (entry: Map.Entry<String, ChannelState> in selector.disconnected().entries) {
-            val node = entry.key
+        for ((node, state) in selector.disconnected()) {
             log.info("Node {} disconnected.", node)
-            processDisconnection(responses, node, now, entry.value)
+            processDisconnection(responses, node, now, state)
         }
     }
 

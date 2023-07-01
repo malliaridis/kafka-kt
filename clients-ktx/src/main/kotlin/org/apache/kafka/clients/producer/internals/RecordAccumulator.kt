@@ -806,8 +806,8 @@ class RecordAccumulator(
         }
         var queueSizesIndex = -1
         val exhausted = free.queued() > 0
-        for (entry in batches.entries) {
-            val part = TopicPartition(topic, entry.key)
+        for ((partition, deque) in batches) {
+            val part = TopicPartition(topic, partition)
             // Advance queueSizesIndex so that we properly index available
             // partitions. Do it here so that it's done for all code paths.
             val leader = cluster.leaderFor(part)
@@ -816,7 +816,6 @@ class RecordAccumulator(
                 assert(queueSizesIndex < queueSizes.size)
                 partitionIds!![queueSizesIndex] = part.partition
             }
-            val deque = entry.value
 
             // Current Kotlin workaround for break and continue inside lambdas
             // See https://youtrack.jetbrains.com/issue/KT-1436/Support-non-local-break-and-continue
@@ -918,13 +917,12 @@ class RecordAccumulator(
 
         // Go topic by topic so that we can get queue sizes for partitions in a topic and calculate
         // cumulative frequency table (used in partitioner).
-        for (topicInfoEntry in topicInfoMap.entries) {
-            val topic = topicInfoEntry.key
+        for ((topic, topicInfo) in topicInfoMap) {
             nextReadyCheckDelayMs = partitionReady(
                 cluster = cluster,
                 nowMs = nowMs,
                 topic = topic,
-                topicInfo = topicInfoEntry.value,
+                topicInfo = topicInfo,
                 nextReadyCheckDelayMs = nextReadyCheckDelayMs,
                 readyNodes = readyNodes,
                 unknownLeaderTopics = unknownLeaderTopics,

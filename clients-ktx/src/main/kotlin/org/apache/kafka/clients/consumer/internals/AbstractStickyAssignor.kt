@@ -103,7 +103,7 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
         // is detected, e.g. two consumers somehow claiming the same partition in the same/current
         // generation
         val allPreviousPartitionsToOwner = mutableMapOf<TopicPartition, String>()
-        for ((consumer, subscription) in subscriptions.entries) {
+        for ((consumer, subscription) in subscriptions) {
 
             // initialize the subscribed topics set if this is the first subscription
             if (subscribedTopics.isEmpty()) subscribedTopics.addAll(subscription.topics)
@@ -246,9 +246,7 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
 
         val assignedPartitions: MutableList<TopicPartition> = ArrayList()
         // Reassign previously owned partitions, up to the expected number of partitions per consumer
-        for (consumerEntry in consumerToOwnedPartitions.entries) {
-            val consumer = consumerEntry.key
-            val ownedPartitions = consumerEntry.value
+        for ((consumer, ownedPartitions) in consumerToOwnedPartitions) {
             val consumerAssignment = assignment[consumer]!!
             for (doublyClaimedPartition in partitionsWithMultiplePreviousOwners) {
                 if (ownedPartitions.contains(doublyClaimedPartition)) {
@@ -481,13 +479,12 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
         val topic2AllPotentialConsumers = partitionsPerTopic.keys
             .associateWith { mutableListOf<String>() }
 
-        for (entry: Map.Entry<String, ConsumerPartitionAssignor.Subscription> in subscriptions.entries) {
-            val consumerId = entry.key
-            val subscribedTopics: MutableList<String> = ArrayList(entry.value.topics.size)
+        for ((consumerId, subscription) in subscriptions) {
+            val subscribedTopics: MutableList<String> = ArrayList(subscription.topics.size)
             consumer2AllPotentialTopics[consumerId] = subscribedTopics
 
-            entry.value.topics.filter { topic: String -> partitionsPerTopic[topic] != null }
-                .forEach { topic: String ->
+            subscription.topics.filter { topic -> partitionsPerTopic[topic] != null }
+                .forEach { topic ->
                     subscribedTopics.add(topic)
                     topic2AllPotentialConsumers[topic]!!.add(consumerId)
                 }
@@ -499,9 +496,9 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
 
         // a mapping of partition to current consumer
         val currentPartitionConsumer = mutableMapOf<TopicPartition, String>()
-        for (entry in currentAssignment.entries)
-            for (topicPartition in entry.value)
-                currentPartitionConsumer[topicPartition] = entry.key
+        for ((key, value) in currentAssignment)
+            for (topicPartition in value)
+                currentPartitionConsumer[topicPartition] = key
         val totalPartitionsCount = partitionsPerTopic.values.sum()
 
         val sortedAllTopics: List<String> = ArrayList(topic2AllPotentialConsumers.keys)
@@ -876,7 +873,7 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
             val entry = iterator.next()
             val consumerAssignmentSize = entry.value
             iterator.remove()
-            for ((_, value) in consumer2AssignmentSize.entries)
+            for ((_, value) in consumer2AssignmentSize)
                 score += abs(consumerAssignmentSize - value)
         }
         return score
@@ -1211,7 +1208,7 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
         dest: MutableMap<String, MutableList<TopicPartition>>,
     ) {
         dest.clear()
-        for ((key, value) in source.entries) dest[key] = ArrayList(value)
+        for ((key, value) in source) dest[key] = ArrayList(value)
     }
 
     private fun deepCopy(

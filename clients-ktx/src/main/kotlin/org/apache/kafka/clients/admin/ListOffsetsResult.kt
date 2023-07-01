@@ -47,18 +47,17 @@ data class ListOffsetsResult(
      * retrieved.
      */
     fun all(): KafkaFuture<Map<TopicPartition, ListOffsetsResultInfo>> {
-        return KafkaFuture.allOf(*futures.values.toTypedArray<KafkaFuture<*>>())
+        return KafkaFuture.allOf(futures.values)
             .thenApply {
                 val offsets: MutableMap<TopicPartition, ListOffsetsResultInfo> = HashMap(futures.size)
-                for (entry: Map.Entry<TopicPartition, KafkaFuture<ListOffsetsResultInfo>> in futures.entries) {
-                    try {
-                        offsets[entry.key] = entry.value.get()
-                    } catch (e: InterruptedException) {
-                        // This should be unreachable, because allOf ensured that all the futures completed successfully.
-                        throw RuntimeException(e)
-                    } catch (e: ExecutionException) {
-                        throw RuntimeException(e)
-                    }
+                for ((key, value) in futures) try {
+                    offsets[key] = value.get()
+                } catch (e: InterruptedException) {
+                    // This should be unreachable, because allOf ensured that all the futures
+                    // completed successfully.
+                    throw RuntimeException(e)
+                } catch (e: ExecutionException) {
+                    throw RuntimeException(e)
                 }
                 offsets
             }
