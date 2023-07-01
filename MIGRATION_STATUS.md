@@ -73,13 +73,13 @@ The following table contains an overview of the tasks related to the clients-kt 
 
 | Task                                             |      Status      |
 |--------------------------------------------------|:----------------:|
-| **Migrate clients module of version 3.4**        | **In progress️** |
+| **Migrate clients java module of version 3.4**   |   *Completed*    |
 | Optimize class constructors and property methods | **In progress️** |
 | Rename modules to -kt instead of -ktx            |        ✖         |
-| Fix migration bugs                               |        ✖         |
-| Migrate generator (Java)                         |        ✖         |
+| Fix migration bugs                               | **In progress**  |
+| Migrate generator (Java)                         | **In progress**  |
 | Implement generator-kt                           |        ✖         |
-| Migrate tests                                    |        ✖         |
+| Migrate tests                                    | **In progress**  |
 | Report founded bugs                              |        ✖         |
 | Rewrite `KafkaFuture` and migrate to Coroutines  |        ✖         |
 | Write migration steps for consumers              |        ✖         |
