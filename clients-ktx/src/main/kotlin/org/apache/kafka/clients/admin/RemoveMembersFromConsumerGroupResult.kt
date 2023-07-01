@@ -37,15 +37,15 @@ class RemoveMembersFromConsumerGroupResult internal constructor(
      * either top level or member level error.
      * If not, the first member error shall be returned.
      */
-    fun all(): KafkaFuture<Void?> {
-        val result = KafkaFutureImpl<Void?>()
+    fun all(): KafkaFuture<Unit> {
+        val result = KafkaFutureImpl<Unit>()
         future.whenComplete { memberErrors, throwable ->
             if (throwable != null) result.completeExceptionally(throwable)
             else {
                 requireNotNull(memberErrors)
                 if (removeAll()) {
                     for ((key, value) in memberErrors) {
-                        val exception: Exception = value.exception
+                        val exception = value.exception
                         if (exception != null) {
                             val ex: Throwable = KafkaException(
                                 message = "Encounter exception when trying to remove: $key",
@@ -67,7 +67,7 @@ class RemoveMembersFromConsumerGroupResult internal constructor(
                         }
                     }
                 }
-                result.complete(null)
+                result.complete(Unit)
             }
         }
         return result
@@ -76,10 +76,10 @@ class RemoveMembersFromConsumerGroupResult internal constructor(
     /**
      * Returns the selected member future.
      */
-    fun memberResult(member: MemberToRemove): KafkaFuture<Void?> {
+    fun memberResult(member: MemberToRemove): KafkaFuture<Unit> {
         require(!removeAll()) { "The method: memberResult is not applicable in 'removeAll' mode" }
         require(memberInfos.contains(member)) { "Member $member was not included in the original request" }
-        val result = KafkaFutureImpl<Void?>()
+        val result = KafkaFutureImpl<Unit>()
         future.whenComplete { memberErrors, throwable ->
             if (throwable != null) result.completeExceptionally(throwable)
             else if (!maybeCompleteExceptionally(
@@ -87,7 +87,7 @@ class RemoveMembersFromConsumerGroupResult internal constructor(
                     member.toMemberIdentity(),
                     result
                 )
-            ) result.complete(null)
+            ) result.complete(Unit)
         }
         return result
     }
@@ -95,7 +95,7 @@ class RemoveMembersFromConsumerGroupResult internal constructor(
     private fun maybeCompleteExceptionally(
         memberErrors: Map<MemberIdentity, Errors>,
         member: MemberIdentity,
-        result: KafkaFutureImpl<Void?>
+        result: KafkaFutureImpl<Unit>
     ): Boolean {
         val exception = KafkaAdminClient.getSubLevelError(
             subLevelErrors = memberErrors,

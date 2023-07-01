@@ -240,7 +240,7 @@ class BufferPool(
     }
 
     /**
-     * Allocate a buffer.  If buffer allocation fails (e.g. because of OOM) then return the size
+     * Allocate a buffer. If buffer allocation fails (e.g. because of OOM) then return the size
      * count back to available memory and signal the next waiter if it exists.
      */
     private fun safeAllocateByteBuffer(size: Int): ByteBuffer {

@@ -73,7 +73,7 @@ interface Message {
     fun write(writable: Writable, cache: ObjectSerializationCache, version: Short)
 
     /**
-     * Reads this message from the given Readable.  This will overwrite all
+     * Reads this message from the given Readable. This will overwrite all
      * relevant fields with information from the byte buffer.
      *
      * @param readable The source readable.

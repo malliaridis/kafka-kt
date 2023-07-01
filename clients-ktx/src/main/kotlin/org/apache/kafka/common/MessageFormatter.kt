@@ -34,7 +34,7 @@ interface MessageFormatter : Configurable, Closeable {
      * Configures the MessageFormatter
      * @param configs Map to configure the formatter
      */
-    override fun configure(configs: Map<String?, *>?) {}
+    override fun configure(configs: Map<String, *>) = Unit
 
     /**
      * Parses and formats a record for display

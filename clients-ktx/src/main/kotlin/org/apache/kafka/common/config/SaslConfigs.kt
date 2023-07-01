@@ -128,7 +128,7 @@ object SaslConfigs {
 
     const val SASL_LOGIN_REFRESH_MIN_PERIOD_SECONDS_DOC =
         ("The desired minimum time for the login refresh thread to wait before refreshing a credential,"
-                + " in seconds. Legal values are between 0 and 900 (15 minutes); a default value of 60 (1 minute) is used if no value is specified.  This value and "
+                + " in seconds. Legal values are between 0 and 900 (15 minutes); a default value of 60 (1 minute) is used if no value is specified. This value and "
                 + " sasl.login.refresh.buffer.seconds are both ignored if their sum exceeds the remaining lifetime of a credential."
                 + OAUTHBEARER_NOTE)
 

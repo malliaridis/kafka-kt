@@ -116,7 +116,7 @@ interface KafkaClient : Closeable {
 
     /**
      * Closes the connection to a particular node (if there is one). All requests on the connection
-     * will be cleared.  ClientRequest callbacks will not be invoked for the cleared requests, nor
+     * will be cleared. ClientRequest callbacks will not be invoked for the cleared requests, nor
      * will they be returned from poll().
      *
      * @param nodeId The id of the node

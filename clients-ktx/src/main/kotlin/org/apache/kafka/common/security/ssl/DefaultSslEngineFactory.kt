@@ -580,8 +580,8 @@ class DefaultSslEngineFactory : SslEngineFactory {
             val auth = SslClientAuth.forConfig(key)
             if (auth != null) return auth
 
-            log.warn("Unrecognized client authentication configuration {}.  Falling " +
-                    "back to NONE.  Recognized client authentication configurations are {}.",
+            log.warn("Unrecognized client authentication configuration {}. Falling " +
+                    "back to NONE. Recognized client authentication configurations are {}.",
                 key,
                 SslClientAuth.values()
                     .map(SslClientAuth::name)

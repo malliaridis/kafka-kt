@@ -76,7 +76,7 @@ abstract class Type {
     open val isNullable: Boolean = false
 
     /**
-     * If the type is an array, return the type of the array elements.  Otherwise, return empty.
+     * If the type is an array, return the type of the array elements. Otherwise, return empty.
      */
     open fun arrayElementType(): Type? = null
 

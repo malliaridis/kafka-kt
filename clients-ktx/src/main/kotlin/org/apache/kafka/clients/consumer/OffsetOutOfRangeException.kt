@@ -23,7 +23,7 @@ import org.apache.kafka.common.TopicPartition
  * No reset policy has been defined, and the offsets for these partitions are either larger or smaller
  * than the range of offsets the server has for the given partition.
  */
-class OffsetOutOfRangeException(
+open class OffsetOutOfRangeException(
     message: String? = null,
     val offsetOutOfRangePartitions: Map<TopicPartition, Long>,
 ) : InvalidOffsetException(message) {

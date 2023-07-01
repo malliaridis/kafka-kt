@@ -67,17 +67,12 @@ class MetadataOperationContext<T, O : AbstractOptions<O>?>(
 
     companion object {
         fun handleMetadataErrors(response: MetadataResponse) {
-            for (tm in response.topicMetadata()) {
-                for (pm in tm.partitionMetadata) {
-                    if (shouldRefreshMetadata(pm.error)) {
-                        throw pm.error.exception
-                    }
-                }
-            }
+            for (tm in response.topicMetadata())
+                for (pm in tm.partitionMetadata)
+                    if (shouldRefreshMetadata(pm.error)) throw pm.error.exception!!
         }
 
-        fun shouldRefreshMetadata(error: Errors): Boolean {
-            return error.exception is InvalidMetadataException
-        }
+        fun shouldRefreshMetadata(error: Errors): Boolean =
+            error.exception is InvalidMetadataException
     }
 }

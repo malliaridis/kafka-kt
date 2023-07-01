@@ -36,24 +36,18 @@ class AlterConsumerGroupOffsetsResult internal constructor(
     /**
      * Return a future which can be used to check the result for a given partition.
      */
-    fun partitionResult(partition: TopicPartition): KafkaFuture<Void?> {
-        val result = KafkaFutureImpl<Void?>()
-        future.whenComplete { topicPartitions: Map<TopicPartition, Errors>, throwable: Throwable? ->
-            if (throwable != null) {
-                result.completeExceptionally(throwable)
-            } else if (!topicPartitions.containsKey(partition)) {
-                result.completeExceptionally(
-                    IllegalArgumentException(
-                        "Alter offset for partition \"$partition\" was not attempted"
-                    )
+    fun partitionResult(partition: TopicPartition): KafkaFuture<Unit> {
+        val result = KafkaFutureImpl<Unit>()
+        future.whenComplete { topicPartitions, throwable ->
+            if (throwable != null) result.completeExceptionally(throwable)
+            else if (!topicPartitions!!.containsKey(partition)) result.completeExceptionally(
+                IllegalArgumentException(
+                    "Alter offset for partition \"$partition\" was not attempted"
                 )
-            } else {
-                val error = topicPartitions[partition]
-                if (error === Errors.NONE) {
-                    result.complete(null)
-                } else {
-                    result.completeExceptionally(error!!.exception)
-                }
+            ) else {
+                val error = topicPartitions[partition]!!
+                if (error === Errors.NONE) result.complete(Unit)
+                else result.completeExceptionally(error.exception!!)
             }
         }
         return result

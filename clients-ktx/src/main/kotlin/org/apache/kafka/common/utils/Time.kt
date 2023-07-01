@@ -47,7 +47,7 @@ interface Time {
      * not related to any other notion of system or wall-clock time.
      * The value returned represents nanoseconds since some fixed but
      * arbitrary *origin* time (perhaps in the future, so values
-     * may be negative).  The same origin is used by all invocations of
+     * may be negative). The same origin is used by all invocations of
      * this method in an instance of a Java virtual machine; other
      * virtual machine instances are likely to use a different origin.
      */

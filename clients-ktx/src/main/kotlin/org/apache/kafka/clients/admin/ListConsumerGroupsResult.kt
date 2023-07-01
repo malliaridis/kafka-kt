@@ -63,9 +63,9 @@ class ListConsumerGroupsResult internal constructor(future: KafkaFuture<Collecti
     /**
      * Returns a future which yields just the valid listings.
      *
-     * This future never fails with an error, no matter what happens.  Errors are completely
+     * This future never fails with an error, no matter what happens. Errors are completely
      * ignored. If nothing can be fetched, an empty collection is yielded. If there is an error, but
-     * some results can be returned, this future will yield those partial results.  When using this
+     * some results can be returned, this future will yield those partial results. When using this
      * future, it is a good idea to also check the errors future so that errors can be displayed and
      * handled.
      */
@@ -77,7 +77,7 @@ class ListConsumerGroupsResult internal constructor(future: KafkaFuture<Collecti
      * If this future yields a non-empty collection, it is very likely that elements are missing
      * from the `valid()` set.
      *
-     * This future itself never fails with an error.  In the event of an error, this future will
+     * This future itself never fails with an error. In the event of an error, this future will
      * successfully yield a collection containing at least one exception.
      */
     fun errors(): KafkaFuture<Collection<Throwable>> = errors

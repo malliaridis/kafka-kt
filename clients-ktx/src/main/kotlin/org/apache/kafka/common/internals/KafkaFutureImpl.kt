@@ -98,7 +98,7 @@ class KafkaFutureImpl<T> private constructor(
     }
 
     /**
-     * If not already completed, completes this future with a CancellationException.  Dependent
+     * If not already completed, completes this future with a CancellationException. Dependent
      * futures that have not already completed will also complete exceptionally, with a
      * CompletionException caused by this CancellationException.
      */

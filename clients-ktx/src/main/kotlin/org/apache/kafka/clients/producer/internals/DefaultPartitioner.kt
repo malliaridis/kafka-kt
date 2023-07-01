@@ -21,8 +21,8 @@ import org.apache.kafka.clients.producer.Partitioner
 import org.apache.kafka.common.Cluster
 
 /**
- * NOTE this partitioner is deprecated and shouldn't be used.  To use default partitioning logic
- * remove partitioner.class configuration setting.  See KIP-794 for more info.
+ * NOTE this partitioner is deprecated and shouldn't be used. To use default partitioning logic
+ * remove partitioner.class configuration setting. See KIP-794 for more info.
  *
  * The default partitioning strategy:
  *

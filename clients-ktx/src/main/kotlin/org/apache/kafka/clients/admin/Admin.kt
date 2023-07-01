@@ -33,6 +33,7 @@ import org.apache.kafka.common.annotation.InterfaceStability.Unstable
 import org.apache.kafka.common.config.ConfigResource
 import org.apache.kafka.common.quota.ClientQuotaAlteration
 import org.apache.kafka.common.quota.ClientQuotaFilter
+import org.apache.kafka.common.utils.Utils.propsToMap
 
 /**
  * The administrative client for Kafka, which supports managing and inspecting topics, brokers,
@@ -1064,7 +1065,7 @@ interface Admin : AutoCloseable {
      * Providing `null` will <bold>revert</bold> the reassignment for the associated partition.
      *
      * This is a convenience method for [alterPartitionReassignments]
-     * with default options.  See the overload for more details.
+     * with default options. See the overload for more details.
      */
     fun alterPartitionReassignments(
         reassignments: Map<TopicPartition, NewPartitionReassignment?>
@@ -1683,9 +1684,12 @@ interface Admin : AutoCloseable {
          * @param props The configuration.
          * @return The new KafkaAdminClient.
          */
-        fun create(props: Properties): Admin {
-            return KafkaAdminClient.createInternal(config = AdminClientConfig(props, true))
-        }
+        fun create(props: Properties): Admin = KafkaAdminClient.createInternal(
+            config = AdminClientConfig(
+                props = propsToMap(props),
+                doLog = true,
+            )
+        )
 
         /**
          * Create a new Admin with the given configuration.
@@ -1693,8 +1697,8 @@ interface Admin : AutoCloseable {
          * @param conf The configuration.
          * @return The new KafkaAdminClient.
          */
-        fun create(conf: Map<String, Any?>): Admin {
-            return KafkaAdminClient.createInternal(config = AdminClientConfig(conf, true))
-        }
+        fun create(conf: Map<String, Any?>): Admin = KafkaAdminClient.createInternal(
+            config = AdminClientConfig(props = conf, doLog = true)
+        )
     }
 }

@@ -219,7 +219,7 @@ import org.slf4j.Logger
  * successful writes are marked as aborted, hence keeping the transactional guarantees.
  *
  * This client can communicate with brokers that are version 0.10.0 or newer. Older or newer brokers
- * may not support certain client features.  For instance, the transactional APIs need broker
+ * may not support certain client features. For instance, the transactional APIs need broker
  * versions 0.11.0 or later. You will receive an `UnsupportedVersionException` when invoking an API
  * that is not available in the running broker version.
  */
@@ -547,13 +547,13 @@ open class KafkaProducer<K, V> : Producer<K, V> {
         // Using DefaultPartitioner and UniformStickyPartitioner is deprecated, see KIP-794.
         if (partitioner is DefaultPartitioner) {
             log.warn(
-                "DefaultPartitioner is deprecated.  Please clear " + ProducerConfig.PARTITIONER_CLASS_CONFIG
+                "DefaultPartitioner is deprecated. Please clear " + ProducerConfig.PARTITIONER_CLASS_CONFIG
                         + " configuration setting to get the default partitioning behavior"
             )
         }
         if (partitioner is UniformStickyPartitioner) {
             log.warn(
-                ("UniformStickyPartitioner is deprecated.  Please clear " + ProducerConfig.PARTITIONER_CLASS_CONFIG
+                ("UniformStickyPartitioner is deprecated. Please clear " + ProducerConfig.PARTITIONER_CLASS_CONFIG
                         + " configuration setting and set " + ProducerConfig.PARTITIONER_IGNORE_KEYS_CONFIG
                         + " to 'true' to get the uniform sticky partitioning behavior")
             )
@@ -1149,7 +1149,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
             // A custom partitioner may take advantage on the onNewBatch callback.
             val abortOnNewBatch = partitioner != null
 
-            // Append the record to the accumulator.  Note, that the actual partition may be
+            // Append the record to the accumulator. Note, that the actual partition may be
             // calculated there and can be accessed via appendCallbacks.topicPartition.
             var result = accumulator.append(
                 topic = record.topic,

@@ -104,7 +104,7 @@ object ConfigUtils {
             } else {
                 log.warn(
                     "Configuration key ${deprecated[0]} is deprecated and may be removed in " +
-                            "the future.  Please update your configuration to use $target instead."
+                            "the future. Please update your configuration to use $target instead."
                 )
                 newConfigs[target] = configs[deprecated[0]]!!
             }

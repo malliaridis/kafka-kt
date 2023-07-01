@@ -18,24 +18,24 @@
 package org.apache.kafka.common.utils
 
 /**
- * A memory-efficient hash multiset which tracks the order of insertion of elements.
- * See org.apache.kafka.common.utils.ImplicitLinkedHashCollection for implementation details.
+ * A memory-efficient hash multiset which tracks the order of insertion of elements. See
+ * org.apache.kafka.common.utils.ImplicitLinkedHashCollection for implementation details.
  *
- * This class is a multi-set because it allows multiple elements to be inserted that
- * have equivalent keys.
+ * This class is a multi-set because it allows multiple elements to be inserted that have equivalent
+ * keys.
  *
- * We use reference equality when adding elements to the set.  A new element A can
- * be added if there is no existing element B such that A == B.  If an element B
- * exists such that A.elementKeysAreEqual(B), A will still be added.
+ * We use reference equality when adding elements to the set. A new element A can be added if there
+ * is no existing element B such that A == B. If an element B exists such that
+ * A.elementKeysAreEqual(B), A will still be added.
  *
- * When deleting an element A from the set, we will try to delete the element B such
- * that A == B.  If no such element can be found, we will try to delete an element B
- * such that A.elementKeysAreEqual(B).
+ * When deleting an element A from the set, we will try to delete the element B such that A == B.
+ * If no such element can be found, we will try to delete an element B such that
+ * A.elementKeysAreEqual(B).
  *
- * contains() and find() are unchanged from the base class-- they will look for element
- * based on object equality via elementKeysAreEqual, not reference equality.
+ * contains() and find() are unchanged from the base class-- they will look for element based on
+ * object equality via elementKeysAreEqual, not reference equality.
  *
- * This multiset does not allow null elements.  It does not have internal synchronization.
+ * This multiset does not allow null elements. It does not have internal synchronization.
  */
 open class ImplicitLinkedHashMultiCollection<E : ImplicitLinkedHashCollection.Element> :
     ImplicitLinkedHashCollection<E> {

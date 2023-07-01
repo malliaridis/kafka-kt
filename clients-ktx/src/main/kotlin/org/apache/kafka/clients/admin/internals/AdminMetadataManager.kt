@@ -13,7 +13,7 @@ import org.slf4j.Logger
 /**
  * Manages the metadata for KafkaAdminClient.
  *
- * This class is not thread-safe.  It is only accessed from the AdminClient
+ * This class is not thread-safe. It is only accessed from the AdminClient
  * service thread (which also uses the NetworkClient).
  *
  * @property refreshBackoffMs The minimum amount of time that we should wait between subsequent
@@ -191,7 +191,7 @@ class AdminMetadataManager private constructor(
     }
 
     /**
-     * Transition into the UPDATE_PENDING state.  Updates lastMetadataFetchAttemptMs.
+     * Transition into the UPDATE_PENDING state. Updates lastMetadataFetchAttemptMs.
      */
     fun transitionToUpdatePending(now: Long) {
         state = State.UPDATE_PENDING

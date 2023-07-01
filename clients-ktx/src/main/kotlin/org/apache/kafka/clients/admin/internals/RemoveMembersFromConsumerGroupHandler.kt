@@ -107,7 +107,7 @@ class RemoveMembersFromConsumerGroupHandler(
                     groupId.idValue,
                     error
                 )
-                failed[groupId] = error.exception
+                failed[groupId] = error.exception!!
             }
 
             // If the coordinator is in the middle of loading, then we just need to retry
@@ -135,7 +135,7 @@ class RemoveMembersFromConsumerGroupHandler(
                     groupId.idValue,
                     error,
                 )
-                failed[groupId] = error.exception
+                failed[groupId] = error.exception!!
             }
         }
     }

@@ -130,7 +130,7 @@ abstract class KafkaFuture<T> : Future<T> {
     protected abstract fun completeExceptionally(newException: Throwable): Boolean
 
     /**
-     * If not already completed, completes this future with a CancellationException.  Dependent
+     * If not already completed, completes this future with a CancellationException. Dependent
      * futures that have not already completed will also complete exceptionally, with a
      * CompletionException caused by this CancellationException.
      */
@@ -188,7 +188,7 @@ abstract class KafkaFuture<T> : Future<T> {
 
         /**
          * Returns a new KafkaFuture that is completed when all the given futures have completed.
-         * If any future throws an exception, the returned future returns it.  If multiple futures
+         * If any future throws an exception, the returned future returns it. If multiple futures
          * throw an exception, which one gets returned is arbitrarily chosen.
          */
         fun allOf(vararg futures: KafkaFuture<*>): KafkaFuture<Unit> {
@@ -210,7 +210,7 @@ abstract class KafkaFuture<T> : Future<T> {
 
         /**
          * Returns a new KafkaFuture that is completed when all the given futures have completed.
-         * If any future throws an exception, the returned future returns it.  If multiple futures
+         * If any future throws an exception, the returned future returns it. If multiple futures
          * throw an exception, which one gets returned is arbitrarily chosen.
          */
         fun allOf(futures: Collection<KafkaFuture<*>>): KafkaFuture<Unit> {

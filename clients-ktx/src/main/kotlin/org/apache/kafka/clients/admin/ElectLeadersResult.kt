@@ -43,23 +43,27 @@ class ElectLeadersResult internal constructor(
     /**
      * Return a future which succeeds if all the topic elections succeed.
      */
-    fun all(): KafkaFuture<Void?> {
-        val result = KafkaFutureImpl<Void?>()
+    fun all(): KafkaFuture<Unit> {
+        val result = KafkaFutureImpl<Unit>()
         partitions().whenComplete(
-            object : KafkaFuture.BiConsumer<Map<TopicPartition, Throwable?>, Throwable?> {
-                override fun accept(topicPartitions: Map<TopicPartition, Throwable?>, throwable: Throwable?) {
+            object : KafkaFuture.BiConsumer<Map<TopicPartition, Throwable?>?, Throwable?> {
+                override fun accept(
+                    topicPartitions: Map<TopicPartition, Throwable?>?,
+                    throwable: Throwable?,
+                ) {
                     if (throwable != null) result.completeExceptionally(throwable)
                     else {
-                        for (exception in topicPartitions.values) {
+                        for (exception in topicPartitions!!.values) {
                             exception?.let {
                                 result.completeExceptionally(it)
                                 return
                             }
                         }
-                        result.complete(null)
+                        result.complete(Unit)
                     }
                 }
-            })
+            }
+        )
         return result
     }
 }

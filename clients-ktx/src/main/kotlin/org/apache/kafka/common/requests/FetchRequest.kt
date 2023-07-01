@@ -55,7 +55,7 @@ class FetchRequest(
         // code. The form where we set the same error code in all partitions is needed in order to
         // maintain backwards compatibility with older versions of the protocol in which there was
         // no top-level error code. Note that for incremental fetch responses, there may not be any
-        // partitions at all in the response.  For this reason, the top-level error code is
+        // partitions at all in the response. For this reason, the top-level error code is
         // essential for them.
         val error = Errors.forException(e)
 

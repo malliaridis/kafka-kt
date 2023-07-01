@@ -47,7 +47,7 @@ class IntGaugeSuite<K>(
 ) : AutoCloseable {
 
     /**
-     * A map from keys to gauges.  Protected by the object monitor.
+     * A map from keys to gauges. Protected by the object monitor.
      */
     private val gauges: MutableMap<K, StoredIntGauge> = HashMap(1)
 
@@ -63,13 +63,13 @@ class IntGaugeSuite<K>(
     private val pending: ConcurrentLinkedDeque<PendingMetricsChange> = ConcurrentLinkedDeque()
 
     /**
-     * A lock which serializes modifications to metrics.  This lock is not
+     * A lock which serializes modifications to metrics. This lock is not
      * required to create a new pending operation.
      */
     private val modifyMetricsLock: Lock = ReentrantLock()
 
     /**
-     * True if this suite is closed.  Protected by the object monitor.
+     * True if this suite is closed. Protected by the object monitor.
      */
     private var closed: Boolean = false
 
@@ -187,7 +187,7 @@ class IntGaugeSuite<K>(
         } else {
             val cur = gauge.decrement()
             log.trace(
-                "{}: Removed a reference to {}.  {} reference(s) remaining.",
+                "{}: Removed a reference to {}. {} reference(s) remaining.",
                 suiteName, key.toString(), cur
             )
             if (cur <= 0) {

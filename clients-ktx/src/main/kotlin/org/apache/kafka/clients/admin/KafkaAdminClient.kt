@@ -413,7 +413,7 @@ class KafkaAdminClient private constructor(
                 return metadataManager.nodeById(nodeId)
             }
             // If we can't find the node with the given constant ID, we schedule a
-            // metadata update and hope it appears.  This behavior is useful for avoiding
+            // metadata update and hope it appears. This behavior is useful for avoiding
             // flaky behavior in tests when the cluster is starting up and not all nodes
             // have appeared.
             metadataManager.requestUpdate()
@@ -681,7 +681,7 @@ class KafkaAdminClient private constructor(
         private val newCalls: MutableList<Call> = LinkedList()
 
         /**
-         * Maps node ID strings to their readiness deadlines.  A node will appear in this
+         * Maps node ID strings to their readiness deadlines. A node will appear in this
          * map if there are callsToSend which are waiting for it to be ready, and there
          * are no calls in flight using the node.
          */

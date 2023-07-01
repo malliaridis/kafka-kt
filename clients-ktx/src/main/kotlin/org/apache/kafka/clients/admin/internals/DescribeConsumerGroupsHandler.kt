@@ -155,7 +155,7 @@ class DescribeConsumerGroupsHandler(
                     groupId.idValue,
                     error
                 )
-                failed[groupId] = error.exception
+                failed[groupId] = error.exception!!
             }
 
             Errors.COORDINATOR_LOAD_IN_PROGRESS ->                 // If the coordinator is in the middle of loading, then we just need to retry
@@ -183,7 +183,7 @@ class DescribeConsumerGroupsHandler(
                     groupId.idValue,
                     error
                 )
-                failed[groupId] = error.exception
+                failed[groupId] = error.exception!!
             }
         }
     }

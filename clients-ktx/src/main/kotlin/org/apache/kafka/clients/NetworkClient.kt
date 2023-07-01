@@ -218,7 +218,7 @@ class NetworkClient(
 
     /**
      * Closes the connection to a particular node (if there is one).
-     * All requests on the connection will be cleared.  ClientRequest callbacks will not be invoked
+     * All requests on the connection will be cleared. ClientRequest callbacks will not be invoked
      * for the cleared requests, nor will they be returned from poll().
      *
      * @param nodeId The id of the node
@@ -338,8 +338,8 @@ class NetworkClient(
         val nodeId = clientRequest.destination
         if (!isInternalRequest) {
             // If this request came from outside the NetworkClient, validate
-            // that we can send data.  If the request is internal, we trust
-            // that internal code has done this validation.  Validation
+            // that we can send data. If the request is internal, we trust
+            // that internal code has done this validation. Validation
             // will be slightly different for some internal requests (for
             // example, ApiVersionsRequests can be sent prior to being in
             // READY state.)
@@ -356,7 +356,7 @@ class NetworkClient(
             val version: Short
             // Note: if versionInfo is null, we have no server version information. This would be
             // the case when sending the initial ApiVersionRequest which fetches the version
-            // information itself.  It is also the case when discoverBrokerVersions is set to false.
+            // information itself. It is also the case when discoverBrokerVersions is set to false.
             if (versionInfo == null) {
                 version = builder.latestAllowedVersion
                 if (discoverBrokerVersions && log.isTraceEnabled) log.trace(
@@ -849,7 +849,7 @@ class NetworkClient(
      */
     private fun handleConnections() {
         for (node: String in selector.connected()) {
-            // We are now connected.  Note that we might not still be able to send requests. For instance,
+            // We are now connected. Note that we might not still be able to send requests. For instance,
             // if SSL is enabled, the SSL handshake happens after the connection is established.
             // Therefore, it is still necessary to check isChannelReady before attempting to send on this
             // connection.

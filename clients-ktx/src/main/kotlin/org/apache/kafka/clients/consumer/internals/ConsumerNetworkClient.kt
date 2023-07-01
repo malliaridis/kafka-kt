@@ -99,7 +99,7 @@ class ConsumerNetworkClient(
      */
     fun send(
         node: Node,
-        requestBuilder: AbstractRequest.Builder<*>?,
+        requestBuilder: AbstractRequest.Builder<*>,
         requestTimeoutMs: Int = this.requestTimeoutMs,
     ): RequestFuture<ClientResponse> {
         val now = time.milliseconds()

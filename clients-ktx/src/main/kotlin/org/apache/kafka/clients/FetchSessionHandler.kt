@@ -38,7 +38,7 @@ import java.util.*
  *
  * FetchSessionHandler tracks the partitions which are in the session. It also determines which
  * partitions need to be included in each fetch request, and what the attached fetch session
- * metadata should be for each request.  The corresponding class on the receiving broker side is
+ * metadata should be for each request. The corresponding class on the receiving broker side is
  * FetchManager.
  */
 open class FetchSessionHandler(logContext: LogContext, node: Int) {
@@ -510,10 +510,10 @@ open class FetchSessionHandler(logContext: LogContext, node: Int) {
         val topicPartitions = response.responseData(sessionTopicNames, version).keys
         return if (nextMetadata.isFull) {
             if (topicPartitions.isEmpty() && response.throttleTimeMs() > 0) {
-                // Normally, an empty full fetch response would be invalid.  However, KIP-219
+                // Normally, an empty full fetch response would be invalid. However, KIP-219
                 // specifies that if the broker wants to throttle the client, it will respond
                 // to a full fetch request with an empty response and a throttleTimeMs
-                // value set.  We don't want to log this with a warning, since it's not an error.
+                // value set. We don't want to log this with a warning, since it's not an error.
                 // However, the empty full fetch response can't be processed, so it's still
                 // appropriate to return false here.
                 if (log.isDebugEnabled) log.debug(

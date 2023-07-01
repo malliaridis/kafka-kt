@@ -147,7 +147,7 @@ class ListConsumerGroupOffsetsHandler(
                     groupId.idValue,
                     error
                 )
-                failed[groupId] = error.exception
+                failed[groupId] = error.exception!!
             }
 
             Errors.COORDINATOR_LOAD_IN_PROGRESS ->
@@ -177,7 +177,7 @@ class ListConsumerGroupOffsetsHandler(
                     groupId.idValue,
                     error
                 )
-                failed[groupId] = error.exception
+                failed[groupId] = error.exception!!
             }
         }
     }

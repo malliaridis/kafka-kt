@@ -95,9 +95,9 @@ data class Versions(
      */
     fun subtract(other: Versions): Versions? {
         return if (other.lowest <= lowest) {
-            // Case 1: other is a superset of this.  Trim everything.
+            // Case 1: other is a superset of this. Trim everything.
             if (other.highest >= highest) NONE
-            // Case 2: other is a disjoint version range that is lower than this.  Trim nothing.
+            // Case 2: other is a disjoint version range that is lower than this. Trim nothing.
             else if (other.highest < lowest) this
             // Case 3: trim some values from the beginning of this range.
             //
@@ -107,11 +107,11 @@ data class Versions(
             else Versions((other.highest + 1).toShort(), highest)
         } else if (other.highest >= highest) {
             val newHighest = other.lowest - 1
-            // Case 4: other was NONE.  Trim nothing.
+            // Case 4: other was NONE. Trim nothing.
             if (newHighest < 0) this
             // Case 5: trim some values from the end of this range.
             else if (newHighest < highest) Versions(lowest, newHighest.toShort())
-            // Case 6: other is a disjoint range that is higher than this.  Trim nothing.
+            // Case 6: other is a disjoint range that is higher than this. Trim nothing.
             else this
         } else null // Case 7: the difference between this and other would be two ranges, not one.
     }

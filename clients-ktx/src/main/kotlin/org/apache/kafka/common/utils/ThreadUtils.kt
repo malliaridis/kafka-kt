@@ -28,7 +28,7 @@ object ThreadUtils {
     /**
      * Create a new ThreadFactory.
      *
-     * @param pattern The pattern to use.  If this contains %d, it will be replaced with a thread
+     * @param pattern The pattern to use. If this contains %d, it will be replaced with a thread
      * number. It should not contain more than one %d.
      * @param daemon True if we want daemon threads.
      * @return The new ThreadFactory.

@@ -225,7 +225,7 @@ class ProducerConfig : AbstractConfig {
         private val PARTITIONER_AVAILABILITY_TIMEOUT_MS_DOC =
             "If a broker cannot process produce requests from a partition for " +
                     "<code>$PARTITIONER_AVAILABILITY_TIMEOUT_MS_CONFIG</code> time, the " +
-                    "partitioner treats that partition as not available.  If the value is 0, " +
+                    "partitioner treats that partition as not available. If the value is 0, " +
                     "this logic is disabled. Note: this setting has no effect if a custom " +
                     "partitioner is used or " +
                     "<code>$PARTITIONER_ADPATIVE_PARTITIONING_ENABLE_CONFIG</code> is set to " +

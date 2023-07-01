@@ -79,13 +79,13 @@ data class FetchMetadata(
         const val INVALID_SESSION_ID = 0
 
         /**
-         * The first epoch.  When used in a fetch request, indicates that the client wants to
+         * The first epoch. When used in a fetch request, indicates that the client wants to
          * create or recreate a session.
          */
         const val INITIAL_EPOCH = 0
 
         /**
-         * An invalid epoch.  When used in a fetch request, indicates that the client wants to close
+         * An invalid epoch. When used in a fetch request, indicates that the client wants to close
          * any existing session, and not create a new one.
          */
         const val FINAL_EPOCH = -1

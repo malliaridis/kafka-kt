@@ -683,10 +683,10 @@ open class SaslServerAuthenticator(
 
         if (apiVersionsRequest.hasUnsupportedRequestVersion()) sendKafkaResponse(
             context,
-            apiVersionsRequest.getErrorResponse(0, Errors.UNSUPPORTED_VERSION.exception)
+            apiVersionsRequest.getErrorResponse(0, Errors.UNSUPPORTED_VERSION.exception!!)
         ) else if (!apiVersionsRequest.isValid) sendKafkaResponse(
             context,
-            apiVersionsRequest.getErrorResponse(0, Errors.INVALID_REQUEST.exception)
+            apiVersionsRequest.getErrorResponse(0, Errors.INVALID_REQUEST.exception!!)
         ) else {
             metadataRegistry.registerClientInformation(
                 ClientInformation(

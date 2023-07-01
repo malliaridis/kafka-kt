@@ -39,7 +39,7 @@ class SaslAuthenticateResponse(
 
     override fun errorCounts(): Map<Errors, Int> = errorCounts(Errors.forCode(data.errorCode()))
 
-    fun errorMessage(): String = data.errorMessage()
+    fun errorMessage(): String? = data.errorMessage()
 
     fun sessionLifetimeMs(): Long = data.sessionLifetimeMs()
 

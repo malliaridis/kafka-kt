@@ -21,7 +21,7 @@ import org.apache.kafka.clients.producer.internals.StickyPartitionCache
 import org.apache.kafka.common.Cluster
 
 /**
- * NOTE this partitioner is deprecated and shouldn't be used.  To use default partitioning logic
+ * NOTE this partitioner is deprecated and shouldn't be used. To use default partitioning logic
  * remove partitioner.class configuration setting and set partitioner.ignore.keys=true.
  * See KIP-794 for more info.
  *
@@ -64,14 +64,14 @@ class UniformStickyPartitioner : Partitioner {
         return stickyPartitionCache.partition(topic, cluster)
     }
 
-    override fun close() {}
+    override fun close() = Unit
 
     /**
      * If a batch completed for the current sticky partition, change the sticky partition.
      * Alternately, if no sticky partition has been determined, set one.
      */
     @Suppress("deprecation")
-    override fun onNewBatch(topic: String?, cluster: Cluster?, prevPartition: Int) {
+    override fun onNewBatch(topic: String, cluster: Cluster, prevPartition: Int) {
         stickyPartitionCache.nextPartition(topic, cluster, prevPartition)
     }
 }

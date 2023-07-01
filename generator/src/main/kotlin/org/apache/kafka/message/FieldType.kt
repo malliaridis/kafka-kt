@@ -352,7 +352,7 @@ interface FieldType {
             else -> if (trimmed.startsWith(ARRAY_PREFIX)) {
                 val elementTypeString = trimmed.substring(ARRAY_PREFIX.length)
                 if (elementTypeString.isEmpty()) throw RuntimeException(
-                    "Can't parse array type $trimmed.  No element type found."
+                    "Can't parse array type $trimmed. No element type found."
                 )
 
                 val elementType = parse(elementTypeString)

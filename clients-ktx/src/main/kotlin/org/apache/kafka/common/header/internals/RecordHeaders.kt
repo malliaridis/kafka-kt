@@ -32,7 +32,7 @@ class RecordHeaders private constructor(
 
     constructor() : this(headers = mutableListOf())
 
-    constructor(headers: Iterable<Header>) : this(headers.toMutableList())
+    constructor(headers: Iterable<Header>?) : this(headers?.toMutableList() ?: mutableListOf())
 
     constructor(headers: Array<Header>) : this(headers.toMutableList())
 

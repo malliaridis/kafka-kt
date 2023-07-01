@@ -27,15 +27,15 @@ import kotlin.collections.ArrayList
  *
  * Like java.util.LinkedHashSet, this collection maintains a linked list of elements. However,
  * rather than using a separate linked list, this collection embeds the next and previous fields
- * into the elements themselves.  This reduces memory consumption, because it means that we only
+ * into the elements themselves. This reduces memory consumption, because it means that we only
  * have to store one Java object per element, rather than multiple.
  *
  * The next and previous fields are stored as array indices rather than pointers. This ensures that
  * the fields only take 32 bits, even when pointers are 64 bits. It also makes the garbage
  * collector's job easier, because it reduces the number of pointers that it must chase.
  *
- * This class uses linear probing.  Unlike HashMap (but like HashTable), we don't force the size to
- * be a power of 2.  This saves memory.
+ * This class uses linear probing. Unlike HashMap (but like HashTable), we don't force the size to
+ * be a power of 2. This saves memory.
  *
  * This set does not allow null elements. It does not have internal synchronization.
  */
@@ -243,7 +243,7 @@ open class ImplicitLinkedHashCollection<E : ImplicitLinkedHashCollection.Element
             endSlot = (endSlot + 1) % elements.size
         }
 
-        // We must preserve the denseness invariant.  The denseness invariant says that any element
+        // We must preserve the denseness invariant. The denseness invariant says that any element
         // is either in the slot indicated by its hash code, or a slot which is not separated from
         // that slot by any nulls. Reseat all elements in between the deleted element and the next
         // empty slot.

@@ -51,7 +51,7 @@ interface Partitioner : Configurable, Closeable {
 
     /**
      * Note this method is only implemented in DefatultPartitioner and UniformStickyPartitioner
-     * which are now deprecated.  See KIP-794 for more info.
+     * which are now deprecated. See KIP-794 for more info.
      *
      * Notifies the partitioner a new batch is about to be created. When using the sticky
      * partitioner, this method can change the chosen sticky partition for the new batch.
