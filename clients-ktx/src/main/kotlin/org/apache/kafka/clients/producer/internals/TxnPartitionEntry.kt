@@ -77,8 +77,8 @@ internal class TxnPartitionEntry {
          * for details.
          */
         private val PRODUCER_BATCH_COMPARATOR =
-            Comparator.comparingLong<ProducerBatch> { obj -> obj.producerId() }
-                .thenComparingInt { obj -> obj.producerEpoch().toInt() }
-                .thenComparingInt { obj -> obj.baseSequence() }
+            Comparator.comparingLong<ProducerBatch> { obj -> obj.producerId }
+                .thenComparingInt { obj -> obj.producerEpoch.toInt() }
+                .thenComparingInt { obj -> obj.baseSequence }
     }
 }

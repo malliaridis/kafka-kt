@@ -15,11 +15,12 @@
  * limitations under the License.
  */
 
-package org.apache.kafka.message;
+package org.apache.kafka.message
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonProperty
 
-public enum EntityType {
+enum class EntityType(private val baseType: FieldType?) {
+
     @JsonProperty("unknown")
     UNKNOWN(null),
 
@@ -38,25 +39,13 @@ public enum EntityType {
     @JsonProperty("brokerId")
     BROKER_ID(FieldType.Int32FieldType.INSTANCE);
 
-    private final FieldType baseType;
+    fun verifyTypeMatches(fieldName: String, type: FieldType) {
+        if (this == UNKNOWN) return
 
-    EntityType(FieldType baseType) {
-        this.baseType = baseType;
-    }
-
-    public void verifyTypeMatches(String fieldName, FieldType type) {
-        if (this == UNKNOWN) {
-            return;
-        }
-        if (type instanceof FieldType.ArrayType) {
-            FieldType.ArrayType arrayType = (FieldType.ArrayType) type;
-            verifyTypeMatches(fieldName, arrayType.elementType());
-        } else {
-            if (!type.toString().equals(baseType.toString())) {
-                throw new RuntimeException("Field " + fieldName + " has entity type " +
-                    name() + ", but field type " + type.toString() + ", which does " +
-                    "not match.");
-            }
-        }
+        if (type is FieldType.ArrayType) {
+            verifyTypeMatches(fieldName, type.elementType())
+        } else if (type.toString() != baseType.toString()) throw RuntimeException(
+            "Field $fieldName has entity type $name, but field type $type, which does not match."
+        )
     }
 }

@@ -179,7 +179,7 @@ interface KafkaClient : Closeable {
      */
     fun newClientRequest(
         nodeId: String,
-        requestBuilder: AbstractRequest.Builder<*>?,
+        requestBuilder: AbstractRequest.Builder<*>,
         createdTimeMs: Long,
         expectResponse: Boolean,
     ): ClientRequest?
@@ -199,7 +199,7 @@ interface KafkaClient : Closeable {
      */
     fun newClientRequest(
         nodeId: String,
-        requestBuilder: AbstractRequest.Builder<*>?,
+        requestBuilder: AbstractRequest.Builder<*>,
         createdTimeMs: Long,
         expectResponse: Boolean,
         requestTimeoutMs: Int,

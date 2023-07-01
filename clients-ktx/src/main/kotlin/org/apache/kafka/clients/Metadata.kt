@@ -627,7 +627,7 @@ open class Metadata(
     ): Boolean = true
 
     class MetadataRequestAndVersion internal constructor(
-        val requestBuilder: MetadataRequest.Builder?,
+        val requestBuilder: MetadataRequest.Builder,
         val requestVersion: Int,
         val isPartialUpdate: Boolean
     )

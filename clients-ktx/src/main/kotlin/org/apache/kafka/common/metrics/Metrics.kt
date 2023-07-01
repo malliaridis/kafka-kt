@@ -74,7 +74,7 @@ class Metrics(
     metricsContext: MetricsContext = KafkaMetricsContext("")
 ) : Closeable {
 
-    val metrics: ConcurrentMap<MetricName, KafkaMetric> = ConcurrentHashMap()
+    val metrics = ConcurrentHashMap<MetricName, KafkaMetric>()
 
     private val sensors: ConcurrentMap<String, Sensor> = ConcurrentHashMap()
 
@@ -125,7 +125,7 @@ class Metrics(
         description: String = "",
         tags: Map<String, String> = emptyMap()
     ): MetricName {
-        val combinedTag: MutableMap<String, String> = LinkedHashMap(config.tags())
+        val combinedTag: MutableMap<String, String> = LinkedHashMap(config.tags)
         combinedTag.putAll(tags)
         return MetricName(name, group, description, combinedTag.toMap())
     }
@@ -222,7 +222,7 @@ class Metrics(
                     log.trace("Removed sensor with name {}", name)
 
                     childSensors = childrenSensors.remove(sensor)
-                    sensor.parents().forEach { parent -> childrenSensors[parent]?.remove(sensor) }
+                    sensor.parents.forEach { parent -> childrenSensors[parent]?.remove(sensor) }
                 }
             }
         }
@@ -402,7 +402,7 @@ class Metrics(
 
     fun metricInstance(template: MetricNameTemplate, tags: Map<String, String>): MetricName {
         // check to make sure that the runtime defined tags contain all the template tags.
-        val runtimeTagKeys = config.tags().keys + tags.keys
+        val runtimeTagKeys = config.tags.keys + tags.keys
 
         require(runtimeTagKeys == template.tags) {
             "For '${template.name}', runtime-defined metric tags do not match the tags in the " +

@@ -76,7 +76,7 @@ open class AbstractConfig(
     private val definition: ConfigDef,
     originals: Map<String, Any?>,
     configProviderProps: Map<String, Any> = emptyMap(),
-    doLog: Boolean = true
+    doLog: Boolean = true,
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)

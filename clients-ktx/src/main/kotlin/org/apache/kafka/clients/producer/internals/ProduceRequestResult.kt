@@ -43,7 +43,7 @@ class ProduceRequestResult(val topicPartition: TopicPartition) {
         private set
 
     @Volatile
-    private var errorsByIndex: ((Int) -> RuntimeException)? = null
+    private var errorsByIndex: ((Int) -> RuntimeException?)? = null
 
     /**
      * Set the result of the produce request.
@@ -56,7 +56,7 @@ class ProduceRequestResult(val topicPartition: TopicPartition) {
     operator fun set(
         baseOffset: Long,
         logAppendTime: Long,
-        errorsByIndex: ((Int) -> RuntimeException)?,
+        errorsByIndex: ((Int) -> RuntimeException?)?,
     ) {
         this.baseOffset = baseOffset
         this.logAppendTime = logAppendTime

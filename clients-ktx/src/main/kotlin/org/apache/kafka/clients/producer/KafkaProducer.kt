@@ -224,6 +224,7 @@ import org.slf4j.Logger
  * that is not available in the running broker version.
  */
 open class KafkaProducer<K, V> : Producer<K, V> {
+
     private val log: Logger
 
     // Visible for testing
@@ -231,24 +232,43 @@ open class KafkaProducer<K, V> : Producer<K, V> {
 
     // Visible for testing
     internal val metrics: Metrics
+
     private val producerMetrics: KafkaProducerMetrics
+
     private val partitioner: Partitioner?
+
     private val maxRequestSize: Int
+
     private val totalMemorySize: Long
+
     private val metadata: ProducerMetadata
+
     private val accumulator: RecordAccumulator
+
     private val sender: Sender?
+
     private val ioThread: Thread?
+
     private val compressionType: CompressionType
+
     private val errors: Sensor
+
     private val time: Time
+
     private val keySerializer: Serializer<K>
+
     private val valueSerializer: Serializer<V>
+
     private val producerConfig: ProducerConfig
+
     private val maxBlockTimeMs: Long
+
     private val partitionerIgnoreKeys: Boolean
+
     private val interceptors: ProducerInterceptors<K, V>
+
     private val apiVersions: ApiVersions
+
     private val transactionManager: TransactionManager?
 
     /**
@@ -272,7 +292,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
         valueSerializer: Serializer<V>? = null
     ) : this(
         config = ProducerConfig(
-            ProducerConfig.appendSerializerToConfig(configs, keySerializer, valueSerializer)
+            props = ProducerConfig.appendSerializerToConfig(configs, keySerializer, valueSerializer)
         ),
         keySerializer = keySerializer,
         valueSerializer = valueSerializer,
@@ -315,7 +335,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
             producerConfig = config
             this.time = time
             val transactionalId = config.getString(ProducerConfig.TRANSACTIONAL_ID_CONFIG)
-            clientId = config.getString(ProducerConfig.CLIENT_ID_CONFIG)
+            clientId = config.getString(ProducerConfig.CLIENT_ID_CONFIG)!!
             val logContext: LogContext = if (transactionalId == null) LogContext(
                 String.format("[Producer clientId=%s] ", clientId)
             ) else LogContext(
@@ -329,13 +349,10 @@ open class KafkaProducer<K, V> : Producer<K, V> {
             log.trace("Starting the Kafka producer")
 
             val metricConfig = MetricConfig().apply {
-                samples = config.getInt(ProducerConfig.METRICS_NUM_SAMPLES_CONFIG)
-                timeWindowMs = TimeUnit.MILLISECONDS.convert(
-                    config.getLong(ProducerConfig.METRICS_SAMPLE_WINDOW_MS_CONFIG),
-                    TimeUnit.MILLISECONDS
-                )
+                samples = config.getInt(ProducerConfig.METRICS_NUM_SAMPLES_CONFIG)!!
+                timeWindowMs = config.getLong(ProducerConfig.METRICS_SAMPLE_WINDOW_MS_CONFIG)!!
                 recordingLevel = Sensor.RecordingLevel.forName(
-                    config.getString(ProducerConfig.METRICS_RECORDING_LEVEL_CONFIG)
+                    config.getString(ProducerConfig.METRICS_RECORDING_LEVEL_CONFIG)!!
                 )
 
                 tags = Collections.singletonMap("client-id", clientId)
@@ -346,23 +363,23 @@ open class KafkaProducer<K, V> : Producer<K, V> {
                 JMX_PREFIX,
                 config.originalsWithPrefix(CommonClientConfigs.METRICS_CONTEXT_PREFIX)
             )
-
             metrics = Metrics(
                 config = metricConfig,
-                reporters = reporters,
+                reporters = reporters.toMutableList(),
                 time = time,
                 metricsContext = metricsContext,
             )
             producerMetrics = KafkaProducerMetrics(metrics)
+
             partitioner = config.getConfiguredInstance(
                 ProducerConfig.PARTITIONER_CLASS_CONFIG,
                 Partitioner::class.java,
-                Collections.singletonMap<String, Any>(ProducerConfig.CLIENT_ID_CONFIG, clientId)
+                mapOf(ProducerConfig.CLIENT_ID_CONFIG to clientId)
             )
             warnIfPartitionerDeprecated()
 
-            partitionerIgnoreKeys = config.getBoolean(ProducerConfig.PARTITIONER_IGNORE_KEYS_CONFIG)
-            val retryBackoffMs = config.getLong(ProducerConfig.RETRY_BACKOFF_MS_CONFIG)
+            partitionerIgnoreKeys = config.getBoolean(ProducerConfig.PARTITIONER_IGNORE_KEYS_CONFIG)!!
+            val retryBackoffMs = config.getLong(ProducerConfig.RETRY_BACKOFF_MS_CONFIG)!!
 
             if (keySerializer == null) {
                 this.keySerializer = config.getConfiguredInstance(
@@ -410,49 +427,55 @@ open class KafkaProducer<K, V> : Producer<K, V> {
                 keySerializer,
                 valueSerializer, interceptorList, reporters
             )
-            maxRequestSize = config.getInt(ProducerConfig.MAX_REQUEST_SIZE_CONFIG)
-            totalMemorySize = config.getLong(ProducerConfig.BUFFER_MEMORY_CONFIG)
+            maxRequestSize = config.getInt(ProducerConfig.MAX_REQUEST_SIZE_CONFIG)!!
+            totalMemorySize = config.getLong(ProducerConfig.BUFFER_MEMORY_CONFIG)!!
             compressionType =
-                CompressionType.forName(config.getString(ProducerConfig.COMPRESSION_TYPE_CONFIG))
-            maxBlockTimeMs = config.getLong(ProducerConfig.MAX_BLOCK_MS_CONFIG)
+                CompressionType.forName(config.getString(ProducerConfig.COMPRESSION_TYPE_CONFIG)!!)
+            maxBlockTimeMs = config.getLong(ProducerConfig.MAX_BLOCK_MS_CONFIG)!!
             val deliveryTimeoutMs = configureDeliveryTimeout(config, log)
             apiVersions = ApiVersions()
             transactionManager = configureTransactionState(config, logContext)
             // There is no need to do work required for adaptive partitioning, if we use a custom partitioner.
             val enableAdaptivePartitioning = partitioner == null &&
-                    config.getBoolean(ProducerConfig.PARTITIONER_ADPATIVE_PARTITIONING_ENABLE_CONFIG)
+                    config.getBoolean(ProducerConfig.PARTITIONER_ADPATIVE_PARTITIONING_ENABLE_CONFIG)!!
             val partitionerConfig = PartitionerConfig(
                 enableAdaptivePartitioning,
-                config.getLong(ProducerConfig.PARTITIONER_AVAILABILITY_TIMEOUT_MS_CONFIG)
+                config.getLong(ProducerConfig.PARTITIONER_AVAILABILITY_TIMEOUT_MS_CONFIG)!!
             )
             // As per Kafka producer configuration documentation batch.size may be set to 0 to explicitly disable
             // batching which in practice actually means using a batch size of 1.
-            val batchSize = Math.max(1, config.getInt(ProducerConfig.BATCH_SIZE_CONFIG))
+            val batchSize = config.getInt(ProducerConfig.BATCH_SIZE_CONFIG)!!.coerceAtLeast(1)
             accumulator = RecordAccumulator(
-                logContext,
-                batchSize,
-                compressionType,
-                lingerMs(config),
-                retryBackoffMs,
-                deliveryTimeoutMs,
-                partitionerConfig,
-                metrics,
-                PRODUCER_METRIC_GROUP_NAME,
-                time,
-                apiVersions,
-                transactionManager,
-                BufferPool(totalMemorySize, batchSize, metrics, time, PRODUCER_METRIC_GROUP_NAME)
+                logContext = logContext,
+                batchSize = batchSize,
+                compression = compressionType,
+                lingerMs = lingerMs(config),
+                retryBackoffMs = retryBackoffMs,
+                deliveryTimeoutMs = deliveryTimeoutMs,
+                partitionerConfig = partitionerConfig,
+                metrics = metrics,
+                metricGrpName = PRODUCER_METRIC_GROUP_NAME,
+                time = time,
+                apiVersions = apiVersions,
+                transactionManager = transactionManager,
+                free = BufferPool(
+                    totalMemory = totalMemorySize,
+                    poolableSize = batchSize,
+                    metrics = metrics,
+                    time = time,
+                    metricGrpName = PRODUCER_METRIC_GROUP_NAME,
+                )
             )
             val addresses = ClientUtils.parseAndValidateAddresses(
-                config.getList(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG),
-                config.getString(ProducerConfig.CLIENT_DNS_LOOKUP_CONFIG)
+                config.getList(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG)!!,
+                config.getString(ProducerConfig.CLIENT_DNS_LOOKUP_CONFIG)!!
             )
             if (metadata != null) this.metadata = metadata
             else {
                 this.metadata = ProducerMetadata(
                     retryBackoffMs,
-                    config.getLong(ProducerConfig.METADATA_MAX_AGE_CONFIG),
-                    config.getLong(ProducerConfig.METADATA_MAX_IDLE_CONFIG),
+                    config.getLong(ProducerConfig.METADATA_MAX_AGE_CONFIG)!!,
+                    config.getLong(ProducerConfig.METADATA_MAX_IDLE_CONFIG)!!,
                     logContext,
                     clusterResourceListeners,
                     Time.SYSTEM
@@ -461,7 +484,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
             }
             errors = metrics.sensor("errors")
             sender = newSender(logContext, kafkaClient, this.metadata)
-            val ioThreadName = NETWORK_THREAD_PREFIX + " | " + clientId
+            val ioThreadName = "$NETWORK_THREAD_PREFIX | $clientId"
             ioThread = KafkaThread(ioThreadName, sender, true)
             ioThread.start()
             config.logUnused()
@@ -493,7 +516,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
     ) {
         producerConfig = config
         this.time = time
-        clientId = config.getString(ProducerConfig.CLIENT_ID_CONFIG)
+        clientId = config.getString(ProducerConfig.CLIENT_ID_CONFIG)!!
         log = logContext.logger(KafkaProducer::class.java)
         this.metrics = metrics
         producerMetrics = KafkaProducerMetrics(metrics)
@@ -501,12 +524,12 @@ open class KafkaProducer<K, V> : Producer<K, V> {
         this.keySerializer = keySerializer
         this.valueSerializer = valueSerializer
         this.interceptors = interceptors
-        maxRequestSize = config.getInt(ProducerConfig.MAX_REQUEST_SIZE_CONFIG)
-        totalMemorySize = config.getLong(ProducerConfig.BUFFER_MEMORY_CONFIG)
+        maxRequestSize = config.getInt(ProducerConfig.MAX_REQUEST_SIZE_CONFIG)!!
+        totalMemorySize = config.getLong(ProducerConfig.BUFFER_MEMORY_CONFIG)!!
         compressionType =
-            CompressionType.forName(config.getString(ProducerConfig.COMPRESSION_TYPE_CONFIG))
-        maxBlockTimeMs = config.getLong(ProducerConfig.MAX_BLOCK_MS_CONFIG)
-        partitionerIgnoreKeys = config.getBoolean(ProducerConfig.PARTITIONER_IGNORE_KEYS_CONFIG)
+            CompressionType.forName(config.getString(ProducerConfig.COMPRESSION_TYPE_CONFIG)!!)
+        maxBlockTimeMs = config.getLong(ProducerConfig.MAX_BLOCK_MS_CONFIG)!!
+        partitionerIgnoreKeys = config.getBoolean(ProducerConfig.PARTITIONER_IGNORE_KEYS_CONFIG)!!
         apiVersions = ApiVersions()
         this.transactionManager = transactionManager
         this.accumulator = accumulator
@@ -538,21 +561,22 @@ open class KafkaProducer<K, V> : Producer<K, V> {
     }
 
     // visible for testing
-    internal open fun newSender(
+    private fun newSender(
         logContext: LogContext,
         kafkaClient: KafkaClient?,
-        metadata: ProducerMetadata?
-    ): Sender? {
+        metadata: ProducerMetadata,
+    ): Sender {
         val maxInflightRequests =
-            producerConfig.getInt(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION)
-        val requestTimeoutMs = producerConfig.getInt(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG)
+            producerConfig.getInt(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION)!!
+        val requestTimeoutMs = producerConfig.getInt(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG)!!
         val channelBuilder = ClientUtils.createChannelBuilder(producerConfig, time, logContext)
         val metricsRegistry = ProducerMetrics(metrics)
         val throttleTimeSensor = Sender.throttleTimeSensor(metricsRegistry.senderMetrics)
         val client = kafkaClient
             ?: NetworkClient(
                 selector = Selector(
-                    connectionMaxIdleMs = producerConfig.getLong(ProducerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG),
+                    connectionMaxIdleMs =
+                    producerConfig.getLong(ProducerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG)!!,
                     metrics = metrics,
                     time = time,
                     metricGrpPrefix = "producer",
@@ -562,35 +586,39 @@ open class KafkaProducer<K, V> : Producer<K, V> {
                 metadata = metadata,
                 clientId = clientId,
                 maxInFlightRequestsPerConnection = maxInflightRequests,
-                reconnectBackoffMs = producerConfig.getLong(ProducerConfig.RECONNECT_BACKOFF_MS_CONFIG),
-                reconnectBackoffMax = producerConfig.getLong(ProducerConfig.RECONNECT_BACKOFF_MAX_MS_CONFIG),
-                socketSendBuffer = producerConfig.getInt(ProducerConfig.SEND_BUFFER_CONFIG),
-                socketReceiveBuffer = producerConfig.getInt(ProducerConfig.RECEIVE_BUFFER_CONFIG),
+                reconnectBackoffMs =
+                producerConfig.getLong(ProducerConfig.RECONNECT_BACKOFF_MS_CONFIG)!!,
+                reconnectBackoffMax =
+                producerConfig.getLong(ProducerConfig.RECONNECT_BACKOFF_MAX_MS_CONFIG)!!,
+                socketSendBuffer = producerConfig.getInt(ProducerConfig.SEND_BUFFER_CONFIG)!!,
+                socketReceiveBuffer = producerConfig.getInt(ProducerConfig.RECEIVE_BUFFER_CONFIG)!!,
                 defaultRequestTimeoutMs = requestTimeoutMs,
-                connectionSetupTimeoutMs = producerConfig.getLong(ProducerConfig.SOCKET_CONNECTION_SETUP_TIMEOUT_MS_CONFIG),
-                connectionSetupTimeoutMaxMs = producerConfig.getLong(ProducerConfig.SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS_CONFIG),
+                connectionSetupTimeoutMs =
+                producerConfig.getLong(ProducerConfig.SOCKET_CONNECTION_SETUP_TIMEOUT_MS_CONFIG)!!,
+                connectionSetupTimeoutMaxMs =
+                producerConfig.getLong(ProducerConfig.SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS_CONFIG)!!,
                 time = time,
                 discoverBrokerVersions = true,
                 apiVersions = apiVersions,
                 throttleTimeSensor = throttleTimeSensor,
                 logContext = logContext
             )
-        val acks = producerConfig.getString(ProducerConfig.ACKS_CONFIG).toShort()
+        val acks = producerConfig.getString(ProducerConfig.ACKS_CONFIG)!!.toShort()
         return Sender(
-            logContext,
-            client,
-            metadata,
-            accumulator,
-            maxInflightRequests == 1,
-            producerConfig.getInt(ProducerConfig.MAX_REQUEST_SIZE_CONFIG),
-            acks,
-            producerConfig.getInt(ProducerConfig.RETRIES_CONFIG),
-            metricsRegistry.senderMetrics,
-            time,
-            requestTimeoutMs,
-            producerConfig.getLong(ProducerConfig.RETRY_BACKOFF_MS_CONFIG),
-            transactionManager,
-            apiVersions
+            logContext = logContext,
+            client = client,
+            metadata = metadata,
+            accumulator = accumulator,
+            guaranteeMessageOrder = maxInflightRequests == 1,
+            maxRequestSize = producerConfig.getInt(ProducerConfig.MAX_REQUEST_SIZE_CONFIG)!!,
+            acks = acks,
+            retries = producerConfig.getInt(ProducerConfig.RETRIES_CONFIG)!!,
+            metricsRegistry = metricsRegistry.senderMetrics,
+            time = time,
+            requestTimeoutMs = requestTimeoutMs,
+            retryBackoffMs = producerConfig.getLong(ProducerConfig.RETRY_BACKOFF_MS_CONFIG)!!,
+            transactionManager = transactionManager,
+            apiVersions = apiVersions
         )
     }
 
@@ -599,16 +627,16 @@ open class KafkaProducer<K, V> : Producer<K, V> {
         logContext: LogContext
     ): TransactionManager? {
         var transactionManager: TransactionManager? = null
-        if (config.getBoolean(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG)) {
+        if (config.getBoolean(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG)!!) {
             val transactionalId = config.getString(ProducerConfig.TRANSACTIONAL_ID_CONFIG)
-            val transactionTimeoutMs = config.getInt(ProducerConfig.TRANSACTION_TIMEOUT_CONFIG)
-            val retryBackoffMs = config.getLong(ProducerConfig.RETRY_BACKOFF_MS_CONFIG)
+            val transactionTimeoutMs = config.getInt(ProducerConfig.TRANSACTION_TIMEOUT_CONFIG)!!
+            val retryBackoffMs = config.getLong(ProducerConfig.RETRY_BACKOFF_MS_CONFIG)!!
             transactionManager = TransactionManager(
-                logContext,
-                transactionalId,
-                transactionTimeoutMs,
-                retryBackoffMs,
-                apiVersions
+                logContext = logContext,
+                transactionalId = transactionalId,
+                transactionTimeoutMs = transactionTimeoutMs,
+                retryBackoffMs = retryBackoffMs,
+                apiVersions = apiVersions
             )
             if (transactionManager.isTransactional) log.info("Instantiated a transactional producer.") else log.info(
                 "Instantiated an idempotent producer."
@@ -621,28 +649,32 @@ open class KafkaProducer<K, V> : Producer<K, V> {
     }
 
     /**
-     * Needs to be called before any other methods when the transactional.id is set in the configuration.
+     * Needs to be called before any other methods when the transactional.id is set in the
+     * configuration.
      *
      * This method does the following:
-     * 1. Ensures any transactions initiated by previous instances of the producer with the same
-     * transactional.id are completed. If the previous instance had failed with a transaction in
-     * progress, it will be aborted. If the last transaction had begun completion,
-     * but not yet finished, this method awaits its completion.
-     * 2. Gets the internal producer id and epoch, used in all future transactional
-     * messages issued by the producer.
      *
-     * Note that this method will raise [TimeoutException] if the transactional state cannot
-     * be initialized before expiration of `max.block.ms`. Additionally, it will raise [InterruptException]
-     * if interrupted. It is safe to retry in either case, but once the transactional state has been successfully
-     * initialized, this method should no longer be used.
+     * 1. Ensures any transactions initiated by previous instances of the producer with the same
+     *    transactional.id are completed. If the previous instance had failed with a transaction in
+     *    progress, it will be aborted. If the last transaction had begun completion, but not yet
+     *    finished, this method awaits its completion.
+     * 2. Gets the internal producer id and epoch, used in all future transactional messages issued
+     *    by the producer.
+     *
+     * Note that this method will raise [TimeoutException] if the transactional state cannot be
+     * initialized before expiration of `max.block.ms`. Additionally, it will raise
+     * [InterruptException] if interrupted. It is safe to retry in either case, but once the
+     * transactional state has been successfully initialized, this method should no longer be used.
      *
      * @throws IllegalStateException if no transactional.id has been configured
-     * @throws org.apache.kafka.common.errors.UnsupportedVersionException fatal error indicating the broker
-     * does not support transactions (i.e. if its version is lower than 0.11.0.0)
-     * @throws org.apache.kafka.common.errors.AuthorizationException fatal error indicating that the configured
-     * transactional.id is not authorized. See the exception for more details
-     * @throws KafkaException if the producer has encountered a previous fatal error or for any other unexpected error
-     * @throws TimeoutException if the time taken for initialize the transaction has surpassed `max.block.ms`.
+     * @throws org.apache.kafka.common.errors.UnsupportedVersionException fatal error indicating the
+     * broker does not support transactions (i.e. if its version is lower than 0.11.0.0)
+     * @throws org.apache.kafka.common.errors.AuthorizationException fatal error indicating that the
+     * configured transactional.id is not authorized. See the exception for more details
+     * @throws KafkaException if the producer has encountered a previous fatal error or for any
+     * other unexpected error
+     * @throws TimeoutException if the time taken for initialize the transaction has surpassed
+     * `max.block.ms`.
      * @throws InterruptException if the thread is interrupted while blocked
      */
     override fun initTransactions() {
@@ -680,39 +712,41 @@ open class KafkaProducer<K, V> : Producer<K, V> {
     }
 
     /**
-     * Sends a list of specified offsets to the consumer group coordinator, and also marks
-     * those offsets as part of the current transaction. These offsets will be considered
-     * committed only if the transaction is committed successfully. The committed offset should
-     * be the next message your application will consume, i.e. lastProcessedMessageOffset + 1.
+     * Sends a list of specified offsets to the consumer group coordinator, and also marks those
+     * offsets as part of the current transaction. These offsets will be considered committed only
+     * if the transaction is committed successfully. The committed offset should be the next message
+     * your application will consume, i.e. lastProcessedMessageOffset + 1.
      *
+     * This method should be used when you need to batch consumed and produced messages together,
+     * typically in a consume-transform-produce pattern. Thus, the specified `consumerGroupId`
+     * should be the same as config parameter `group.id` of the used [consumer][KafkaConsumer].
+     * Note, that the consumer should have `enable.auto.commit=false` and should also not commit
+     * offsets manually (via [sync][KafkaConsumer.commitSync] or [async][KafkaConsumer.commitAsync]
+     * commits).
      *
-     * This method should be used when you need to batch consumed and produced messages
-     * together, typically in a consume-transform-produce pattern. Thus, the specified
-     * `consumerGroupId` should be the same as config parameter `group.id` of the used
-     * [consumer][KafkaConsumer]. Note, that the consumer should have `enable.auto.commit=false`
-     * and should also not commit offsets manually (via [sync][KafkaConsumer.commitSync] or
-     * [async][KafkaConsumer.commitAsync] commits).
+     * This method is a blocking call that waits until the request has been received and
+     * acknowledged by the consumer group coordinator; but the offsets are not considered as
+     * committed until the transaction itself is successfully committed later (via the
+     * [commitTransaction] call).
      *
-     *
-     *
-     * This method is a blocking call that waits until the request has been received and acknowledged by the consumer group
-     * coordinator; but the offsets are not considered as committed until the transaction itself is successfully committed later (via
-     * the [commitTransaction] call).
-     *
-     * @throws IllegalStateException if no transactional.id has been configured, no transaction has been started
-     * @throws ProducerFencedException fatal error indicating another producer with the same transactional.id is active
-     * @throws org.apache.kafka.common.errors.UnsupportedVersionException fatal error indicating the broker
-     * does not support transactions (i.e. if its version is lower than 0.11.0.0)
-     * @throws org.apache.kafka.common.errors.UnsupportedForMessageFormatException fatal error indicating the message
-     * format used for the offsets topic on the broker does not support transactions
-     * @throws org.apache.kafka.common.errors.AuthorizationException fatal error indicating that the configured
-     * transactional.id is not authorized, or the consumer group id is not authorized.
-     * @throws org.apache.kafka.common.errors.InvalidProducerEpochException if the producer has attempted to produce with an old epoch
-     * to the partition leader. See the exception for more details
-     * @throws TimeoutException if the time taken for sending the offsets has surpassed `max.block.ms`.
-     * @throws KafkaException if the producer has encountered a previous fatal or abortable error, or for any
-     * other unexpected error
-     *
+     * @throws IllegalStateException if no transactional.id has been configured, no transaction has
+     * been started
+     * @throws ProducerFencedException fatal error indicating another producer with the same
+     * transactional.id is active
+     * @throws org.apache.kafka.common.errors.UnsupportedVersionException fatal error indicating the
+     * broker does not support transactions (i.e. if its version is lower than 0.11.0.0)
+     * @throws org.apache.kafka.common.errors.UnsupportedForMessageFormatException fatal error
+     * indicating the message format used for the offsets topic on the broker does not support
+     * transactions
+     * @throws org.apache.kafka.common.errors.AuthorizationException fatal error indicating that the
+     * configured transactional.id is not authorized, or the consumer group id is not authorized.
+     * @throws org.apache.kafka.common.errors.InvalidProducerEpochException if the producer has
+     * attempted to produce with an old epoch to the partition leader. See the exception for more
+     * details
+     * @throws TimeoutException if the time taken for sending the offsets has surpassed
+     * `max.block.ms`.
+     * @throws KafkaException if the producer has encountered a previous fatal or abortable error,
+     * or for any other unexpected error
      */
     @Deprecated("Since 3.0.0, please use {@link #sendOffsetsToTransaction(Map, ConsumerGroupMetadata)} instead.")
     @Throws(
@@ -721,69 +755,69 @@ open class KafkaProducer<K, V> : Producer<K, V> {
     override fun sendOffsetsToTransaction(
         offsets: Map<TopicPartition, OffsetAndMetadata>,
         consumerGroupId: String
-    ) {
-        sendOffsetsToTransaction(offsets, ConsumerGroupMetadata(consumerGroupId))
-    }
+    ) = sendOffsetsToTransaction(offsets, ConsumerGroupMetadata(consumerGroupId))
 
     /**
-     * Sends a list of specified offsets to the consumer group coordinator, and also marks
-     * those offsets as part of the current transaction. These offsets will be considered
-     * committed only if the transaction is committed successfully. The committed offset should
-     * be the next message your application will consume, i.e. lastProcessedMessageOffset + 1.
+     * Sends a list of specified offsets to the consumer group coordinator, and also marks those
+     * offsets as part of the current transaction. These offsets will be considered committed only
+     * if the transaction is committed successfully. The committed offset should be the next message
+     * your application will consume, i.e. lastProcessedMessageOffset + 1.
      *
-     *
-     * This method should be used when you need to batch consumed and produced messages
-     * together, typically in a consume-transform-produce pattern. Thus, the specified
-     * `groupMetadata` should be extracted from the used [consumer][KafkaConsumer] via
-     * [KafkaConsumer.groupMetadata] to leverage consumer group metadata. This will provide
-     * stronger fencing than just supplying the `consumerGroupId` and passing in `new ConsumerGroupMetadata(consumerGroupId)`,
-     * however note that the full set of consumer group metadata returned by [KafkaConsumer.groupMetadata]
+     * This method should be used when you need to batch consumed and produced messages together,
+     * typically in a consume-transform-produce pattern. Thus, the specified `groupMetadata` should
+     * be extracted from the used [consumer][KafkaConsumer] via [KafkaConsumer.groupMetadata] to
+     * leverage consumer group metadata. This will provide stronger fencing than just supplying the
+     * `consumerGroupId` and passing in `new ConsumerGroupMetadata(consumerGroupId)`, however note
+     * that the full set of consumer group metadata returned by [KafkaConsumer.groupMetadata]
      * requires the brokers to be on version 2.5 or newer to understand.
      *
+     * This method is a blocking call that waits until the request has been received and
+     * acknowledged by the consumer group coordinator; but the offsets are not considered as
+     * committed until the transaction itself is successfully committed later (via the
+     * [commitTransaction] call).
      *
+     * Note, that the consumer should have `enable.auto.commit=false` and should also not commit
+     * offsets manually (via [sync][KafkaConsumer.commitSync] or [async][KafkaConsumer.commitAsync]
+     * commits). This method will raise [TimeoutException] if the producer cannot send offsets
+     * before expiration of `max.block.ms`. Additionally, it will raise [InterruptException] if
+     * interrupted.
      *
-     * This method is a blocking call that waits until the request has been received and acknowledged by the consumer group
-     * coordinator; but the offsets are not considered as committed until the transaction itself is successfully committed later (via
-     * the [commitTransaction] call).
-     *
-     *
-     *
-     * Note, that the consumer should have `enable.auto.commit=false` and should
-     * also not commit offsets manually (via [sync][KafkaConsumer.commitSync] or
-     * [async][KafkaConsumer.commitAsync] commits).
-     * This method will raise [TimeoutException] if the producer cannot send offsets before expiration of `max.block.ms`.
-     * Additionally, it will raise [InterruptException] if interrupted.
-     *
-     * @throws IllegalStateException if no transactional.id has been configured or no transaction has been started.
-     * @throws ProducerFencedException fatal error indicating another producer with the same transactional.id is active
-     * @throws org.apache.kafka.common.errors.UnsupportedVersionException fatal error indicating the broker
-     * does not support transactions (i.e. if its version is lower than 0.11.0.0) or
-     * the broker doesn't support latest version of transactional API with all consumer group metadata
+     * @throws IllegalStateException if no transactional.id has been configured or no transaction
+     * has been started.
+     * @throws ProducerFencedException fatal error indicating another producer with the same
+     * transactional.id is active
+     * @throws org.apache.kafka.common.errors.UnsupportedVersionException fatal error indicating the
+     * broker does not support transactions (i.e. if its version is lower than 0.11.0.0) or the
+     * broker doesn't support latest version of transactional API with all consumer group metadata
      * (i.e. if its version is lower than 2.5.0).
-     * @throws org.apache.kafka.common.errors.UnsupportedForMessageFormatException fatal error indicating the message
-     * format used for the offsets topic on the broker does not support transactions
-     * @throws org.apache.kafka.common.errors.AuthorizationException fatal error indicating that the configured
-     * transactional.id is not authorized, or the consumer group id is not authorized.
-     * @throws org.apache.kafka.clients.consumer.CommitFailedException if the commit failed and cannot be retried
-     * (e.g. if the consumer has been kicked out of the group). Users should handle this by aborting the transaction.
-     * @throws org.apache.kafka.common.errors.FencedInstanceIdException if this producer instance gets fenced by broker due to a
-     * mis-configured consumer instance id within group metadata.
-     * @throws org.apache.kafka.common.errors.InvalidProducerEpochException if the producer has attempted to produce with an old epoch
-     * to the partition leader. See the exception for more details
-     * @throws KafkaException if the producer has encountered a previous fatal or abortable error, or for any
-     * other unexpected error
-     * @throws TimeoutException if the time taken for sending the offsets has surpassed `max.block.ms`.
+     * @throws org.apache.kafka.common.errors.UnsupportedForMessageFormatException fatal error
+     * indicating the message format used for the offsets topic on the broker does not support
+     * transactions
+     * @throws org.apache.kafka.common.errors.AuthorizationException fatal error indicating that the
+     * configured transactional.id is not authorized, or the consumer group id is not authorized.
+     * @throws org.apache.kafka.clients.consumer.CommitFailedException if the commit failed and
+     * cannot be retried (e.g. if the consumer has been kicked out of the group). Users should
+     * handle this by aborting the transaction.
+     * @throws org.apache.kafka.common.errors.FencedInstanceIdException if this producer instance
+     * gets fenced by broker due to a mis-configured consumer instance id within group metadata.
+     * @throws org.apache.kafka.common.errors.InvalidProducerEpochException if the producer has
+     * attempted to produce with an old epoch to the partition leader. See the exception for more
+     * details
+     * @throws KafkaException if the producer has encountered a previous fatal or abortable error,
+     * or for any other unexpected error
+     * @throws TimeoutException if the time taken for sending the offsets has surpassed
+     * `max.block.ms`.
      * @throws InterruptException if the thread is interrupted while blocked
      */
     @Throws(ProducerFencedException::class)
     override fun sendOffsetsToTransaction(
         offsets: Map<TopicPartition, OffsetAndMetadata>,
-        groupMetadata: ConsumerGroupMetadata
+        groupMetadata: ConsumerGroupMetadata,
     ) {
         throwIfInvalidGroupMetadata(groupMetadata)
         throwIfNoTransactionManager()
         throwIfProducerClosed()
-        if (!offsets.isEmpty()) {
+        if (offsets.isNotEmpty()) {
             val start = time.nanoseconds()
             val result = transactionManager!!.sendOffsetsToTransaction(offsets, groupMetadata)
             sender!!.wakeup()
@@ -793,38 +827,43 @@ open class KafkaProducer<K, V> : Producer<K, V> {
     }
 
     /**
-     * Commits the ongoing transaction. This method will flush any unsent records before actually committing the transaction.
-     *
+     * Commits the ongoing transaction. This method will flush any unsent records before actually
+     * committing the transaction.
      *
      * Further, if any of the [send] calls which were part of the transaction hit irrecoverable
-     * errors, this method will throw the last received exception immediately and the transaction will not be committed.
-     * So all [send] calls in a transaction must succeed in order for this method to succeed.
+     * errors, this method will throw the last received exception immediately and the transaction
+     * will not be committed. So all [send] calls in a transaction must succeed in order for this
+     * method to succeed.
      *
+     * If the transaction is committed successfully and this method returns without throwing an
+     * exception, it is guaranteed that all [callbacks][Callback] for records in the transaction
+     * will have been invoked and completed. Note that exceptions thrown by callbacks are ignored;
+     * the producer proceeds to commit the transaction in any case.
      *
-     * If the transaction is committed successfully and this method returns without throwing an exception, it is guaranteed
-     * that all [callbacks][Callback] for records in the transaction will have been invoked and completed.
-     * Note that exceptions thrown by callbacks are ignored; the producer proceeds to commit the transaction in any case.
+     * Note that this method will raise [TimeoutException] if the transaction cannot be committed
+     * before expiration of `max.block.ms`, but this does not mean the request did not actually
+     * reach the broker. In fact, it only indicates that we cannot get the acknowledgement response
+     * in time, so it's up to the application's logic to decide how to handle time outs.
+     * Additionally, it will raise [InterruptException] if interrupted. It is safe to retry in
+     * either case, but it is not possible to attempt a different operation (such as
+     * abortTransaction) since the commit may already be in the progress of completing. If not
+     * retrying, the only option is to close the producer.
      *
-     *
-     * Note that this method will raise [TimeoutException] if the transaction cannot be committed before expiration
-     * of `max.block.ms`, but this does not mean the request did not actually reach the broker. In fact, it only indicates
-     * that we cannot get the acknowledgement response in time, so it's up to the application's logic
-     * to decide how to handle time outs.
-     * Additionally, it will raise [InterruptException] if interrupted.
-     * It is safe to retry in either case, but it is not possible to attempt a different operation (such as abortTransaction)
-     * since the commit may already be in the progress of completing. If not retrying, the only option is to close the producer.
-     *
-     * @throws IllegalStateException if no transactional.id has been configured or no transaction has been started
-     * @throws ProducerFencedException fatal error indicating another producer with the same transactional.id is active
-     * @throws org.apache.kafka.common.errors.UnsupportedVersionException fatal error indicating the broker
-     * does not support transactions (i.e. if its version is lower than 0.11.0.0)
-     * @throws org.apache.kafka.common.errors.AuthorizationException fatal error indicating that the configured
-     * transactional.id is not authorized. See the exception for more details
-     * @throws org.apache.kafka.common.errors.InvalidProducerEpochException if the producer has attempted to produce with an old epoch
-     * to the partition leader. See the exception for more details
-     * @throws KafkaException if the producer has encountered a previous fatal or abortable error, or for any
-     * other unexpected error
-     * @throws TimeoutException if the time taken for committing the transaction has surpassed `max.block.ms`.
+     * @throws IllegalStateException if no transactional.id has been configured or no transaction
+     * has been started
+     * @throws ProducerFencedException fatal error indicating another producer with the same
+     * transactional.id is active
+     * @throws org.apache.kafka.common.errors.UnsupportedVersionException fatal error indicating the
+     * broker does not support transactions (i.e. if its version is lower than 0.11.0.0)
+     * @throws org.apache.kafka.common.errors.AuthorizationException fatal error indicating that the
+     * configured transactional.id is not authorized. See the exception for more details
+     * @throws org.apache.kafka.common.errors.InvalidProducerEpochException if the producer has
+     * attempted to produce with an old epoch to the partition leader. See the exception for more
+     * details
+     * @throws KafkaException if the producer has encountered a previous fatal or abortable error,
+     * or for any other unexpected error
+     * @throws TimeoutException if the time taken for committing the transaction has surpassed
+     * `max.block.ms`.
      * @throws InterruptException if the thread is interrupted while blocked
      */
     @Throws(ProducerFencedException::class)
@@ -839,27 +878,35 @@ open class KafkaProducer<K, V> : Producer<K, V> {
     }
 
     /**
-     * Aborts the ongoing transaction. Any unflushed produce messages will be aborted when this call is made.
-     * This call will throw an exception immediately if any prior [send] calls failed with a
-     * [ProducerFencedException] or an instance of [org.apache.kafka.common.errors.AuthorizationException].
+     * Aborts the ongoing transaction. Any unflushed produce messages will be aborted when this call
+     * is made. This call will throw an exception immediately if any prior [send] calls failed with
+     * a [ProducerFencedException] or an instance of
+     * [org.apache.kafka.common.errors.AuthorizationException].
      *
-     * Note that this method will raise [TimeoutException] if the transaction cannot be aborted before expiration
-     * of `max.block.ms`, but this does not mean the request did not actually reach the broker. In fact, it only indicates
-     * that we cannot get the acknowledgement response in time, so it's up to the application's logic
-     * to decide how to handle time outs. Additionally, it will raise [InterruptException] if interrupted.
-     * It is safe to retry in either case, but it is not possible to attempt a different operation (such as commitTransaction)
-     * since the abort may already be in the progress of completing. If not retrying, the only option is to close the producer.
+     * Note that this method will raise [TimeoutException] if the transaction cannot be aborted
+     * before expiration of `max.block.ms`, but this does not mean the request did not actually
+     * reach the broker. In fact, it only indicates that we cannot get the acknowledgement response
+     * in time, so it's up to the application's logic to decide how to handle time outs.
+     * Additionally, it will raise [InterruptException] if interrupted. It is safe to retry in
+     * either case, but it is not possible to attempt a different operation (such as
+     * commitTransaction) since the abort may already be in the progress of completing. If not
+     * retrying, the only option is to close the producer.
      *
-     * @throws IllegalStateException if no transactional.id has been configured or no transaction has been started
-     * @throws ProducerFencedException fatal error indicating another producer with the same transactional.id is active
-     * @throws org.apache.kafka.common.errors.InvalidProducerEpochException if the producer has attempted to produce with an old epoch
-     * to the partition leader. See the exception for more details
-     * @throws org.apache.kafka.common.errors.UnsupportedVersionException fatal error indicating the broker
-     * does not support transactions (i.e. if its version is lower than 0.11.0.0)
-     * @throws org.apache.kafka.common.errors.AuthorizationException fatal error indicating that the configured
-     * transactional.id is not authorized. See the exception for more details
-     * @throws KafkaException if the producer has encountered a previous fatal error or for any other unexpected error
-     * @throws TimeoutException if the time taken for aborting the transaction has surpassed `max.block.ms`.
+     * @throws IllegalStateException if no transactional.id has been configured or no transaction
+     * has been started
+     * @throws ProducerFencedException fatal error indicating another producer with the same
+     * transactional.id is active
+     * @throws org.apache.kafka.common.errors.InvalidProducerEpochException if the producer has
+     * attempted to produce with an old epoch to the partition leader. See the exception for more
+     * details
+     * @throws org.apache.kafka.common.errors.UnsupportedVersionException fatal error indicating the
+     * broker does not support transactions (i.e. if its version is lower than 0.11.0.0)
+     * @throws org.apache.kafka.common.errors.AuthorizationException fatal error indicating that the
+     * configured transactional.id is not authorized. See the exception for more details
+     * @throws KafkaException if the producer has encountered a previous fatal error or for any
+     * other unexpected error
+     * @throws TimeoutException if the time taken for aborting the transaction has surpassed
+     * `max.block.ms`.
      * @throws InterruptException if the thread is interrupted while blocked
      */
     @Throws(ProducerFencedException::class)
@@ -1016,14 +1063,17 @@ open class KafkaProducer<K, V> : Producer<K, V> {
     /**
      * Implementation of asynchronously send a record to a topic.
      */
-    private fun doSend(record: ProducerRecord<K, V>, callback: Callback?): Future<RecordMetadata> {
+    private fun doSend(
+        record: ProducerRecord<K, V>,
+        callback: Callback?,
+    ): Future<RecordMetadata> {
         // Append callback takes care of the following:
         //  - call interceptors and user callback on completion
         //  - remember partition that is calculated in RecordAccumulator.append
-        val appendCallbacks: AppendCallbacks<K, V> = AppendCallbacks<K, V>(
-            callback,
-            interceptors,
-            record
+        val appendCallbacks: AppendCallbacks<K, V> = AppendCallbacks(
+            userCallback = callback,
+            interceptors = interceptors,
+            record = record,
         )
         try {
             throwIfProducerClosed()
@@ -1031,13 +1081,12 @@ open class KafkaProducer<K, V> : Producer<K, V> {
             var nowMs = time.milliseconds()
             val clusterAndWaitTime: ClusterAndWaitTime
             try {
-                clusterAndWaitTime =
-                    waitOnMetadata(
-                        topic = record.topic,
-                        partition = record.partition,
-                        nowMs = nowMs,
-                        maxWaitMs = maxBlockTimeMs
-                    )
+                clusterAndWaitTime = waitOnMetadata(
+                    topic = record.topic,
+                    partition = record.partition,
+                    nowMs = nowMs,
+                    maxWaitMs = maxBlockTimeMs
+                )
             } catch (e: KafkaException) {
                 if (metadata.isClosed) throw KafkaException(
                     "Producer closed while send in progress",
@@ -1059,7 +1108,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
             } catch (cce: ClassCastException) {
                 throw SerializationException(
                     message = "Can't convert key of class ${record.key?:Nothing::class.java.name}" +
-                            " to class ${producerConfig.getClass(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG).name}" +
+                            " to class ${producerConfig.getClass(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG)!!.name}" +
                             " specified in key.serializer",
                     cause = cce,
                 )
@@ -1074,24 +1123,25 @@ open class KafkaProducer<K, V> : Producer<K, V> {
             } catch (cce: ClassCastException) {
                 throw SerializationException(
                     message = "Can't convert value of class ${record.value?:Nothing::class.java.name}" +
-                            " to class ${producerConfig.getClass(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG).name}" +
+                            " to class ${producerConfig.getClass(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG)!!.name}" +
                             " specified in value.serializer",
                     cause = cce,
                 )
             }
 
-            // Try to calculate partition, but note that after this call it can be RecordMetadata.UNKNOWN_PARTITION,
-            // which means that the RecordAccumulator would pick a partition using built-in logic (which may
-            // take into account broker load, the amount of data produced to each partition, etc.).
+            // Try to calculate partition, but note that after this call it can be
+            // RecordMetadata.UNKNOWN_PARTITION, which means that the RecordAccumulator would pick a
+            // partition using built-in logic (which may take into account broker load, the amount
+            // of data produced to each partition, etc.).
             var partition = partition(record, serializedKey, serializedValue, cluster)
             setReadOnly(record.headers)
             val headers = record.headers.toArray()
             val serializedSize = AbstractRecords.estimateSizeInBytesUpperBound(
-                apiVersions.maxUsableProduceMagic(),
-                compressionType,
-                serializedKey,
-                serializedValue,
-                headers,
+                magic = apiVersions.maxUsableProduceMagic(),
+                compressionType = compressionType,
+                key = serializedKey,
+                value = serializedValue,
+                headers = headers,
             )
             ensureValidRecordSize(serializedSize)
             val timestamp = record.timestamp ?: nowMs
@@ -1102,19 +1152,19 @@ open class KafkaProducer<K, V> : Producer<K, V> {
             // Append the record to the accumulator.  Note, that the actual partition may be
             // calculated there and can be accessed via appendCallbacks.topicPartition.
             var result = accumulator.append(
-                record.topic,
-                partition,
-                timestamp,
-                serializedKey,
-                serializedValue,
-                headers,
-                appendCallbacks,
-                remainingWaitMs,
-                abortOnNewBatch,
-                nowMs,
-                cluster
+                topic = record.topic,
+                partition = partition,
+                timestamp = timestamp,
+                key = serializedKey,
+                value = serializedValue,
+                headers = headers,
+                callbacks = appendCallbacks,
+                maxTimeToBlock = remainingWaitMs,
+                abortOnNewBatch = abortOnNewBatch,
+                nowMs = nowMs,
+                cluster = cluster
             )
-            assert(appendCallbacks.getPartition() != RecordMetadata.UNKNOWN_PARTITION)
+            assert(appendCallbacks.partition != RecordMetadata.UNKNOWN_PARTITION)
             if (result.abortForNewBatch) {
                 val prevPartition = partition
                 onNewBatch(record.topic, cluster, prevPartition)
@@ -1128,17 +1178,17 @@ open class KafkaProducer<K, V> : Producer<K, V> {
                     )
                 }
                 result = accumulator.append(
-                    record.topic,
-                    partition,
-                    timestamp,
-                    serializedKey,
-                    serializedValue,
-                    headers,
-                    appendCallbacks,
-                    remainingWaitMs,
-                    false,
-                    nowMs,
-                    cluster
+                    topic = record.topic,
+                    partition = partition,
+                    timestamp = timestamp,
+                    key = serializedKey,
+                    value = serializedValue,
+                    headers = headers,
+                    callbacks = appendCallbacks,
+                    maxTimeToBlock = remainingWaitMs,
+                    abortOnNewBatch = false,
+                    nowMs = nowMs,
+                    cluster = cluster
                 )
             }
 
@@ -1147,16 +1197,16 @@ open class KafkaProducer<K, V> : Producer<K, V> {
             // unknown or the initially selected partition may be changed when the batch is closed
             // (as indicated by `abortForNewBatch`). Note that the `Sender` will refuse to dequeue
             // batches from the accumulator until they have been added to the transaction.
-            transactionManager?.maybeAddPartition(appendCallbacks.topicPartition())
+            transactionManager?.maybeAddPartition(appendCallbacks.topicPartition()!!)
             if (result.batchIsFull || result.newBatchCreated) {
                 log.trace(
                     "Waking up the sender since topic {} partition {} is either full or getting a new batch",
                     record.topic,
-                    appendCallbacks.getPartition()
+                    appendCallbacks.partition
                 )
                 sender!!.wakeup()
             }
-            return result.future
+            return result.future!!
             // handling exceptions and record the errors;
             // for API exceptions return them in the future,
             // for other exceptions throw directly
@@ -1187,7 +1237,8 @@ open class KafkaProducer<K, V> : Producer<K, V> {
             interceptors.onSendError(record, appendCallbacks.topicPartition(), e)
             throw e
         } catch (e: Exception) {
-            // we notify interceptor about all exceptions, since onSend is called before anything else in this method
+            // we notify interceptor about all exceptions, since onSend is called before anything
+            // else in this method
             interceptors.onSendError(record, appendCallbacks.topicPartition(), e)
             throw e
         }
@@ -1376,9 +1427,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
     /**
      * Get the full set of internal metrics maintained by the producer.
      */
-    override fun metrics(): Map<MetricName, Metric?> {
-        return Collections.unmodifiableMap(metrics.metrics)
-    }
+    override fun metrics(): Map<MetricName, Metric> = metrics.metrics.toMap()
 
     /**
      * Close this producer. This method blocks until all previously sent requests complete.
@@ -1392,9 +1441,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
      * @throws KafkaException If a unexpected error occurs while trying to close the client, this
      * error should be treated as fatal and indicate the client is no longer functionable.
      */
-    override fun close() {
-        close(Duration.ofMillis(Long.MAX_VALUE))
-    }
+    override fun close() = close(Duration.ofMillis(Long.MAX_VALUE))
 
     /**
      * This method waits up to `timeout` for the producer to complete the sending of all incomplete
@@ -1609,7 +1656,8 @@ open class KafkaProducer<K, V> : Producer<K, V> {
     ) : RecordAccumulator.AppendCallbacks {
 
         @Volatile
-        private var partition = RecordMetadata.UNKNOWN_PARTITION
+        var partition = RecordMetadata.UNKNOWN_PARTITION
+            private set
 
         @Volatile
         private var topicPartition: TopicPartition? = null
@@ -1658,9 +1706,11 @@ open class KafkaProducer<K, V> : Producer<K, V> {
             }
         }
 
-        fun getPartition(): Int {
-            return partition
-        }
+        @Deprecated(
+            message = "User property instead",
+            replaceWith = ReplaceWith("partition"),
+        )
+        fun getPartition(): Int = partition
 
         fun topicPartition(): TopicPartition? {
             if (topicPartition == null && topic != null) {
@@ -1675,20 +1725,24 @@ open class KafkaProducer<K, V> : Producer<K, V> {
     }
 
     companion object {
+
         val JMX_PREFIX = "kafka.producer"
+
         val NETWORK_THREAD_PREFIX = "kafka-producer-network-thread"
+
         val PRODUCER_METRIC_GROUP_NAME = "producer-metrics"
+
         fun lingerMs(config: ProducerConfig): Int {
-            return config.getLong(ProducerConfig.LINGER_MS_CONFIG)
+            return config.getLong(ProducerConfig.LINGER_MS_CONFIG)!!
                 .coerceAtMost(Int.MAX_VALUE.toLong())
                 .toInt()
         }
 
         fun configureDeliveryTimeout(config: ProducerConfig, log: Logger): Int {
-            var deliveryTimeoutMs = config.getInt(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG)
+            var deliveryTimeoutMs = config.getInt(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG)!!
             val lingerMs = lingerMs(config)
-            val requestTimeoutMs = config.getInt(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG)
-            val lingerAndRequestTimeoutMs: Int = (lingerMs.toLong() + requestTimeoutMs)
+            val requestTimeoutMs = config.getInt(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG)!!
+            val lingerAndRequestTimeoutMs = (lingerMs.toLong() + requestTimeoutMs)
                 .coerceAtMost(Int.MAX_VALUE.toLong())
                 .toInt()
 

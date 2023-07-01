@@ -52,9 +52,7 @@ data class PartitionInfo(
         message = "use property instead.",
         replaceWith = ReplaceWith("topic"),
     )
-    fun topic(): String {
-        return topic
-    }
+    fun topic(): String = topic
 
     /**
      * The partition id
@@ -63,9 +61,7 @@ data class PartitionInfo(
         message = "use property instead.",
         replaceWith = ReplaceWith("partition"),
     )
-    fun partition(): Int {
-        return partition
-    }
+    fun partition(): Int = partition
 
     /**
      * The node id of the node currently acting as a leader for this partition or null if there is no leader

@@ -156,7 +156,7 @@ class Sender(
             val iter = partitionInFlightBatches.iterator()
             while (iter.hasNext()) {
                 val batch = iter.next()
-                if (batch.hasReachedDeliveryTimeout(accumulator.deliveryTimeoutMs, now)) {
+                if (batch.hasReachedDeliveryTimeout(accumulator.deliveryTimeoutMs.toLong(), now)) {
                     iter.remove()
                     // expireBatches is called in Sender.sendProducerData, before client.poll.
                     // The !batch.isDone() invariant should always hold. An IllegalStateException
@@ -302,7 +302,7 @@ class Sender(
         }
 
         // remove any nodes we aren't ready to send to
-        val iter = result.readyNodes.iterator()
+        val iter = result.readyNodes.toMutableSet().iterator()
         var notReadyTimeout = Long.MAX_VALUE
         while (iter.hasNext()) {
             val node = iter.next()
@@ -330,8 +330,7 @@ class Sender(
 
         accumulator.resetNextBatchExpiryTime()
         val expiredInflightBatches = getExpiredInflightBatches(now)
-        val expiredBatches = accumulator.expiredBatches(now)
-        expiredBatches.addAll(expiredInflightBatches)
+        val expiredBatches = accumulator.expiredBatches(now) + expiredInflightBatches
 
         // Reset the producer id if an expired batch has previously been sent to the broker. Also
         // update the metrics for expired batches. see the documentation of
@@ -342,7 +341,7 @@ class Sender(
             expiredBatches.size
         )
         for (expiredBatch in expiredBatches) {
-            val errorMessage = "Expiring ${expiredBatch!!.recordCount} record(s) for " +
+            val errorMessage = "Expiring ${expiredBatch.recordCount} record(s) for " +
                     "${expiredBatch.topicPartition}:${now - expiredBatch.createdMs} ms has " +
                     "passed since batch creation"
 
@@ -426,7 +425,7 @@ class Sender(
                 log.trace(
                     "Coordinator not known for {}, will retry {} after finding coordinator.",
                     coordinatorType,
-                    requestBuilder!!.apiKey
+                    requestBuilder.apiKey
                 )
                 maybeFindCoordinatorAndRetry(nextRequestHandler)
                 return true
@@ -453,7 +452,7 @@ class Sender(
                 "Sending transactional request {} to node {} with correlation ID {}",
                 requestBuilder,
                 targetNode,
-                clientRequest!!.correlationId,
+                clientRequest.correlationId,
             )
             client.send((clientRequest), currentTimeMs)
             transactionManager.setInFlightCorrelationId(clientRequest.correlationId)
@@ -793,7 +792,7 @@ class Sender(
         response: ProduceResponse.PartitionResponse,
         now: Long,
     ): Boolean =
-        (!batch.hasReachedDeliveryTimeout(accumulator.deliveryTimeoutMs, now)
+        (!batch.hasReachedDeliveryTimeout(accumulator.deliveryTimeoutMs.toLong(), now)
                 && batch.attempts() < retries
                 && !batch.isDone
                 && ((transactionManager?.canRetry(response, batch)
@@ -890,7 +889,7 @@ class Sender(
             requestTimeoutMs = requestTimeoutMs,
             callback = callback,
         )
-        client.send((clientRequest)!!, now)
+        client.send(clientRequest, now)
         log.trace("Sent produce request to {}: {}", nodeId, requestBuilder)
     }
 

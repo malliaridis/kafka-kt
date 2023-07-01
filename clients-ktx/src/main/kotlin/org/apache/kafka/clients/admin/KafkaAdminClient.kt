@@ -783,14 +783,14 @@ class KafkaAdminClient private constructor(
         private fun maybeDrainPendingCall(call: Call, now: Long): Boolean {
             try {
                 val node = call.nodeProvider.provide()
-                if (node != null) {
+                return if (node != null) {
                     log.trace("Assigned {} to node {}", call, node)
                     call.curNode = node
-                    getOrCreateListValue(callsToSend, node).add(call)
-                    return true
+                    callsToSend.computeIfAbsent(node) { LinkedList() }.add(call)
+                    true
                 } else {
                     log.trace("Unable to assign {} to a node.", call)
-                    return false
+                    false
                 }
             } catch (t: Throwable) {
                 // Handle authentication errors while choosing nodes.
@@ -4543,6 +4543,7 @@ class KafkaAdminClient private constructor(
         }
     }
 
+    @Suppress("TooManyFunctions")
     companion object {
 
         /**
@@ -4579,6 +4580,7 @@ class KafkaAdminClient private constructor(
          * @param V The value type.
          * @return The list value.
          */
+        @Deprecated("Use computeIfAbsent instead")
         fun <K, V> getOrCreateListValue(
             map: MutableMap<K, MutableList<V>>, key: K
         ): MutableList<V> {

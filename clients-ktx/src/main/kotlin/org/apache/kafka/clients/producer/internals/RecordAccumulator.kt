@@ -28,7 +28,6 @@ import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.UnsupportedVersionException
 import org.apache.kafka.common.header.Header
 import org.apache.kafka.common.metrics.Measurable
-import org.apache.kafka.common.metrics.MetricConfig
 import org.apache.kafka.common.metrics.Metrics
 import org.apache.kafka.common.record.AbstractRecords
 import org.apache.kafka.common.record.CompressionRatioEstimator.setEstimation
@@ -77,7 +76,7 @@ import kotlin.math.min
  * @param apiVersions Request API versions for current connected brokers
  * @param transactionManager The shared transaction state object which tracks producer IDs, epochs,
  * and sequence numbers per partition.
- * @param bufferPool The buffer pool
+ * @param free The buffer pool
  */
 class RecordAccumulator(
     private val logContext: LogContext,
@@ -85,7 +84,7 @@ class RecordAccumulator(
     private val compression: CompressionType,
     private val lingerMs: Int,
     private val retryBackoffMs: Long,
-    private val deliveryTimeoutMs: Int,
+    val deliveryTimeoutMs: Int,
     partitionerConfig: PartitionerConfig = PartitionerConfig(),
     metrics: Metrics,
     metricGrpName: String,
@@ -245,8 +244,8 @@ class RecordAccumulator(
         topic: String,
         partition: Int,
         timestamp: Long,
-        key: ByteArray,
-        value: ByteArray,
+        key: ByteArray?,
+        value: ByteArray?,
         headers: Array<Header>?,
         callbacks: AppendCallbacks?,
         maxTimeToBlock: Long,
@@ -254,7 +253,7 @@ class RecordAccumulator(
         nowMs: Long,
         cluster: Cluster,
     ): RecordAppendResult {
-        var nowMs = nowMs
+        var nowMillis = nowMs
         val topicInfo = topicInfoMap.computeIfAbsent(topic) { t ->
             TopicInfo(
                 logContext = logContext,
@@ -267,7 +266,7 @@ class RecordAccumulator(
         // abortIncompleteBatches().
         appendsInProgress.incrementAndGet()
         var buffer: ByteBuffer? = null
-        val headers = headers ?: Record.EMPTY_HEADERS
+        val actualHeaders = headers ?: Record.EMPTY_HEADERS
         try {
             // Loop to retry in case we encounter partitioner's race conditions.
             while (true) {
@@ -290,6 +289,10 @@ class RecordAccumulator(
 
                 // check if we have an in-progress batch
                 val dq = topicInfo.batches.computeIfAbsent(effectivePartition) { ArrayDeque() }
+
+                // Current Kotlin workaround for break and continue inside lambdas
+                // See https://youtrack.jetbrains.com/issue/KT-1436/Support-non-local-break-and-continue
+                var continueFlag = false
                 synchronized(dq) {
 
                     // After taking the lock, validate that the partition hasn't changed and retry.
@@ -299,18 +302,22 @@ class RecordAccumulator(
                             topicInfo = topicInfo,
                             partitionInfo = partitionInfo,
                             deque = dq,
-                            nowMs = nowMs,
+                            nowMs = nowMillis,
                             cluster = cluster,
                         )
-                    ) continue
+                    ) {
+                        continueFlag = true
+                        return@synchronized
+                    }
+
                     val appendResult = tryAppend(
                         timestamp = timestamp,
                         key = key,
                         value = value,
-                        headers = headers,
+                        headers = actualHeaders,
                         callback = callbacks,
                         deque = dq,
-                        nowMs = nowMs,
+                        nowMs = nowMillis,
                     )
                     if (appendResult != null) {
                         // If queue has incomplete batches we disable switch (see comments in
@@ -325,6 +332,8 @@ class RecordAccumulator(
                         return appendResult
                     }
                 }
+
+                if (continueFlag) continue
 
                 // we don't have an in-progress record batch try to allocate a new batch
                 if (abortOnNewBatch) {
@@ -344,7 +353,7 @@ class RecordAccumulator(
                         compressionType = compression,
                         key = key,
                         value = value,
-                        headers = headers,
+                        headers = actualHeaders,
                     ).coerceAtLeast(batchSize)
 
                     log.trace(
@@ -362,8 +371,9 @@ class RecordAccumulator(
                     // Update the current time in case the buffer allocation blocked above.
                     // NOTE: getting time may be expensive, so calling it under a lock
                     // should be avoided.
-                    nowMs = time.milliseconds()
+                    nowMillis = time.milliseconds()
                 }
+
                 synchronized(dq) {
 
                     // After taking the lock, validate that the partition hasn't changed and retry.
@@ -373,10 +383,10 @@ class RecordAccumulator(
                             topicInfo = topicInfo,
                             partitionInfo = partitionInfo,
                             deque = dq,
-                            nowMs = nowMs,
+                            nowMs = nowMillis,
                             cluster = cluster,
                         )
-                    ) continue
+                    ) return@synchronized
 
                     val appendResult = appendNewBatch(
                         topic = topic,
@@ -385,10 +395,10 @@ class RecordAccumulator(
                         timestamp = timestamp,
                         key = key,
                         value = value,
-                        headers = headers,
+                        headers = actualHeaders,
                         callbacks = callbacks,
                         buffer = buffer!!,
-                        nowMs = nowMs,
+                        nowMs = nowMillis,
                     )
 
                     // Set buffer to null, so that deallocate doesn't return it back to free pool,
@@ -432,8 +442,8 @@ class RecordAccumulator(
         partition: Int,
         dq: Deque<ProducerBatch>,
         timestamp: Long,
-        key: ByteArray,
-        value: ByteArray,
+        key: ByteArray?,
+        value: ByteArray?,
         headers: Array<Header>,
         callbacks: AppendCallbacks?,
         buffer: ByteBuffer,
@@ -502,8 +512,8 @@ class RecordAccumulator(
      */
     private fun tryAppend(
         timestamp: Long,
-        key: ByteArray,
-        value: ByteArray,
+        key: ByteArray?,
+        value: ByteArray?,
         headers: Array<Header>,
         callback: Callback?,
         deque: Deque<ProducerBatch>,
@@ -514,7 +524,14 @@ class RecordAccumulator(
 
         if (last != null) {
             val initialBytes = last.estimatedSizeInBytes
-            val future = last.tryAppend(timestamp, key, value, headers, callback, nowMs)
+            val future = last.tryAppend(
+                timestamp = timestamp,
+                key = key,
+                value = value,
+                headers = headers,
+                callback = callback,
+                now = nowMs,
+            )
 
             if (future == null) last.closeForRecordAppends()
             else {
@@ -616,8 +633,8 @@ class RecordAccumulator(
         val partitionDequeue = getOrCreateDeque(bigBatch.topicPartition)
 
         while (!dq.isEmpty()) {
-            val batch = dq.pollLast()
-            incomplete.add((batch)!!)
+            val batch = dq.pollLast()!!
+            incomplete.add(batch)
             // We treat the newly split batches as if they are not even tried.
             synchronized(partitionDequeue) {
                 if (transactionManager != null) {
@@ -800,37 +817,49 @@ class RecordAccumulator(
                 partitionIds!![queueSizesIndex] = part.partition
             }
             val deque = entry.value
-            val waitedTimeMs: Long
-            val backingOff: Boolean
-            val dequeSize: Int
-            val full: Boolean
+
+            // Current Kotlin workaround for break and continue inside lambdas
+            // See https://youtrack.jetbrains.com/issue/KT-1436/Support-non-local-break-and-continue
+            var continueFlag = false
+
+            // nullable due to the workaround, safe to use after workaround ends
+            var waitedTimeMs: Long? = null
+            var backingOff: Boolean? = null
+            var dequeSize: Int? = null
+            var full: Boolean? = null
 
             // This loop is especially hot with large partition counts.
 
             // We are careful to only perform the minimum required inside the synchronized block, as
             // this lock is also used to synchronize producer threads attempting to append() to a
             // partition/batch.
+
             synchronized(deque) {
 
                 // Deques are often empty in this path, esp with large partition counts,
                 // so we exit early if we can.
-                val batch: ProducerBatch = deque.peekFirst() ?: continue
+                val batch: ProducerBatch = deque.peekFirst() ?: run {
+                    continueFlag = true
+                    return@synchronized
+                }
                 waitedTimeMs = batch.waitedTimeMs(nowMs)
-                backingOff = batch.attempts() > 0 && waitedTimeMs < retryBackoffMs
+                backingOff = batch.attempts() > 0 && waitedTimeMs!! < retryBackoffMs
                 dequeSize = deque.size
-                full = dequeSize > 1 || batch.isFull
+                full = dequeSize!! > 1 || batch.isFull
             }
+            if (continueFlag) continue
+
             if (leader == null) {
                 // This is a partition for which leader is not known, but messages are available to
                 // send. Note that entries are currently not removed from batches when deque is
                 // empty.
                 unknownLeaderTopics.add(part.topic)
             } else {
-                if (queueSizes != null) queueSizes[queueSizesIndex] = dequeSize
+                if (queueSizes != null) queueSizes[queueSizesIndex] = dequeSize!!
                 if (partitionAvailabilityTimeoutMs > 0) {
                     // Check if we want to exclude the partition from the list of available
                     // partitions if the broker hasn't responded for some time.
-                    val nodeLatencyStats = nodeStats[leader.id()]
+                    val nodeLatencyStats = nodeStats[leader.id]
                     if (nodeLatencyStats != null) {
                         // NOTE: there is no synchronization between reading metrics, so we read
                         // ready time first to avoid accidentally marking partition unavailable if
@@ -841,8 +870,15 @@ class RecordAccumulator(
                     }
                 }
                 nextReadyCheckDelayMs = batchReady(
-                    nowMs, exhausted, part, leader, waitedTimeMs, backingOff,
-                    full, nextReadyCheckDelayMs, readyNodes
+                    nowMs = nowMs,
+                    exhausted = exhausted,
+                    part = part,
+                    leader = leader,
+                    waitedTimeMs = waitedTimeMs!!,
+                    backingOff = backingOff!!,
+                    full = full!!,
+                    nextReadyCheckDelayMs = nextReadyCheckDelayMs,
+                    readyNodes = readyNodes
                 )
             }
         }
@@ -969,28 +1005,43 @@ class RecordAccumulator(
         val start = drainIndex
         do {
             val part = parts[drainIndex]
-            val tp = TopicPartition(part.topic(), part.partition())
+            val tp = TopicPartition(part.topic, part.partition)
             updateDrainIndex(node.idString(), drainIndex)
             drainIndex = (drainIndex + 1) % parts.size
             // Only proceed if the partition has no in-flight batches.
             if (isMuted(tp)) continue
             val deque = getDeque(tp) ?: continue
-            val batch: ProducerBatch?
+            lateinit var batch: ProducerBatch
+
+            // Current Kotlin workaround for break and continue inside lambdas
+            // See https://youtrack.jetbrains.com/issue/KT-1436/Support-non-local-break-and-continue
+            var continueFlag = false
+            var breakFlag = false
             synchronized(deque) {
 
                 // invariant: !isMuted(tp,now) && deque != null
-                val first = deque.peekFirst() ?: continue
+                val first = deque.peekFirst() ?: run {
+                    continueFlag = true
+                    return@synchronized
+                }
 
                 // first != null
                 val backoff = first.attempts() > 0 && first.waitedTimeMs(now) < retryBackoffMs
                 // Only drain the batch if it is not during backoff period.
-                if (backoff) continue
+                if (backoff) {
+                    continueFlag = true
+                    return@synchronized
+                }
                 if (size + first.estimatedSizeInBytes > maxSize && ready.isNotEmpty()) {
                     // there is a rare case that a single batch size is larger than the request size
                     // due to compression; in this case we will still eventually send this batch in
                     // a single request
-                    break
-                } else if (shouldStopDrainBatchesForPartition(first, tp)) break
+                    breakFlag = true
+                    return@synchronized
+                } else if (shouldStopDrainBatchesForPartition(first, tp)) {
+                    breakFlag = true
+                    return@synchronized
+                }
 
                 batch = deque.pollFirst()!!
 
@@ -1034,9 +1085,12 @@ class RecordAccumulator(
                 }
             }
 
+            if (continueFlag) continue
+            if (breakFlag) break
+
             // the rest of the work by processing outside the lock
             // close() is particularly expensive
-            batch!!.close()
+            batch.close()
             size += batch.records().sizeInBytes()
             ready.add(batch)
             batch.drained(now)
@@ -1068,7 +1122,7 @@ class RecordAccumulator(
         nodes: Set<Node>,
         maxSize: Int,
         now: Long,
-    ): Map<Int, List<ProducerBatch?>> {
+    ): Map<Int, List<ProducerBatch>> {
         if (nodes.isEmpty()) return emptyMap()
         return nodes.associate { node ->
             node.id to drainBatchesForOneNode(cluster, node, maxSize, now)
@@ -1221,12 +1275,12 @@ class RecordAccumulator(
      */
     fun abortUndrainedBatches(reason: RuntimeException?) {
         for (batch: ProducerBatch in incomplete.copyAll()) {
-            val dq = getDeque(batch.topicPartition)
+            val dq = getDeque(batch.topicPartition)!!
             var aborted = false
-            synchronized((dq)!!) {
+            synchronized(dq) {
                 if (
-                    (transactionManager != null && !batch.hasSequence)
-                    || (transactionManager == null && !batch.isClosed)
+                    transactionManager != null && !batch.hasSequence
+                    || transactionManager == null && !batch.isClosed
                 ) {
                     aborted = true
                     batch.abortRecordAppends()

@@ -557,7 +557,7 @@ class TransactionManager(
 
         val inflightBatches = txnPartitionMap[topicPartition].inflightBatchesBySequence
         return if (inflightBatches.isEmpty()) RecordBatch.NO_SEQUENCE
-        else inflightBatches.first().baseSequence()
+        else inflightBatches.first().baseSequence
     }
 
     @Synchronized
@@ -614,11 +614,11 @@ class TransactionManager(
     fun handleCompletedBatch(batch: ProducerBatch, response: ProduceResponse.PartitionResponse) {
         val lastAckedSequence = maybeUpdateLastAckedSequence(
             topicPartition = batch.topicPartition,
-            sequence = batch.lastSequence()
+            sequence = batch.lastSequence
         )
         log.debug(
             "ProducerId: {}; Set last ack'd sequence number for topic-partition {} to {}",
-            batch.producerId(),
+            batch.producerId,
             batch.topicPartition,
             lastAckedSequence,
         )
@@ -653,9 +653,9 @@ class TransactionManager(
                 "Ignoring batch {} with producer id {}, epoch {}, and sequence number {} " +
                         "since the producer is already in fatal error state",
                 batch,
-                batch.producerId(),
-                batch.producerEpoch(),
-                batch.baseSequence(),
+                batch.producerId,
+                batch.producerEpoch,
+                batch.baseSequence,
                 exception,
             )
             return
@@ -667,9 +667,9 @@ class TransactionManager(
                         "sequence number {}",
                 exception,
                 batch.topicPartition,
-                batch.producerId(),
-                batch.producerEpoch(),
-                batch.baseSequence(),
+                batch.producerId,
+                batch.producerEpoch,
+                batch.baseSequence,
             )
 
             // If we fail with an OutOfOrderSequenceException, we have a gap in the log. Bump the
@@ -706,7 +706,7 @@ class TransactionManager(
         log.debug(
             "producerId: {}, send to partition {} failed fatally. Reducing future sequence " +
                     "numbers by {}",
-            batch.producerId(),
+            batch.producerId,
             batch.topicPartition,
             batch.recordCount,
         )
@@ -721,23 +721,23 @@ class TransactionManager(
 
         setNextSequence(batch.topicPartition, currentSequence)
         txnPartitionMap[batch.topicPartition].resetSequenceNumbers { inFlightBatch ->
-            if (inFlightBatch.baseSequence() < batch.baseSequence()) return@resetSequenceNumbers
+            if (inFlightBatch.baseSequence < batch.baseSequence) return@resetSequenceNumbers
 
-            val newSequence: Int = inFlightBatch.baseSequence() - batch.recordCount
+            val newSequence: Int = inFlightBatch.baseSequence - batch.recordCount
 
             check(newSequence >= 0) {
-                "Sequence number for batch with sequence ${inFlightBatch.baseSequence()} for " +
+                "Sequence number for batch with sequence ${inFlightBatch.baseSequence} for " +
                         "partition ${batch.topicPartition} is going to become negative: " +
                         newSequence
             }
 
             inFlightBatch.resetProducerState(
-                ProducerIdAndEpoch(
-                    inFlightBatch.producerId(),
-                    inFlightBatch.producerEpoch()
+                producerIdAndEpoch = ProducerIdAndEpoch(
+                    producerId = inFlightBatch.producerId,
+                    epoch = inFlightBatch.producerEpoch,
                 ),
-                newSequence,
-                inFlightBatch.isTransactional
+                baseSequence = newSequence,
+                isTransactional = inFlightBatch.isTransactional,
             )
         }
     }
@@ -759,7 +759,7 @@ class TransactionManager(
 
     @Synchronized
     fun markSequenceUnresolved(batch: ProducerBatch) {
-        val nextSequence = batch.lastSequence() + 1
+        val nextSequence = batch.lastSequence + 1
         partitionsWithUnresolvedSequences.compute(batch.topicPartition) { _, v ->
             if (v == null) nextSequence else max(v, nextSequence)
         }
@@ -1014,7 +1014,7 @@ class TransactionManager(
                 return true
             }
 
-            if (batch.sequenceHasBeenReset()) {
+            if (batch.sequenceHasBeenReset) {
                 // When the first inflight batch fails due to the truncation case, then the
                 // sequences of all the other in flight batches would have been restarted from the
                 // beginning. However, when those responses come back from the broker, they would
@@ -1045,8 +1045,8 @@ class TransactionManager(
             }
         } else if (error === Errors.OUT_OF_ORDER_SEQUENCE_NUMBER) {
             if (!hasUnresolvedSequence(batch.topicPartition)
-                && (batch.sequenceHasBeenReset()
-                        || !isNextSequence(batch.topicPartition, batch.baseSequence()))
+                && (batch.sequenceHasBeenReset
+                        || !isNextSequence(batch.topicPartition, batch.baseSequence))
             ) {
                 // We should retry the OutOfOrderSequenceException if the batch is _not_ the next
                 // batch, ie. its base sequence isn't the lastAckedSequence + 1.
@@ -1060,7 +1060,7 @@ class TransactionManager(
                 if (!hasUnresolvedSequence(batch.topicPartition)
                     || isNextSequenceForUnresolvedPartition(
                         topicPartition = batch.topicPartition,
-                        sequence = batch.baseSequence(),
+                        sequence = batch.baseSequence,
                     )
                 ) requestEpochBumpForPartition(batch.topicPartition)
 
@@ -1268,7 +1268,7 @@ class TransactionManager(
         var isRetry = false
             private set
 
-        constructor(operation: String?) : this(TransactionalRequestResult(operation))
+        constructor(operation: String) : this(TransactionalRequestResult(operation))
 
         fun fatalError(e: RuntimeException?) {
             result.fail(e)
@@ -1298,8 +1298,8 @@ class TransactionManager(
 
         open fun retryBackoffMs(): Long = retryBackoffMs
 
-        override fun onComplete(response: ClientResponse?) {
-            if (response!!.requestHeader.correlationId() != inFlightRequestCorrelationId)
+        override fun onComplete(response: ClientResponse) {
+            if (response.requestHeader.correlationId() != inFlightRequestCorrelationId)
                 fatalError(
                     RuntimeException("Detected more than one in-flight transactional request.")
                 )
@@ -1345,7 +1345,7 @@ class TransactionManager(
         open val isEndTxn: Boolean
             get() = false
 
-        abstract fun requestBuilder(): AbstractRequest.Builder<*>?
+        abstract fun requestBuilder(): AbstractRequest.Builder<*>
 
         abstract fun handleResponse(responseBody: AbstractResponse?)
 
@@ -1707,9 +1707,7 @@ class TransactionManager(
                 errors
             )
 
-            for (entry: Map.Entry<TopicPartition, Errors> in errors.entries) {
-                val topicPartition = entry.key
-                val error = entry.value
+            for ((topicPartition, error) in errors.entries) {
                 if (error === Errors.NONE) pendingTxnOffsetCommits.remove(topicPartition)
                 else if (
                     error === Errors.COORDINATOR_NOT_AVAILABLE

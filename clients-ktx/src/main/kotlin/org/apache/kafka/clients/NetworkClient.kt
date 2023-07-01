@@ -75,7 +75,7 @@ class NetworkClient(
     metadataUpdater: MetadataUpdater? = null,
     metadata: Metadata? = null,
     private val selector: Selectable,
-    private val clientId: String?,
+    private val clientId: String,
     maxInFlightRequestsPerConnection: Int,
     private val reconnectBackoffMs: Long,
     reconnectBackoffMax: Long,
@@ -89,7 +89,7 @@ class NetworkClient(
     private val apiVersions: ApiVersions,
     private val throttleTimeSensor: Sensor? = null,
     logContext: LogContext,
-    hostResolver: HostResolver,
+    hostResolver: HostResolver = DefaultHostResolver(),
 ) : KafkaClient {
 
     private val log: Logger
@@ -117,116 +117,6 @@ class NetworkClient(
         HashMap()
     private val abortedSends: MutableList<ClientResponse> = LinkedList()
     private val state: AtomicReference<State> = AtomicReference(State.ACTIVE)
-
-    constructor(
-        selector: Selectable,
-        metadata: Metadata?,
-        clientId: String?,
-        maxInFlightRequestsPerConnection: Int,
-        reconnectBackoffMs: Long,
-        reconnectBackoffMax: Long,
-        socketSendBuffer: Int,
-        socketReceiveBuffer: Int,
-        defaultRequestTimeoutMs: Int,
-        connectionSetupTimeoutMs: Long,
-        connectionSetupTimeoutMaxMs: Long,
-        time: Time,
-        discoverBrokerVersions: Boolean,
-        apiVersions: ApiVersions,
-        logContext: LogContext
-    ) : this(
-        selector,
-        metadata,
-        clientId,
-        maxInFlightRequestsPerConnection,
-        reconnectBackoffMs,
-        reconnectBackoffMax,
-        socketSendBuffer,
-        socketReceiveBuffer,
-        defaultRequestTimeoutMs,
-        connectionSetupTimeoutMs,
-        connectionSetupTimeoutMaxMs,
-        time,
-        discoverBrokerVersions,
-        apiVersions,
-        null,
-        logContext
-    )
-
-    constructor(
-        selector: Selectable,
-        metadata: Metadata?,
-        clientId: String?,
-        maxInFlightRequestsPerConnection: Int,
-        reconnectBackoffMs: Long,
-        reconnectBackoffMax: Long,
-        socketSendBuffer: Int,
-        socketReceiveBuffer: Int,
-        defaultRequestTimeoutMs: Int,
-        connectionSetupTimeoutMs: Long,
-        connectionSetupTimeoutMaxMs: Long,
-        time: Time,
-        discoverBrokerVersions: Boolean,
-        apiVersions: ApiVersions,
-        throttleTimeSensor: Sensor?,
-        logContext: LogContext
-    ) : this(
-        null,
-        metadata,
-        selector,
-        clientId,
-        maxInFlightRequestsPerConnection,
-        reconnectBackoffMs,
-        reconnectBackoffMax,
-        socketSendBuffer,
-        socketReceiveBuffer,
-        defaultRequestTimeoutMs,
-        connectionSetupTimeoutMs,
-        connectionSetupTimeoutMaxMs,
-        time,
-        discoverBrokerVersions,
-        apiVersions,
-        throttleTimeSensor,
-        logContext,
-        DefaultHostResolver()
-    )
-
-    constructor(
-        selector: Selectable,
-        metadataUpdater: MetadataUpdater?,
-        clientId: String?,
-        maxInFlightRequestsPerConnection: Int,
-        reconnectBackoffMs: Long,
-        reconnectBackoffMax: Long,
-        socketSendBuffer: Int,
-        socketReceiveBuffer: Int,
-        defaultRequestTimeoutMs: Int,
-        connectionSetupTimeoutMs: Long,
-        connectionSetupTimeoutMaxMs: Long,
-        time: Time,
-        discoverBrokerVersions: Boolean,
-        apiVersions: ApiVersions,
-        logContext: LogContext
-    ) : this(
-        metadataUpdater,
-        null,
-        selector,
-        clientId,
-        maxInFlightRequestsPerConnection,
-        reconnectBackoffMs,
-        reconnectBackoffMax,
-        socketSendBuffer,
-        socketReceiveBuffer,
-        defaultRequestTimeoutMs,
-        connectionSetupTimeoutMs,
-        connectionSetupTimeoutMaxMs,
-        time,
-        discoverBrokerVersions,
-        apiVersions,
-        null,
-        logContext,
-        DefaultHostResolver()
-    )
 
     init {
         /* It would be better if we could pass `DefaultMetadataUpdater` from the public constructor,
@@ -426,7 +316,7 @@ class NetworkClient(
 
     // package-private for testing
     fun sendInternalMetadataRequest(
-        builder: MetadataRequest.Builder?,
+        builder: MetadataRequest.Builder,
         nodeConnectionId: String,
         now: Long,
     ) {
@@ -1204,7 +1094,7 @@ class NetworkClient(
 
     override fun newClientRequest(
         nodeId: String,
-        requestBuilder: AbstractRequest.Builder<*>?,
+        requestBuilder: AbstractRequest.Builder<*>,
         createdTimeMs: Long,
         expectResponse: Boolean,
     ): ClientRequest {
@@ -1230,7 +1120,7 @@ class NetworkClient(
 
     override fun newClientRequest(
         nodeId: String,
-        requestBuilder: AbstractRequest.Builder<*>?,
+        requestBuilder: AbstractRequest.Builder<*>,
         createdTimeMs: Long,
         expectResponse: Boolean,
         requestTimeoutMs: Int,

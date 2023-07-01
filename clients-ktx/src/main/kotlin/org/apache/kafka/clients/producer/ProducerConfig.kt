@@ -53,12 +53,12 @@ class ProducerConfig : AbstractConfig {
         originals = propsToMap(props),
     )
 
-    constructor(props: Map<String, Any>) : super(
+    constructor(props: Map<String, Any?>) : super(
         definition = CONFIG,
         originals = props,
     )
 
-    internal constructor(props: Map<String, Any>, doLog: Boolean) : super(
+    internal constructor(props: Map<String, Any?>, doLog: Boolean) : super(
         definition = CONFIG,
         originals = props,
         doLog = doLog,
