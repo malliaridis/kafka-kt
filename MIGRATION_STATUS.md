@@ -1,6 +1,6 @@
 # Migration Status
 
-The below diagram contains a rough overview of the migration progress based on the gradle modules. 
+The below diagram contains a rough overview of the migration progress based on the gradle modules.
 
 ```mermaid
 gantt
@@ -61,9 +61,9 @@ gantt
     section fixing / testing
         Migrate test module: after e1, 30d
         Fix migration bugs: after e1, 30d
-        Check nullable fields:f1, after e1, 30d
+        Check nullable fields: f1, after e1, 30d
     section cleanup
-        Remove deprecated property methods:after f1, 7d
+        Remove deprecated property methods: after f1, 7d
     section reporting
         Report findings: 7d
         Discuss considerations: 7d
@@ -71,20 +71,21 @@ gantt
 
 The following table contains an overview of the tasks related to the clients-kt migration:
 
-| Task                                             |      Status      |
-|--------------------------------------------------|:----------------:|
-| **Migrate clients java module of version 3.4**   |   *Completed*    |
-| Optimize class constructors and property methods | **In progress️** |
-| Rename modules to -kt instead of -ktx            |        ✖         |
-| Fix migration bugs                               | **In progress**  |
-| Migrate generator (Java)                         | **In progress**  |
-| Implement generator-kt                           |        ✖         |
-| Migrate tests                                    | **In progress**  |
-| Report founded bugs                              |        ✖         |
-| Rewrite `KafkaFuture` and migrate to Coroutines  |        ✖         |
-| Write migration steps for consumers              |        ✖         |
-| Cleanup documentation                            |        ✖         |
-| Update project to latest kafka version           |        ✖         |
-| Update visibility modifiers                      |        ✖         |
-| Consider further official Kotlin libraries       |        ✖         |
-| Optimize code                                    |        ✖         |
+| Task                                                     |     Status      |
+|----------------------------------------------------------|:---------------:|
+| **Migrate clients java module of version 3.4**           |   *Completed*   |
+| Optimize class constructors and property methods         | **In progress** |
+| Rename modules to -kt instead of -ktx                    |   *Completed*   |
+| Fix migration bugs                                       | **In progress** |
+| Migrate generator (Java)                                 | **In progress** |
+| Implement generator-kt                                   |        ✖        |
+| Migrate tests                                            | **In progress** |
+| Report founded bugs                                      |        ✖        |
+| Rewrite `KafkaFuture` and migrate to Coroutines          |        ✖        |
+| Write migration steps for consumers                      |        ✖        |
+| Cleanup documentation                                    |        ✖        |
+| Update project to latest kafka version                   |        ✖        |
+| Update visibility modifiers                              |        ✖        |
+| Consider further official Kotlin libraries               |        ✖        |
+| Optimize code                                            |        ✖        |
+| Replace `.toSet()` with `.toHashSet()` wherever suitable |        ✖        |
