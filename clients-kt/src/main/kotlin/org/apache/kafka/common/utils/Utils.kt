@@ -1251,23 +1251,18 @@ object Utils {
         }
     }
 
-    fun <T> toList(iterable: Iterable<T>): List<T> {
-        return toList(iterable.iterator())
-    }
+    @Deprecated("Use Kotlin function .toList() instead")
+    fun <T> toList(iterable: Iterable<T>): List<T> = iterable.toList()
 
-    fun <T> toList(iterator: Iterator<T>): List<T> {
-        val res: MutableList<T> = ArrayList()
-        while (iterator.hasNext()) res.add(iterator.next())
-        return res
-    }
+    @Deprecated("Use Kotlin function .asSequence().toList() instead")
+    fun <T> toList(iterator: Iterator<T>): List<T> = iterator.asSequence().toList()
 
+    @Deprecated("Use Kotlin function .filter(predicate) instead")
     fun <T> toList(iterator: Iterator<T>, predicate: Predicate<T>): List<T> {
         val res: MutableList<T> = ArrayList()
         while (iterator.hasNext()) {
             val e = iterator.next()
-            if (predicate.test(e)) {
-                res.add(e)
-            }
+            if (predicate.test(e)) res.add(e)
         }
         return res
     }

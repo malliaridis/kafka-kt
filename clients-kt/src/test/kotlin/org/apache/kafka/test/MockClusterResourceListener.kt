@@ -14,12 +14,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.test;
 
-/**
- * Like a {@link Runnable} that allows exceptions to be thrown or a {@link java.util.concurrent.Callable}
- * that does not return a value.
- */
-public interface ValuelessCallable {
-    void call() throws Exception;
+package org.apache.kafka.test
+
+import org.apache.kafka.common.ClusterResource
+import org.apache.kafka.common.ClusterResourceListener
+import java.util.concurrent.atomic.AtomicBoolean
+
+class MockClusterResourceListener : ClusterResourceListener {
+
+    var clusterResource: ClusterResource? = null
+        private set
+
+    override fun onUpdate(clusterResource: ClusterResource?) {
+        IS_ON_UPDATE_CALLED.set(true)
+        this.clusterResource = clusterResource
+    }
+
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("clusterResource"),
+    )
+    fun clusterResource(): ClusterResource? = clusterResource
+
+    companion object {
+        val IS_ON_UPDATE_CALLED = AtomicBoolean()
+    }
 }

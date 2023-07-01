@@ -77,31 +77,6 @@ data class ProducerRecord<K, V>(
     }
 
     /**
-     * Creates a record to be sent to a specified topic and partition
-     *
-     * @param topic The topic the record will be appended to
-     * @param partition The partition to which the record should be sent
-     * @param key The key that will be included in the record
-     * @param value The record contents
-     * @param headers The headers that will be included in the record
-     */
-    constructor(
-        topic: String,
-        partition: Int? = null,
-        timestamp: Long? = null,
-        key: K?,
-        value: V?,
-        headers: Iterable<Header>? = null,
-    ) : this(
-        topic = topic,
-        partition = partition,
-        timestamp = timestamp,
-        key = key,
-        value = value,
-        headers = RecordHeaders(headers),
-    )
-
-    /**
      * @return The topic this record is being sent to
      */
     @Deprecated(

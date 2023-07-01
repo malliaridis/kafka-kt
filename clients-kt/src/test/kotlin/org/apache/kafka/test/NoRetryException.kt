@@ -14,25 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.test;
 
-import org.apache.kafka.common.ClusterResourceListener;
-import org.apache.kafka.common.ClusterResource;
+package org.apache.kafka.test
 
-import java.util.concurrent.atomic.AtomicBoolean;
-
-public class MockClusterResourceListener implements ClusterResourceListener {
-
-    private ClusterResource clusterResource;
-    public static final AtomicBoolean IS_ON_UPDATE_CALLED = new AtomicBoolean();
-
-    @Override
-    public void onUpdate(ClusterResource clusterResource) {
-        IS_ON_UPDATE_CALLED.set(true);
-        this.clusterResource = clusterResource;
-    }
-
-    public ClusterResource clusterResource() {
-        return clusterResource;
-    }
-}
+/**
+ * This class can be used in the callback given to [TestUtils.retryOnExceptionWithTimeout] to
+ * indicate that a particular exception should not be retried. Instead the retry operation will be
+ * aborted immediately and the exception will be rethrown.
+ */
+class NoRetryException(override val cause: Throwable) : RuntimeException()

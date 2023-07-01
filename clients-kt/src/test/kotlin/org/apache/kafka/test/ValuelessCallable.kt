@@ -14,14 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.test;
+
+package org.apache.kafka.test
 
 /**
- * Interface to wrap actions that are required to wait until a condition is met
- * for testing purposes.  Note that this is not intended to do any assertions.
+ * Like a [Runnable] that allows exceptions to be thrown or a [java.util.concurrent.Callable] that
+ * does not return a value.
  */
-@FunctionalInterface
-public interface TestCondition {
+fun interface ValuelessCallable {
 
-    boolean conditionMet() throws Exception;
+    @Throws(Exception::class)
+    fun call()
 }

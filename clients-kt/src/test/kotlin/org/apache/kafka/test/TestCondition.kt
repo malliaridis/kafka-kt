@@ -14,27 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.test;
 
-import org.apache.kafka.common.network.NetworkReceive;
+package org.apache.kafka.test
 
 /**
- * Used by MockSelector to allow clients to add responses whose associated requests are added later.
+ * Interface to wrap actions that are required to wait until a condition is met for testing
+ * purposes. Note that this is not intended to do any assertions.
  */
-public class DelayedReceive {
-    private final String source;
-    private final NetworkReceive receive;
-
-    public DelayedReceive(String source, NetworkReceive receive) {
-        this.source = source;
-        this.receive = receive;
-    }
-
-    public String source() {
-        return source;
-    }
-
-    public NetworkReceive receive() {
-        return receive;
-    }
+fun interface TestCondition {
+    
+    @Throws(Exception::class)
+    fun conditionMet(): Boolean
 }

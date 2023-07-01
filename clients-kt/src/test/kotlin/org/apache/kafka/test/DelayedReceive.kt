@@ -14,7 +14,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.test;
 
-public interface IntegrationTest {
+package org.apache.kafka.test
+
+import org.apache.kafka.common.network.NetworkReceive
+
+/**
+ * Used by MockSelector to allow clients to add responses whose associated requests are added later.
+ */
+class DelayedReceive(val source: String, val receive: NetworkReceive) {
+
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("source"),
+    )
+    fun source(): String = source
+
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("receive"),
+    )
+    fun receive(): NetworkReceive = receive
 }

@@ -183,12 +183,40 @@ class Metrics(
         inactiveSensorExpirationTimeSeconds: Long = Long.MAX_VALUE,
         recordingLevel: RecordingLevel = RecordingLevel.INFO,
         vararg parents: Sensor
+    ): Sensor = sensor(
+        name = name,
+        config = config,
+        inactiveSensorExpirationTimeSeconds = inactiveSensorExpirationTimeSeconds,
+        recordingLevel = recordingLevel,
+        parents = listOf(*parents),
+    )
+
+    /**
+     * Get or create a sensor with the given unique name and zero or more parent sensors. All parent
+     * sensors will receive every value recorded with this sensor.
+     *
+     * @param name The name of the sensor
+     * @param config A default configuration to use for this sensor for metrics that don't have
+     * their own config
+     * @param inactiveSensorExpirationTimeSeconds If no value is recorded on the Sensor for this
+     * duration of time, it is eligible for removal
+     * @param parents The parent sensors
+     * @param recordingLevel The recording level
+     * @return The sensor that is created
+     */
+    @Synchronized
+    fun sensor(
+        name: String,
+        config: MetricConfig? = null,
+        inactiveSensorExpirationTimeSeconds: Long = Long.MAX_VALUE,
+        recordingLevel: RecordingLevel = RecordingLevel.INFO,
+        parents: List<Sensor>,
     ): Sensor {
         return sensors.computeIfAbsent(name) {
             val sensor = Sensor(
                 registry = this,
                 name = name,
-                parents = parents.toList(),
+                parents = parents,
                 config = config ?: this.config,
                 time = time,
                 inactiveSensorExpirationTimeSeconds = inactiveSensorExpirationTimeSeconds,
@@ -227,7 +255,7 @@ class Metrics(
             }
         }
 
-        childSensors?.forEach { childSensor ->  removeSensor(childSensor.name()) }
+        childSensors?.forEach { childSensor -> removeSensor(childSensor.name) }
     }
 
     /**

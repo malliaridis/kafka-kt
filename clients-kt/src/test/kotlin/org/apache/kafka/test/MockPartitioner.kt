@@ -14,22 +14,43 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.test;
 
-/**
- * This class can be used in the callback given to {@link TestUtils#retryOnExceptionWithTimeout(long, long, ValuelessCallable)}
- * to indicate that a particular exception should not be retried. Instead the retry operation will
- * be aborted immediately and the exception will be rethrown.
- */
-public class NoRetryException extends RuntimeException {
-    private final Throwable cause;
+package org.apache.kafka.test
 
-    public NoRetryException(Throwable cause) {
-        this.cause = cause;
+import org.apache.kafka.clients.producer.Partitioner
+import org.apache.kafka.common.Cluster
+import java.util.concurrent.atomic.AtomicInteger
+
+class MockPartitioner : Partitioner {
+
+    init {
+        INIT_COUNT.incrementAndGet()
     }
 
-    @Override
-    public Throwable getCause() {
-        return this.cause;
+    override fun configure(configs: Map<String, *>) = Unit
+
+    override fun partition(
+        topic: String,
+        key: Any?,
+        keyBytes: ByteArray?,
+        value: Any?,
+        valueBytes: ByteArray?,
+        cluster: Cluster,
+    ): Int = 0
+
+    override fun close() {
+        CLOSE_COUNT.incrementAndGet()
+    }
+
+    companion object {
+
+        val INIT_COUNT = AtomicInteger(0)
+
+        val CLOSE_COUNT = AtomicInteger(0)
+
+        fun resetCounters() {
+            INIT_COUNT.set(0)
+            CLOSE_COUNT.set(0)
+        }
     }
 }
