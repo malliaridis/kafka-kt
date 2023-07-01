@@ -75,12 +75,12 @@ open class SaslChannelBuilder(
     private val isInterBrokerListener: Boolean,
     private val clientSaslMechanism: String,
     private val handshakeRequestEnable: Boolean,
-    private val credentialCache: CredentialCache,
-    private val tokenCache: DelegationTokenCache,
-    private val sslClientAuthOverride: String,
+    private val credentialCache: CredentialCache?,
+    private val tokenCache: DelegationTokenCache?,
+    private val sslClientAuthOverride: String?,
     private val time: Time,
     private val logContext: LogContext,
-    private val apiVersionSupplier: Supplier<ApiVersionsResponse>?
+    private val apiVersionSupplier: Supplier<ApiVersionsResponse>?,
 ) : ChannelBuilder, ListenerReconfigurable {
 
     private val loginManagers: MutableMap<String, LoginManager> = HashMap(jaasContexts.size)
@@ -184,7 +184,7 @@ open class SaslChannelBuilder(
         key: SelectionKey,
         maxReceiveSize: Int,
         memoryPool: MemoryPool?,
-        metadataRegistry: ChannelMetadataRegistry?,
+        metadataRegistry: ChannelMetadataRegistry,
     ): KafkaChannel {
         return try {
             val socketChannel = key.channel() as SocketChannel
@@ -193,13 +193,14 @@ open class SaslChannelBuilder(
             val authenticatorCreator: Supplier<Authenticator> = if (mode === Mode.SERVER) {
                 Supplier {
                     buildServerAuthenticator(
-                        configs,
-                        saslCallbackHandlers.toMap(),
-                        id,
-                        transportLayer,
-                        subjects,
-                        Collections.unmodifiableMap(connectionsMaxReauthMsByMechanism),
-                        metadataRegistry
+                        configs = configs,
+                        callbackHandlers = saslCallbackHandlers.toMap(),
+                        id = id,
+                        transportLayer = transportLayer,
+                        subjects = subjects,
+                        connectionsMaxReauthMsByMechanism =
+                        connectionsMaxReauthMsByMechanism.toMap(),
+                        metadataRegistry = metadataRegistry
                     )
                 }
             } else {
@@ -240,17 +241,17 @@ open class SaslChannelBuilder(
     // Visible to override for testing
     @Throws(IOException::class)
     protected fun buildTransportLayer(
-        id: String?,
-        key: SelectionKey?,
+        id: String,
+        key: SelectionKey,
         socketChannel: SocketChannel,
-        metadataRegistry: ChannelMetadataRegistry?,
+        metadataRegistry: ChannelMetadataRegistry,
     ): TransportLayer {
         return if (securityProtocol === SecurityProtocol.SASL_SSL) SslTransportLayer.create(
-            id,
-            key,
-            sslFactory.createSslEngine(socketChannel.socket()),
-            metadataRegistry
-        ) else PlaintextTransportLayer(key!!)
+            channelId = id,
+            key = key,
+            sslEngine = sslFactory.createSslEngine(socketChannel.socket()),
+            metadataRegistry = metadataRegistry,
+        ) else PlaintextTransportLayer(key)
     }
 
     // Visible to override for testing
@@ -324,8 +325,8 @@ open class SaslChannelBuilder(
                 if (clazz != null) newInstance(clazz)
                 else if (mechanism == PlainSaslServer.PLAIN_MECHANISM) PlainServerCallbackHandler()
                 else if (ScramMechanism.isScram(mechanism)) ScramServerCallbackHandler(
-                    credentialCache = credentialCache.cache(mechanism, ScramCredential::class.java)!!,
-                    tokenCache = tokenCache,
+                    credentialCache = credentialCache!!.cache(mechanism, ScramCredential::class.java)!!,
+                    tokenCache = tokenCache!!,
                 ) else if (mechanism == OAuthBearerLoginModule.OAUTHBEARER_MECHANISM)
                     OAuthBearerUnsecuredValidatorCallbackHandler()
                 else SaslServerCallbackHandler()

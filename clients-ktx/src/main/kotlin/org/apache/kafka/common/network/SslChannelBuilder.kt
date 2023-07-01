@@ -92,7 +92,7 @@ open class SslChannelBuilder(
         id: String, key: SelectionKey,
         maxReceiveSize: Int,
         memoryPool: MemoryPool?,
-        metadataRegistry: ChannelMetadataRegistry?
+        metadataRegistry: ChannelMetadataRegistry,
     ): KafkaChannel {
         return try {
             val transportLayer = buildTransportLayer(sslFactory, id, key, metadataRegistry)

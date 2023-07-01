@@ -29,7 +29,5 @@ class ThrottlingQuotaExceededException(
         message = "Use property instead",
         replaceWith = ReplaceWith("throttleTimeMs"),
     )
-    fun throttleTimeMs(): Int {
-        return throttleTimeMs
-    }
+    fun throttleTimeMs(): Int = throttleTimeMs
 }

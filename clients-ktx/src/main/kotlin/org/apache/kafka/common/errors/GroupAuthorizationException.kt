@@ -39,9 +39,7 @@ class GroupAuthorizationException(
         message = "Use property instead",
         replaceWith = ReplaceWith("groupId"),
     )
-    fun groupId(): String? {
-        return groupId
-    }
+    fun groupId(): String? = groupId
 
     companion object {
         @Deprecated("Use constructor with groupId instead.")

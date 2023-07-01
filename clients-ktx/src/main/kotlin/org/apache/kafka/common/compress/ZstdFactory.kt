@@ -59,13 +59,12 @@ object ZstdFactory {
             // We use our own BufferSupplier instead of com.github.luben.zstd.RecyclingBufferPool
             // since our implementation doesn't require locking or soft references.
             val bufferPool: BufferPool = object : BufferPool {
-                override fun get(capacity: Int): ByteBuffer {
-                    return decompressionBufferSupplier[capacity]
-                }
 
-                override fun release(buffer: ByteBuffer) {
+                override fun get(capacity: Int): ByteBuffer =
+                    decompressionBufferSupplier[capacity]!!
+
+                override fun release(buffer: ByteBuffer) =
                     decompressionBufferSupplier.release(buffer)
-                }
             }
 
             // Set output buffer (uncompressed) to 16 KB (none by default) to ensure reasonable

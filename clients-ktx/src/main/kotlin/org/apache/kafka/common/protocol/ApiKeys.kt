@@ -417,7 +417,7 @@ enum class ApiKeys(
 
             val detector: Schema.Visitor = object : Schema.Visitor() {
 
-                override fun visit(field: Type) {
+                override fun visit(field: Type?) {
                     if (
                         field === Type.BYTES
                         || field === Type.NULLABLE_BYTES

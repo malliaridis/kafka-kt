@@ -231,7 +231,7 @@ object ChannelBuilders {
                     securityProtocol = securityProtocol,
                     listenerName = listenerName,
                     isInterBrokerListener = isInterBrokerListener,
-                    clientSaslMechanism = clientSaslMechanism,
+                    clientSaslMechanism = clientSaslMechanism!!,
                     handshakeRequestEnable = saslHandshakeRequestEnable,
                     credentialCache = credentialCache,
                     tokenCache = tokenCache,

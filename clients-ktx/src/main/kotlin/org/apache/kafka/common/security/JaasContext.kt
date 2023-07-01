@@ -113,7 +113,7 @@ class JaasContext(
             mechanism: String,
             configs: Map<String, *>,
         ): JaasContext {
-            val listenerContextName = "${listenerName.value().lowercase()}.$GLOBAL_CONTEXT_NAME_SERVER"
+            val listenerContextName = "${listenerName.value.lowercase()}.$GLOBAL_CONTEXT_NAME_SERVER"
             val dynamicJaasConfig =
                 configs["${mechanism.lowercase()}.${SaslConfigs.SASL_JAAS_CONFIG}"] as Password?
             

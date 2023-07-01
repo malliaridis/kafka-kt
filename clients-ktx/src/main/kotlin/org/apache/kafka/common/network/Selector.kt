@@ -24,7 +24,6 @@ import org.apache.kafka.common.metrics.stats.Max
 import org.apache.kafka.common.metrics.stats.Meter
 import org.apache.kafka.common.metrics.stats.SampledStat
 import org.apache.kafka.common.metrics.stats.WindowedCount
-import org.apache.kafka.common.requests.DeleteAclsResponse.log
 import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.Time
 import org.apache.kafka.common.utils.Utils
@@ -285,7 +284,7 @@ class Selector private constructor(
         val channel = buildAndAttachKafkaChannel(socketChannel, id, key)
 
         channels[id] = channel
-        idleExpiryManager?.update(channel.id(), time.nanoseconds())
+        idleExpiryManager?.update(channel.id, time.nanoseconds())
 
         return key
     }
@@ -492,7 +491,7 @@ class Selector private constructor(
             val channel = channel(key)
             val channelStartTimeNanos = if (recordTimePerConnection) time.nanoseconds() else 0
             var sendFailed = false
-            val nodeId = channel.id()
+            val nodeId = channel.id
 
             // register all per-connection metrics at once
             sensors.maybeRegisterConnectionMetrics(nodeId)
@@ -590,7 +589,7 @@ class Selector private constructor(
                 /* cancel any defunct sockets */if (!key.isValid) close(channel, CloseMode.GRACEFUL)
             } catch (e: Exception) {
                 val desc =
-                    String.format("%s (channelId=%s)", channel.socketDescription(), channel.id())
+                    String.format("%s (channelId=%s)", channel.socketDescription(), channel.id)
                 if (e is IOException) log.debug("Connection with {} disconnected", desc, e)
                 else if (e is AuthenticationException) {
                     val isReauthentication = channel.successfulAuthentications > 0
@@ -636,7 +635,7 @@ class Selector private constructor(
     // package-private for testing
     @Throws(IOException::class)
     fun write(channel: KafkaChannel) {
-        val nodeId = channel.id()
+        val nodeId = channel.id
         val bytesSent = channel.write()
         val send = channel.maybeCompleteSend()
         // We may complete the send with bytesSent < 1 if `TransportLayer.hasPendingWrites` was
@@ -665,7 +664,7 @@ class Selector private constructor(
 
     @Throws(IOException::class)
     private fun attemptRead(channel: KafkaChannel) {
-        val nodeId = channel.id()
+        val nodeId = channel.id
         val bytesReceived = channel.read()
         if (bytesReceived != 0L) {
             val currentTimeMs = time.milliseconds()
@@ -684,7 +683,7 @@ class Selector private constructor(
     private fun maybeReadFromClosingChannel(channel: KafkaChannel): Boolean {
         val hasPending: Boolean
         hasPending =
-            if (channel.state()
+            if (channel.state
                     .state() !== ChannelState.State.READY
             ) false else if (explicitlyMutedChannels.contains(
                     channel
@@ -821,7 +820,7 @@ class Selector private constructor(
         val it = closingChannels.entries.iterator()
         while (it.hasNext()) {
             val channel = it.next().value
-            val sendFailed = failedSends.remove(channel.id())
+            val sendFailed = failedSends.remove(channel.id)
             var hasPending = false
             if (!sendFailed) hasPending = maybeReadFromClosingChannel(channel)
             if (!hasPending) {
@@ -865,7 +864,7 @@ class Selector private constructor(
 
     private fun maybeDelayCloseOnAuthenticationFailure(channel: KafkaChannel) {
         val delayedClose = DelayedAuthenticationFailureClose(channel, failedAuthenticationDelayMs)
-        if (delayedClosingChannels != null) delayedClosingChannels[channel.id()] =
+        if (delayedClosingChannels != null) delayedClosingChannels[channel.id] =
             delayedClose else delayedClose.closeNow()
     }
 
@@ -873,7 +872,7 @@ class Selector private constructor(
         try {
             channel.completeCloseOnAuthenticationFailure()
         } catch (e: Exception) {
-            log.error("Exception handling close on authentication failure node {}", channel.id(), e)
+            log.error("Exception handling close on authentication failure node {}", channel.id, e)
         } finally {
             close(channel, CloseMode.GRACEFUL)
         }
@@ -894,7 +893,7 @@ class Selector private constructor(
 
         // Ensure that `connected` does not have closed channels. This could happen if `prepare` throws an exception
         // in the `poll` invocation when `finishConnect` succeeds
-        connected.remove(channel.id())
+        connected.remove(channel.id)
 
         // Keep track of closed channels with pending receives so that all received records
         // may be processed. For example, when producer with acks=0 sends some records and
@@ -903,17 +902,17 @@ class Selector private constructor(
         // a send fails or all outstanding receives are processed. Mute state of disconnected channels
         // are tracked to ensure that requests are processed one-by-one by the broker to preserve ordering.
         if (closeMode == CloseMode.GRACEFUL && maybeReadFromClosingChannel(channel)) {
-            closingChannels[channel.id()] = channel
+            closingChannels[channel.id] = channel
             log.debug(
                 "Tracking closing connection {} to process outstanding requests",
-                channel.id()
+                channel.id
             )
         } else {
             doClose(channel, closeMode.notifyDisconnect)
         }
-        channels.remove(channel.id())
-        delayedClosingChannels?.remove(channel.id())
-        idleExpiryManager?.remove(channel.id())
+        channels.remove(channel.id)
+        delayedClosingChannels?.remove(channel.id)
+        idleExpiryManager?.remove(channel.id)
     }
 
     private fun doClose(channel: KafkaChannel, notifyDisconnect: Boolean) {
@@ -923,14 +922,14 @@ class Selector private constructor(
             keysWithBufferedRead.remove(key)
             channel.close()
         } catch (e: IOException) {
-            log.error("Exception closing connection to node {}:", channel.id(), e)
+            log.error("Exception closing connection to node {}:", channel.id, e)
         } finally {
             key.cancel()
             key.attach(null)
         }
         sensors.connectionClosed.record()
         explicitlyMutedChannels.remove(channel)
-        if (notifyDisconnect) disconnected[channel.id()] = channel.state()
+        if (notifyDisconnect) disconnected[channel.id] = channel.state
     }
 
     /**
@@ -1003,7 +1002,7 @@ class Selector private constructor(
      * Check if given channel has a completed receive
      */
     private fun hasCompletedReceive(channel: KafkaChannel): Boolean {
-        return completedReceives.containsKey(channel.id())
+        return completedReceives.containsKey(channel.id)
     }
 
     /**
@@ -1015,10 +1014,10 @@ class Selector private constructor(
         currentTimeMs: Long,
     ) {
         check(!hasCompletedReceive(channel)) {
-            "Attempting to add second completed receive to channel " + channel.id()
+            "Attempting to add second completed receive to channel " + channel.id
         }
-        completedReceives[channel.id()] = networkReceive
-        sensors.recordCompletedReceive(channel.id(), networkReceive.size().toLong(), currentTimeMs)
+        completedReceives[channel.id] = networkReceive
+        sensors.recordCompletedReceive(channel.id, networkReceive.size().toLong(), currentTimeMs)
     }
 
     // only for testing
@@ -1357,8 +1356,8 @@ class Selector private constructor(
                         group = metricGrpName,
                         description = "The number of connections with this SSL cipher and protocol.",
                         tags = mapOf(
-                            "cipher" to cipherInformation!!.cipher(),
-                            "protocol" to cipherInformation.protocol(),
+                            "cipher" to cipherInformation!!.cipher,
+                            "protocol" to cipherInformation.protocol,
                         ) + metricTags
                     )
                 },
@@ -1374,8 +1373,8 @@ class Selector private constructor(
                         group = metricGrpName,
                         description = "The number of connections with this client and version.",
                         tags = mapOf(
-                            "clientSoftwareName" to clientInformation!!.softwareName(),
-                            "clientSoftwareVersion" to clientInformation.softwareVersion(),
+                            "clientSoftwareName" to clientInformation!!.softwareName,
+                            "clientSoftwareVersion" to clientInformation.softwareVersion,
                         ) + metricTags,
                     )
                 },
@@ -1629,7 +1628,7 @@ class Selector private constructor(
 
         override fun close() {
             for (metricName in topLevelMetricNames) metrics.removeMetric(metricName)
-            for (sensor in sensors) metrics.removeSensor(sensor.name())
+            for (sensor in sensors) metrics.removeSensor(sensor.name)
             connectionsByCipher.close()
             connectionsByClient.close()
         }

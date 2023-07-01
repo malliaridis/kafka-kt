@@ -81,7 +81,7 @@ class KafkaLZ4BlockInputStream(
 
         readHeader()
 
-        decompressionBuffer = bufferSupplier[maxBlockSize]
+        decompressionBuffer = bufferSupplier[maxBlockSize]!!
         finished = false
     }
 

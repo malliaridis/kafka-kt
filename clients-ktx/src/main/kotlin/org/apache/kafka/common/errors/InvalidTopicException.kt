@@ -39,9 +39,7 @@ class InvalidTopicException(
         message = "Use property instead.",
         replaceWith = ReplaceWith("invalidTopics"),
     )
-    fun invalidTopics(): Set<String> {
-        return invalidTopics
-    }
+    fun invalidTopics(): Set<String> = invalidTopics
 
     companion object {
         private const val serialVersionUID = 1L

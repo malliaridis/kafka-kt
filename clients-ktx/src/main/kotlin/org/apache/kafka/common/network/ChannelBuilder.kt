@@ -24,7 +24,7 @@ interface ChannelBuilder : AutoCloseable, Configurable {
         key: SelectionKey,
         maxReceiveSize: Int,
         memoryPool: MemoryPool?,
-        metadataRegistry: ChannelMetadataRegistry?,
+        metadataRegistry: ChannelMetadataRegistry,
     ): KafkaChannel
 
     /**

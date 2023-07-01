@@ -202,9 +202,9 @@ class Schema(
      */
     abstract class Visitor {
 
-        fun visit(schema: Schema?) = Unit
+        open fun visit(schema: Schema?) = Unit
 
-        fun visit(field: Type?) = Unit
+        open fun visit(field: Type?) = Unit
     }
 
     companion object {

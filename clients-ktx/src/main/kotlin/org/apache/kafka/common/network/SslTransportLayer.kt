@@ -479,7 +479,7 @@ open class SslTransportLayer internal constructor(
      */
     private fun runDelegatedTasks(): HandshakeStatus {
         while (true) {
-            val task: Runnable = delegatedTask() ?: break
+            val task: Runnable = delegatedTask()
             task.run()
         }
         return sslEngine.handshakeStatus

@@ -36,7 +36,7 @@ import org.slf4j.LoggerFactory
  * Constructs a plaintext channel builder. ListenerName is non-`null` whenever it's instantiated in
  * the broker and `null` otherwise.
  */
-open class PlaintextChannelBuilder(private val listenerName: ListenerName) : ChannelBuilder {
+open class PlaintextChannelBuilder(private val listenerName: ListenerName?) : ChannelBuilder {
 
     private lateinit var configs: Map<String, *>
 
@@ -50,7 +50,7 @@ open class PlaintextChannelBuilder(private val listenerName: ListenerName) : Cha
         id: String, key: SelectionKey,
         maxReceiveSize: Int,
         memoryPool: MemoryPool?,
-        metadataRegistry: ChannelMetadataRegistry?
+        metadataRegistry: ChannelMetadataRegistry,
     ): KafkaChannel {
         return try {
             val transportLayer = buildTransportLayer(key)
@@ -99,22 +99,15 @@ open class PlaintextChannelBuilder(private val listenerName: ListenerName) : Cha
     private class PlaintextAuthenticator(
         configs: Map<String, *>,
         private val transportLayer: PlaintextTransportLayer,
-        listenerName: ListenerName
+        private val listenerName: ListenerName?,
     ) : Authenticator {
 
-        private val principalBuilder: KafkaPrincipalBuilder
-
-        private val listenerName: ListenerName?
-
-        init {
-            principalBuilder = createPrincipalBuilder(configs)
-            this.listenerName = listenerName
-        }
+        private val principalBuilder: KafkaPrincipalBuilder = createPrincipalBuilder(configs)
 
         override fun authenticate() = Unit
 
         override fun principal(): KafkaPrincipal {
-            val clientAddress = transportLayer.socketChannel()!!.socket().inetAddress
+            val clientAddress = transportLayer.socketChannel().socket().inetAddress
             // listenerName should only be null in Client mode where principal() should not be called
             checkNotNull(listenerName) { "Unexpected call to principal() when listenerName is null" }
 

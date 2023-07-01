@@ -20,6 +20,8 @@ package org.apache.kafka.common.errors
 /**
  * An exception that indicates that the authorizer is not ready to receive the request yet.
  */
-object AuthorizerNotReadyException : RetriableException() {
-    private const val serialVersionUID = 1L
+class AuthorizerNotReadyException : RetriableException() {
+    companion object {
+        private const val serialVersionUID = 1L
+    }
 }

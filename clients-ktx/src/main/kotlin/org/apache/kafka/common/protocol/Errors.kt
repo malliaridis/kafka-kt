@@ -854,7 +854,7 @@ enum class Errors(
          */
         fun forException(t: Throwable): Errors {
             val cause = maybeUnwrapException(t)
-            var clazz: Class<*>? = cause.javaClass
+            var clazz: Class<*>? = cause?.javaClass
             while (clazz != null) {
                 val error = classToError[clazz]
                 if (error != null) return error
