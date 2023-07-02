@@ -44,10 +44,10 @@ class FieldSpec @JsonCreator constructor(
     @JsonProperty("type") type: String,
     @JsonProperty("mapKey") val mapKey: Boolean,
     @JsonProperty("nullableVersions") nullableVersions: String?,
-    @JsonProperty("default") val fieldDefault: String = "",
+    @JsonProperty("default") fieldDefault: String?,
     @JsonProperty("ignorable") val ignorable: Boolean,
-    @JsonProperty("entityType") val entityType: EntityType = EntityType.UNKNOWN,
-    @JsonProperty("about") val about: String = "",
+    @JsonProperty("entityType") entityType: EntityType?,
+    @JsonProperty("about") about: String?,
     @JsonProperty("taggedVersions") taggedVersions: String?,
     @JsonProperty("flexibleVersions") flexibleVersions: String?,
     @JsonProperty("tag") val tag: Int?,
@@ -62,6 +62,15 @@ class FieldSpec @JsonCreator constructor(
     val type: FieldType
 
     val nullableVersions: Versions
+
+    @JsonProperty("default")
+    val fieldDefault: String
+
+    @JsonProperty("entityType")
+    val entityType: EntityType
+
+    @JsonProperty("about")
+    val about: String
 
     val taggedVersions: Versions
 
@@ -85,7 +94,10 @@ class FieldSpec @JsonCreator constructor(
         if (!this.nullableVersions.empty() && !this.type.canBeNullable())
             throw RuntimeException("Type ${this.type} cannot be nullable.")
 
+        this.fieldDefault = fieldDefault ?: ""
+        this.entityType = entityType ?: EntityType.UNKNOWN
         this.entityType.verifyTypeMatches(name, this.type)
+        this.about = about ?: ""
         if (this.fields.isNotEmpty()) {
             if (!this.type.isArray && !this.type.isStruct) {
                 throw RuntimeException("Non-array or Struct field $name cannot have fields")
@@ -310,11 +322,10 @@ class FieldSpec @JsonCreator constructor(
     /**
      * Get a string representation of the field default.
      *
-     * @param headerGenerator   The header generator in case we need to add imports.
-     * @param structRegistry    The struct registry in case we need to look up structs.
+     * @param headerGenerator The header generator in case we need to add imports.
+     * @param structRegistry The struct registry in case we need to look up structs.
      *
-     * @return                  A string that can be used for the field default in the
-     * generated code.
+     * @return A string that can be used for the field default in the generated code.
      */
     fun fieldDefault(
         headerGenerator: HeaderGenerator,
