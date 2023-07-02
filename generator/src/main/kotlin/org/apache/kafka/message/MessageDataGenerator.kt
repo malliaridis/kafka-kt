@@ -231,7 +231,7 @@ class MessageDataGenerator internal constructor(
         buffer.printf("%n")
         generateHashSetIteratorConstructor(className)
         buffer.printf("%n")
-        generateHashSetFindMethod(FieldSpec.toString(), struct)
+        generateHashSetFindMethod(FieldSpec::class.java.toString(), struct)
         buffer.printf("%n")
         generateHashSetFindAllMethod(className, struct)
         buffer.printf("%n")
