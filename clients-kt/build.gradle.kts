@@ -17,8 +17,9 @@ dependencies {
 
     compileOnly(Deps.Libs.jacksonDatabind) // for SASL/OAUTHBEARER bearer token parsing
     compileOnly(Deps.Libs.jacksonJDK8Datatypes)
-    compileOnly(Deps.Libs.jose4j)          // for SASL/OAUTHBEARER JWT validation; only used by broker
+    compileOnly(Deps.Libs.jose4j) // for SASL/OAUTHBEARER JWT validation; only used by broker
 
+    testImplementation(kotlin("test"))
     testImplementation(Deps.Libs.bcpkix)
     testImplementation(Deps.Libs.jacksonJaxrsJsonProvider)
     testImplementation(Deps.Libs.jose4j)
@@ -58,6 +59,10 @@ tasks.register("createVersionFile") {
             charset = Charsets.ISO_8859_1,
         )
     }
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 tasks.withType<Jar> {
