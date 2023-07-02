@@ -606,7 +606,7 @@ open class Metadata(
      *
      * @return the constructed non-null metadata builder
      */
-    private fun newMetadataRequestBuilder(): MetadataRequest.Builder {
+    fun newMetadataRequestBuilder(): MetadataRequest.Builder {
         return MetadataRequest.Builder.allTopics()
     }
 
