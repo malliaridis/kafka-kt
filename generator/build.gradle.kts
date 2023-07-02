@@ -7,7 +7,8 @@ dependencies {
     implementation(Deps.Libs.jacksonDatabind)
     implementation(Deps.Libs.jacksonJDK8Datatypes)
     implementation(Deps.Libs.jacksonJaxrsJsonProvider)
-    testImplementation(Deps.Libs.junitJupiter)
+
+    testImplementation(kotlin("test"))
 }
 
 // TODO Disable javadoc / dokka
