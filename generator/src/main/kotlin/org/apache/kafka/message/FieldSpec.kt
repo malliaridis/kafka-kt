@@ -54,7 +54,7 @@ class FieldSpec @JsonCreator constructor(
     @JsonProperty("zeroCopy") val zeroCopy: Boolean,
 ) {
 
-    val versions: Versions?
+    val versions: Versions
 
     @JsonProperty("fields")
     val fields: List<FieldSpec>
@@ -76,9 +76,7 @@ class FieldSpec @JsonCreator constructor(
         this.versions = Versions.parse(
             input = versions,
             defaultVersions = if (this.taggedVersions.empty()) null else this.taggedVersions,
-        )
-        if (this.versions == null)
-            throw RuntimeException("You must specify the version of the $name structure.")
+        ) ?: throw RuntimeException("You must specify the version of the $name structure.")
 
         this.fields = fields?.toList() ?: emptyList()
         this.type = FieldType.parse(type)
@@ -136,7 +134,7 @@ class FieldSpec @JsonCreator constructor(
                         "taggedVersions must be either none, or an open-ended range (that ends " +
                         "with a plus sign)."
             )
-            if (taggedVersions.intersect((versions)!!) != taggedVersions) throw RuntimeException(
+            if (taggedVersions.intersect((versions)) != taggedVersions) throw RuntimeException(
                 "Field $name specifies taggedVersions $taggedVersions, and versions $versions. " +
                         "taggedVersions must be a subset of versions."
             )
@@ -163,7 +161,7 @@ class FieldSpec @JsonCreator constructor(
         message = "User property instead",
         replaceWith = ReplaceWith("versions"),
     )
-    fun versions(): Versions? = versions
+    fun versions(): Versions = versions
 
     @Deprecated(
         message = "User property instead",
@@ -517,7 +515,7 @@ class FieldSpec @JsonCreator constructor(
     }
 
     private fun validateNullDefault() {
-        if (!nullableVersions.contains(versions!!)) throw RuntimeException(
+        if (!nullableVersions.contains(versions)) throw RuntimeException(
             "null cannot be the default for field $name, because not all versions of this field " +
                     "are nullable."
         )

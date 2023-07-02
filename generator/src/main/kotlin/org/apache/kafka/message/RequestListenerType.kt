@@ -15,38 +15,18 @@
  * limitations under the License.
  */
 
-package org.apache.kafka.message;
+package org.apache.kafka.message
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonProperty
 
-public enum MessageSpecType {
-    /**
-     * Kafka request RPCs.
-     */
-    @JsonProperty("request")
-    REQUEST,
+enum class RequestListenerType {
 
-    /**
-     * Kafka response RPCs.
-     */
-    @JsonProperty("response")
-    RESPONSE,
+    @JsonProperty("zkBroker")
+    ZK_BROKER,
 
-    /**
-     * Kafka RPC headers.
-     */
-    @JsonProperty("header")
-    HEADER,
+    @JsonProperty("broker")
+    BROKER,
 
-    /**
-     * KIP-631 controller records.
-     */
-    @JsonProperty("metadata")
-    METADATA,
-
-    /**
-     * Other message spec types.
-     */
-    @JsonProperty("data")
-    DATA;
+    @JsonProperty("controller")
+    CONTROLLER,
 }

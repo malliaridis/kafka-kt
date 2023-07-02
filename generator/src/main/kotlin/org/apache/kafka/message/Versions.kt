@@ -40,9 +40,8 @@ data class Versions(
 ) {
 
     init {
-        if (lowest < 0 || highest < 0) throw RuntimeException(
-            "Invalid version range $lowest to $highest"
-        )
+        if (lowest < 0 || highest < 0)
+            throw RuntimeException("Invalid version range $lowest to $highest")
     }
 
     @Deprecated(

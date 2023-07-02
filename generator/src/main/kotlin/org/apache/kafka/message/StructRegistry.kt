@@ -60,20 +60,20 @@ class StructRegistry {
     @Throws(Exception::class)
     fun register(message: MessageSpec) {
         // Register common structures.
-        for (struct in message.commonStructs()) {
-            if (!firstIsCapitalized(struct.name())) throw RuntimeException(
-                "Can't process structure ${struct.name()}: the first letter of structure names " +
+        for (struct in message.commonStructs) {
+            if (!firstIsCapitalized(struct.name)) throw RuntimeException(
+                "Can't process structure ${struct.name}: the first letter of structure names " +
                         "must be capitalized."
             )
 
-            if (structs.containsKey(struct.name()))
-                throw RuntimeException("Common struct ${struct.name()} was specified twice.")
+            if (structs.containsKey(struct.name))
+                throw RuntimeException("Common struct ${struct.name} was specified twice.")
 
-            structs[struct.name()] = StructInfo(struct, struct.versions())
-            commonStructNames.add(struct.name())
+            structs[struct.name] = StructInfo(struct, struct.versions)
+            commonStructNames.add(struct.name)
         }
         // Register inline structures.
-        addStructSpecs(message.validVersions(), message.fields())
+        addStructSpecs(message.validVersions, message.fields)
     }
 
     private fun addStructSpecs(parentVersions: Versions, fields: List<FieldSpec>) {
@@ -105,7 +105,7 @@ class StructRegistry {
                     )
                     structs[typeName] = StructInfo(spec, parentVersions)
                 }
-                addStructSpecs(parentVersions.intersect(field.versions!!), field.fields)
+                addStructSpecs(parentVersions.intersect(field.versions), field.fields)
             }
         }
     }
@@ -142,7 +142,7 @@ class StructRegistry {
         val structInfo = structs[arrayType.elementName()] ?: throw RuntimeException(
             "Unable to locate a specification for the structure ${arrayType.elementName()}"
         )
-        return structInfo.spec.hasKeys()
+        return structInfo.spec.hasKeys
     }
 
     fun commonStructNames(): Set<String> = commonStructNames
