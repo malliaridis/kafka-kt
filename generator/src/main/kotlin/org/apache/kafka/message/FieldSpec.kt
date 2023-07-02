@@ -44,17 +44,17 @@ class FieldSpec @JsonCreator constructor(
     @JsonProperty("type") type: String,
     @JsonProperty("mapKey") val mapKey: Boolean,
     @JsonProperty("nullableVersions") nullableVersions: String?,
-    @JsonProperty("default") val fieldDefault: String = "",
+    @JsonProperty("default") fieldDefault: String?,
     @JsonProperty("ignorable") val ignorable: Boolean,
-    @JsonProperty("entityType") val entityType: EntityType = EntityType.UNKNOWN,
-    @JsonProperty("about") val about: String = "",
+    @JsonProperty("entityType") entityType: EntityType?,
+    @JsonProperty("about") about: String?,
     @JsonProperty("taggedVersions") taggedVersions: String?,
     @JsonProperty("flexibleVersions") flexibleVersions: String?,
     @JsonProperty("tag") val tag: Int?,
     @JsonProperty("zeroCopy") val zeroCopy: Boolean,
 ) {
 
-    val versions: Versions?
+    val versions: Versions
 
     @JsonProperty("fields")
     val fields: List<FieldSpec>
@@ -62,6 +62,15 @@ class FieldSpec @JsonCreator constructor(
     val type: FieldType
 
     val nullableVersions: Versions
+
+    @JsonProperty("default")
+    val fieldDefault: String
+
+    @JsonProperty("entityType")
+    val entityType: EntityType
+
+    @JsonProperty("about")
+    val about: String
 
     val taggedVersions: Versions
 
@@ -76,9 +85,7 @@ class FieldSpec @JsonCreator constructor(
         this.versions = Versions.parse(
             input = versions,
             defaultVersions = if (this.taggedVersions.empty()) null else this.taggedVersions,
-        )
-        if (this.versions == null)
-            throw RuntimeException("You must specify the version of the $name structure.")
+        ) ?: throw RuntimeException("You must specify the version of the $name structure.")
 
         this.fields = fields?.toList() ?: emptyList()
         this.type = FieldType.parse(type)
@@ -87,7 +94,10 @@ class FieldSpec @JsonCreator constructor(
         if (!this.nullableVersions.empty() && !this.type.canBeNullable())
             throw RuntimeException("Type ${this.type} cannot be nullable.")
 
+        this.fieldDefault = fieldDefault ?: ""
+        this.entityType = entityType ?: EntityType.UNKNOWN
         this.entityType.verifyTypeMatches(name, this.type)
+        this.about = about ?: ""
         if (this.fields.isNotEmpty()) {
             if (!this.type.isArray && !this.type.isStruct) {
                 throw RuntimeException("Non-array or Struct field $name cannot have fields")
@@ -136,7 +146,7 @@ class FieldSpec @JsonCreator constructor(
                         "taggedVersions must be either none, or an open-ended range (that ends " +
                         "with a plus sign)."
             )
-            if (taggedVersions.intersect((versions)!!) != taggedVersions) throw RuntimeException(
+            if (taggedVersions.intersect((versions)) != taggedVersions) throw RuntimeException(
                 "Field $name specifies taggedVersions $taggedVersions, and versions $versions. " +
                         "taggedVersions must be a subset of versions."
             )
@@ -163,7 +173,7 @@ class FieldSpec @JsonCreator constructor(
         message = "User property instead",
         replaceWith = ReplaceWith("versions"),
     )
-    fun versions(): Versions? = versions
+    fun versions(): Versions = versions
 
     @Deprecated(
         message = "User property instead",
@@ -312,11 +322,10 @@ class FieldSpec @JsonCreator constructor(
     /**
      * Get a string representation of the field default.
      *
-     * @param headerGenerator   The header generator in case we need to add imports.
-     * @param structRegistry    The struct registry in case we need to look up structs.
+     * @param headerGenerator The header generator in case we need to add imports.
+     * @param structRegistry The struct registry in case we need to look up structs.
      *
-     * @return                  A string that can be used for the field default in the
-     * generated code.
+     * @return A string that can be used for the field default in the generated code.
      */
     fun fieldDefault(
         headerGenerator: HeaderGenerator,
@@ -349,8 +358,8 @@ class FieldSpec @JsonCreator constructor(
                             java.lang.Byte.valueOf(defaultString, base)
                         } catch (e: NumberFormatException) {
                             throw RuntimeException(
-                                message = "Invalid default for int8 field $name: $defaultString",
-                                cause = e
+                                "Invalid default for int8 field $name: $defaultString",
+                                e,
                             )
                         }
                         "(byte) $fieldDefault"
@@ -364,8 +373,8 @@ class FieldSpec @JsonCreator constructor(
                             defaultString.toShort(base)
                         } catch (e: NumberFormatException) {
                             throw RuntimeException(
-                                message = "Invalid default for int16 field $name: $defaultString",
-                                cause = e
+                                "Invalid default for int16 field $name: $defaultString",
+                                e,
                             )
                         }
                         "(short) $fieldDefault"
@@ -383,8 +392,8 @@ class FieldSpec @JsonCreator constructor(
                                 )
                         } catch (e: NumberFormatException) {
                             throw RuntimeException(
-                                message = "Invalid default for uint16 field $name: $defaultString",
-                                cause = e,
+                                "Invalid default for uint16 field $name: $defaultString",
+                                e,
                             )
                         }
                         return fieldDefault
@@ -404,8 +413,8 @@ class FieldSpec @JsonCreator constructor(
                             }
                         } catch (e: NumberFormatException) {
                             throw RuntimeException(
-                                message = "Invalid default for uint32 field $name: $defaultString",
-                                cause = e,
+                                "Invalid default for uint32 field $name: $defaultString",
+                                e,
                             )
                         }
                         return fieldDefault
@@ -419,8 +428,8 @@ class FieldSpec @JsonCreator constructor(
                             Integer.valueOf(defaultString, base)
                         } catch (e: NumberFormatException) {
                             throw RuntimeException(
-                                message = "Invalid default for int32 field $name: $defaultString",
-                                cause = e,
+                                "Invalid default for int32 field $name: $defaultString",
+                                e,
                             )
                         }
                         fieldDefault
@@ -434,8 +443,8 @@ class FieldSpec @JsonCreator constructor(
                             java.lang.Long.valueOf(defaultString, base)
                         } catch (e: NumberFormatException) {
                             throw RuntimeException(
-                                message = "Invalid default for int64 field $name: $defaultString",
-                                cause = e,
+                                "Invalid default for int64 field $name: $defaultString",
+                                e,
                             )
                         }
                         fieldDefault + "L"
@@ -454,8 +463,8 @@ class FieldSpec @JsonCreator constructor(
                     uuidBytes.getLong()
                 } catch (e: IllegalArgumentException) {
                     throw RuntimeException(
-                        message = "Invalid default for uuid field $name: $fieldDefault",
-                        cause = e,
+                        "Invalid default for uuid field $name: $fieldDefault",
+                        e,
                     )
                 }
                 headerGenerator.addImport(MessageGenerator.UUID_CLASS)
@@ -517,7 +526,7 @@ class FieldSpec @JsonCreator constructor(
     }
 
     private fun validateNullDefault() {
-        if (!nullableVersions.contains(versions!!)) throw RuntimeException(
+        if (!nullableVersions.contains(versions)) throw RuntimeException(
             "null cannot be the default for field $name, because not all versions of this field " +
                     "are nullable."
         )

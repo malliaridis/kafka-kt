@@ -59,14 +59,23 @@ open class Metadata(
 ) : Closeable {
 
     private var updateVersion = 0 // bumped on every metadata response
+
     private var requestVersion = 0 // bumped on every new topic addition
+
     private var lastRefreshMs = 0L
+
     private var lastSuccessfulRefreshMs = 0L
+
     private var fatalException: KafkaException? = null
+
     private var invalidTopics: Set<String> = emptySet()
+
     private var unauthorizedTopics: Set<String> = emptySet()
+
     private var cache = MetadataCache.empty()
+
     private var needFullUpdate = false
+
     private var needPartialUpdate = false
 
     /**
@@ -77,7 +86,8 @@ open class Metadata(
     @get:Synchronized
     var isClosed = false
         private set
-    private val lastSeenLeaderEpochs: MutableMap<TopicPartition, Int> = HashMap()
+
+    val lastSeenLeaderEpochs: MutableMap<TopicPartition, Int> = HashMap()
 
     /**
      * Create a new Metadata instance
@@ -203,9 +213,9 @@ open class Metadata(
         return updated
     }
 
-    fun lastSeenLeaderEpoch(topicPartition: TopicPartition): Optional<Int> {
-        return Optional.ofNullable(lastSeenLeaderEpochs[topicPartition])
-    }
+    @Deprecated("User property directly")
+    fun lastSeenLeaderEpoch(topicPartition: TopicPartition): Int? =
+        lastSeenLeaderEpochs[topicPartition]
 
     /**
      * Check whether an update has been explicitly requested.
@@ -213,9 +223,7 @@ open class Metadata(
      * @return true if an update was requested, false otherwise
      */
     @Synchronized
-    fun updateRequested(): Boolean {
-        return needFullUpdate || needPartialUpdate
-    }
+    fun updateRequested(): Boolean = needFullUpdate || needPartialUpdate
 
     /**
      * Return the cached partition info if it exists and a newer leader epoch isn't known about.
@@ -606,7 +614,7 @@ open class Metadata(
      *
      * @return the constructed non-null metadata builder
      */
-    private fun newMetadataRequestBuilder(): MetadataRequest.Builder {
+    fun newMetadataRequestBuilder(): MetadataRequest.Builder {
         return MetadataRequest.Builder.allTopics()
     }
 
