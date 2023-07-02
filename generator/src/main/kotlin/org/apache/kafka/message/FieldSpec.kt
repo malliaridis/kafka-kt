@@ -231,7 +231,7 @@ class FieldSpec @JsonCreator constructor(
 
     @get:JsonProperty("nullableVersions")
     val nullableVersionsString: String
-        get() = nullableVersionsString.toString()
+        get() = nullableVersions.toString()
 
     @Deprecated(
         message = "User property instead",
