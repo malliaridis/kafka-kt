@@ -338,7 +338,9 @@ internal class SchemaGenerator(
     @Throws(Exception::class)
     fun writeSchema(className: String, buffer: CodeBuffer) {
         val messageInfo = messages[className]!!
-        val (lowest, highest) = messageInfo.versions
+        val lowest = messageInfo.versions.lowest
+        val highest = messageInfo.versions.highest
+
         for (v in lowest..highest) {
             val declaration = messageInfo.schemaForVersion[v.toShort()]
             if (declaration == null)

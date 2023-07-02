@@ -34,12 +34,21 @@ package org.apache.kafka.message
  *
  * The NONE range is represented as an the string "none".
  */
-data class Versions(
-    val lowest: Short = 0,
-    val highest: Short = -1,
-) {
+class Versions {
 
-    init {
+    val lowest: Short
+
+    val highest: Short
+
+    private constructor() {
+        lowest = 0
+        highest = -1
+    }
+
+    constructor(lowest: Short, highest: Short) {
+        this.lowest = lowest
+        this.highest = highest
+
         if (lowest < 0 || highest < 0)
             throw RuntimeException("Invalid version range $lowest to $highest")
     }
@@ -120,6 +129,22 @@ data class Versions(
     operator fun contains(other: Versions): Boolean {
         return if (other.empty()) true
         else !(lowest > other.lowest || highest < other.highest)
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as Versions
+
+        if (lowest != other.lowest) return false
+        return highest == other.highest
+    }
+
+    override fun hashCode(): Int {
+        var result = lowest.toInt()
+        result = 31 * result + highest
+        return result
     }
 
     companion object {
