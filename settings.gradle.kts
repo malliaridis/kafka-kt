@@ -1,8 +1,8 @@
 
-rootProject.name = "kafka-ktx"
+rootProject.name = "kafka-kt"
 
 include(
     "generator",
-    "clients-ktx",
-    "streams-ktx",
+    "clients-kt",
+    "streams-kt",
 )
