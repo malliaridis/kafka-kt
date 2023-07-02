@@ -349,8 +349,8 @@ class FieldSpec @JsonCreator constructor(
                             java.lang.Byte.valueOf(defaultString, base)
                         } catch (e: NumberFormatException) {
                             throw RuntimeException(
-                                message = "Invalid default for int8 field $name: $defaultString",
-                                cause = e
+                                "Invalid default for int8 field $name: $defaultString",
+                                e,
                             )
                         }
                         "(byte) $fieldDefault"
@@ -364,8 +364,8 @@ class FieldSpec @JsonCreator constructor(
                             defaultString.toShort(base)
                         } catch (e: NumberFormatException) {
                             throw RuntimeException(
-                                message = "Invalid default for int16 field $name: $defaultString",
-                                cause = e
+                                "Invalid default for int16 field $name: $defaultString",
+                                e,
                             )
                         }
                         "(short) $fieldDefault"
@@ -383,8 +383,8 @@ class FieldSpec @JsonCreator constructor(
                                 )
                         } catch (e: NumberFormatException) {
                             throw RuntimeException(
-                                message = "Invalid default for uint16 field $name: $defaultString",
-                                cause = e,
+                                "Invalid default for uint16 field $name: $defaultString",
+                                e,
                             )
                         }
                         return fieldDefault
@@ -404,8 +404,8 @@ class FieldSpec @JsonCreator constructor(
                             }
                         } catch (e: NumberFormatException) {
                             throw RuntimeException(
-                                message = "Invalid default for uint32 field $name: $defaultString",
-                                cause = e,
+                                "Invalid default for uint32 field $name: $defaultString",
+                                e,
                             )
                         }
                         return fieldDefault
@@ -419,8 +419,8 @@ class FieldSpec @JsonCreator constructor(
                             Integer.valueOf(defaultString, base)
                         } catch (e: NumberFormatException) {
                             throw RuntimeException(
-                                message = "Invalid default for int32 field $name: $defaultString",
-                                cause = e,
+                                "Invalid default for int32 field $name: $defaultString",
+                                e,
                             )
                         }
                         fieldDefault
@@ -434,8 +434,8 @@ class FieldSpec @JsonCreator constructor(
                             java.lang.Long.valueOf(defaultString, base)
                         } catch (e: NumberFormatException) {
                             throw RuntimeException(
-                                message = "Invalid default for int64 field $name: $defaultString",
-                                cause = e,
+                                "Invalid default for int64 field $name: $defaultString",
+                                e,
                             )
                         }
                         fieldDefault + "L"
@@ -454,8 +454,8 @@ class FieldSpec @JsonCreator constructor(
                     uuidBytes.getLong()
                 } catch (e: IllegalArgumentException) {
                     throw RuntimeException(
-                        message = "Invalid default for uuid field $name: $fieldDefault",
-                        cause = e,
+                        "Invalid default for uuid field $name: $fieldDefault",
+                        e,
                     )
                 }
                 headerGenerator.addImport(MessageGenerator.UUID_CLASS)
