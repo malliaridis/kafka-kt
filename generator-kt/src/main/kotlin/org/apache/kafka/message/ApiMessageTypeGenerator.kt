@@ -175,7 +175,7 @@ class ApiMessageTypeGenerator(packageName: String) : TypeClassGenerator {
     }
 
     private fun generateInstanceVariables() {
-        buffer.printf("val name: String%n")
+        buffer.printf("var name: String%n")
         buffer.printf("private val apiKey: Short%n")
         buffer.printf("private val requestSchemas: Array<Schema>%n")
         buffer.printf("private val responseSchemas: Array<Schema>%n")

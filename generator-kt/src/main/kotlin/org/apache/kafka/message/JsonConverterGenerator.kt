@@ -353,7 +353,7 @@ class JsonConverterGenerator internal constructor(
                     .nullableVersions(target.field.nullableVersions)
                     .possibleVersions(curVersions)
                     .conditionalGenerator { name, negated ->
-                        String.format("%s%s.isNull()", if (negated) "!" else "", name)
+                        String.format("%s%s.isNull", if (negated) "!" else "", name)
                     }
                     .ifNull { buffer.printf("%s%n", target.assignmentStatement("null")) }
                     .ifShouldNotBeNull { generateVariableLengthTargetFromJson(target, curVersions) }
@@ -648,7 +648,7 @@ class JsonConverterGenerator internal constructor(
                 buffer.printf(
                     "%s%n", target.assignmentStatement(
                         String.format(
-                            "BinaryNode(Arrays.copyOf(%s, %s.length))",
+                            "BinaryNode(Arrays.copyOf(%s, %s.size))",
                             target.sourceVariable,
                             target.sourceVariable,
                         )

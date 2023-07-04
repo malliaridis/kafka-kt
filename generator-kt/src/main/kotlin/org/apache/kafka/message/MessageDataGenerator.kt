@@ -404,11 +404,19 @@ class MessageDataGenerator internal constructor(
 
         if (isSetElement) {
             buffer.printf("%n")
-            buffer.printf("override ")
-            generateSetter("Int", "setNext", "next")
+            generateSetter(
+                kotlinType = "Int",
+                functionName = "setNext",
+                memberName = "next",
+                isOverride = true,
+            )
             buffer.printf("%n")
-            buffer.printf("override ")
-            generateSetter("Int", "setPrev", "prev")
+            generateSetter(
+                kotlinType = "Int",
+                functionName = "setPrev",
+                memberName = "prev",
+                isOverride = true,
+            )
         }
     }
 
@@ -1806,10 +1814,21 @@ class MessageDataGenerator internal constructor(
         buffer.printf("}%n")
     }
 
-    private fun generateSetter(kotlinType: String, functionName: String, memberName: String) {
-        buffer.printf("fun %s(v: %s) {%n", functionName, kotlinType)
+    private fun generateSetter(
+        kotlinType: String,
+        functionName: String,
+        memberName: String,
+        isOverride: Boolean = false,
+    ) {
+        buffer.printf(
+            "%sfun %s(%s: %s) {%n",
+            if (isOverride) "override " else "",
+            functionName,
+            memberName,
+            kotlinType,
+        )
         buffer.incrementIndent()
-        buffer.printf("this.%s = v%n", memberName)
+        buffer.printf("this.%s = %s%n", memberName, memberName)
         buffer.decrementIndent()
         buffer.printf("}%n")
     }

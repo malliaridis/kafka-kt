@@ -234,7 +234,7 @@ class FieldSpec @JsonCreator constructor(
             }
             when (type) {
                 is Int8FieldType -> {
-                    return if (defaultString.isEmpty()) "0"
+                    return if (defaultString.isEmpty()) "0.toByte()"
                     else {
                         try {
                             defaultString.toByte(base)
@@ -249,7 +249,7 @@ class FieldSpec @JsonCreator constructor(
                 }
 
                 is Uint8FieldType -> {
-                    return if (defaultString.isEmpty()) "0"
+                    return if (defaultString.isEmpty()) "0.toUByte()"
                     else {
                         try {
                             val value = defaultString.toUByte(base)
@@ -268,7 +268,7 @@ class FieldSpec @JsonCreator constructor(
                 }
 
                 is Int16FieldType -> {
-                    return if (defaultString.isEmpty()) "0"
+                    return if (defaultString.isEmpty()) "0.toShort()"
                     else {
                         try {
                             defaultString.toShort(base)
@@ -283,7 +283,7 @@ class FieldSpec @JsonCreator constructor(
                 }
 
                 is Uint16FieldType -> {
-                    return if (defaultString.isEmpty()) "0"
+                    return if (defaultString.isEmpty()) "0.toUShort()"
                     else {
                         try {
                             val value = defaultString.toUShort(base)
@@ -317,7 +317,7 @@ class FieldSpec @JsonCreator constructor(
                 }
 
                 is Uint32FieldType -> {
-                    return if (defaultString.isEmpty()) "0"
+                    return if (defaultString.isEmpty()) "0.toUInt()"
                     else {
                         try {
                             val value = defaultString.toUInt(base)
@@ -336,7 +336,7 @@ class FieldSpec @JsonCreator constructor(
                 }
 
                 is Int64FieldType -> {
-                    return if (defaultString.isEmpty()) "0"
+                    return if (defaultString.isEmpty()) "0L"
                     else {
                         try {
                             defaultString.toLong(base)
@@ -351,7 +351,7 @@ class FieldSpec @JsonCreator constructor(
                 }
 
                 is Uint64FieldType -> {
-                    return if (defaultString.isEmpty()) "0"
+                    return if (defaultString.isEmpty()) "0uL"
                     else {
                         try {
                             val value = defaultString.toULong(base)
@@ -658,8 +658,7 @@ class FieldSpec @JsonCreator constructor(
         buffer.incrementIndent()
         headerGenerator.addImport(MessageGenerator.UNSUPPORTED_VERSION_EXCEPTION_CLASS)
         buffer.printf(
-            "throw new UnsupportedVersionException(\"Attempted to write a non-default %s at " +
-                    "version \" + version);%n",
+            "throw UnsupportedVersionException(\"Attempted to write a non-default %s at version \$version\")%n",
             camelCaseName()
         )
         buffer.decrementIndent()
