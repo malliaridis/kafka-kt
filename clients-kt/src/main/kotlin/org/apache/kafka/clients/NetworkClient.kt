@@ -782,7 +782,9 @@ class NetworkClient(
 
     private fun handleApiVersionsResponse(
         responses: MutableList<ClientResponse>,
-        req: InFlightRequest, now: Long, apiVersionsResponse: ApiVersionsResponse
+        req: InFlightRequest,
+        now: Long,
+        apiVersionsResponse: ApiVersionsResponse,
     ) {
         val node = req.destination
         if (apiVersionsResponse.data().errorCode() != Errors.NONE.code) {
@@ -1239,10 +1241,10 @@ class NetworkClient(
                 )
             } catch (exception: CorrelationIdMismatchException) {
                 throw if ((SaslClientAuthenticator.isReserved(requestHeader.correlationId())
-                            && !SaslClientAuthenticator.isReserved(exception.responseCorrelationId()))
+                            && !SaslClientAuthenticator.isReserved(exception.responseCorrelationId))
                 ) SchemaException(
                     ("The response is unrelated to Sasl request since its correlation id is "
-                            + exception.responseCorrelationId() + " and the reserved range for Sasl request is [ "
+                            + exception.responseCorrelationId + " and the reserved range for Sasl request is [ "
                             + SaslClientAuthenticator.MIN_RESERVED_CORRELATION_ID + ","
                             + SaslClientAuthenticator.MAX_RESERVED_CORRELATION_ID + "]")
                 ) else exception
