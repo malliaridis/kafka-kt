@@ -336,23 +336,21 @@ class MessageDataGenerator internal constructor(
     }
 
     private fun generateFieldDeclarations(struct: StructSpec, isSetElement: Boolean) {
-        for (field in struct.fields) generateFieldDeclaration(field)
+        // for (field in struct.fields) generateFieldDeclaration(field)
+        for (field in struct.fields) generateFieldDeclarationWithDefaults(field)
 
         headerGenerator.addImport(MessageGenerator.LIST_CLASS)
         headerGenerator.addImport(MessageGenerator.RAW_TAGGED_FIELD_CLASS)
         buffer.printf("private var unknownTaggedFields: List<RawTaggedField>? = null%n")
-        if (isSetElement) {
-            buffer.printf("private var next: Int%n")
-            buffer.printf("private var prev: Int%n")
-        }
+        generateFieldEpilogue(isSetElement)
     }
 
-    // TODO Move field declarations to constructor and add make val
-    private fun generateFieldDeclaration(field: FieldSpec) {
+    private fun generateFieldDeclarationWithDefaults(field: FieldSpec) {
         buffer.printf(
-            "var %s: %s%n",
+            "var %s: %s = %s%n",
             field.camelCaseName(),
             field.fieldAbstractKotlinType(headerGenerator, structRegistry),
+            field.fieldDefault(headerGenerator, structRegistry),
         )
     }
 
@@ -433,16 +431,7 @@ class MessageDataGenerator internal constructor(
         buffer.decrementIndent()
         buffer.printf("}%n")
         buffer.printf("%n")
-        buffer.printf("constructor() {%n")
-        buffer.incrementIndent()
-        for (field in struct.fields) buffer.printf(
-            "%s = %s%n",
-            field.prefixedCamelCaseName(),
-            field.fieldDefault(headerGenerator, structRegistry)
-        )
-        generateConstructorEpilogue(isSetElement)
-        buffer.decrementIndent()
-        buffer.printf("}%n")
+        buffer.printf("constructor()%n")
     }
 
     private fun generateConstructorEpilogue(isSetElement: Boolean) {
@@ -450,6 +439,14 @@ class MessageDataGenerator internal constructor(
             headerGenerator.addImport(MessageGenerator.IMPLICIT_LINKED_HASH_COLLECTION_CLASS)
             buffer.printf("this.prev = ImplicitLinkedHashCollection.INVALID_INDEX%n")
             buffer.printf("this.next = ImplicitLinkedHashCollection.INVALID_INDEX%n")
+        }
+    }
+
+    private fun generateFieldEpilogue(isSetElement: Boolean) {
+        if (isSetElement) {
+            headerGenerator.addImport(MessageGenerator.IMPLICIT_LINKED_HASH_COLLECTION_CLASS)
+            buffer.printf("private var next: Int = ImplicitLinkedHashCollection.INVALID_INDEX%n")
+            buffer.printf("private var prev: Int = ImplicitLinkedHashCollection.INVALID_INDEX%n")
         }
     }
 
