@@ -34,31 +34,27 @@ class HeaderGenerator(private val packageName: String) {
         imports.add(newImport)
     }
 
+    @Deprecated("Kotlin does not have static imports")
     fun addStaticImport(newImport: String) {
         staticImports.add(newImport)
     }
 
     fun generate() {
-        Objects.requireNonNull(packageName)
-
         buffer.printf(
             """$HEADER
-            package $packageName;
+            package $packageName
             
-            ${ imports.joinToString(postfix = "%n", separator = "%n") { "import $it;"}}
-            ${ staticImports.joinToString(postfix = "%n", separator = "%n") { "import static $it;"}}
+            ${ imports.joinToString(separator = "%n") { "import $it"}}
+            
             """.trimIndent()
         )
     }
 
-    @Deprecated(
-        message = "User property instead",
-        replaceWith = ReplaceWith("buffer"),
-    )
-    fun buffer(): CodeBuffer = buffer
-
     companion object {
 
+        /**
+         * Default license note with a "generated code" message at the end.
+         */
         private val HEADER =
             """
             /*

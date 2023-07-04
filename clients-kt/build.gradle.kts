@@ -8,6 +8,7 @@ plugins {
 }
 
 val generator: Configuration by configurations.creating
+val generatorKt: Configuration by configurations.creating
 
 dependencies {
     implementation(Deps.Libs.zstd)
@@ -32,6 +33,7 @@ dependencies {
     testRuntimeOnly(Deps.Libs.jacksonJDK8Datatypes)
 
     generator(project(":generator"))
+    generatorKt(project(":generator-kt"))
 }
 
 tasks.register("createVersionFile") {
@@ -96,6 +98,23 @@ tasks.register<JavaExec>("processMessages") {
     outputs.dir("src/generated/java/org/apache/kafka/common/message")
 }
 
+tasks.register<JavaExec>("processKotlinMessages") {
+    mainClass.set("org.apache.kafka.message.MessageGenerator")
+    classpath = generatorKt
+    args = listOf(
+        "-p", "org.apache.kafka.common.message",
+        "-o", "src/generated/kotlin/org/apache/kafka/common/message",
+        "-i", "src/main/resources/common/message",
+        "-t", "ApiMessageTypeGenerator",
+        "-m", "MessageDataGenerator", "JsonConverterGenerator",
+    )
+    inputs.dir("src/main/resources/common/message")
+        .withPropertyName("messages")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.cacheIf { true }
+    outputs.dir("src/generated/kotlin/org/apache/kafka/common/message")
+}
+
 tasks.register<JavaExec>("processTestMessages") {
     mainClass.set("org.apache.kafka.message.MessageGenerator")
     classpath = generator
@@ -112,20 +131,46 @@ tasks.register<JavaExec>("processTestMessages") {
     outputs.dir("src/generated-test/java/org/apache/kafka/common/message")
 }
 
+tasks.register<JavaExec>("processKotlinTestMessages") {
+    mainClass.set("org.apache.kafka.message.MessageGenerator")
+    classpath = generatorKt
+    args = listOf(
+        "-p", "org.apache.kafka.common.message",
+        "-o", "src/generated-test/kotlin/org/apache/kafka/common/message",
+        "-i", "src/test/resources/common/message",
+        "-m", "MessageDataGenerator", "JsonConverterGenerator",
+    )
+    inputs.dir("src/test/resources/common/message")
+        .withPropertyName("testMessages")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.cacheIf { true }
+    outputs.dir("src/generated-test/kotlin/org/apache/kafka/common/message")
+}
+
 java.sourceSets["main"].java {
     srcDir("src/generated/java")
+}
+
+kotlin.sourceSets["main"].kotlin {
+    srcDir("src/generated/kotlin")
 }
 
 java.sourceSets["test"].java {
     srcDir("src/generated-test/java")
 }
 
+kotlin.sourceSets["test"].kotlin {
+    srcDir("src/generated-test/kotlin")
+}
+
 tasks.compileKotlin {
     dependsOn("processMessages")
+    dependsOn("processKotlinMessages")
 }
 
 tasks.compileTestKotlin {
     dependsOn("processTestMessages")
+    dependsOn("processKotlinTestMessages")
 }
 
 tasks.javadoc {
