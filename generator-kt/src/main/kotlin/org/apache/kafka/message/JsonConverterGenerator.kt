@@ -347,8 +347,8 @@ class JsonConverterGenerator internal constructor(
             }
 
             else -> {
-                // Handle the variable length types.  All of them are potentially
-                // nullable, so handle that here.
+                // Handle the variable length types. All of them are potentially nullable, so handle
+                // that here.
                 IsNullConditional.forName(target.sourceVariable)
                     .nullableVersions(target.field.nullableVersions)
                     .possibleVersions(curVersions)
@@ -605,8 +605,8 @@ class JsonConverterGenerator internal constructor(
             }
 
             else -> {
-                // Handle the variable length types.  All of them are potentially
-                // nullable, so handle that here.
+                // Handle the variable length types. All of them are potentially nullable, so handle
+                // that here.
                 IsNullConditional.forName(target.sourceVariable)
                     .nullableVersions(target.field.nullableVersions)
                     .possibleVersions(versions)

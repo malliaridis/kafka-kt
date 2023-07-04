@@ -244,7 +244,7 @@ class ApiMessageTypeGenerator(packageName: String) : TypeClassGenerator {
     }
 
     private fun generateAccessor(name: String, type: String) {
-        buffer.printf("%s(): %s {%n", name, type)
+        buffer.printf("fun %s(): %s {%n", name, type)
         buffer.incrementIndent()
         buffer.printf("return this.%s%n", name)
         buffer.decrementIndent()
@@ -277,13 +277,9 @@ class ApiMessageTypeGenerator(packageName: String) : TypeClassGenerator {
             }
             if (type == "request" && apiKey.toInt() == 7) {
                 buffer.printf("// Version 0 of ControlledShutdownRequest has a non-standard request header%n")
-                buffer.printf("// which does not include clientId.  Version 1 of ControlledShutdownRequest%n")
+                buffer.printf("// which does not include clientId. Version 1 of ControlledShutdownRequest%n")
                 buffer.printf("// and later use the standard request header.%n")
-                buffer.printf("if (version == 0.toShort()) {%n")
-                buffer.incrementIndent()
-                buffer.printf("0%n")
-                buffer.decrementIndent()
-                buffer.printf("}%n")
+                buffer.printf("if (version == 0.toShort()) 0%n")
             }
             val spec = when (type) {
                 "request" -> apiData.requestSpec

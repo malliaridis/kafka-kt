@@ -74,7 +74,7 @@ class HeaderGenerator(private val packageName: String) {
              * limitations under the License.
              */
             
-            // THIS CODE IS AUTOMATICALLY GENERATED.  DO NOT EDIT.
+            // THIS CODE IS AUTOMATICALLY GENERATED. DO NOT EDIT.
             """
     }
 }

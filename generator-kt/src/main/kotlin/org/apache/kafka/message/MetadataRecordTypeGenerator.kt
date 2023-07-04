@@ -145,7 +145,7 @@ class MetadataRecordTypeGenerator(packageName: String) : TypeClassGenerator {
     }
 
     private fun generateAccessor(name: String, type: String) {
-        buffer.printf("%s(): %s {%n", name, type)
+        buffer.printf("fun %s(): %s {%n", name, type)
         buffer.incrementIndent()
         buffer.printf("return this.%s%n", name)
         buffer.decrementIndent()

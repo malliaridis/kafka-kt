@@ -51,11 +51,11 @@ class StructSpec @JsonCreator constructor(
                 }
                 newFields.add(field)
             }
-            // Tag IDs should be contiguous and start at 0.  This optimizes space on the wire,
+            // Tag IDs should be contiguous and start at 0. This optimizes space on the wire,
             // since larger numbers take more space.
             for (i in tags.indices) {
                 if (!tags.contains(i)) throw RuntimeException(
-                    "In $name, the tag IDs are not contiguous.  Make use of tag $i before " +
+                    "In $name, the tag IDs are not contiguous. Make use of tag $i before " +
                             "using any higher tag IDs."
                 )
             }
