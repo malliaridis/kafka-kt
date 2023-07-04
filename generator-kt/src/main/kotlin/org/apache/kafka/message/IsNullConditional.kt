@@ -20,7 +20,11 @@ package org.apache.kafka.message
 /**
  * For versions of a field that are nullable, IsNullCondition creates a null check.
  */
-class IsNullConditional private constructor(private val name: String) {
+class IsNullConditional private constructor(
+    private val name: String,
+    private val namePrefix: String? = null,
+    private val isLocalName: Boolean = false,
+) {
 
     private var nullableVersions = Versions.ALL
 
@@ -32,7 +36,7 @@ class IsNullConditional private constructor(private val name: String) {
 
     private var alwaysEmitBlockScope = false
 
-    private var conditionalGenerator: ConditionalGenerator = PrimitiveConditionalGenerator.INSTANCE
+    private var conditionalGenerator: ConditionalGenerator = PrimitiveConditionalGenerator
 
     fun nullableVersions(nullableVersions: Versions): IsNullConditional {
         this.nullableVersions = nullableVersions
@@ -81,6 +85,8 @@ class IsNullConditional private constructor(private val name: String) {
             }
         } else {
             val ifNull = ifNull
+            if (namePrefix != null) buffer.printf("val %s = %s%s%n", name, namePrefix, name)
+
             if (ifNull != null) {
                 buffer.printf("if (%s) {%n", conditionalGenerator.generate(name, false))
                 buffer.incrementIndent()
@@ -107,24 +113,29 @@ class IsNullConditional private constructor(private val name: String) {
         fun generate(name: String?, negated: Boolean): String?
     }
 
-    private class PrimitiveConditionalGenerator : ConditionalGenerator {
+    object PrimitiveConditionalGenerator : ConditionalGenerator {
 
         override fun generate(name: String?, negated: Boolean): String {
             return if (negated) "$name != null"
             else "$name == null"
         }
-
-        companion object {
-            val INSTANCE = PrimitiveConditionalGenerator()
-        }
     }
 
     companion object {
 
-        fun forName(name: String): IsNullConditional = IsNullConditional(name)
+        fun forName(name: String, prefix: String? = null): IsNullConditional =
+            IsNullConditional(
+                name = name,
+                namePrefix = prefix,
+                isLocalName = true,
+            )
 
-        fun forField(field: FieldSpec): IsNullConditional {
-            val cond = IsNullConditional(field.camelCaseName())
+        fun forField(field: FieldSpec, fieldPrefix: String? = null): IsNullConditional {
+            val cond = IsNullConditional(
+                name = field.camelCaseName(),
+                namePrefix = fieldPrefix,
+                field.type.isNullable,
+            )
             cond.nullableVersions(field.nullableVersions)
             return cond
         }

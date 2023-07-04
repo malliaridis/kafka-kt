@@ -173,7 +173,10 @@ object MessageUtil {
 
     fun duplicate(array: ByteArray?): ByteArray? =
         if (array == null) null
-        else Arrays.copyOf(array, array.size)
+        else array.copyOf(array.size)
+
+    fun duplicate(array: ByteArray): ByteArray =
+        array.copyOf(array.size)
 
     /**
      * Compare two RawTaggedFields lists. A `null` list is equivalent to an empty one in this

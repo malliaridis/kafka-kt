@@ -47,7 +47,7 @@ class FieldSpec @JsonCreator constructor(
     @JsonProperty("type") type: String,
     @JsonProperty("mapKey") val mapKey: Boolean,
     @JsonProperty("nullableVersions") nullableVersions: String?,
-    @JsonProperty("default") fieldDefault: String?,
+    @JsonProperty("default") val fieldDefault: String?,
     @JsonProperty("ignorable") val ignorable: Boolean,
     @JsonProperty("entityType") entityType: EntityType?,
     @JsonProperty("about") about: String?,
@@ -65,9 +65,6 @@ class FieldSpec @JsonCreator constructor(
     val type: FieldType
 
     val nullableVersions: Versions
-
-    @JsonProperty("default")
-    val fieldDefault: String
 
     @JsonProperty("entityType")
     val entityType: EntityType
@@ -91,13 +88,14 @@ class FieldSpec @JsonCreator constructor(
         ) ?: throw RuntimeException("You must specify the version of the $name structure.")
 
         this.fields = fields?.toList() ?: emptyList()
-        this.type = FieldType.parse(type)
 
-        this.nullableVersions = Versions.parse(nullableVersions, Versions.NONE)!!
-        if (!this.nullableVersions.isEmpty && !this.type.canBeNullable())
-            throw RuntimeException("Type ${this.type} cannot be nullable.")
+        val parsedNullableVersions = Versions.parse(nullableVersions, Versions.NONE)!!
+        this.nullableVersions = parsedNullableVersions
+        this.type = FieldType.parse(
+            string = type,
+            isNullable = this.versions.contains(parsedNullableVersions) && parsedNullableVersions != Versions.NONE
+        )
 
-        this.fieldDefault = fieldDefault ?: ""
         this.entityType = entityType ?: EntityType.UNKNOWN
         this.entityType.verifyTypeMatches(name, this.type)
         this.about = about ?: ""
@@ -211,8 +209,10 @@ class FieldSpec @JsonCreator constructor(
         headerGenerator: HeaderGenerator,
         structRegistry: StructRegistry,
     ): String {
+        if (fieldDefault == null && type.isNullable) return "null"
+
         if (type is BoolFieldType) {
-            return if (fieldDefault.isEmpty()) "false"
+            return if (fieldDefault.isNullOrEmpty()) "false"
             else if (fieldDefault.equals("true", ignoreCase = true)) "true"
             else if (fieldDefault.equals("false", ignoreCase = true)) "false"
             else throw RuntimeException("Invalid default for boolean field $name: $fieldDefault")
@@ -228,13 +228,13 @@ class FieldSpec @JsonCreator constructor(
         ) {
             var base = 10
             var defaultString = fieldDefault
-            if (defaultString.startsWith("0x")) {
+            if (defaultString?.startsWith("0x") == true) {
                 base = 16
                 defaultString = defaultString.substring(2)
             }
             when (type) {
                 is Int8FieldType -> {
-                    return if (defaultString.isEmpty()) "0.toByte()"
+                    return if (defaultString.isNullOrEmpty()) "0.toByte()"
                     else {
                         try {
                             defaultString.toByte(base)
@@ -249,7 +249,7 @@ class FieldSpec @JsonCreator constructor(
                 }
 
                 is Uint8FieldType -> {
-                    return if (defaultString.isEmpty()) "0.toUByte()"
+                    return if (defaultString.isNullOrEmpty()) "0.toUByte()"
                     else {
                         try {
                             val value = defaultString.toUByte(base)
@@ -268,7 +268,7 @@ class FieldSpec @JsonCreator constructor(
                 }
 
                 is Int16FieldType -> {
-                    return if (defaultString.isEmpty()) "0.toShort()"
+                    return if (defaultString.isNullOrEmpty()) "0.toShort()"
                     else {
                         try {
                             defaultString.toShort(base)
@@ -283,7 +283,7 @@ class FieldSpec @JsonCreator constructor(
                 }
 
                 is Uint16FieldType -> {
-                    return if (defaultString.isEmpty()) "0.toUShort()"
+                    return if (defaultString.isNullOrEmpty()) "0.toUShort()"
                     else {
                         try {
                             val value = defaultString.toUShort(base)
@@ -302,7 +302,7 @@ class FieldSpec @JsonCreator constructor(
                 }
 
                 is Int32FieldType -> {
-                    return if (defaultString.isEmpty()) "0"
+                    return if (defaultString.isNullOrEmpty()) "0"
                     else {
                         try {
                             defaultString.toInt(base)
@@ -312,12 +312,12 @@ class FieldSpec @JsonCreator constructor(
                                 e,
                             )
                         }
-                        fieldDefault
+                        "$fieldDefault"
                     }
                 }
 
                 is Uint32FieldType -> {
-                    return if (defaultString.isEmpty()) "0.toUInt()"
+                    return if (defaultString.isNullOrEmpty()) "0.toUInt()"
                     else {
                         try {
                             val value = defaultString.toUInt(base)
@@ -336,7 +336,7 @@ class FieldSpec @JsonCreator constructor(
                 }
 
                 is Int64FieldType -> {
-                    return if (defaultString.isEmpty()) "0L"
+                    return if (defaultString.isNullOrEmpty()) "0L"
                     else {
                         try {
                             defaultString.toLong(base)
@@ -351,7 +351,7 @@ class FieldSpec @JsonCreator constructor(
                 }
 
                 is Uint64FieldType -> {
-                    return if (defaultString.isEmpty()) "0uL"
+                    return if (defaultString.isNullOrEmpty()) "0uL"
                     else {
                         try {
                             val value = defaultString.toULong(base)
@@ -373,7 +373,7 @@ class FieldSpec @JsonCreator constructor(
             }
         } else if (type is UUIDFieldType) {
             headerGenerator.addImport(MessageGenerator.UUID_CLASS)
-            return if (fieldDefault.isEmpty()) "Uuid.ZERO_UUID"
+            return if (fieldDefault.isNullOrEmpty()) "Uuid.ZERO_UUID"
             else {
                 try {
                     val uuidBytes = ByteBuffer.wrap(Base64.getUrlDecoder().decode(fieldDefault))
@@ -389,7 +389,7 @@ class FieldSpec @JsonCreator constructor(
                 "Uuid.fromString(\"$fieldDefault\")"
             }
         } else if (type is Float32FieldType) {
-            return if (fieldDefault.isEmpty()) "0.0"
+            return if (fieldDefault.isNullOrEmpty()) "0.0"
             else {
                 try {
                     fieldDefault.toFloat()
@@ -402,7 +402,7 @@ class FieldSpec @JsonCreator constructor(
                 "\"$fieldDefault\".toFloat()"
             }
         } else if (type is Float64FieldType) {
-            return if (fieldDefault.isEmpty()) "0.0"
+            return if (fieldDefault.isNullOrEmpty()) "0.0"
             else {
                 try {
                     fieldDefault.toDouble()
@@ -423,7 +423,7 @@ class FieldSpec @JsonCreator constructor(
             if (fieldDefault == "null") {
                 validateNullDefault()
                 return "null"
-            } else if (fieldDefault.isNotEmpty()) throw RuntimeException(
+            } else if (!fieldDefault.isNullOrEmpty()) throw RuntimeException(
                 "Invalid default for bytes field $name. The only valid default for a bytes field " +
                         "is empty or null."
             )
@@ -436,7 +436,7 @@ class FieldSpec @JsonCreator constructor(
             }
         } else if (type.isRecords) return "null"
         else if (type.isStruct) {
-            if (fieldDefault.isNotEmpty()) throw RuntimeException(
+            if (!fieldDefault.isNullOrEmpty()) throw RuntimeException(
                 "Invalid default for struct field $name: custom defaults are not supported for " +
                         "struct fields."
             )
@@ -445,7 +445,7 @@ class FieldSpec @JsonCreator constructor(
             if (fieldDefault == "null") {
                 validateNullDefault()
                 return "null"
-            } else if (fieldDefault.isNotEmpty()) throw RuntimeException(
+            } else if (!fieldDefault.isNullOrEmpty()) throw RuntimeException(
                 "Invalid default for array field $name. The only valid default for an array " +
                         "field is the empty array or null."
             )
@@ -474,38 +474,25 @@ class FieldSpec @JsonCreator constructor(
         headerGenerator: HeaderGenerator,
         structRegistry: StructRegistry,
     ): String {
-        when {
-            type is BoolFieldType -> return "Boolean"
-            type is Int8FieldType -> return "Byte"
-            type is Int16FieldType -> return "Short"
-            type is Uint16FieldType -> return "UInt"
-            type is Uint32FieldType -> return "ULong"
-            type is Int32FieldType -> return "Int"
-            type is Int64FieldType -> return "Long"
-            type is UUIDFieldType -> {
-                headerGenerator.addImport(MessageGenerator.UUID_CLASS)
-                return "Uuid"
-            }
-
-            type is Float32FieldType -> return "Float"
-            type is Float64FieldType -> return "Double"
-            type.isString -> return "String"
-            type.isBytes -> {
-                return if (zeroCopy) {
-                    headerGenerator.addImport(MessageGenerator.BYTE_BUFFER_CLASS)
-                    "ByteBuffer"
-                } else "ByteArray"
-            }
-
-            type is RecordsFieldType -> {
-                headerGenerator.addImport(MessageGenerator.BASE_RECORDS_CLASS)
-                return "BaseRecords"
-            }
-
-            type.isStruct -> return capitalizeFirst(typeString)
+        return when {
+            type is BoolFieldType
+            || type is Int8FieldType
+            || type is Int16FieldType
+            || type is Uint16FieldType
+            || type is Uint32FieldType
+            || type is Int32FieldType
+            || type is Int64FieldType
+            || type is UUIDFieldType
+            || type is Float32FieldType
+            || type is Float64FieldType
+            || type is RecordsFieldType
+            || type.isString
+            || (type.isBytes && zeroCopy) -> type.getBoxedKotlinType(headerGenerator)!!
+            type.isBytes -> "ByteArray"
+            type.isStruct -> capitalizeFirst(typeString) + if (type.isNullable) "?" else ""
             type.isArray -> {
                 val arrayType = type as FieldType.ArrayType
-                return if (structRegistry.isStructArrayWithKeys(this)) {
+                if (structRegistry.isStructArrayWithKeys(this)) {
                     headerGenerator.addImport(MessageGenerator.IMPLICIT_LINKED_HASH_MULTI_COLLECTION_CLASS)
                     collectionType(arrayType.elementType.toString())
                 } else {
@@ -514,7 +501,7 @@ class FieldSpec @JsonCreator constructor(
                         "List<%s>",
                         arrayType.elementType.getBoxedKotlinType(headerGenerator),
                     )
-                }
+                } + if (type.isNullable) "?" else ""
             }
 
             else -> throw RuntimeException("Unknown field type $type")
@@ -565,71 +552,65 @@ class FieldSpec @JsonCreator constructor(
         nullableVersions: Versions,
     ) {
         val fieldDefault = fieldDefault(headerGenerator, structRegistry)
+        val prefixedFieldName = fieldPrefix + camelCaseName()
+        if (type.isNullable) buffer.printf(
+            "val %s = %s%n",
+            camelCaseName(),
+            prefixedFieldName,
+        )
         if (type.isArray) {
             if (fieldDefault == "null")
-                buffer.printf("if (%s%s != null) {%n", fieldPrefix, camelCaseName())
+                buffer.printf("if (%s != null) {%n", prefixedFieldName)
             else if (nullableVersions.isEmpty)
-                buffer.printf("if (!%s%s.isEmpty()) {%n", fieldPrefix, camelCaseName())
+                buffer.printf("if (!%s.isEmpty()) {%n", prefixedFieldName)
             else buffer.printf(
-                "if (%s%s == null || !%s%s.isEmpty()) {%n",
-                fieldPrefix,
-                camelCaseName(),
-                fieldPrefix,
-                camelCaseName(),
+                "if (%s == null || !%s.isEmpty()) {%n",
+                prefixedFieldName,
+                prefixedFieldName,
             )
         } else if (type.isBytes) {
             if (fieldDefault == "null")
-                buffer.printf("if (%s%s != null) {%n", fieldPrefix, camelCaseName())
+                buffer.printf("if (%s != null) {%n", prefixedFieldName)
             else if (nullableVersions.isEmpty) {
                 if (zeroCopy) buffer.printf(
-                    "if (%s%s.hasRemaining()) {%n",
-                    fieldPrefix,
-                    camelCaseName(),
+                    "if (%s.hasRemaining()) {%n",
+                    prefixedFieldName,
                 )
-                else buffer.printf("if (%s%s.length != 0) {%n", fieldPrefix, camelCaseName())
+                else buffer.printf("if (%s.length != 0) {%n", prefixedFieldName)
             } else {
                 if (zeroCopy) buffer.printf(
-                    "if (%s%s == null || %s%s.remaining() > 0) {%n",
-                    fieldPrefix,
-                    camelCaseName(),
-                    fieldPrefix,
-                    camelCaseName(),
+                    "if (%s == null || %s.remaining() > 0) {%n",
+                    prefixedFieldName,
+                    prefixedFieldName,
                 )
                 else buffer.printf(
-                    "if (%s%s == null || %s%s.length != 0) {%n",
-                    fieldPrefix,
-                    camelCaseName(),
-                    fieldPrefix,
-                    camelCaseName(),
+                    "if (%s == null || %s.length != 0) {%n",
+                    prefixedFieldName,
+                    prefixedFieldName,
                 )
             }
         } else if (type.isString || type.isStruct || type is UUIDFieldType) {
-            if ((fieldDefault == "null"))
-                buffer.printf("if (%s%s != null) {%n", fieldPrefix, camelCaseName())
+            if (fieldDefault == "null")
+                buffer.printf("if (%s != null) {%n", prefixedFieldName)
             else if (nullableVersions.isEmpty) buffer.printf(
-                "if (%s%s != %s) {%n",
-                fieldPrefix,
-                camelCaseName(),
+                "if (%s != %s) {%n",
+                prefixedFieldName,
                 fieldDefault,
             )
             else buffer.printf(
-                "if (%s%s == null || %s%s != %s) {%n",
-                fieldPrefix,
-                camelCaseName(),
-                fieldPrefix,
-                camelCaseName(),
+                "if (%s == null || %s != %s) {%n",
+                prefixedFieldName,
+                prefixedFieldName,
                 fieldDefault,
             )
         } else if (type is BoolFieldType) buffer.printf(
-            "if (%s%s%s) {%n",
+            "if (%s%s) {%n",
             if (fieldDefault == "true") "!" else "",
-            fieldPrefix,
-            camelCaseName(),
+            prefixedFieldName,
         )
         else buffer.printf(
-            "if (%s%s != %s) {%n",
-            fieldPrefix,
-            camelCaseName(),
+            "if (%s != %s) {%n",
+            prefixedFieldName,
             fieldDefault,
         )
     }

@@ -69,9 +69,10 @@ interface FieldType {
         get() = false
 
     /**
-     * Returns `true` if this field type is compatible with nullability.
+     * `true` if this field type is nullable.
      */
-    fun canBeNullable(): Boolean = false
+    val isNullable: Boolean
+        get() = false
 
     /**
      * Gets the fixed length of the field, or None if the field is variable-length.
@@ -89,9 +90,12 @@ interface FieldType {
     /**
      * Field type of [kotlin.Boolean].
      */
-    class BoolFieldType : FieldType {
+    class BoolFieldType(
+        override val isNullable: Boolean = false,
+    ) : FieldType {
 
-        override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String = "Boolean"
+        override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String =
+            "Boolean" + if (isNullable) "?" else ""
 
         override fun fixedLength(): Int = 1
 
@@ -101,6 +105,8 @@ interface FieldType {
 
             val INSTANCE = BoolFieldType()
 
+            val NULLABLE_INSTANCE = BoolFieldType(isNullable = true)
+
             internal const val NAME = "bool"
         }
     }
@@ -108,9 +114,12 @@ interface FieldType {
     /**
      * Field type of [kotlin.Byte].
      */
-    class Int8FieldType : FieldType {
+    class Int8FieldType(
+        override val isNullable: Boolean = false,
+    ) : FieldType {
 
-        override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String = "Byte"
+        override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String =
+            "Byte" + if (isNullable) "?" else ""
 
         override fun fixedLength(): Int = 1
 
@@ -120,6 +129,8 @@ interface FieldType {
 
             val INSTANCE = Int8FieldType()
 
+            val NULLABLE_INSTANCE = Int8FieldType(isNullable = true)
+
             internal const val NAME = "int8"
         }
     }
@@ -127,9 +138,12 @@ interface FieldType {
     /**
      * Field type of [kotlin.UByte].
      */
-    class Uint8FieldType : FieldType {
+    class Uint8FieldType(
+        override val isNullable: Boolean = false,
+    ) : FieldType {
 
-        override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String = "UByte"
+        override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String =
+            "UByte" + if (isNullable) "?" else ""
 
         override fun fixedLength(): Int = 1
 
@@ -139,6 +153,8 @@ interface FieldType {
 
             val INSTANCE = Uint8FieldType()
 
+            val NULLABLE_INSTANCE = Uint8FieldType(isNullable = true)
+
             internal const val NAME = "uint8"
         }
     }
@@ -146,9 +162,12 @@ interface FieldType {
     /**
      * Field type of [kotlin.Short].
      */
-    class Int16FieldType : FieldType {
+    class Int16FieldType(
+        override val isNullable: Boolean = false,
+    ) : FieldType {
 
-        override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String = "Short"
+        override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String =
+            "Short" + if (isNullable) "?" else ""
 
         override fun fixedLength(): Int = 2
 
@@ -158,6 +177,8 @@ interface FieldType {
 
             val INSTANCE = Int16FieldType()
 
+            val NULLABLE_INSTANCE = Int16FieldType(isNullable = true)
+
             internal const val NAME = "int16"
         }
     }
@@ -165,9 +186,12 @@ interface FieldType {
     /**
      * Field type of [kotlin.UShort].
      */
-    class Uint16FieldType : FieldType {
+    class Uint16FieldType(
+        override val isNullable: Boolean = false,
+    ) : FieldType {
 
-        override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String = "UShort"
+        override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String =
+            "UShort" + if (isNullable) "?" else ""
 
         override fun fixedLength(): Int = 2
 
@@ -177,6 +201,8 @@ interface FieldType {
 
             val INSTANCE = Uint16FieldType()
 
+            val NULLABLE_INSTANCE = Uint16FieldType(isNullable = true)
+
             internal const val NAME = "uint16"
         }
     }
@@ -184,9 +210,12 @@ interface FieldType {
     /**
      * Field type of [kotlin.Int].
      */
-    class Int32FieldType : FieldType {
+    class Int32FieldType(
+        override val isNullable: Boolean = false,
+    ) : FieldType {
 
-        override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String = "Int"
+        override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String =
+            "Int" + if (isNullable) "?" else ""
 
         override fun fixedLength(): Int = 4
 
@@ -196,6 +225,8 @@ interface FieldType {
 
             val INSTANCE = Int32FieldType()
 
+            val NULLABLE_INSTANCE = Int32FieldType(isNullable = true)
+
             internal const val NAME = "int32"
         }
     }
@@ -203,9 +234,12 @@ interface FieldType {
     /**
      * Field type of [kotlin.UInt].
      */
-    class Uint32FieldType : FieldType {
+    class Uint32FieldType(
+        override val isNullable: Boolean = false,
+    ) : FieldType {
 
-        override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String = "UInt"
+        override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String =
+            "UInt" + if (isNullable) "?" else ""
 
         override fun fixedLength(): Int = 4
 
@@ -215,6 +249,8 @@ interface FieldType {
 
             val INSTANCE = Uint32FieldType()
 
+            val NULLABLE_INSTANCE = Uint32FieldType(isNullable = true)
+
             internal const val NAME = "uint32"
         }
     }
@@ -222,9 +258,12 @@ interface FieldType {
     /**
      * Field type of [kotlin.Int].
      */
-    class Int64FieldType : FieldType {
+    class Int64FieldType(
+        override val isNullable: Boolean = false,
+    ) : FieldType {
 
-        override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String = "Long"
+        override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String =
+            "Long" + if (isNullable) "?" else ""
 
         override fun fixedLength(): Int = 8
 
@@ -234,6 +273,8 @@ interface FieldType {
 
             val INSTANCE = Int64FieldType()
 
+            val NULLABLE_INSTANCE = Int64FieldType(isNullable = true)
+
             internal const val NAME = "int64"
         }
     }
@@ -241,9 +282,12 @@ interface FieldType {
     /**
      * Field type of [kotlin.UInt].
      */
-    class Uint64FieldType : FieldType {
+    class Uint64FieldType(
+        override val isNullable: Boolean = false,
+    ) : FieldType {
 
-        override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String = "ULong"
+        override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String =
+            "ULong" + if (isNullable) "?" else ""
 
         override fun fixedLength(): Int = 8
 
@@ -253,6 +297,8 @@ interface FieldType {
 
             val INSTANCE = Uint64FieldType()
 
+            val NULLABLE_INSTANCE = Uint64FieldType(isNullable = true)
+
             internal const val NAME = "uint64"
         }
     }
@@ -260,7 +306,9 @@ interface FieldType {
     /**
      * Field type of [java.util.UUID].
      */
-    class UUIDFieldType : FieldType {
+    class UUIDFieldType(
+        override val isNullable: Boolean = false,
+    ) : FieldType {
 
         override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String {
             headerGenerator.addImport(MessageGenerator.UUID_CLASS)
@@ -275,6 +323,8 @@ interface FieldType {
 
             val INSTANCE = UUIDFieldType()
 
+            val NULLABLE_INSTANCE = UUIDFieldType(isNullable = true)
+
             internal const val NAME = "uuid"
         }
     }
@@ -282,11 +332,14 @@ interface FieldType {
     /**
      * Field type of [kotlin.Float].
      */
-    class Float32FieldType : FieldType {
+    class Float32FieldType(
+        override val isNullable: Boolean = false,
+    ) : FieldType {
 
         override fun fixedLength(): Int = 4
 
-        override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String = "Float"
+        override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String =
+            "Float" + if (isNullable) "?" else ""
 
         override val isFloat: Boolean = true
 
@@ -296,6 +349,8 @@ interface FieldType {
 
             val INSTANCE = Float32FieldType()
 
+            val NULLABLE_INSTANCE = Float32FieldType(isNullable = true)
+
             internal const val NAME = "float32"
         }
     }
@@ -303,11 +358,14 @@ interface FieldType {
     /**
      * Field type of [kotlin.Double].
      */
-    class Float64FieldType : FieldType {
+    class Float64FieldType(
+        override val isNullable: Boolean = false,
+    ) : FieldType {
 
         override fun fixedLength(): Int = 8
 
-        override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String = "Double"
+        override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String =
+            "Double" + if (isNullable) "?" else ""
 
         override val isFloat: Boolean = true
 
@@ -317,6 +375,8 @@ interface FieldType {
 
             val INSTANCE = Float64FieldType()
 
+            val NULLABLE_INSTANCE = Float64FieldType(isNullable = true)
+
             internal const val NAME = "float64"
         }
     }
@@ -324,21 +384,24 @@ interface FieldType {
     /**
      * Field type of [kotlin.String].
      */
-    class StringFieldType : FieldType {
+    class StringFieldType(
+        override val isNullable: Boolean = false,
+    ) : FieldType {
 
-        override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String = "String"
+        override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String =
+            "String" + if (isNullable) "?" else ""
 
         override fun serializationIsDifferentInFlexibleVersions(): Boolean = true
 
         override val isString: Boolean = true
-
-        override fun canBeNullable(): Boolean = true
 
         override fun toString(): String = NAME
 
         companion object {
 
             val INSTANCE = StringFieldType()
+
+            val NULLABLE_INSTANCE = StringFieldType(isNullable = true)
 
             internal const val NAME = "string"
         }
@@ -347,18 +410,18 @@ interface FieldType {
     /**
      * Field type of [kotlin.ByteArray].
      */
-    class BytesFieldType : FieldType {
+    class BytesFieldType(
+        override val isNullable: Boolean = false,
+    ) : FieldType {
 
         override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String {
             headerGenerator.addImport(MessageGenerator.BYTE_BUFFER_CLASS)
-            return "ByteBuffer"
+            return "ByteBuffer" + if (isNullable) "?" else ""
         }
 
         override fun serializationIsDifferentInFlexibleVersions(): Boolean = true
 
         override val isBytes: Boolean = true
-
-        override fun canBeNullable(): Boolean = true
 
         override fun toString(): String = NAME
 
@@ -366,22 +429,24 @@ interface FieldType {
 
             val INSTANCE = BytesFieldType()
 
+            val NULLABLE_INSTANCE = BytesFieldType(isNullable = true)
+
             internal const val NAME = "bytes"
         }
     }
 
-    class RecordsFieldType : FieldType {
+    class RecordsFieldType(
+        override val isNullable: Boolean = false,
+    ) : FieldType {
 
         override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String {
             headerGenerator.addImport(MessageGenerator.BASE_RECORDS_CLASS)
-            return "BaseRecords"
+            return "BaseRecords" + if (isNullable) "?" else ""
         }
 
         override fun serializationIsDifferentInFlexibleVersions(): Boolean = true
 
         override val isRecords: Boolean = true
-
-        override fun canBeNullable(): Boolean = true
 
         override fun toString(): String = NAME
 
@@ -389,11 +454,16 @@ interface FieldType {
 
             val INSTANCE = RecordsFieldType()
 
+            val NULLABLE_INSTANCE = RecordsFieldType(isNullable = true)
+
             internal const val NAME = "records"
         }
     }
 
-    class StructType internal constructor(private val type: String) : FieldType {
+    class StructType internal constructor(
+        private val type: String,
+        override val isNullable: Boolean = false,
+    ) : FieldType {
 
         override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String = type
 
@@ -401,18 +471,15 @@ interface FieldType {
 
         override val isStruct: Boolean = true
 
-        @Deprecated(
-            message = "User property instead",
-            replaceWith = ReplaceWith("typeName"),
-        )
-        fun typeName(): String = type
-
         val typeName: String = type
 
         override fun toString(): String = type
     }
 
-    class ArrayType internal constructor(val elementType: FieldType) : FieldType {
+    class ArrayType internal constructor(
+        val elementType: FieldType,
+        override val isNullable: Boolean = false,
+    ) : FieldType {
 
         override fun serializationIsDifferentInFlexibleVersions(): Boolean = true
 
@@ -423,20 +490,6 @@ interface FieldType {
 
         override val isStructArray: Boolean = elementType.isStruct
 
-        override fun canBeNullable(): Boolean = true
-
-        @Deprecated(
-            message = "User property instead",
-            replaceWith = ReplaceWith("elementType"),
-        )
-        fun elementType(): FieldType = elementType
-
-        @Deprecated(
-            message = "User property instead",
-            replaceWith = ReplaceWith("elementName"),
-        )
-        fun elementName(): String = elementType.toString()
-
         val elementName: String = elementType.toString()
 
         override fun toString(): String = "[]$elementType"
@@ -444,22 +497,55 @@ interface FieldType {
 
     companion object {
 
-        fun parse(string: String): FieldType =  when (val trimmed = string.trim { it <= ' ' }) {
-            BoolFieldType.NAME -> BoolFieldType.INSTANCE
-            Int8FieldType.NAME -> Int8FieldType.INSTANCE
-            Uint8FieldType.NAME -> Uint8FieldType.INSTANCE
-            Int16FieldType.NAME -> Int16FieldType.INSTANCE
-            Uint16FieldType.NAME -> Uint16FieldType.INSTANCE
-            Int32FieldType.NAME -> Int32FieldType.INSTANCE
-            Uint32FieldType.NAME -> Uint32FieldType.INSTANCE
-            Int64FieldType.NAME -> Int64FieldType.INSTANCE
-            Uint64FieldType.NAME -> Uint64FieldType.INSTANCE
-            UUIDFieldType.NAME -> UUIDFieldType.INSTANCE
-            Float32FieldType.NAME -> Float32FieldType.INSTANCE
-            Float64FieldType.NAME -> Float64FieldType.INSTANCE
-            StringFieldType.NAME -> StringFieldType.INSTANCE
-            BytesFieldType.NAME -> BytesFieldType.INSTANCE
-            RecordsFieldType.NAME -> RecordsFieldType.INSTANCE
+        fun parse(
+            string: String,
+            isNullable: Boolean = false,
+        ): FieldType =  when (val trimmed = string.trim { it <= ' ' }) {
+            BoolFieldType.NAME ->
+                if (isNullable) BoolFieldType.NULLABLE_INSTANCE
+                else BoolFieldType.INSTANCE
+            Int8FieldType.NAME ->
+                if (isNullable) Int8FieldType.NULLABLE_INSTANCE
+                else Int8FieldType.INSTANCE
+            Uint8FieldType.NAME ->
+                if (isNullable) Uint8FieldType.NULLABLE_INSTANCE
+                else Uint8FieldType.INSTANCE
+            Int16FieldType.NAME ->
+                if (isNullable) Int16FieldType.NULLABLE_INSTANCE
+                else Int16FieldType.INSTANCE
+            Uint16FieldType.NAME ->
+                if (isNullable) Uint16FieldType.NULLABLE_INSTANCE
+                else Uint16FieldType.INSTANCE
+            Int32FieldType.NAME ->
+                if (isNullable) Int32FieldType.NULLABLE_INSTANCE
+                else Int32FieldType.INSTANCE
+            Uint32FieldType.NAME ->
+                if (isNullable) Uint32FieldType.NULLABLE_INSTANCE
+                else Uint32FieldType.INSTANCE
+            Int64FieldType.NAME ->
+                if (isNullable) Int64FieldType.NULLABLE_INSTANCE
+                else Int64FieldType.INSTANCE
+            Uint64FieldType.NAME ->
+                if (isNullable) Uint64FieldType.NULLABLE_INSTANCE
+                else Uint64FieldType.INSTANCE
+            UUIDFieldType.NAME ->
+                if (isNullable) UUIDFieldType.NULLABLE_INSTANCE
+                else UUIDFieldType.INSTANCE
+            Float32FieldType.NAME ->
+                if (isNullable) Float32FieldType.NULLABLE_INSTANCE
+                else Float32FieldType.INSTANCE
+            Float64FieldType.NAME ->
+                if (isNullable) Float64FieldType.NULLABLE_INSTANCE
+                else Float64FieldType.INSTANCE
+            StringFieldType.NAME ->
+                if (isNullable) StringFieldType.NULLABLE_INSTANCE
+                else StringFieldType.INSTANCE
+            BytesFieldType.NAME ->
+                if (isNullable) BytesFieldType.NULLABLE_INSTANCE
+                else BytesFieldType.INSTANCE
+            RecordsFieldType.NAME ->
+                if (isNullable) RecordsFieldType.NULLABLE_INSTANCE
+                else RecordsFieldType.INSTANCE
             else -> if (trimmed.startsWith(ARRAY_PREFIX)) {
                 val elementTypeString = trimmed.substring(ARRAY_PREFIX.length)
                 if (elementTypeString.isEmpty()) throw RuntimeException(
@@ -471,9 +557,9 @@ interface FieldType {
                     "Can't have an array of arrays. Use an array of structs containing an " +
                             "array instead."
                 )
-                ArrayType(elementType)
+                ArrayType(elementType, isNullable)
 
-            } else if (MessageGenerator.firstIsCapitalized(trimmed)) StructType(trimmed)
+            } else if (MessageGenerator.firstIsCapitalized(trimmed)) StructType(trimmed, isNullable)
             else throw RuntimeException("Can't parse type $trimmed")
         }
 

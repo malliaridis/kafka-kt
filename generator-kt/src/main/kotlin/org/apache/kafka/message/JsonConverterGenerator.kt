@@ -493,7 +493,11 @@ class JsonConverterGenerator internal constructor(
         for (field in struct.fields) {
             val target = Target(
                 field = field,
-                sourceVariable = String.format("obj.%s", field.camelCaseName()),
+                sourceVariable = String.format(
+                    "obj.%s%s",
+                    field.camelCaseName(),
+                    getRequiredCast(field.type),
+                ),
                 humanReadableName = field.camelCaseName()
             ) { input ->
                 String.format(
@@ -508,8 +512,11 @@ class JsonConverterGenerator internal constructor(
                     VersionConditional.forVersions(field.taggedVersions, presentVersions)
                         .ifMember { presentAndTaggedVersions: Versions ->
                             field.generateNonDefaultValueCheck(
-                                headerGenerator,
-                                structRegistry, buffer, "obj.", field.nullableVersions
+                                headerGenerator = headerGenerator,
+                                structRegistry = structRegistry,
+                                buffer = buffer,
+                                fieldPrefix = "obj.",
+                                nullableVersions = field.nullableVersions,
                             )
                             buffer.incrementIndent()
                             // If the default was null, and we already checked that this field was not
@@ -530,8 +537,10 @@ class JsonConverterGenerator internal constructor(
             if (!field.ignorable) {
                 cond.ifNotMember {
                     field.generateNonIgnorableFieldCheck(
-                        headerGenerator,
-                        structRegistry, "obj.", buffer
+                        headerGenerator = headerGenerator,
+                        structRegistry = structRegistry,
+                        fieldPrefix = "obj.",
+                        buffer = buffer,
                     )
                 }
             }
@@ -680,18 +689,9 @@ class JsonConverterGenerator internal constructor(
         } else if (target.field.type.isArray) {
             headerGenerator.addImport(MessageGenerator.ARRAY_NODE_CLASS)
             headerGenerator.addImport(MessageGenerator.JSON_NODE_FACTORY_CLASS)
-            val arrayInstanceName = String.format(
-                "%sArray",
-                target.field.camelCaseName(),
-            )
-            buffer.printf(
-                "val %s = ArrayNode(JsonNodeFactory.instance)%n",
-                arrayInstanceName,
-            )
-            buffer.printf(
-                "for (element in %s) {%n",
-                target.sourceVariable,
-            )
+            val arrayInstanceName = String.format("%sArray", target.field.camelCaseName())
+            buffer.printf("val %s = ArrayNode(JsonNodeFactory.instance)%n", arrayInstanceName)
+            buffer.printf("for (element in %s) {%n", target.sourceVariable)
             buffer.incrementIndent()
             generateTargetToJson(
                 target.arrayElementTarget { input ->
@@ -711,6 +711,27 @@ class JsonConverterGenerator internal constructor(
                 )
             )
         ) else throw RuntimeException("unknown type " + target.field.type)
+    }
+
+    /**
+     * Get an explicit cast for Jackson nodes for specific fields to avoid type mismatches. This is
+     * necessary in order to store specific types that are not directly supported by Jackson.
+     *
+     * For example, if we want to store a byte, we have to use a `ShortNode` and cast the value
+     * to a short.
+     *
+     * @param type The field type to get the cast extension function for.
+     * @return the extension function used for casting a field value to a type that Jackson
+     * supports, or empty string if no extension function is needed (in case the type is supported).
+     */
+    private fun getRequiredCast(type:FieldType): String {
+        return when (type) {
+            is Int8FieldType -> ".toShort()"
+            is Uint8FieldType -> ".toShort()"
+            is Uint16FieldType -> ".toInt()"
+            is Uint32FieldType -> ".toLong()"
+            else -> ""
+        }
     }
 
     private fun getTargetClass(target: Target, versions: Versions): String {
