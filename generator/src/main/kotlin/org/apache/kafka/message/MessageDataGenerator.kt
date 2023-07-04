@@ -229,7 +229,7 @@ class MessageDataGenerator internal constructor(
         buffer.printf("%n")
         generateHashSetIteratorConstructor(className)
         buffer.printf("%n")
-        generateHashSetFindMethod(FieldSpec::class.java.toString(), struct)
+        generateHashSetFindMethod(className, struct)
         buffer.printf("%n")
         generateHashSetFindAllMethod(className, struct)
         buffer.printf("%n")
@@ -261,8 +261,8 @@ class MessageDataGenerator internal constructor(
         headerGenerator.addImport(MessageGenerator.ITERATOR_CLASS)
         buffer.printf(
             "public %s(Iterator<%s> iterator) {%n",
-            FieldSpec.collectionType(className),
             className,
+            FieldSpec.collectionType(className),
         )
         buffer.incrementIndent()
         buffer.printf("super(iterator);%n")
@@ -1050,8 +1050,8 @@ class MessageDataGenerator internal constructor(
                     val elementName: String = String.format("%sElement", name)
                     buffer.printf(
                         "for (%s %s : %s) {%n",
-                        elementType.getBoxedJavaType(headerGenerator),
                         elementName,
+                        elementType.getBoxedJavaType(headerGenerator),
                         name,
                     )
                     buffer.incrementIndent()

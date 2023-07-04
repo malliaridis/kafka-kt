@@ -378,11 +378,8 @@ class JsonConverterGenerator internal constructor(
             buffer.printf("for (JsonNode _element : %s) {%n", target.sourceVariable)
             buffer.incrementIndent()
             generateTargetFromJson(
-                target.arrayElementTarget { input: String? ->
-                    String.format(
-                        "_collection.add(%s)",
-                        input
-                    )
+                target.arrayElementTarget { input ->
+                    String.format("_collection.add(%s)", input)
                 },
                 curVersions
             )

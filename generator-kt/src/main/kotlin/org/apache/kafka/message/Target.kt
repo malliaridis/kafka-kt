@@ -21,7 +21,7 @@ class Target internal constructor(
     val field: FieldSpec,
     val sourceVariable: String,
     val humanReadableName: String,
-    private val assignmentStatementGenerator: (String) -> String,
+    private val assignmentStatementGenerator: Target.(String) -> String,
 ) {
 
     fun assignmentStatement(rightHandSide: String): String =
@@ -52,7 +52,7 @@ class Target internal constructor(
         )
     }
 
-    fun arrayElementTarget(assignmentStatementGenerator: (String) -> String): Target {
+    fun arrayElementTarget(assignmentStatementGenerator: Target.(String) -> String): Target {
         if (!field.type.isArray) throw RuntimeException("Field $field is not an array.")
 
         val arrayType = field.type as FieldType.ArrayType
@@ -73,7 +73,7 @@ class Target internal constructor(
         )
         return Target(
             field = elementField,
-            sourceVariable = "_element",
+            sourceVariable = "element",
             humanReadableName = "$humanReadableName element",
             assignmentStatementGenerator = assignmentStatementGenerator,
         )

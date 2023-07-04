@@ -162,6 +162,17 @@ class FieldSpec @JsonCreator constructor(
 
     fun camelCaseName(): String = lowerCaseFirst(name)
 
+    /**
+     * Returns the field name in camelcase and with `this.` prefixed.
+     */
+    fun prefixedCamelCaseName(): String = "this.${camelCaseName()}"
+
+    /**
+     * Returns the field name in camelcase and with `this@[className].` prefixed.
+     */
+    fun classPrefixedCamelCaseName(className: String): String =
+        "this@$className.${camelCaseName()}"
+
     fun snakeCaseName(): String = toSnakeCase(name)
 
     @get:JsonProperty("versions")
@@ -496,7 +507,6 @@ class FieldSpec @JsonCreator constructor(
                 val arrayType = type as FieldType.ArrayType
                 return if (structRegistry.isStructArrayWithKeys(this)) {
                     headerGenerator.addImport(MessageGenerator.IMPLICIT_LINKED_HASH_MULTI_COLLECTION_CLASS)
-                    headerGenerator.addImport(MessageGenerator.IMPLICIT_LINKED_HASH_MULTI_COLLECTION_ELEMENT_CLASS)
                     collectionType(arrayType.elementType.toString())
                 } else {
                     headerGenerator.addImport(MessageGenerator.LIST_CLASS)
@@ -649,7 +659,7 @@ class FieldSpec @JsonCreator constructor(
         headerGenerator.addImport(MessageGenerator.UNSUPPORTED_VERSION_EXCEPTION_CLASS)
         buffer.printf(
             "throw new UnsupportedVersionException(\"Attempted to write a non-default %s at " +
-                    "version \" + _version);%n",
+                    "version \" + version);%n",
             camelCaseName()
         )
         buffer.decrementIndent()

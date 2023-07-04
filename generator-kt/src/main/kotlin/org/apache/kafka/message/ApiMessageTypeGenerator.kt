@@ -260,7 +260,7 @@ class ApiMessageTypeGenerator(packageName: String) : TypeClassGenerator {
     }
 
     private fun generateHeaderVersion(type: String) {
-        buffer.printf("fun %sHeaderVersion(_version: Short): Short {%n", type)
+        buffer.printf("fun %sHeaderVersion(version: Short): Short {%n", type)
         buffer.incrementIndent()
         buffer.printf("return when (apiKey.toInt()) {%n")
         buffer.incrementIndent()
@@ -279,7 +279,7 @@ class ApiMessageTypeGenerator(packageName: String) : TypeClassGenerator {
                 buffer.printf("// Version 0 of ControlledShutdownRequest has a non-standard request header%n")
                 buffer.printf("// which does not include clientId.  Version 1 of ControlledShutdownRequest%n")
                 buffer.printf("// and later use the standard request header.%n")
-                buffer.printf("if (_version == 0.toShort()) {%n")
+                buffer.printf("if (version == 0.toShort()) {%n")
                 buffer.incrementIndent()
                 buffer.printf("0%n")
                 buffer.decrementIndent()

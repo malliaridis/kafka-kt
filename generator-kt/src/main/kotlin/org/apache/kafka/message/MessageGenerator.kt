@@ -76,9 +76,6 @@ object MessageGenerator {
     const val IMPLICIT_LINKED_HASH_MULTI_COLLECTION_CLASS =
         "org.apache.kafka.common.utils.ImplicitLinkedHashMultiCollection"
 
-    const val IMPLICIT_LINKED_HASH_MULTI_COLLECTION_ELEMENT_CLASS =
-        "org.apache.kafka.common.utils.ImplicitLinkedHashCollection.Element"
-
     const val UNSUPPORTED_VERSION_EXCEPTION_CLASS =
         "org.apache.kafka.common.errors.UnsupportedVersionException"
 

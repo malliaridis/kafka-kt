@@ -76,7 +76,7 @@ class VersionConditional private constructor(
         val ifNotMember = ifNotMember
         if (ifMember != null) {
             buffer.printf(
-                "if ((_version >= %d) && (_version <= %d)) {%n",
+                "if ((version >= %d) && (version <= %d)) {%n",
                 containingVersions.lowest,
                 containingVersions.highest
             )
@@ -92,7 +92,7 @@ class VersionConditional private constructor(
             buffer.printf("}%n")
         } else if (ifNotMember != null) {
             buffer.printf(
-                "if ((_version < %d) || (_version > %d)) {%n",
+                "if ((version < %d) || (version > %d)) {%n",
                 containingVersions.lowest,
                 containingVersions.highest
             )
@@ -111,7 +111,7 @@ class VersionConditional private constructor(
         val ifMember = ifMember
         val ifNotMember = ifNotMember
         if (ifMember != null) {
-            buffer.printf("if (_version >= %d) {%n", containingVersions.lowest)
+            buffer.printf("if (version >= %d) {%n", containingVersions.lowest)
             buffer.incrementIndent()
             ifMember.generate(ifVersions)
             buffer.decrementIndent()
@@ -123,7 +123,7 @@ class VersionConditional private constructor(
             }
             buffer.printf("}%n")
         } else if (ifNotMember != null) {
-            buffer.printf("if (_version < %d) {%n", containingVersions.lowest)
+            buffer.printf("if (version < %d) {%n", containingVersions.lowest)
             buffer.incrementIndent()
             ifNotMember.generate(ifNotVersions!!)
             buffer.decrementIndent()
@@ -139,7 +139,7 @@ class VersionConditional private constructor(
         val ifMember = ifMember
         val ifNotMember = ifNotMember
         if (ifMember != null) {
-            buffer.printf("if (_version <= %d) {%n", containingVersions.highest)
+            buffer.printf("if (version <= %d) {%n", containingVersions.highest)
             buffer.incrementIndent()
             ifMember.generate(ifVersions)
             buffer.decrementIndent()
@@ -151,7 +151,7 @@ class VersionConditional private constructor(
             }
             buffer.printf("}%n")
         } else if (ifNotMember != null) {
-            buffer.printf("if (_version > %d) {%n", containingVersions.highest)
+            buffer.printf("if (version > %d) {%n", containingVersions.highest)
             buffer.incrementIndent()
             ifNotMember.generate(ifNotVersions!!)
             buffer.decrementIndent()

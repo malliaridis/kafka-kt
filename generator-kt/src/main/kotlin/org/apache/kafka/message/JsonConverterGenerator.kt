@@ -103,26 +103,26 @@ class JsonConverterGenerator internal constructor(
     ) {
         headerGenerator.addImport(MessageGenerator.JSON_NODE_CLASS)
         buffer.printf(
-            "fun read(_node: JsonNode, _version: Short): %s {%n",
+            "fun read(node: JsonNode, version: Short): %s {%n",
             className,
         )
         buffer.incrementIndent()
-        buffer.printf("val _object = %s()%n", className)
+        buffer.printf("val obj = %s()%n", className)
         VersionConditional.forVersions(struct.versions, parentVersions)
             .allowMembershipCheckAlwaysFalse(false)
             .ifNotMember {
                 headerGenerator.addImport(MessageGenerator.UNSUPPORTED_VERSION_EXCEPTION_CLASS)
                 buffer.printf(
-                    "throw UnsupportedVersionException(\"Can't read version \$_version of %s\")%n",
+                    "throw UnsupportedVersionException(\"Can't read version \$version of %s\")%n",
                     className,
                 )
             }
             .generate(buffer)
         val curVersions = parentVersions.intersect(struct.versions)
         for (field in struct.fields) {
-            val sourceVariable = String.format("_%sNode", field.camelCaseName())
+            val sourceVariable = String.format("%sNode", field.camelCaseName())
             buffer.printf(
-                "val %s: JsonNode? = _node.get(\"%s\")%n",
+                "val %s: JsonNode? = node.get(\"%s\")%n",
                 sourceVariable,
                 field.camelCaseName(),
             )
@@ -132,14 +132,14 @@ class JsonConverterGenerator internal constructor(
             VersionConditional.forVersions(mandatoryVersions, curVersions)
                 .ifMember {
                     buffer.printf(
-                        "throw RuntimeException(\"%s: unable to locate field \'%s\', which is mandatory in version \$_version\")%n",
+                        "throw RuntimeException(\"%s: unable to locate field \'%s\', which is mandatory in version \$version\")%n",
                         className,
                         field.camelCaseName()
                     )
                 }
                 .ifNotMember {
                     buffer.printf(
-                        "_object.%s = %s%n",
+                        "obj.%s = %s%n",
                         field.camelCaseName(),
                         field.fieldDefault(headerGenerator, structRegistry),
                     )
@@ -152,14 +152,14 @@ class JsonConverterGenerator internal constructor(
                 .ifMember {
                     generateTargetFromJson(
                         Target(field, sourceVariable, className) { input ->
-                            "_object.${field.camelCaseName()} = $input"
+                            "obj.${field.camelCaseName()} = $input"
                         },
                         curVersions
                     )
                 }
                 .ifNotMember {
                     buffer.printf(
-                        "throw RuntimeException(\"%s: field \'%s\' is not supported in version \$_version\")%n",
+                        "throw RuntimeException(\"%s: field \'%s\' is not supported in version \$version\")%n",
                         className,
                         field.camelCaseName(),
                     )
@@ -168,7 +168,7 @@ class JsonConverterGenerator internal constructor(
             buffer.decrementIndent()
             buffer.printf("}%n")
         }
-        buffer.printf("return _object%n")
+        buffer.printf("return obj%n")
         buffer.decrementIndent()
         buffer.printf("}%n")
     }
@@ -179,7 +179,7 @@ class JsonConverterGenerator internal constructor(
                 buffer.printf("if (!%s.isBoolean()) {%n", target.sourceVariable)
                 buffer.incrementIndent()
                 buffer.printf(
-                    "throw RuntimeException(\"%s expected Boolean type, but got \${_node.getNodeType()}\")%n",
+                    "throw RuntimeException(\"%s expected Boolean type, but got \${node.nodeType}\")%n",
                     target.humanReadableName,
                 )
                 buffer.decrementIndent()
@@ -299,10 +299,10 @@ class JsonConverterGenerator internal constructor(
             }
 
             is UUIDFieldType -> {
-                buffer.printf("if (!%s.isTextual()) {%n", target.sourceVariable)
+                buffer.printf("if (!%s.isTextual) {%n", target.sourceVariable)
                 buffer.incrementIndent()
                 buffer.printf(
-                    "throw RuntimeException(\"%s expected a JSON string type, but got \${_node.getNodeType()}\")%n",
+                    "throw RuntimeException(\"%s expected a JSON string type, but got \${node.nodeType}\")%n",
                     target.humanReadableName,
                 )
                 buffer.decrementIndent()
@@ -364,10 +364,10 @@ class JsonConverterGenerator internal constructor(
 
     private fun generateVariableLengthTargetFromJson(target: Target, curVersions: Versions) {
         if (target.field.type.isString) {
-            buffer.printf("if (!%s.isTextual()) {%n", target.sourceVariable)
+            buffer.printf("if (!%s.isTextual) {%n", target.sourceVariable)
             buffer.incrementIndent()
             buffer.printf(
-                "throw RuntimeException(\"%s expected a string type, but got \${_node.getNodeType()}\")%n",
+                "throw RuntimeException(\"%s expected a string type, but got \${node.nodeType}\")%n",
                 target.humanReadableName,
             )
             buffer.decrementIndent()
@@ -414,27 +414,26 @@ class JsonConverterGenerator internal constructor(
                 )
             )
         } else if (target.field.type.isArray) {
-            buffer.printf("if (!%s.isArray()) {%n", target.sourceVariable)
+            buffer.printf("if (!%s.isArray) {%n", target.sourceVariable)
             buffer.incrementIndent()
             buffer.printf(
-                "throw RuntimeException(\"%s expected a JSON array, but got \${_node.getNodeType()}\")%n",
+                "throw RuntimeException(\"%s expected a JSON array, but got \${node.nodeType}\")%n",
                 target.humanReadableName,
             )
             buffer.decrementIndent()
             buffer.printf("}%n")
             val type = target.field.concreteKotlinType(headerGenerator, structRegistry)
             buffer.printf(
-                "val _collection: %s = %s(%s.size)%n",
-                type,
+                "val collection = %s(%s.size())%n",
                 type,
                 target.sourceVariable,
             )
-            buffer.printf("%s%n", target.assignmentStatement("_collection"))
+            buffer.printf("%s%n", target.assignmentStatement("collection"))
             headerGenerator.addImport(MessageGenerator.JSON_NODE_CLASS)
-            buffer.printf("for (_element in %s) {%n", target.sourceVariable)
+            buffer.printf("for (element in %s) {%n", target.sourceVariable)
             buffer.incrementIndent()
             generateTargetFromJson(
-                target.arrayElementTarget { input -> String.format("_collection.add(%s)", input) },
+                target.arrayElementTarget { input -> String.format("collection.add(%s)", input) },
                 curVersions,
             )
             buffer.decrementIndent()
@@ -443,7 +442,7 @@ class JsonConverterGenerator internal constructor(
             buffer.printf(
                 "%s%n", target.assignmentStatement(
                     String.format(
-                        "%s%s.read(%s, _version)",
+                        "%s%s.read(%s, version)",
                         target.field.type.toString(),
                         SUFFIX,
                         target.sourceVariable,
@@ -457,11 +456,11 @@ class JsonConverterGenerator internal constructor(
 
     private fun generateOverloadWrite(className: String) {
         buffer.printf(
-            "fun write(_object: %s, _version: Short): JsonNode {%n",
+            "fun write(obj: %s, version: Short): JsonNode {%n",
             className
         )
         buffer.incrementIndent()
-        buffer.printf("return write(_object, _version, true)%n")
+        buffer.printf("return write(obj, version, true)%n")
         buffer.decrementIndent()
         buffer.printf("}%n")
     }
@@ -473,7 +472,7 @@ class JsonConverterGenerator internal constructor(
     ) {
         headerGenerator.addImport(MessageGenerator.JSON_NODE_CLASS)
         buffer.printf(
-            "fun write(_object: %s, _version: Short, _serializeRecords: Boolean): JsonNode {%n",
+            "fun write(obj: %s, version: Short, serializeRecords: Boolean): JsonNode {%n",
             className
         )
         buffer.incrementIndent()
@@ -482,7 +481,7 @@ class JsonConverterGenerator internal constructor(
             .ifNotMember {
                 headerGenerator.addImport(MessageGenerator.UNSUPPORTED_VERSION_EXCEPTION_CLASS)
                 buffer.printf(
-                    "throw UnsupportedVersionException(\"Can't write version \$_version of %s\")%n",
+                    "throw UnsupportedVersionException(\"Can't write version \$version of %s\")%n",
                     className,
                 )
             }
@@ -490,15 +489,16 @@ class JsonConverterGenerator internal constructor(
         val curVersions = parentVersions.intersect(struct.versions)
         headerGenerator.addImport(MessageGenerator.OBJECT_NODE_CLASS)
         headerGenerator.addImport(MessageGenerator.JSON_NODE_FACTORY_CLASS)
-        buffer.printf("val _node = ObjectNode(JsonNodeFactory.instance)%n")
+        buffer.printf("val node = ObjectNode(JsonNodeFactory.instance)%n")
         for (field in struct.fields) {
             val target = Target(
                 field = field,
-                sourceVariable = String.format("_object.%s", field.camelCaseName()),
+                sourceVariable = String.format("obj.%s", field.camelCaseName()),
                 humanReadableName = field.camelCaseName()
             ) { input ->
                 String.format(
-                    "_node.set(\"%s\", %s)", // TODO find a solution for this
+                    "node.set<%s>(\"%s\", %s)",
+                    getTargetClass(this, curVersions),
                     field.camelCaseName(),
                     input,
                 )
@@ -509,7 +509,7 @@ class JsonConverterGenerator internal constructor(
                         .ifMember { presentAndTaggedVersions: Versions ->
                             field.generateNonDefaultValueCheck(
                                 headerGenerator,
-                                structRegistry, buffer, "_object.", field.nullableVersions
+                                structRegistry, buffer, "obj.", field.nullableVersions
                             )
                             buffer.incrementIndent()
                             // If the default was null, and we already checked that this field was not
@@ -531,13 +531,13 @@ class JsonConverterGenerator internal constructor(
                 cond.ifNotMember {
                     field.generateNonIgnorableFieldCheck(
                         headerGenerator,
-                        structRegistry, "_object.", buffer
+                        structRegistry, "obj.", buffer
                     )
                 }
             }
             cond.generate(buffer)
         }
-        buffer.printf("return _node%n")
+        buffer.printf("return node%n")
         buffer.decrementIndent()
         buffer.printf("}%n")
     }
@@ -661,7 +661,7 @@ class JsonConverterGenerator internal constructor(
             // KIP-673: When logging requests/responses, we do not serialize the record, instead we
             // output its sizeInBytes, because outputting the bytes is not very useful and can be
             // quite expensive. Otherwise, we will serialize the record.
-            buffer.printf("if (_serializeRecords) {%n")
+            buffer.printf("if (serializeRecords) {%n")
             buffer.incrementIndent()
             buffer.printf(
                 "%s%n",
@@ -671,7 +671,7 @@ class JsonConverterGenerator internal constructor(
             buffer.printf("} else {%n")
             buffer.incrementIndent()
             buffer.printf(
-                "_node.set<IntNode>(\"%sSizeInBytes\", IntNode(%s.sizeInBytes()))%n",
+                "node.set<IntNode>(\"%sSizeInBytes\", IntNode(%s.sizeInBytes()))%n",
                 target.field.camelCaseName(),
                 target.sourceVariable
             )
@@ -680,18 +680,16 @@ class JsonConverterGenerator internal constructor(
         } else if (target.field.type.isArray) {
             headerGenerator.addImport(MessageGenerator.ARRAY_NODE_CLASS)
             headerGenerator.addImport(MessageGenerator.JSON_NODE_FACTORY_CLASS)
-            val arrayType = target.field.type as FieldType.ArrayType
-            val elementType = arrayType.elementType
             val arrayInstanceName = String.format(
-                "_%sArray",
-                target.field.camelCaseName()
+                "%sArray",
+                target.field.camelCaseName(),
             )
             buffer.printf(
-                "val %s: ArrayNode = ArrayNode(JsonNodeFactory.instance)%n",
+                "val %s = ArrayNode(JsonNodeFactory.instance)%n",
                 arrayInstanceName,
             )
             buffer.printf(
-                "for (_element in %s) {%n",
+                "for (element in %s) {%n",
                 target.sourceVariable,
             )
             buffer.incrementIndent()
@@ -707,7 +705,7 @@ class JsonConverterGenerator internal constructor(
         } else if (target.field.type.isStruct) buffer.printf(
             "%s%n", target.assignmentStatement(
                 String.format(
-                    "%sJsonConverter.write(%s, _version, _serializeRecords)",
+                    "%sJsonConverter.write(%s, version, serializeRecords)",
                     target.field.type.toString(),
                     target.sourceVariable
                 )
@@ -716,16 +714,59 @@ class JsonConverterGenerator internal constructor(
     }
 
     private fun getTargetClass(target: Target, versions: Versions): String {
-        return if (target.field.type.isString) {
-            headerGenerator.addImport(MessageGenerator.TEXT_NODE_CLASS)
-            "TextNode"
-        } else if (target.field.type.isBytes) {
-            headerGenerator.addImport(MessageGenerator.BINARY_NODE_CLASS)
-            "BinaryNode"
-        } else if (target.field.type.isRecords) ""
-        else if (target.field.type.isStruct) ""
-        else throw RuntimeException("unknown type " + target.field.type)
+        return when (target.field.type) {
+            is BoolFieldType -> {
+                headerGenerator.addImport(MessageGenerator.BOOLEAN_NODE_CLASS)
+                "BooleanNode"
+            }
 
+            is Int8FieldType,
+            is Uint8FieldType, // TODO See if this entry will work property
+            is Int16FieldType -> {
+                headerGenerator.addImport(MessageGenerator.SHORT_NODE_CLASS)
+                "ShortNode"
+            }
+            // TODO The new data types (except float) are failing here (fasterxml does not support unsigned fields)
+            is Int32FieldType,
+            is Uint16FieldType,
+            -> {
+                headerGenerator.addImport(MessageGenerator.INT_NODE_CLASS)
+                "IntNode"
+            }
+
+            is Int64FieldType,
+            is Uint32FieldType,
+            -> {
+                headerGenerator.addImport(MessageGenerator.LONG_NODE_CLASS)
+                "LongNode"
+            }
+
+            is UUIDFieldType -> {
+                headerGenerator.addImport(MessageGenerator.TEXT_NODE_CLASS)
+                "TextNode"
+            }
+
+            is Float32FieldType -> {
+                headerGenerator.addImport(MessageGenerator.FLOAT_NODE_CLASS)
+                "FloatNode"
+            }
+
+            is Float64FieldType -> {
+                headerGenerator.addImport(MessageGenerator.DOUBLE_NODE_CLASS)
+                "DoubleNode"
+            }
+
+            else -> if (target.field.type.isString) {
+                headerGenerator.addImport(MessageGenerator.TEXT_NODE_CLASS)
+                "TextNode"
+            } else if (target.field.type.isBytes) {
+                headerGenerator.addImport(MessageGenerator.BINARY_NODE_CLASS)
+                "BinaryNode"
+            } else if (target.field.type.isArray) "ArrayNode"
+            else if (target.field.type.isRecords) "JsonNode"
+            else if (target.field.type.isStruct) "JsonNode"
+            else throw RuntimeException("unknown type " + target.field.type)
+        }
     }
 
     companion object {
