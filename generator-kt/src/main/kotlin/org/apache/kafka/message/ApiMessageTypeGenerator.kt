@@ -98,13 +98,11 @@ class ApiMessageTypeGenerator(packageName: String) : TypeClassGenerator {
     }
 
     private fun generate() {
-        buffer.printf("enum class ApiMessageType {%n")
+        headerGenerator.addImport(MessageGenerator.SCHEMA_CLASS)
+        headerGenerator.addImport(MessageGenerator.ENUM_SET_CLASS)
+        generateEnumClassWithProperties()
         buffer.incrementIndent()
         generateEnumValues()
-        buffer.printf("%n")
-        generateInstanceVariables()
-        buffer.printf("%n")
-        generateEnumConstructor()
         buffer.printf("%n")
         generateFromApiKey()
         buffer.printf("%n")
@@ -137,6 +135,22 @@ class ApiMessageTypeGenerator(packageName: String) : TypeClassGenerator {
         headerGenerator.generate()
     }
 
+    private fun generateEnumClassWithProperties() {
+        buffer.printf(
+            """
+            enum class ApiMessageType(
+                private val altName: String,
+                private val apiKey: Short,
+                private val requestSchemas: Array<Schema?>,
+                private val responseSchemas: Array<Schema?>,
+                private val lowestSupportedVersion: Short,
+                private val highestSupportedVersion: Short,
+                private val listeners: EnumSet<ListenerType>,
+            ) {%n
+        """.trimIndent(),
+        )
+    }
+
     private fun generateListenerTypeEnumSet(values: Collection<String>): String {
         if (values.isEmpty()) return "EnumSet.noneOf(ListenerType::class.java)"
 
@@ -153,7 +167,7 @@ class ApiMessageTypeGenerator(packageName: String) : TypeClassGenerator {
 
     private fun generateEnumValues() {
         var numProcessed = 0
-        for ((key, apiData) in apis.entries) {
+        for ((key, apiData) in apis) {
             val name = apiData.name()
             numProcessed++
             val requestSpec = apiData.requestSpec!!
@@ -169,37 +183,9 @@ class ApiMessageTypeGenerator(packageName: String) : TypeClassGenerator {
                 requestSpec.struct.versions.lowest,
                 requestSpec.struct.versions.highest,
                 generateListenerTypeEnumSet(listeners),
-                if (numProcessed != apis.size) "," else ""
+                if (numProcessed != apis.size) "," else ";"
             )
         }
-    }
-
-    private fun generateInstanceVariables() {
-        buffer.printf("var name: String%n")
-        buffer.printf("private val apiKey: Short%n")
-        buffer.printf("private val requestSchemas: Array<Schema?>%n")
-        buffer.printf("private val responseSchemas: Array<Schema?>%n")
-        buffer.printf("private val lowestSupportedVersion: Short%n")
-        buffer.printf("private val highestSupportedVersion: Short%n")
-        buffer.printf("private val listeners: EnumSet<ListenerType>%n")
-        headerGenerator.addImport(MessageGenerator.SCHEMA_CLASS)
-        headerGenerator.addImport(MessageGenerator.ENUM_SET_CLASS)
-    }
-
-    private fun generateEnumConstructor() {
-        buffer.printf(
-            "ApiMessageType(name: String, apiKey: Short, requestSchemas: Array<Schema?>, responseSchemas: Array<Schema?>, lowestSupportedVersion: Short, highestSupportedVersion: Short, listeners: EnumSet<ListenerType>) {%n"
-        )
-        buffer.incrementIndent()
-        buffer.printf("this.name = name%n")
-        buffer.printf("this.apiKey = apiKey%n")
-        buffer.printf("this.requestSchemas = requestSchemas%n")
-        buffer.printf("this.responseSchemas = responseSchemas%n")
-        buffer.printf("this.lowestSupportedVersion = lowestSupportedVersion%n")
-        buffer.printf("this.highestSupportedVersion = highestSupportedVersion%n")
-        buffer.printf("this.listeners = listeners%n")
-        buffer.decrementIndent()
-        buffer.printf("}%n")
     }
 
     private fun generateFromApiKey() {
@@ -254,7 +240,7 @@ class ApiMessageTypeGenerator(packageName: String) : TypeClassGenerator {
     private fun generateToString() {
         buffer.printf("override fun toString(): String {%n")
         buffer.incrementIndent()
-        buffer.printf("return this.name%n")
+        buffer.printf("return this.altName%n")
         buffer.decrementIndent()
         buffer.printf("}%n")
     }
@@ -280,6 +266,8 @@ class ApiMessageTypeGenerator(packageName: String) : TypeClassGenerator {
                 buffer.printf("// which does not include clientId. Version 1 of ControlledShutdownRequest%n")
                 buffer.printf("// and later use the standard request header.%n")
                 buffer.printf("if (version == 0.toShort()) 0%n")
+                buffer.printf("else {%n")
+                buffer.incrementIndent()
             }
             val spec = when (type) {
                 "request" -> apiData.requestSpec
@@ -297,6 +285,11 @@ class ApiMessageTypeGenerator(packageName: String) : TypeClassGenerator {
                 if ((type == "request")) buffer.printf("1%n")
                 else buffer.printf("0%n")
             }.generate(buffer)
+
+            if (type == "request" && apiKey.toInt() == 7) {
+                buffer.decrementIndent()
+                buffer.printf("}%n")
+            }
             buffer.decrementIndent()
         }
         headerGenerator.addImport(MessageGenerator.UNSUPPORTED_VERSION_EXCEPTION_CLASS)
