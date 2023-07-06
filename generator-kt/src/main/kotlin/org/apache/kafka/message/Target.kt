@@ -25,6 +25,8 @@ data class Target internal constructor(
     private val assignmentStatementGenerator: Target.(String) -> String,
 ) {
 
+    val sourceVariableWithPrefix: String = (sourcePrefix ?: "") + sourceVariable
+
     fun assignmentStatement(rightHandSide: String): String =
         assignmentStatementGenerator(rightHandSide)
 

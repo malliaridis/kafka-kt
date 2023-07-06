@@ -557,7 +557,7 @@ class JsonConverterGenerator internal constructor(
                     headerGenerator.addImport(MessageGenerator.NULL_NODE_CLASS)
                     buffer.printf("%s%n", target.assignmentStatement("NullNode.instance"))
                 }
-                .ifShouldNotBeNull { generateVariableLengthTargetToJson(target, versions) }
+                .ifShouldNotBeNull { generateVariableLengthTargetToJson(target.copy(sourcePrefix = null), versions) }
                 .generate(buffer)
         else when (target.field.type) {
             is BoolFieldType -> {
@@ -565,10 +565,7 @@ class JsonConverterGenerator internal constructor(
                 buffer.printf(
                     "%s%n",
                     target.assignmentStatement(
-                        String.format("BooleanNode.valueOf(%s%s)",
-                            target.sourcePrefix ?: "",
-                            target.sourceVariable,
-                        ),
+                        String.format("BooleanNode.valueOf(%s)", target.sourceVariableWithPrefix),
                     ),
                 )
             }
@@ -580,10 +577,7 @@ class JsonConverterGenerator internal constructor(
                 buffer.printf(
                     "%s%n",
                     target.assignmentStatement(
-                        String.format("ShortNode(%s%s)",
-                            target.sourcePrefix ?: "",
-                            target.sourceVariable,
-                        )
+                        String.format("ShortNode(%s)", target.sourceVariableWithPrefix),
                     ),
                 )
             }
@@ -594,11 +588,7 @@ class JsonConverterGenerator internal constructor(
                 buffer.printf(
                     "%s%n",
                     target.assignmentStatement(
-                        String.format(
-                            "IntNode(%s%s)",
-                            target.sourcePrefix ?: "",
-                            target.sourceVariable,
-                        ),
+                        String.format("IntNode(%s)", target.sourceVariableWithPrefix),
                     ),
                 )
             }
@@ -609,10 +599,7 @@ class JsonConverterGenerator internal constructor(
                 buffer.printf(
                     "%s%n",
                     target.assignmentStatement(
-                        String.format("LongNode(%s%s)",
-                            target.sourcePrefix ?: "",
-                            target.sourceVariable,
-                        ),
+                        String.format("LongNode(%s)", target.sourceVariableWithPrefix),
                     ),
                 )
             }
@@ -622,10 +609,7 @@ class JsonConverterGenerator internal constructor(
                 buffer.printf(
                     "%s%n",
                     target.assignmentStatement(
-                        String.format("TextNode(%s%s)",
-                            target.sourcePrefix ?: "",
-                            target.sourceVariable,
-                        ),
+                        String.format("TextNode(%s)", target.sourceVariableWithPrefix),
                     ),
                 )
             }
@@ -634,10 +618,7 @@ class JsonConverterGenerator internal constructor(
                 buffer.printf(
                     "%s%n",
                     target.assignmentStatement(
-                        String.format("TextNode(%s%s.toString())",
-                            target.sourcePrefix ?: "",
-                            target.sourceVariable,
-                        ),
+                        String.format("TextNode(%s.toString())", target.sourceVariableWithPrefix),
                     ),
                 )
             }
@@ -647,10 +628,7 @@ class JsonConverterGenerator internal constructor(
                 buffer.printf(
                     "%s%n",
                     target.assignmentStatement(
-                        String.format("FloatNode(%s%s)",
-                            target.sourcePrefix ?: "",
-                            target.sourceVariable,
-                        ),
+                        String.format("FloatNode(%s)", target.sourceVariableWithPrefix),
                     ),
                 )
             }
@@ -660,13 +638,10 @@ class JsonConverterGenerator internal constructor(
                 buffer.printf(
                     "%s%n",
                     target.assignmentStatement(
-                        String.format("DoubleNode(%s%s)",
-                            target.sourcePrefix ?: "",
-                            target.sourceVariable,
-                        ),
+                        String.format("DoubleNode(%s)", target.sourceVariableWithPrefix),
                     ),
                 )
-            }
+            } else -> generateVariableLengthTargetToJson(target, versions)
         }
     }
 
@@ -675,7 +650,9 @@ class JsonConverterGenerator internal constructor(
             headerGenerator.addImport(MessageGenerator.TEXT_NODE_CLASS)
             buffer.printf(
                 "%s%n",
-                target.assignmentStatement("TextNode(${target.sourceVariable})")
+                target.assignmentStatement(
+                    String.format("TextNode(%s)", target.sourceVariableWithPrefix),
+                ),
             )
         } else if (target.field.type.isBytes) {
             headerGenerator.addImport(MessageGenerator.BINARY_NODE_CLASS)
@@ -686,7 +663,7 @@ class JsonConverterGenerator internal constructor(
                     target.assignmentStatement(
                         String.format(
                             "BinaryNode(MessageUtil.byteBufferToArray(%s))",
-                            target.sourceVariable
+                            target.sourceVariableWithPrefix,
                         )
                     ),
                 )
@@ -696,8 +673,8 @@ class JsonConverterGenerator internal constructor(
                     "%s%n", target.assignmentStatement(
                         String.format(
                             "BinaryNode(Arrays.copyOf(%s, %s.size))",
-                            target.sourceVariable,
-                            target.sourceVariable,
+                            target.sourceVariableWithPrefix,
+                            target.sourceVariableWithPrefix,
                         )
                     )
                 )
@@ -720,7 +697,7 @@ class JsonConverterGenerator internal constructor(
             buffer.printf(
                 "node.set<IntNode>(\"%sSizeInBytes\", IntNode(%s.sizeInBytes()))%n",
                 target.field.camelCaseName(),
-                target.sourceVariable
+                target.sourceVariableWithPrefix,
             )
             buffer.decrementIndent()
             buffer.printf("}%n")
@@ -729,7 +706,10 @@ class JsonConverterGenerator internal constructor(
             headerGenerator.addImport(MessageGenerator.JSON_NODE_FACTORY_CLASS)
             val arrayInstanceName = String.format("%sArray", target.field.camelCaseName())
             buffer.printf("val %s = ArrayNode(JsonNodeFactory.instance)%n", arrayInstanceName)
-            buffer.printf("for (element in %s) {%n", target.sourceVariable)
+            buffer.printf(
+                "for (element in %s) {%n",
+                target.sourceVariableWithPrefix,
+            )
             buffer.incrementIndent()
             generateTargetToJson(
                 target.arrayElementTarget { input ->
@@ -745,7 +725,7 @@ class JsonConverterGenerator internal constructor(
                 String.format(
                     "%sJsonConverter.write(%s, version, serializeRecords)",
                     target.field.type.toString(),
-                    target.sourceVariable
+                    target.sourceVariableWithPrefix,
                 )
             )
         ) else throw RuntimeException("unknown type " + target.field.type)
