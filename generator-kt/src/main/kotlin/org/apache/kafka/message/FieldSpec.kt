@@ -111,7 +111,7 @@ class FieldSpec @JsonCreator constructor(
         this.nullableVersions = parsedNullableVersions
         this.type = FieldType.parse(
             string = type,
-            isNullable = this.versions.contains(parsedNullableVersions) && parsedNullableVersions != Versions.NONE
+            isNullable = !this.versions.intersect(parsedNullableVersions).isEmpty
         )
 
         this.entityType = entityType ?: EntityType.UNKNOWN
