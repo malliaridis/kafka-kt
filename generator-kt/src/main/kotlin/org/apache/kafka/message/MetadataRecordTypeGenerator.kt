@@ -51,13 +51,9 @@ class MetadataRecordTypeGenerator(packageName: String) : TypeClassGenerator {
     }
 
     private fun generate() {
-        buffer.printf("enum class MetadataRecordType {%n")
+        generateEnumClassWithProperties()
         buffer.incrementIndent()
         generateEnumValues()
-        buffer.printf("%n")
-        generateInstanceVariables()
-        buffer.printf("%n")
-        generateEnumConstructor()
         buffer.printf("%n")
         generateFromApiKey()
         buffer.printf("%n")
@@ -75,6 +71,19 @@ class MetadataRecordTypeGenerator(packageName: String) : TypeClassGenerator {
         headerGenerator.generate()
     }
 
+    private fun generateEnumClassWithProperties() {
+        buffer.printf(
+            """
+            enum class MetadataRecordType(
+                private val altName: String,
+                private val id: Short,
+                private val lowestSupportedVersion: Short,
+                private val highestSupportedVersion: Short,
+            ) {%n
+            """.trimIndent()
+        )
+    }
+
     private fun generateEnumValues() {
         var numProcessed = 0
         for ((key, spec) in apis) {
@@ -86,7 +95,7 @@ class MetadataRecordTypeGenerator(packageName: String) : TypeClassGenerator {
                 key,
                 spec.validVersions.lowest,
                 spec.validVersions.highest,
-                if (numProcessed != apis.size) "," else ""
+                if (numProcessed != apis.size) "," else ";"
             )
         }
     }
@@ -155,7 +164,7 @@ class MetadataRecordTypeGenerator(packageName: String) : TypeClassGenerator {
     private fun generateToString() {
         buffer.printf("override fun toString(): String {%n")
         buffer.incrementIndent()
-        buffer.printf("return this.name%n")
+        buffer.printf("return this.altName%n")
         buffer.decrementIndent()
         buffer.printf("}%n")
     }
