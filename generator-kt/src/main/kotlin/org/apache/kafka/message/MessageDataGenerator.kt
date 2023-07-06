@@ -1479,7 +1479,7 @@ class MessageDataGenerator internal constructor(
                 if (field.type.isArray) {
                     if (!field.type.isNullable) buffer.printf(
                         // not nullable array field
-                        "if (!%s.contentEquals(other.%s)) return false%n",
+                        "if (%s != other.%s) return false%n", // TODO Differentiate between primitive entityType and non-primitive entityType
                         field.camelCaseName(),
                         field.camelCaseName(),
                     )

@@ -227,7 +227,7 @@ class FieldSpec @JsonCreator constructor(
         headerGenerator: HeaderGenerator,
         structRegistry: StructRegistry,
     ): String {
-        if (fieldDefault == null && type.isNullable) return "null"
+        if ((fieldDefault.isNullOrEmpty() || fieldDefault == "null") && type.isNullable) return "null"
 
         if (type is BoolFieldType) {
             return if (fieldDefault.isNullOrEmpty()) "false"
@@ -252,17 +252,19 @@ class FieldSpec @JsonCreator constructor(
             }
             when (type) {
                 is Int8FieldType -> {
+                    val isNegative: Boolean
                     return if (defaultString.isNullOrEmpty()) "0.toByte()"
                     else {
                         try {
-                            defaultString.toByte(base)
+                            isNegative = defaultString.toByte(base) < 0
                         } catch (e: NumberFormatException) {
                             throw RuntimeException(
                                 "Invalid default for int8 field $name: $defaultString",
                                 e,
                             )
                         }
-                        "$fieldDefault.toByte()"
+                        if (isNegative) "$fieldDefault.toByte()"
+                        else "($fieldDefault).toByte()"
                     }
                 }
 
@@ -286,17 +288,19 @@ class FieldSpec @JsonCreator constructor(
                 }
 
                 is Int16FieldType -> {
+                    val isNegative: Boolean
                     return if (defaultString.isNullOrEmpty()) "0.toShort()"
                     else {
                         try {
-                            defaultString.toShort(base)
+                            isNegative = defaultString.toShort(base) < 0
                         } catch (e: NumberFormatException) {
                             throw RuntimeException(
                                 "Invalid default for int16 field $name: $defaultString",
                                 e,
                             )
                         }
-                        "$fieldDefault.toShort()"
+                        if (isNegative) "($fieldDefault).toShort()"
+                        else "$fieldDefault.toShort()"
                     }
                 }
 
@@ -432,16 +436,9 @@ class FieldSpec @JsonCreator constructor(
                 }
                 "\"$fieldDefault\".toDouble()"
             }
-        } else if (type is StringFieldType) {
-            return if (fieldDefault == "null") {
-                validateNullDefault()
-                "null"
-            } else "\"$fieldDefault\""
-        } else if (type.isBytes) {
-            if (fieldDefault == "null") {
-                validateNullDefault()
-                return "null"
-            } else if (!fieldDefault.isNullOrEmpty()) throw RuntimeException(
+        } else if (type is StringFieldType) return "\"$fieldDefault\""
+        else if (type.isBytes) {
+            if (!fieldDefault.isNullOrEmpty()) throw RuntimeException(
                 "Invalid default for bytes field $name. The only valid default for a bytes field " +
                         "is empty or null."
             )
@@ -452,7 +449,7 @@ class FieldSpec @JsonCreator constructor(
                 headerGenerator.addImport(MessageGenerator.BYTES_CLASS)
                 "Bytes.EMPTY"
             }
-        } else if (type.isRecords) return "null"
+        } else if (type.isRecords) return "null" // TODO instantiate record
         else if (type.isStruct) {
             if (!fieldDefault.isNullOrEmpty()) throw RuntimeException(
                 "Invalid default for struct field $name: custom defaults are not supported for " +

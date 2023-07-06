@@ -195,9 +195,9 @@ class ApiMessageTypeGenerator(packageName: String) : TypeClassGenerator {
         buffer.incrementIndent()
         buffer.printf("return when (apiKey.toInt()) {%n")
         buffer.incrementIndent()
-        for ((key, apiData) in apis) {
+        for ((key, apiData) in apis)
             buffer.printf("%d -> %s%n", key, toSnakeCase(apiData.name()).uppercase())
-        }
+
         headerGenerator.addImport(MessageGenerator.UNSUPPORTED_VERSION_EXCEPTION_CLASS)
         buffer.printf("else -> throw UnsupportedVersionException(\"Unsupported API key \$apiKey\")%n")
         buffer.decrementIndent()
@@ -216,7 +216,12 @@ class ApiMessageTypeGenerator(packageName: String) : TypeClassGenerator {
         buffer.printf("return when (apiKey.toInt()) {%n")
         buffer.incrementIndent()
         for ((key, value) in apis.entries)
-            buffer.printf("%d -> %s%sData()%n", key, value.name(), capitalizeFirst(type))
+            buffer.printf(
+                "%d -> %s%sData()%n",
+                key,
+                value.name(),
+                capitalizeFirst(type),
+            )
 
         headerGenerator.addImport(MessageGenerator.UNSUPPORTED_VERSION_EXCEPTION_CLASS)
         buffer.printf(
