@@ -24,6 +24,7 @@ import org.apache.kafka.message.FieldType.Int16FieldType
 import org.apache.kafka.message.FieldType.Int32FieldType
 import org.apache.kafka.message.FieldType.Int64FieldType
 import org.apache.kafka.message.FieldType.Int8FieldType
+import org.apache.kafka.message.FieldType.StringFieldType
 import org.apache.kafka.message.FieldType.UUIDFieldType
 import org.apache.kafka.message.FieldType.Uint16FieldType
 import org.apache.kafka.message.FieldType.Uint32FieldType
@@ -31,6 +32,7 @@ import org.apache.kafka.message.FieldType.Uint64FieldType
 import org.apache.kafka.message.FieldType.Uint8FieldType
 import org.apache.kafka.message.MessageGenerator.capitalizeFirst
 import java.io.BufferedWriter
+import java.util.*
 
 /**
  * Generates Kafka MessageData classes.
@@ -151,7 +153,11 @@ class JsonConverterGenerator internal constructor(
             VersionConditional.forVersions(struct.versions, curVersions)
                 .ifMember {
                     generateTargetFromJson(
-                        Target(field, sourceVariable, className) { input ->
+                        Target(
+                            field = field,
+                            sourceVariable = sourceVariable,
+                            humanReadableName = className,
+                        ) { input ->
                             "obj.${field.camelCaseName()} = $input"
                         },
                         curVersions
@@ -493,8 +499,9 @@ class JsonConverterGenerator internal constructor(
         for (field in struct.fields) {
             val target = Target(
                 field = field,
+                sourcePrefix = "obj.",
                 sourceVariable = String.format(
-                    "obj.%s%s",
+                    "%s%s",
                     field.camelCaseName(),
                     getRequiredCast(field.type),
                 ),
@@ -510,24 +517,11 @@ class JsonConverterGenerator internal constructor(
             val cond = VersionConditional.forVersions(field.versions, curVersions)
                 .ifMember { presentVersions ->
                     VersionConditional.forVersions(field.taggedVersions, presentVersions)
-                        .ifMember { presentAndTaggedVersions: Versions ->
-                            field.generateNonDefaultValueCheck(
-                                headerGenerator = headerGenerator,
-                                structRegistry = structRegistry,
-                                buffer = buffer,
-                                fieldPrefix = "obj.",
-                                nullableVersions = field.nullableVersions,
+                        .ifMember { presentAndTaggedVersions ->
+                            generateTargetToJson(
+                                target = target,
+                                versions = presentAndTaggedVersions,
                             )
-                            buffer.incrementIndent()
-                            // If the default was null, and we already checked that this field was not
-                            // the default, we can omit further null checks.
-                            if (field.fieldDefault == "null") generateTargetToJson(
-                                target.nonNullableCopy(),
-                                presentAndTaggedVersions,
-                            ) else generateTargetToJson(target, presentAndTaggedVersions)
-
-                            buffer.decrementIndent()
-                            buffer.printf("}%n")
                         }
                         .ifNotMember { presentAndNotTaggedVersions ->
                             generateTargetToJson(target, presentAndNotTaggedVersions)
@@ -552,12 +546,30 @@ class JsonConverterGenerator internal constructor(
     }
 
     private fun generateTargetToJson(target: Target, versions: Versions) {
-        when (target.field.type) {
+        if (target.field.type.isNullable)
+            IsNullConditional.forName(target.sourceVariable, target.sourcePrefix)
+                .nullableVersions(target.field.nullableVersions)
+                .possibleVersions(versions)
+                .conditionalGenerator { name, negated ->
+                    "$name ${if (negated) "!" else "="}= null"
+                }
+                .ifNull {
+                    headerGenerator.addImport(MessageGenerator.NULL_NODE_CLASS)
+                    buffer.printf("%s%n", target.assignmentStatement("NullNode.instance"))
+                }
+                .ifShouldNotBeNull { generateVariableLengthTargetToJson(target, versions) }
+                .generate(buffer)
+        else when (target.field.type) {
             is BoolFieldType -> {
                 headerGenerator.addImport(MessageGenerator.BOOLEAN_NODE_CLASS)
                 buffer.printf(
                     "%s%n",
-                    target.assignmentStatement("BooleanNode.valueOf(${target.sourceVariable})"),
+                    target.assignmentStatement(
+                        String.format("BooleanNode.valueOf(%s%s)",
+                            target.sourcePrefix ?: "",
+                            target.sourceVariable,
+                        ),
+                    ),
                 )
             }
 
@@ -567,7 +579,12 @@ class JsonConverterGenerator internal constructor(
                 headerGenerator.addImport(MessageGenerator.SHORT_NODE_CLASS)
                 buffer.printf(
                     "%s%n",
-                    target.assignmentStatement("ShortNode(${target.sourceVariable})"),
+                    target.assignmentStatement(
+                        String.format("ShortNode(%s%s)",
+                            target.sourcePrefix ?: "",
+                            target.sourceVariable,
+                        )
+                    ),
                 )
             }
             // TODO The new data types (except float) are failing here (fasterxml does not support unsigned fields)
@@ -576,7 +593,13 @@ class JsonConverterGenerator internal constructor(
                 headerGenerator.addImport(MessageGenerator.INT_NODE_CLASS)
                 buffer.printf(
                     "%s%n",
-                    target.assignmentStatement("IntNode(${target.sourceVariable})"),
+                    target.assignmentStatement(
+                        String.format(
+                            "IntNode(%s%s)",
+                            target.sourcePrefix ?: "",
+                            target.sourceVariable,
+                        ),
+                    ),
                 )
             }
 
@@ -585,15 +608,37 @@ class JsonConverterGenerator internal constructor(
                 headerGenerator.addImport(MessageGenerator.LONG_NODE_CLASS)
                 buffer.printf(
                     "%s%n",
-                    target.assignmentStatement("LongNode(${target.sourceVariable})"),
+                    target.assignmentStatement(
+                        String.format("LongNode(%s%s)",
+                            target.sourcePrefix ?: "",
+                            target.sourceVariable,
+                        ),
+                    ),
                 )
             }
 
+            is StringFieldType -> {
+                headerGenerator.addImport(MessageGenerator.TEXT_NODE_CLASS)
+                buffer.printf(
+                    "%s%n",
+                    target.assignmentStatement(
+                        String.format("TextNode(%s%s)",
+                            target.sourcePrefix ?: "",
+                            target.sourceVariable,
+                        ),
+                    ),
+                )
+            }
             is UUIDFieldType -> {
                 headerGenerator.addImport(MessageGenerator.TEXT_NODE_CLASS)
                 buffer.printf(
                     "%s%n",
-                    target.assignmentStatement("TextNode(${target.sourceVariable}.toString())"),
+                    target.assignmentStatement(
+                        String.format("TextNode(%s%s.toString())",
+                            target.sourcePrefix ?: "",
+                            target.sourceVariable,
+                        ),
+                    ),
                 )
             }
 
@@ -601,7 +646,12 @@ class JsonConverterGenerator internal constructor(
                 headerGenerator.addImport(MessageGenerator.FLOAT_NODE_CLASS)
                 buffer.printf(
                     "%s%n",
-                    target.assignmentStatement("FloatNode(${target.sourceVariable})"),
+                    target.assignmentStatement(
+                        String.format("FloatNode(%s%s)",
+                            target.sourcePrefix ?: "",
+                            target.sourceVariable,
+                        ),
+                    ),
                 )
             }
 
@@ -609,25 +659,13 @@ class JsonConverterGenerator internal constructor(
                 headerGenerator.addImport(MessageGenerator.DOUBLE_NODE_CLASS)
                 buffer.printf(
                     "%s%n",
-                    target.assignmentStatement("DoubleNode(${target.sourceVariable})"),
+                    target.assignmentStatement(
+                        String.format("DoubleNode(%s%s)",
+                            target.sourcePrefix ?: "",
+                            target.sourceVariable,
+                        ),
+                    ),
                 )
-            }
-
-            else -> {
-                // Handle the variable length types. All of them are potentially nullable, so handle
-                // that here.
-                IsNullConditional.forName(target.sourceVariable)
-                    .nullableVersions(target.field.nullableVersions)
-                    .possibleVersions(versions)
-                    .conditionalGenerator { name, negated ->
-                        "$name ${if (negated) "!" else "="}= null"
-                    }
-                    .ifNull {
-                        headerGenerator.addImport(MessageGenerator.NULL_NODE_CLASS)
-                        buffer.printf("%s%n", target.assignmentStatement("NullNode.instance"))
-                    }
-                    .ifShouldNotBeNull { generateVariableLengthTargetToJson(target, versions) }
-                    .generate(buffer)
             }
         }
     }

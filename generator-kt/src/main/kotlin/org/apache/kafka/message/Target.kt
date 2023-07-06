@@ -17,8 +17,9 @@
 
 package org.apache.kafka.message
 
-class Target internal constructor(
+data class Target internal constructor(
     val field: FieldSpec,
+    val sourcePrefix: String? = null,
     val sourceVariable: String,
     val humanReadableName: String,
     private val assignmentStatementGenerator: Target.(String) -> String,
@@ -44,12 +45,7 @@ class Target internal constructor(
             tag = field.tagInteger,
             zeroCopy = field.zeroCopy,
         )
-        return Target(
-            field = nonNullableField,
-            sourceVariable = sourceVariable,
-            humanReadableName = humanReadableName,
-            assignmentStatementGenerator = assignmentStatementGenerator
-        )
+        return copy(field = nonNullableField)
     }
 
     fun arrayElementTarget(assignmentStatementGenerator: Target.(String) -> String): Target {

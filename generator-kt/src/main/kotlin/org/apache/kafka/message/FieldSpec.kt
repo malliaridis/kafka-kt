@@ -40,6 +40,9 @@ import java.nio.ByteBuffer
 import java.util.*
 import java.util.regex.Pattern
 
+/**
+ * @property ignorable Whether this field can be ignored from comparisons (and serialization?).
+ */
 class FieldSpec @JsonCreator constructor(
     @JsonProperty("name") val name: String,
     @JsonProperty("versions") versions: String?,
@@ -57,18 +60,33 @@ class FieldSpec @JsonCreator constructor(
     @JsonProperty("zeroCopy") val zeroCopy: Boolean,
 ) {
 
+    /**
+     * Versions for which this field is available.
+     */
     val versions: Versions
 
+    /**
+     * List of the fields of this field, e.g. in case of a Struct.
+     */
     @JsonProperty("fields")
     val fields: List<FieldSpec>
 
     val type: FieldType
 
+    /**
+     * Version range in which the field can be null.
+     */
     val nullableVersions: Versions
 
+    /**
+     * The type of the inner entity, e.g.  in case of a collection.
+     */
     @JsonProperty("entityType")
     val entityType: EntityType
 
+    /**
+     * Description of the field.
+     */
     @JsonProperty("about")
     val about: String
 
@@ -534,6 +552,26 @@ class FieldSpec @JsonCreator constructor(
     }
 
     /**
+     * Generates a copy of the variable for smart cast and adds a null check.
+     */
+    fun generateNullableValueCheck(
+        headerGenerator: HeaderGenerator,
+        structRegistry: StructRegistry,
+        buffer: CodeBuffer,
+        fieldPrefix: String? = null,
+    ) {
+        val fieldDefault = fieldDefault(headerGenerator, structRegistry)
+        val prefixedFieldName = fieldPrefix + camelCaseName()
+        var actualFieldName = prefixedFieldName
+        if (type.isNullable) {
+            // Generate copy variable for smart cast
+            buffer.printf("val %s = %s%n", camelCaseName(), prefixedFieldName)
+            actualFieldName = camelCaseName()
+        }
+        buffer.printf("if (%s == null) {%n", actualFieldName)
+    }
+
+    /**
      * Generate an if statement that checks if this field has a non-default value.
      *
      * @param headerGenerator The header generator in case we need to add imports.
@@ -553,11 +591,13 @@ class FieldSpec @JsonCreator constructor(
     ) {
         val fieldDefault = fieldDefault(headerGenerator, structRegistry)
         val prefixedFieldName = fieldPrefix + camelCaseName()
-        if (type.isNullable) buffer.printf(
-            "val %s = %s%n",
-            camelCaseName(),
-            prefixedFieldName,
-        )
+        var actualFieldName = prefixedFieldName
+        if (type.isNullable) {
+            // Generate copy variable for smart cast
+            buffer.printf("val %s = %s%n", camelCaseName(), prefixedFieldName)
+            actualFieldName = camelCaseName()
+        }
+
         if (type.isArray) {
             if (fieldDefault == "null")
                 buffer.printf("if (%s != null) {%n", prefixedFieldName)

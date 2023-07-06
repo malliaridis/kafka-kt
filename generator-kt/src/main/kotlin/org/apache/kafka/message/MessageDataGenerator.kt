@@ -470,7 +470,7 @@ class MessageDataGenerator internal constructor(
             }
             .generate(buffer)
         val curVersions = parentVersions.intersect(struct.versions)
-        for (field: FieldSpec in struct.fields) {
+        for (field in struct.fields) {
             val fieldFlexibleVersions = fieldFlexibleVersions(field)
             if (field.taggedVersions.intersect(fieldFlexibleVersions) != field.taggedVersions) {
                 throw RuntimeException(
@@ -605,11 +605,11 @@ class MessageDataGenerator internal constructor(
         is Int8FieldType -> "readable.readByte()"
         is Uint8FieldType -> "readable.readUnsignedByte()"
         is Int16FieldType -> "readable.readShort()"
-        is Uint16FieldType -> "readable.readUnsignedShort()"
+        is Uint16FieldType -> "readable.readUnsignedShort().toUShort()"
         is Int32FieldType -> "readable.readInt()"
-        is Uint32FieldType -> "readable.readUnsignedInt()"
+        is Uint32FieldType -> "readable.readUnsignedInt().toUInt()"
         is Int64FieldType -> "readable.readLong()"
-        is Uint64FieldType -> "readable.readUnsignedLong()"
+        is Uint64FieldType -> "readable.readUnsignedLong().toULong()"
         is Float32FieldType -> "readable.readFloat()"
         is Float64FieldType -> "readable.readDouble()"
         is UUIDFieldType -> "readable.readUuid()"
@@ -971,13 +971,13 @@ class MessageDataGenerator internal constructor(
     private fun primitiveWriteExpression(type: FieldType, name: String): String = when (type) {
         is BoolFieldType -> String.format("writable.writeByte(if (%s) 1.toByte() else 0.toByte())", name)
         is Int8FieldType -> String.format("writable.writeByte(%s)", name)
-        is Uint8FieldType -> String.format("writable.writeUnsignedByte(%s)", name)
+        is Uint8FieldType -> String.format("writable.writeUnsignedByte(%s.toShort())", name) // Not supported, eventually through writeUnsignedVarint
         is Int16FieldType -> String.format("writable.writeShort(%s)", name)
-        is Uint16FieldType -> String.format("writable.writeUnsignedShort(%s)", name)
+        is Uint16FieldType -> String.format("writable.writeUnsignedShort(%s.toInt())", name)
         is Int32FieldType -> String.format("writable.writeInt(%s)", name)
-        is Uint32FieldType -> String.format("writable.writeUnsignedInt(%s)", name)
+        is Uint32FieldType -> String.format("writable.writeUnsignedInt(%s.toLong())", name)
         is Int64FieldType -> String.format("writable.writeLong(%s)", name)
-        is Uint64FieldType -> String.format("writable.writeUnsignedLong(%s)", name)
+        is Uint64FieldType -> String.format("writable.writeUnsignedLong(%s)", name) // Not supported
         is UUIDFieldType -> String.format("writable.writeUuid(%s)", name)
         is Float32FieldType -> String.format("writable.writeFloat(%s)", name)
         is Float64FieldType -> String.format("writable.writeDouble(%s)", name)
@@ -1048,7 +1048,7 @@ class MessageDataGenerator internal constructor(
                     }.generate(buffer)
                 if (type.isString) buffer.printf("writable.writeByteArray(stringBytes)%n")
                 else if (type.isBytes) {
-                    if (zeroCopy) buffer.printf("writable.writeByteBuffer(this.%s)%n", name)
+                    if (zeroCopy) buffer.printf("writable.writeByteBuffer(%s)%n", name)
                     else buffer.printf("writable.writeByteArray(this.%s)%n", name)
                 } else if (type.isRecords) buffer.printf("writable.writeRecords(this.%s)%n", name)
                 else if (type.isArray) {
@@ -1323,7 +1323,8 @@ class MessageDataGenerator internal constructor(
 
                     if (elementType.fixedLength() != null) buffer.printf(
                         "size.addBytes(%s.size * %d)%n",
-                        field.prefixedCamelCaseName(),
+                        if (field.type.isNullable) field.camelCaseName()
+                        else field.prefixedCamelCaseName(),
                         elementType.fixedLength(),
                     ) else if (elementType is FieldType.ArrayType)
                         throw RuntimeException("Arrays of arrays are not supported (use a struct).")
@@ -1544,7 +1545,7 @@ class MessageDataGenerator internal constructor(
 
             else -> {
                 if (field.type.isBytes) buffer.printf(
-                    "hashCode = 31 * hashCode + %s.contentHashCode()%n",
+                    "hashCode = 31 * hashCode + %s.hashCode()%n",
                     field.prefixedCamelCaseName(),
                 )
                 else if (field.type.isRecords) buffer.printf(
@@ -1569,7 +1570,6 @@ class MessageDataGenerator internal constructor(
     // TODO Consider using data class copy instead
     private fun generateClassDuplicate(className: String, struct: StructSpec) {
         buffer.printf("override fun duplicate(): %s {%n", className)
-        buffer.incrementIndent()
         buffer.incrementIndent()
         buffer.printf("val duplicate = %s()%n", className, className)
 
@@ -1759,7 +1759,7 @@ class MessageDataGenerator internal constructor(
                 field.camelCaseName(),
             )
             else buffer.printf(
-                "\"%s%s=\" + %s.iterator()?.let { MessageUtil.deepToString(it) } +%n",
+                "\"%s%s=\" + %s?.iterator()?.let { MessageUtil.deepToString(it) } +%n",
                 prefix,
                 field.camelCaseName(),
                 field.camelCaseName(),

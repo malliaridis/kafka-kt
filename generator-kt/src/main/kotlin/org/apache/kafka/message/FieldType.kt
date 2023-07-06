@@ -33,6 +33,8 @@ interface FieldType {
     val isStructArray: Boolean
         get() = false
 
+    val isPrimitive: Boolean
+
     /**
      * Returns `true` if the serialization of this type is different in flexible versions.
      */
@@ -97,6 +99,8 @@ interface FieldType {
         override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String =
             "Boolean" + if (isNullable) "?" else ""
 
+        override val isPrimitive: Boolean = true
+
         override fun fixedLength(): Int = 1
 
         override fun toString(): String = NAME
@@ -120,6 +124,8 @@ interface FieldType {
 
         override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String =
             "Byte" + if (isNullable) "?" else ""
+
+        override val isPrimitive: Boolean = true
 
         override fun fixedLength(): Int = 1
 
@@ -145,6 +151,8 @@ interface FieldType {
         override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String =
             "UByte" + if (isNullable) "?" else ""
 
+        override val isPrimitive: Boolean = true
+
         override fun fixedLength(): Int = 1
 
         override fun toString(): String = NAME
@@ -168,6 +176,8 @@ interface FieldType {
 
         override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String =
             "Short" + if (isNullable) "?" else ""
+
+        override val isPrimitive: Boolean = true
 
         override fun fixedLength(): Int = 2
 
@@ -193,6 +203,8 @@ interface FieldType {
         override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String =
             "UShort" + if (isNullable) "?" else ""
 
+        override val isPrimitive: Boolean = true
+
         override fun fixedLength(): Int = 2
 
         override fun toString(): String = NAME
@@ -216,6 +228,8 @@ interface FieldType {
 
         override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String =
             "Int" + if (isNullable) "?" else ""
+
+        override val isPrimitive: Boolean = true
 
         override fun fixedLength(): Int = 4
 
@@ -241,6 +255,8 @@ interface FieldType {
         override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String =
             "UInt" + if (isNullable) "?" else ""
 
+        override val isPrimitive: Boolean = true
+
         override fun fixedLength(): Int = 4
 
         override fun toString(): String = NAME
@@ -265,6 +281,8 @@ interface FieldType {
         override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String =
             "Long" + if (isNullable) "?" else ""
 
+        override val isPrimitive: Boolean = true
+
         override fun fixedLength(): Int = 8
 
         override fun toString(): String = NAME
@@ -288,6 +306,8 @@ interface FieldType {
 
         override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String =
             "ULong" + if (isNullable) "?" else ""
+
+        override val isPrimitive: Boolean = true
 
         override fun fixedLength(): Int = 8
 
@@ -315,6 +335,8 @@ interface FieldType {
             return "Uuid"
         }
 
+        override val isPrimitive: Boolean = false
+
         override fun fixedLength(): Int = 16
 
         override fun toString(): String = NAME
@@ -340,6 +362,8 @@ interface FieldType {
 
         override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String =
             "Float" + if (isNullable) "?" else ""
+
+        override val isPrimitive: Boolean = true
 
         override val isFloat: Boolean = true
 
@@ -367,6 +391,8 @@ interface FieldType {
         override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String =
             "Double" + if (isNullable) "?" else ""
 
+        override val isPrimitive: Boolean = true
+
         override val isFloat: Boolean = true
 
         override fun toString(): String = NAME
@@ -390,6 +416,8 @@ interface FieldType {
 
         override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String =
             "String" + if (isNullable) "?" else ""
+
+        override val isPrimitive: Boolean = false
 
         override fun serializationIsDifferentInFlexibleVersions(): Boolean = true
 
@@ -419,6 +447,8 @@ interface FieldType {
             return "ByteBuffer" + if (isNullable) "?" else ""
         }
 
+        override val isPrimitive: Boolean = false
+
         override fun serializationIsDifferentInFlexibleVersions(): Boolean = true
 
         override val isBytes: Boolean = true
@@ -444,6 +474,8 @@ interface FieldType {
             return "BaseRecords" + if (isNullable) "?" else ""
         }
 
+        override val isPrimitive: Boolean = false
+
         override fun serializationIsDifferentInFlexibleVersions(): Boolean = true
 
         override val isRecords: Boolean = true
@@ -467,6 +499,8 @@ interface FieldType {
 
         override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String = type
 
+        override val isPrimitive: Boolean = false
+
         override fun serializationIsDifferentInFlexibleVersions(): Boolean = true
 
         override val isStruct: Boolean = true
@@ -485,6 +519,8 @@ interface FieldType {
 
         override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String =
             throw UnsupportedOperationException()
+
+        override val isPrimitive: Boolean = false
 
         override val isArray: Boolean = true
 
