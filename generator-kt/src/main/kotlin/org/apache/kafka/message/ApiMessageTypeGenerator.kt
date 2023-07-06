@@ -252,9 +252,9 @@ class ApiMessageTypeGenerator(packageName: String) : TypeClassGenerator {
     }
 
     private fun generateToString() {
-        buffer.printf("override toString(): String {%n")
+        buffer.printf("override fun toString(): String {%n")
         buffer.incrementIndent()
-        buffer.printf("return this.name()%n")
+        buffer.printf("return this.name%n")
         buffer.decrementIndent()
         buffer.printf("}%n")
     }
@@ -308,7 +308,7 @@ class ApiMessageTypeGenerator(packageName: String) : TypeClassGenerator {
     }
 
     private fun generateListenerTypesEnum() {
-        buffer.printf("enum ListenerType {%n")
+        buffer.printf("enum class ListenerType {%n")
         buffer.incrementIndent()
         val listenerIter = RequestListenerType.values().iterator()
         while (listenerIter.hasNext()) {
