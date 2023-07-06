@@ -353,7 +353,7 @@ internal class SchemaGenerator(
             }
             buffer.printf("%n")
         }
-        buffer.printf("val SCHEMAS: Array<Schema> = arrayOf(%n")
+        buffer.printf("val SCHEMAS: Array<Schema?> = arrayOf(%n")
         buffer.incrementIndent()
         for (v in 0 until lowest)
             buffer.printf("null%s%n", if (v.toShort() == highest) "" else ",")

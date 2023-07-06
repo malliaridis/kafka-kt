@@ -120,9 +120,9 @@ class ApiMessageTypeGenerator(packageName: String) : TypeClassGenerator {
         buffer.printf("%n")
         generateAccessor(name = "apiKey", type = "Short")
         buffer.printf("%n")
-        generateAccessor(name = "requestSchemas", type = "Array<Schema>")
+        generateAccessor(name = "requestSchemas", type = "Array<Schema?>")
         buffer.printf("%n")
-        generateAccessor(name = "responseSchemas", type = "Array<Schema>")
+        generateAccessor(name = "responseSchemas", type = "Array<Schema?>")
         buffer.printf("%n")
         generateToString()
         buffer.printf("%n")
@@ -177,8 +177,8 @@ class ApiMessageTypeGenerator(packageName: String) : TypeClassGenerator {
     private fun generateInstanceVariables() {
         buffer.printf("var name: String%n")
         buffer.printf("private val apiKey: Short%n")
-        buffer.printf("private val requestSchemas: Array<Schema>%n")
-        buffer.printf("private val responseSchemas: Array<Schema>%n")
+        buffer.printf("private val requestSchemas: Array<Schema?>%n")
+        buffer.printf("private val responseSchemas: Array<Schema?>%n")
         buffer.printf("private val lowestSupportedVersion: Short%n")
         buffer.printf("private val highestSupportedVersion: Short%n")
         buffer.printf("private val listeners: EnumSet<ListenerType>%n")
@@ -188,7 +188,7 @@ class ApiMessageTypeGenerator(packageName: String) : TypeClassGenerator {
 
     private fun generateEnumConstructor() {
         buffer.printf(
-            "ApiMessageType(name: String, apiKey: Short, requestSchemas: Array<Schema>, responseSchemas: Array<Schema>, lowestSupportedVersion: Short, highestSupportedVersion: Short, listeners: EnumSet<ListenerType>) {%n"
+            "ApiMessageType(name: String, apiKey: Short, requestSchemas: Array<Schema?>, responseSchemas: Array<Schema?>, lowestSupportedVersion: Short, highestSupportedVersion: Short, listeners: EnumSet<ListenerType>) {%n"
         )
         buffer.incrementIndent()
         buffer.printf("this.name = name%n")
