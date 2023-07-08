@@ -32,14 +32,24 @@ object ByteUtils {
     val EMPTY_BUF = ByteBuffer.wrap(ByteArray(0))
 
     /**
+     * Read an unsigned short from the current position in the buffer, incrementing the position
+     * by 2 bytes.
+     *
+     * @param buffer The buffer to read from
+     * @return The integer read, as a long to avoid signedness
+     */
+    fun readUnsignedShort(buffer: ByteBuffer): UShort =
+        buffer.getInt().toUShort()
+
+    /**
      * Read an unsigned integer from the current position in the buffer, incrementing the position
      * by 4 bytes.
      *
      * @param buffer The buffer to read from
      * @return The integer read, as a long to avoid signedness
      */
-    fun readUnsignedInt(buffer: ByteBuffer): Long =
-        buffer.getInt().toLong() and 0xffffffffL
+    fun readUnsignedInt(buffer: ByteBuffer): UInt =
+        buffer.getLong().toUInt()
 
     /**
      * Read an unsigned integer from the given position without modifying the buffers position
@@ -94,8 +104,8 @@ object ByteUtils {
      * @param buffer The buffer to write to
      * @param value The value to write
      */
-    fun writeUnsignedInt(buffer: ByteBuffer, value: Long) {
-        buffer.putInt((value and 0xffffffffL).toInt())
+    fun writeUnsignedInt(buffer: ByteBuffer, value: UInt) {
+        buffer.putInt(value.toLong().toInt())
     }
 
     /**
@@ -254,6 +264,23 @@ object ByteUtils {
     }
 
     /**
+     * Read a single-precision 32-bit format IEEE 754 value.
+     *
+     * @param input The input to read from
+     * @return The float value read
+     */
+    @Throws(IOException::class)
+    fun readFloat(input: DataInput): Float = input.readFloat()
+
+    /**
+     * Read a single-precision 32-bit format IEEE 754 value.
+     *
+     * @param buffer The buffer to read from
+     * @return The float value read
+     */
+    fun readFloat(buffer: ByteBuffer): Float = buffer.getFloat()
+
+    /**
      * Read a double-precision 64-bit format IEEE 754 value.
      *
      * @param input The input to read from
@@ -266,7 +293,7 @@ object ByteUtils {
      * Read a double-precision 64-bit format IEEE 754 value.
      *
      * @param buffer The buffer to read from
-     * @return The long value read
+     * @return The double value read
      */
     fun readDouble(buffer: ByteBuffer): Double = buffer.getDouble()
 
@@ -367,6 +394,25 @@ object ByteUtils {
         }
         buffer.put(v.toByte())
     }
+
+    /**
+     * Write the given float following the single-precision 32-bit format IEEE 754 value into the
+     * output.
+     *
+     * @param value The value to write
+     * @param out The output to write to
+     */
+    @Throws(IOException::class)
+    fun writeFloat(value: Float, out: DataOutput) = out.writeFloat(value)
+
+    /**
+     * Write the given float following the single-precision 32-bit format IEEE 754 value into the
+     * buffer.
+     *
+     * @param value The value to write
+     * @param buffer The buffer to write to
+     */
+    fun writeFloat(value: Float, buffer: ByteBuffer) = buffer.putFloat(value)
 
     /**
      * Write the given double following the double-precision 64-bit format IEEE 754 value into the

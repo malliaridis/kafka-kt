@@ -23,14 +23,29 @@ import org.apache.kafka.common.Uuid
 import org.apache.kafka.common.protocol.MessageUtil.UNSIGNED_INT_MAX
 import org.apache.kafka.common.protocol.MessageUtil.UNSIGNED_SHORT_MAX
 import org.apache.kafka.common.protocol.types.Field.ComplexArray
+import org.apache.kafka.common.protocol.types.Field.ComplexNullableArray
+import org.apache.kafka.common.protocol.types.Field.Float32
 import org.apache.kafka.common.protocol.types.Field.Float64
 import org.apache.kafka.common.protocol.types.Field.Int16
 import org.apache.kafka.common.protocol.types.Field.Int32
 import org.apache.kafka.common.protocol.types.Field.Int64
 import org.apache.kafka.common.protocol.types.Field.Int8
+import org.apache.kafka.common.protocol.types.Field.NullableFloat32
+import org.apache.kafka.common.protocol.types.Field.NullableFloat64
+import org.apache.kafka.common.protocol.types.Field.NullableInt16
+import org.apache.kafka.common.protocol.types.Field.NullableInt32
+import org.apache.kafka.common.protocol.types.Field.NullableInt64
+import org.apache.kafka.common.protocol.types.Field.NullableInt8
 import org.apache.kafka.common.protocol.types.Field.NullableStr
+import org.apache.kafka.common.protocol.types.Field.NullableUUID
+import org.apache.kafka.common.protocol.types.Field.NullableUint16
+import org.apache.kafka.common.protocol.types.Field.NullableUint32
+import org.apache.kafka.common.protocol.types.Field.NullableUint8
 import org.apache.kafka.common.protocol.types.Field.Str
+import org.apache.kafka.common.protocol.types.Field.UUID
+import org.apache.kafka.common.protocol.types.Field.Uint16
 import org.apache.kafka.common.protocol.types.Field.Uint32
+import org.apache.kafka.common.protocol.types.Field.Uint8
 import org.apache.kafka.common.record.BaseRecords
 
 /**
@@ -43,7 +58,7 @@ data class Struct(
 
     constructor(schema: Schema) : this(
         schema = schema,
-        values = arrayOfNulls(schema.numFields()),
+        values = arrayOfNulls(schema.numFields),
     )
 
     /**
@@ -62,13 +77,13 @@ data class Struct(
      * @param field The field for which to get the default value
      * @throws SchemaException if the field has no value and has no default.
      */
-    private fun getFieldOrDefault(field: BoundField): Any? {
-        return values[field.index]
+    private fun <T> getFieldOrDefault(field: BoundField): T {
+        return (values[field.index]
             ?: if (field.def.hasDefaultValue) field.def.defaultValue
             else if (field.def.type.isNullable) null
             else throw SchemaException(
                 "Missing value for field '${field.def.name}' which has no default value."
-            )
+            )) as T
     }
 
     /**
@@ -78,57 +93,94 @@ data class Struct(
      * @return The value for that field.
      * @throws SchemaException if the field has no value and has no default.
      */
-    operator fun get(field: BoundField): Any? {
+    operator fun <T> get(field: BoundField): T {
         validateField(field)
         return getFieldOrDefault(field)
     }
 
-    operator fun get(field: Int8): Byte? = getByte(field.name)
+    operator fun get(field: Field.Bool): Boolean = getBoolean(field.name)
 
-    operator fun get(field: Int32): Int? = getInt(field.name)
+    operator fun get(field: Field.NullableBool): Boolean? = getBooleanOrNull(field.name)
 
-    operator fun get(field: Int64): Long? = getLong(field.name)
+    operator fun get(field: Int8): Byte = getByte(field.name)
 
-    operator fun get(field: Field.UUID): Uuid? = getUuid(field.name)
+    operator fun get(field: NullableInt8): Byte? = getByteOrNull(field.name)
 
-    operator fun get(field: Field.Uint16): Int? = getInt(field.name)
+    operator fun get(field: Uint8): UByte = getUnsignedByte(field.name)
 
-    operator fun get(field: Uint32): Long? = getLong(field.name)
+    operator fun get(field: NullableUint8): UByte? = getUnsignedByteOrNull(field.name)
 
-    operator fun get(field: Int16): Short? = getShort(field.name)
+    operator fun get(field: Int16): Short = getShort(field.name)
 
-    operator fun get(field: Float64): Double? = getDouble(field.name)
+    operator fun get(field: NullableInt16): Short? = getShortOrNull(field.name)
 
-    operator fun get(field: Str): String? = getString(field.name)
+    operator fun get(field: Uint16): UShort = getUnsignedShort(field.name)
 
-    operator fun get(field: NullableStr): String? = getString(field.name)
+    operator fun get(field: NullableUint16): UShort? = getUnsignedShortOrNull(field.name)
 
-    operator fun get(field: Field.Bool): Boolean? = getBoolean(field.name)
+    operator fun get(field: Int32): Int = getInt(field.name)
 
-    operator fun get(field: Field.Array): Array<Any?>? = getArray(field.name)
+    operator fun get(field: NullableInt32): Int? = getIntOrNull(field.name)
 
-    operator fun get(field: ComplexArray): Array<Any?>? = getArray(field.name)
+    operator fun get(field: Uint32): UInt = getUnsignedInt(field.name)
 
-    fun getOrElse(field: Int64, alternative: Long): Long = getLong(field.name) ?: alternative
+    operator fun get(field: NullableUint32): UInt? = getUnsignedIntOrNull(field.name)
 
-    fun getOrElse(field: Field.UUID, alternative: Uuid): Uuid = getUuid(field.name) ?: alternative
+    operator fun get(field: Int64): Long = getLong(field.name)
 
-    fun getOrElse(field: Int16, alternative: Short): Short = getShort(field.name) ?: alternative
+    operator fun get(field: NullableInt64): Long? = getLongOrNull(field.name)
 
-    fun getOrElse(field: Int8, alternative: Byte): Byte = getByte(field.name) ?: alternative
+    // TODO add UInt64
+    // operator fun get(field: Uint64): ULong = getUnsignedLong(field.name)
 
-    fun getOrElse(field: Int32, alternative: Int): Int = getInt(field.name) ?: alternative
+    // TODO add nullable UInt64
+    // operator fun get(field: NullableUint64): ULong? = getUnsignedLongOrNull(field.name)
+
+    operator fun get(field: Float32): Float = getFloat(field.name)
+
+    operator fun get(field: NullableFloat32): Float? = getFloatOrNull(field.name)
+
+    operator fun get(field: Float64): Double = getDouble(field.name)
+
+    operator fun get(field: NullableFloat64): Double? = getDoubleOrNull(field.name)
+
+    operator fun get(field: UUID): Uuid = getUuid(field.name)
+
+    operator fun get(field: NullableUUID): Uuid? = getUuidOrNull(field.name)
+
+    operator fun get(field: Str): String = getString(field.name)
+
+    operator fun get(field: NullableStr): String? = getStringOrNull(field.name)
+
+    operator fun get(field: Field.Array): Array<Any?> = getArray(field.name)
+
+    operator fun get(field: ComplexArray): Array<Any?> = getArray(field.name)
+
+    operator fun get(field: Field.NullableArray): Array<Any?>? = getArrayOrNull(field.name)
+
+    operator fun get(field: ComplexNullableArray): Array<Any?>? = getArrayOrNull(field.name)
+
+    fun getOrElse(field: Int64, alternative: Long): Long = getLongOrNull(field.name) ?: alternative
+
+    fun getOrElse(field: UUID, alternative: Uuid): Uuid = getUuidOrNull(field.name) ?: alternative
+
+    fun getOrElse(field: Int16, alternative: Short): Short =
+        getShortOrNull(field.name) ?: alternative
+
+    fun getOrElse(field: Int8, alternative: Byte): Byte = getByteOrNull(field.name) ?: alternative
+
+    fun getOrElse(field: Int32, alternative: Int): Int = getIntOrNull(field.name) ?: alternative
 
     fun getOrElse(field: Float64, alternative: Double): Double =
-        getDouble(field.name) ?: alternative
+        getDoubleOrNull(field.name) ?: alternative
 
     fun getOrElse(field: NullableStr, alternative: String): String =
-        getString(field.name) ?: alternative
+        getStringOrNull(field.name) ?: alternative
 
     fun getOrElse(field: Str, alternative: String): String = getString(field.name) ?: alternative
 
     fun getOrElse(field: Field.Bool, alternative: Boolean): Boolean =
-        getBoolean(field.name) ?: alternative
+        getBooleanOrNull(field.name) ?: alternative
 
     fun getOrEmpty(field: Field.Array): Array<Any?> = getArray(field.name) ?: emptyArray()
 
@@ -141,7 +193,7 @@ data class Struct(
      * @return The value in the record
      * @throws SchemaException If no such field exists
      */
-    operator fun get(name: String): Any? {
+    operator fun <T> get(name: String): T {
         val field = schema[name] ?: throw SchemaException("No such field: $name")
         return getFieldOrDefault(field)
     }
@@ -162,66 +214,126 @@ data class Struct(
 
     fun getStruct(name: String): Struct? = get(name) as Struct?
 
-    fun getByte(field: BoundField): Byte? = get(field) as Byte?
+    fun getByte(field: BoundField): Byte = get(field)
 
-    fun getByte(name: String): Byte? = get(name) as Byte?
+    fun getByte(name: String): Byte = get(name)
+
+    fun getByteOrNull(field: BoundField): Byte? = get(field)
+
+    fun getByteOrNull(name: String): Byte? = get(name)
+
+    fun getUnsignedByte(field: BoundField): UByte = get(field)
+
+    fun getUnsignedByte(name: String): UByte = get(name)
+
+    fun getUnsignedByteOrNull(field: BoundField): UByte? = get(field)
+
+    fun getUnsignedByteOrNull(name: String): UByte? = get(name)
 
     fun getRecords(name: String): BaseRecords? = get(name) as BaseRecords?
 
-    fun getShort(field: BoundField): Short? = get(field) as Short?
+    fun getShort(field: BoundField): Short = get(field) as Short
 
-    fun getShort(name: String): Short? = get(name) as Short?
+    fun getShort(name: String): Short = get(name) as Short
 
-    fun getUnsignedShort(field: BoundField): Int? = get(field) as Int?
+    fun getShortOrNull(field: BoundField): Short? = get(field)
 
-    fun getUnsignedShort(name: String): Int? = get(name) as Int?
+    fun getShortOrNull(name: String): Short? = get(name)
 
-    fun getInt(field: BoundField): Int? = get(field) as Int?
+    fun getUnsignedShort(field: BoundField): UShort = get(field)
 
-    fun getInt(name: String): Int? = get(name) as Int?
+    fun getUnsignedShort(name: String): UShort = get(name)
 
-    fun getUnsignedInt(name: String): Long? = get(name) as Long?
+    fun getUnsignedShortOrNull(name: String): UShort? = get(name)
 
-    fun getUnsignedInt(field: BoundField): Long? = get(field) as Long?
+    fun getUnsignedShortOrNull(field: BoundField): UShort? = get(field)
 
-    fun getLong(field: BoundField): Long? = get(field) as Long?
+    fun getInt(field: BoundField): Int = get(field) as Int
 
-    fun getLong(name: String): Long? = get(name) as Long?
+    fun getInt(name: String): Int = get(name) as Int
 
-    fun getUuid(field: BoundField): Uuid? = get(field) as Uuid?
+    fun getIntOrNull(field: BoundField): Int? = get(field)
 
-    fun getUuid(name: String): Uuid? = get(name) as Uuid?
+    fun getIntOrNull(name: String): Int? = get(name)
 
-    fun getDouble(field: BoundField): Double? = get(field) as Double?
+    fun getUnsignedInt(name: String): UInt = get(name)
 
-    fun getDouble(name: String): Double? = get(name) as Double?
+    fun getUnsignedIntOrNull(name: String): UInt? = get(name)
 
-    fun getArray(field: BoundField): Array<Any>? = get(field) as Array<Any>?
+    fun getUnsignedInt(field: BoundField): Long? = get(field)
 
-    fun getArray(name: String): Array<Any?>? = get(name) as Array<Any?>?
+    // TODO Add unsigned nullable int
 
-    fun getString(field: BoundField): String? = get(field) as String?
+    fun getLong(field: BoundField): Long = get(field)
 
-    fun getString(name: String): String? = get(name) as String?
+    fun getLong(name: String): Long = get(name)
 
-    fun getBoolean(field: BoundField): Boolean? = get(field) as Boolean?
+    fun getLongOrNull(field: BoundField): Long? = get(field)
 
-    fun getBoolean(name: String): Boolean? = get(name) as Boolean?
+    fun getLongOrNull(name: String): Long? = get(name)
+
+    fun getUuid(field: BoundField): Uuid = get(field)
+
+    fun getUuid(name: String): Uuid = get(name)
+
+    fun getUuidOrNull(field: BoundField): Uuid? = get(field)
+
+    fun getUuidOrNull(name: String): Uuid? = get(name)
+
+    fun getFloat(field: BoundField): Float = get(field)
+
+    fun getFloat(name: String): Float = get(name)
+
+    fun getFloatOrNull(field: BoundField): Float? = get(field)
+
+    fun getFloatOrNull(name: String): Float? = get(name)
+
+    fun getDouble(field: BoundField): Double = get(field)
+
+    fun getDouble(name: String): Double = get(name)
+
+    fun getDoubleOrNull(field: BoundField): Double? = get(field)
+
+    fun getDoubleOrNull(name: String): Double? = get(name)
+
+    fun getArray(field: BoundField): Array<Any?> = get(field)
+
+    fun getArray(name: String): Array<Any?> = get(name)
+
+    fun getArrayOrNull(field: BoundField): Array<Any?>? = get(field)
+
+    fun getArrayOrNull(name: String): Array<Any?>? = get(name)
+
+    fun getString(field: BoundField): String = get(field)
+
+    fun getString(name: String): String = get(name)
+
+    fun getStringOrNull(field: BoundField): String = get(field)
+
+    fun getStringOrNull(name: String): String? = get(name)
+
+    fun getBoolean(field: BoundField): Boolean = get(field)
+
+    fun getBoolean(name: String): Boolean = get(name)
+
+    fun getBooleanOrNull(field: BoundField): Boolean? = get(field)
+
+    fun getBooleanOrNull(name: String): Boolean? = get(name)
 
     fun getBytes(field: BoundField): ByteBuffer? {
-        val result = get(field)
+        val result: Any? = get(field)
         return if (result is ByteArray) ByteBuffer.wrap(result as ByteArray?)
         else result as ByteBuffer?
     }
 
     fun getBytes(name: String): ByteBuffer? {
-        val result = get(name)
+        val result: Any? = get(name)
         return if (result is ByteArray) ByteBuffer.wrap(result as ByteArray?)
         else result as ByteBuffer?
     }
 
     fun getByteArray(name: String): ByteArray {
-        val result = get(name)
+        val result: Any? = get(name)
         if (result is ByteArray) return result
         val buf = result as ByteBuffer?
         val arr = ByteArray(buf!!.remaining())
@@ -251,49 +363,73 @@ data class Struct(
      * @throws SchemaException If the field is not known
      */
     operator fun set(name: String, value: Any?): Struct {
-        val field = schema.get(name) ?: throw SchemaException("Unknown field: $name")
+        val field = schema[name] ?: throw SchemaException("Unknown field: $name")
         values[field.index] = value
         return this
     }
 
-    operator fun set(def: Str, value: String?): Struct = set(def.name, value)
+    operator fun set(def: Field.Bool, value: Boolean): Struct = set(def.name, value)
 
-    operator fun set(def: NullableStr, value: String?): Struct = set(def.name, value)
+    operator fun set(def: Field.NullableBool, value: Boolean?): Struct = set(def.name, value)
 
     operator fun set(def: Int8, value: Byte): Struct = set(def.name, value)
 
-    operator fun set(def: Int32, value: Int): Struct = set(def.name, value)
+    operator fun set(def: NullableInt8, value: Byte?): Struct = set(def.name, value)
 
-    operator fun set(def: Int64, value: Long): Struct = set(def.name, value)
+    operator fun set(def: Uint8, value: UByte): Struct = set(def.name, value)
 
-    operator fun set(def: Field.UUID, value: Uuid?): Struct = set(def.name, value)
+    operator fun set(def: NullableUint8, value: UByte?): Struct = set(def.name, value)
 
     operator fun set(def: Int16, value: Short): Struct = set(def.name, value)
 
-    operator fun set(def: Field.Uint16, value: Int): Struct {
-        if (value < 0 || value > UNSIGNED_SHORT_MAX)
-            throw RuntimeException("Invalid value for unsigned short for ${def.name}: $value")
-        return set(def.name, value)
-    }
+    operator fun set(def: NullableInt16, value: Short?): Struct = set(def.name, value)
 
-    operator fun set(def: Uint32, value: Long): Struct {
-        if (value < 0 || value > UNSIGNED_INT_MAX)
-            throw RuntimeException("Invalid value for unsigned int for ${def.name}: $value")
-        return set(def.name, value)
-    }
+    operator fun set(def: Uint16, value: Uint16): Struct = set(def.name, value)
+
+    operator fun set(def: NullableUint16, value: Uint16?): Struct = set(def.name, value)
+
+    operator fun set(def: Int32, value: Int): Struct = set(def.name, value)
+
+    operator fun set(def: NullableInt32, value: Int?): Struct = set(def.name, value)
+
+    operator fun set(def: Uint32, value: UInt): Struct = set(def.name, value)
+
+    operator fun set(def: NullableUint32, value: UInt?): Struct = set(def.name, value)
+
+    operator fun set(def: Int64, value: Long): Struct = set(def.name, value)
+
+    operator fun set(def: NullableInt64, value: Long?): Struct = set(def.name, value)
+
+    operator fun set(def: UUID, value: Uuid): Struct = set(def.name, value)
+
+    operator fun set(def: NullableUUID, value: Uuid?): Struct = set(def.name, value)
+
+    operator fun set(def: Float32, value: Float): Struct = set(def.name, value)
+
+    operator fun set(def: NullableFloat32, value: Float?): Struct = set(def.name, value)
 
     operator fun set(def: Float64, value: Double): Struct = set(def.name, value)
 
-    operator fun set(def: Field.Bool, value: Boolean): Struct = set(def.name, value)
+    operator fun set(def: NullableFloat64, value: Double?): Struct = set(def.name, value)
 
-    operator fun set(def: Field.Array, value: Array<Any?>?): Struct = set(def.name, value)
+    operator fun set(def: Str, value: String): Struct = set(def.name, value)
+
+    operator fun set(def: NullableStr, value: String?): Struct = set(def.name, value)
+
+    operator fun set(def: Field.Array, value: Array<Any?>): Struct = set(def.name, value)
+
+    operator fun set(def: Field.NullableArray, value: Array<Any?>?): Struct = set(def.name, value)
 
     operator fun set(def: ComplexArray, value: Array<Any?>?): Struct = set(def.name, value)
+
+    operator fun set(def: ComplexNullableArray, value: Array<Any?>?): Struct = set(def.name, value)
 
     fun setByteArray(name: String, value: ByteArray?): Struct {
         val buf = if (value == null) null else ByteBuffer.wrap(value)
         return set(name, buf)
     }
+
+    // TODO Consider adding setShortArray, setIntArray, setLongArray, setFloatArray and setDoubleArray
 
     fun setIfExists(def: Field.Array, value: Array<Any?>?): Struct = setIfExists(def.name, value)
 
@@ -399,14 +535,14 @@ data class Struct(
         var result = 1
         for (index in values.indices) {
             val f = schema[index]
+            val field: Any? = this[f]
             if (f.def.type.isArray) {
-                if (this[f] != null) {
-                    val arrayObject = this[f] as Array<Any>
-                    for (arrayItem: Any in arrayObject)
+                if (field != null) {
+                    val arrayObject = field as Array<Any?>
+                    for (arrayItem in arrayObject)
                         result = prime * result + arrayItem.hashCode()
                 }
             } else {
-                val field = this[f]
                 if (field != null) result = prime * result + field.hashCode()
             }
         }
@@ -422,13 +558,12 @@ data class Struct(
         if (schema !== other.schema) return false
         for (i in values.indices) {
             val f = schema[i]
-            val result: Boolean = if (f.def.type.isArray)
-                Arrays.equals(this[f] as Array<Any?>?, other[f] as Array<Any?>?)
-            else {
-                val thisField = this[f]
-                val otherField = other[f]
-                (thisField == otherField)
-            }
+            val thisField: Any? = this[f]
+            val otherField: Any? = other[f]
+            val result = if (f.def.type.isArray)
+                (thisField as Array<Any?>?) == (otherField as Array<Any?>?)
+            else thisField == otherField
+
             if (!result) return false
         }
         return true

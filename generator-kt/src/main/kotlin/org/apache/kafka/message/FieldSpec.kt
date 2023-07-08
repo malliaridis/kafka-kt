@@ -460,10 +460,7 @@ class FieldSpec @JsonCreator constructor(
             )
             return "$type()"
         } else if (type.isArray) {
-            if (fieldDefault == "null") {
-                validateNullDefault()
-                return "null"
-            } else if (!fieldDefault.isNullOrEmpty()) throw RuntimeException(
+            if (!fieldDefault.isNullOrEmpty()) throw RuntimeException(
                 "Invalid default for array field $name. The only valid default for an array " +
                         "field is the empty array or null."
             )
@@ -476,8 +473,7 @@ class FieldSpec @JsonCreator constructor(
 
     private fun validateNullDefault() {
         if (!nullableVersions.contains(versions)) throw RuntimeException(
-            "null cannot be the default for field $name, because not all versions of this field " +
-                    "are nullable."
+            "null cannot be the default for field $name, because not all versions of this field are nullable."
         )
     }
 
@@ -513,12 +509,23 @@ class FieldSpec @JsonCreator constructor(
                 if (structRegistry.isStructArrayWithKeys(this)) {
                     headerGenerator.addImport(MessageGenerator.IMPLICIT_LINKED_HASH_MULTI_COLLECTION_CLASS)
                     collectionType(arrayType.elementType.toString())
-                } else {
-                    headerGenerator.addImport(MessageGenerator.LIST_CLASS)
-                    String.format(
-                        "List<%s>",
-                        arrayType.elementType.getBoxedKotlinType(headerGenerator),
-                    )
+                } else when(arrayType.elementType) {
+                    is BoolFieldType -> "BooleanArray"
+                    is Int8FieldType -> "ByteArray"
+                    is Uint8FieldType -> "UByteArray"
+                    is Int16FieldType -> "ShortArray"
+                    is Uint16FieldType -> "UShortArray"
+                    is Int32FieldType -> "IntArray"
+                    is Uint32FieldType -> "UIntArray"
+                    is Int64FieldType -> "LongArray"
+                    is Uint64FieldType -> "ULongArray"
+                    else -> {
+                        headerGenerator.addImport(MessageGenerator.LIST_CLASS)
+                        String.format(
+                            "List<%s>",
+                            arrayType.elementType.getBoxedKotlinType(headerGenerator),
+                        )
+                    }
                 } + if (type.isNullable) "?" else ""
             }
 
@@ -542,11 +549,24 @@ class FieldSpec @JsonCreator constructor(
             if (structRegistry.isStructArrayWithKeys(this))
                 collectionType(arrayType.elementType.toString())
             else {
-                headerGenerator.addImport(MessageGenerator.ARRAYLIST_CLASS)
-                String.format(
-                    "ArrayList<%s>",
-                    arrayType.elementType.getBoxedKotlinType(headerGenerator)
-                )
+                return when(arrayType.elementType) {
+                    is BoolFieldType -> "BooleanArray"
+                    is Int8FieldType -> "ByteArray"
+                    is Uint8FieldType -> "UByteArray"
+                    is Int16FieldType -> "ShortArray"
+                    is Uint16FieldType -> "UShortArray"
+                    is Int32FieldType -> "IntArray"
+                    is Uint32FieldType -> "UIntArray"
+                    is Int64FieldType -> "LongArray"
+                    is Uint64FieldType -> "ULongArray"
+                    else -> {
+                        headerGenerator.addImport(MessageGenerator.ARRAYLIST_CLASS)
+                        String.format(
+                            "ArrayList<%s>",
+                            arrayType.elementType.getBoxedKotlinType(headerGenerator)
+                        )
+                    }
+                }
             }
         } else fieldAbstractKotlinType(headerGenerator, structRegistry)
     }

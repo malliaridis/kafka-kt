@@ -176,7 +176,7 @@ class MessageDataGenerator internal constructor(
             implementedInterfaces.add("ImplicitLinkedHashCollection.Element")
         }
         val classModifiers: MutableSet<String> = LinkedHashSet()
-        // TODO Addd data class modifier once properties added to constructor
+        // TODO Add data class modifier once properties added to constructor
         // classModifiers.add("data")
         // if (!isTopLevel) classModifiers.add("inner")
 

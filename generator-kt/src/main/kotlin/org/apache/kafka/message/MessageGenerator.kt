@@ -27,7 +27,6 @@ import net.sourceforge.argparse4j.impl.Arguments
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.util.function.Consumer
 
 /**
  * The Kafka message generator.
@@ -232,12 +231,12 @@ object MessageGenerator {
         val typeClassGenerators = createTypeClassGenerators(packageName, typeClassGeneratorTypes)
         val outputFileNames = HashSet<String>()
         Files.newDirectoryStream(Paths.get(inputDir), JSON_GLOB).use { directoryStream ->
-            for (inputPath: Path in directoryStream) try {
+            for (inputPath in directoryStream) try {
                 val spec = JSON_SERDE.readValue(inputPath.toFile(), MessageSpec::class.java)
                 val generators =
                     createMessageClassGenerators(packageName, messageClassGeneratorTypes)
 
-                for (generator: MessageClassGenerator in generators) {
+                for (generator in generators) {
                     val name = generator.outputName(spec) + KOTLIN_SUFFIX
                     outputFileNames.add(name)
                     val outputPath = Paths.get(outputDir, name)
@@ -246,9 +245,9 @@ object MessageGenerator {
                     }
                 }
                 numProcessed++
-                typeClassGenerators.forEach(Consumer { generator ->
+                typeClassGenerators.forEach { generator ->
                     generator.registerMessageType(spec)
-                })
+                }
             } catch (e: Exception) {
                 throw RuntimeException("Exception while processing $inputPath", e)
             }

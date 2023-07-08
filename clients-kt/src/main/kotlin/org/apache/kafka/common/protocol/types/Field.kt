@@ -42,6 +42,30 @@ open class Field(
         defaultValue = defaultValue
     )
 
+    class Bool(
+        name: String,
+        docString: String?,
+        defaultValue: Boolean? = null,
+    ) : Field(
+        name = name,
+        type = Type.BOOLEAN,
+        docString = docString,
+        hasDefaultValue = defaultValue != null,
+        defaultValue = defaultValue
+    )
+
+    class NullableBool(
+        name: String,
+        docString: String?,
+        defaultValue: Boolean? = null,
+    ) : Field(
+        name = name,
+        type = Type.NULLABLE_BOOLEAN,
+        docString = docString,
+        hasDefaultValue = true,
+        defaultValue = defaultValue,
+    )
+
     class Int8(
         name: String,
         docString: String?,
@@ -51,7 +75,91 @@ open class Field(
         type = Type.INT8,
         docString = docString,
         hasDefaultValue = defaultValue != null,
-        defaultValue = defaultValue
+        defaultValue = defaultValue,
+    )
+
+    class NullableInt8(
+        name: String,
+        docString: String?,
+        defaultValue: Byte? = null,
+    ) : Field(
+        name = name,
+        type = Type.INT8,
+        docString = docString,
+        hasDefaultValue = true,
+        defaultValue = defaultValue,
+    )
+
+    class Uint8(
+        name: String,
+        docString: String?,
+        defaultValue: UByte? = null,
+    ) : Field(
+        name = name,
+        type = Type.UINT8,
+        docString = docString,
+        hasDefaultValue = defaultValue != null,
+        defaultValue = defaultValue,
+    )
+
+    class NullableUint8(
+        name: String,
+        docString: String?,
+        defaultValue: UByte? = null,
+    ) : Field(
+        name = name,
+        type = Type.NULLABLE_UINT8,
+        docString = docString,
+        hasDefaultValue = true,
+        defaultValue = defaultValue,
+    )
+
+    class Int16(
+        name: String,
+        docString: String?,
+        defaultValue: Short? = null,
+    ) : Field(
+        name = name,
+        type = Type.INT16,
+        docString = docString,
+        hasDefaultValue = defaultValue != null,
+        defaultValue = defaultValue,
+    )
+
+    class NullableInt16(
+        name: String,
+        docString: String?,
+        defaultValue: Short? = null,
+    ) : Field(
+        name = name,
+        type = Type.NULLABLE_INT16,
+        docString = docString,
+        hasDefaultValue = true,
+        defaultValue = defaultValue,
+    )
+
+    class Uint16(
+        name: String,
+        docString: String?,
+        defaultValue: UShort? = null,
+    ) : Field(
+        name = name,
+        type = Type.UINT16,
+        docString = docString,
+        hasDefaultValue = defaultValue != null,
+        defaultValue = defaultValue,
+    )
+
+    class NullableUint16(
+        name: String,
+        docString: String?,
+        defaultValue: UShort? = null,
+    ) : Field(
+        name = name,
+        type = Type.NULLABLE_UINT16,
+        docString = docString,
+        hasDefaultValue = true,
+        defaultValue = defaultValue,
     )
 
     class Int32(
@@ -66,6 +174,39 @@ open class Field(
         defaultValue = defaultValue
     )
 
+    class NullableInt32(
+        name: String,
+        docString: String?,
+        defaultValue: Int? = null,
+    ) : Field(
+        name = name,
+        type = Type.NULLABLE_INT32,
+        docString = docString,
+        hasDefaultValue = true,
+        defaultValue = defaultValue
+    )
+
+    class Uint32(
+        name: String,
+        docString: String?,
+    ) : Field(
+        name = name,
+        type = Type.UNSIGNED_INT32,
+        docString = docString,
+        hasDefaultValue = false,
+    )
+
+    class NullableUint32(
+        name: String,
+        docString: String?,
+    ) : Field(
+        name = name,
+        type = Type.NULLABLE_UINT32,
+        docString = docString,
+        hasDefaultValue = true,
+        defaultValue = null,
+    )
+
     class Int64(
         name: String,
         docString: String?,
@@ -75,6 +216,18 @@ open class Field(
         type = Type.INT64,
         docString = docString,
         hasDefaultValue = defaultValue != null,
+        defaultValue = defaultValue
+    )
+
+    class NullableInt64(
+        name: String,
+        docString: String?,
+        defaultValue: Long? = null,
+    ) : Field(
+        name = name,
+        type = Type.NULLABLE_INT64,
+        docString = docString,
+        hasDefaultValue = true,
         defaultValue = defaultValue
     )
 
@@ -90,37 +243,40 @@ open class Field(
         defaultValue = defaultValue
     )
 
-    class Int16(
+    class NullableUUID(
         name: String,
         docString: String?,
+        defaultValue: UUID? = null,
     ) : Field(
         name = name,
-        type = Type.INT16,
+        type = Type.NULLABLE_UUID,
         docString = docString,
-        hasDefaultValue = false,
-        defaultValue = null
+        hasDefaultValue = true,
+        defaultValue = defaultValue
     )
 
-    class Uint16(
+    class Float32(
         name: String,
         docString: String?,
+        defaultValue: Double? = null,
     ) : Field(
         name = name,
-        type = Type.UINT16,
+        type = Type.FLOAT32,
         docString = docString,
-        hasDefaultValue = false,
-        defaultValue = null
+        hasDefaultValue = defaultValue != null,
+        defaultValue = defaultValue
     )
 
-    class Uint32(
+    class NullableFloat32(
         name: String,
         docString: String?,
+        defaultValue: Double? = null,
     ) : Field(
         name = name,
-        type = Type.UNSIGNED_INT32,
+        type = Type.NULLABLE_FLOAT32,
         docString = docString,
-        hasDefaultValue = false,
-        defaultValue = null
+        hasDefaultValue = true,
+        defaultValue = defaultValue
     )
 
     class Float64(
@@ -135,15 +291,28 @@ open class Field(
         defaultValue = defaultValue
     )
 
+    class NullableFloat64(
+        name: String,
+        docString: String?,
+        defaultValue: Double? = null,
+    ) : Field(
+        name = name,
+        type = Type.NULLABLE_FLOAT64,
+        docString = docString,
+        hasDefaultValue = true,
+        defaultValue = defaultValue
+    )
+
     class Str(
         name: String,
         docString: String?,
+        defaultValue: String? = null,
     ) : Field(
         name = name,
         type = Type.STRING,
         docString = docString,
-        hasDefaultValue = false,
-        defaultValue = null
+        hasDefaultValue = defaultValue != null,
+        defaultValue = defaultValue,
     )
 
     class CompactStr(
@@ -160,12 +329,13 @@ open class Field(
     class NullableStr(
         name: String,
         docString: String?,
+        defaultValue: String? = null,
     ) : Field(
         name = name,
         type = Type.NULLABLE_STRING,
         docString = docString,
-        hasDefaultValue = false,
-        defaultValue = null
+        hasDefaultValue = true,
+        defaultValue = defaultValue
     )
 
     class CompactNullableStr(
@@ -179,27 +349,30 @@ open class Field(
         defaultValue = null
     )
 
-    class Bool(
-        name: String,
-        docString: String?,
-    ) : Field(
-        name = name,
-        type = Type.BOOLEAN,
-        docString = docString,
-        hasDefaultValue = false,
-        defaultValue = null
-    )
-
     class Array(
         name: String,
         elementType: Type,
         docString: String?,
+        defaultValue: Any? = null,
     ) : Field(
         name = name,
         type = ArrayOf(elementType),
         docString = docString,
-        hasDefaultValue = false,
-        defaultValue = null
+        hasDefaultValue = defaultValue != null,
+        defaultValue = defaultValue
+    )
+
+    class NullableArray(
+        name: String,
+        elementType: Type,
+        docString: String?,
+        defaultValue: Any? = null,
+    ) : Field(
+        name = name,
+        type = ArrayOf(elementType),
+        docString = docString,
+        hasDefaultValue = true,
+        defaultValue = defaultValue
     )
 
     class CompactArray(
@@ -231,9 +404,9 @@ open class Field(
             /**
              * Create a new TaggedFieldsSection with the given tags and fields.
              *
-             * @param fields    This is an array containing Integer tags followed
-             * by associated Field objects.
-             * @return          The new [TaggedFieldsSection]
+             * @param fields This is an array containing Integer tags followed by associated Field
+             * objects.
+             * @return The new [TaggedFieldsSection]
              */
             fun of(vararg fields: Any): TaggedFieldsSection =
                 TaggedFieldsSection(TaggedFields.of(*fields))
@@ -260,6 +433,42 @@ open class Field(
                 type = ArrayOf.nullable(elementType),
                 docString = docString,
                 hasDefaultValue = false,
+                defaultValue = null
+            )
+        }
+
+        fun withFields(docStringOverride: String?, vararg fields: Field): Field {
+            val elementType = Schema(*fields)
+            return Field(
+                name = name,
+                type = ArrayOf(elementType),
+                docString = docStringOverride,
+                hasDefaultValue = false,
+                defaultValue = null
+            )
+        }
+    }
+
+    class ComplexNullableArray(val name: String, val docString: String) {
+
+        fun withFields(vararg fields: Field): Field {
+            val elementType = Schema(*fields)
+            return Field(
+                name = name,
+                type = ArrayOf(elementType),
+                docString = docString,
+                hasDefaultValue = false,
+                defaultValue = null,
+            )
+        }
+
+        fun nullableWithFields(vararg fields: Field): Field {
+            val elementType = Schema(*fields)
+            return Field(
+                name = name,
+                type = ArrayOf.nullable(elementType),
+                docString = docString,
+                hasDefaultValue = true,
                 defaultValue = null
             )
         }

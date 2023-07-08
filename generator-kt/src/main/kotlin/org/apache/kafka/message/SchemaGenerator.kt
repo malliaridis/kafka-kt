@@ -19,6 +19,7 @@ package org.apache.kafka.message
 
 import org.apache.kafka.message.FieldType.BoolFieldType
 import org.apache.kafka.message.FieldType.BytesFieldType
+import org.apache.kafka.message.FieldType.Float32FieldType
 import org.apache.kafka.message.FieldType.Float64FieldType
 import org.apache.kafka.message.FieldType.Int16FieldType
 import org.apache.kafka.message.FieldType.Int32FieldType
@@ -28,6 +29,8 @@ import org.apache.kafka.message.FieldType.StringFieldType
 import org.apache.kafka.message.FieldType.UUIDFieldType
 import org.apache.kafka.message.FieldType.Uint16FieldType
 import org.apache.kafka.message.FieldType.Uint32FieldType
+import org.apache.kafka.message.FieldType.Uint64FieldType
+import org.apache.kafka.message.FieldType.Uint8FieldType
 import java.util.*
 
 /**
@@ -232,40 +235,53 @@ internal class SchemaGenerator(
     ): String {
         return if (type is BoolFieldType) {
             headerGenerator.addImport(MessageGenerator.TYPE_CLASS)
-            if (nullable) throw RuntimeException("Type $type cannot be nullable.")
-            "Type.BOOLEAN"
+            if (nullable) "Type.NULLABLE_BOOLEAN"
+            else "Type.BOOLEAN"
         } else if (type is Int8FieldType) {
             headerGenerator.addImport(MessageGenerator.TYPE_CLASS)
-            if (nullable) throw RuntimeException("Type $type cannot be nullable.")
-            "Type.INT8"
+            if (nullable) "Type.NULLABLE_INT8"
+            else "Type.INT8"
+        } else if (type is Uint8FieldType) {
+            headerGenerator.addImport(MessageGenerator.TYPE_CLASS)
+            if (nullable) "Type.NULLABLE_UINT8"
+            else "Type.UINT8"
         } else if (type is Int16FieldType) {
             headerGenerator.addImport(MessageGenerator.TYPE_CLASS)
-            if (nullable) throw RuntimeException("Type $type cannot be nullable.")
-            "Type.INT16"
+            if (nullable) "Type.NULLABLE_INT16"
+            else "Type.INT16"
         } else if (type is Uint16FieldType) {
             headerGenerator.addImport(MessageGenerator.TYPE_CLASS)
-            if (nullable) throw RuntimeException("Type $type cannot be nullable.")
-            "Type.UINT16"
-        } else if (type is Uint32FieldType) {
-            headerGenerator.addImport(MessageGenerator.TYPE_CLASS)
-            if (nullable) throw RuntimeException("Type $type cannot be nullable.")
-            "Type.UNSIGNED_INT32"
+            if (nullable) "Type.NULLABLE_UINT16"
+            else "Type.UINT16"
         } else if (type is Int32FieldType) {
             headerGenerator.addImport(MessageGenerator.TYPE_CLASS)
-            if (nullable) throw RuntimeException("Type $type cannot be nullable.")
-            "Type.INT32"
+            if (nullable) "Type.NULLABLE_INT32"
+            else "Type.INT32"
+        } else if (type is Uint32FieldType) {
+            headerGenerator.addImport(MessageGenerator.TYPE_CLASS)
+            if (nullable) "Type.NULLABLE_UINT32"
+            else "Type.UNSIGNED_INT32"
         } else if (type is Int64FieldType) {
             headerGenerator.addImport(MessageGenerator.TYPE_CLASS)
-            if (nullable) throw RuntimeException("Type $type cannot be nullable.")
-            "Type.INT64"
+            if (nullable) "Type.NULLABLE_INT64"
+            else "Type.INT64"
+        } else if (type is Uint64FieldType) {
+            throw RuntimeException("UInt64 type is not supported yet.")
+//            headerGenerator.addImport(MessageGenerator.TYPE_CLASS)
+//            if (nullable) "Type.NULLABLE_UINT64"
+//            else "Type.UINT64"
         } else if (type is UUIDFieldType) {
             headerGenerator.addImport(MessageGenerator.TYPE_CLASS)
-            if (nullable) throw RuntimeException("Type $type cannot be nullable.")
-            "Type.UUID"
+            if (nullable) "Type.NULLABLE_UUID"
+            else "Type.UUID"
+        } else if (type is Float32FieldType) {
+            headerGenerator.addImport(MessageGenerator.TYPE_CLASS)
+            if (nullable) "Type.NULLABLE_FLOAT32"
+            else "Type.FLOAT32"
         } else if (type is Float64FieldType) {
             headerGenerator.addImport(MessageGenerator.TYPE_CLASS)
-            if (nullable) throw RuntimeException("Type $type cannot be nullable.")
-            "Type.FLOAT64"
+            if (nullable) "Type.NULLABLE_FLOAT64"
+            else "Type.FLOAT64"
         } else if (type is StringFieldType) {
             headerGenerator.addImport(MessageGenerator.TYPE_CLASS)
             if (fieldFlexibleVersions.contains(version)) {

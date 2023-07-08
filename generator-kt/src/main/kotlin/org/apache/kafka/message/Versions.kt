@@ -117,7 +117,7 @@ class Versions {
 
     operator fun contains(other: Versions): Boolean {
         return if (other.isEmpty) true
-        else !(lowest > other.lowest || highest < other.highest)
+        else lowest <= other.lowest && highest >= other.highest
     }
 
     override fun equals(other: Any?): Boolean {
