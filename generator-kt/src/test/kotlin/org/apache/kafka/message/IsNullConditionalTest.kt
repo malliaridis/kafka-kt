@@ -35,12 +35,12 @@ class IsNullConditionalTest {
         IsNullConditional.forName("foobar")
             .nullableVersions(Versions.parse(input = "2+", defaultVersions = null)!!)
             .possibleVersions(Versions.parse(input = "0+", defaultVersions = null)!!)
-            .ifNull { buffer.printf("System.out.println(\"null\");%n") }
+            .ifNull { buffer.printf("println(\"null\")%n") }
             .generate(buffer)
         VersionConditionalTest.claimEquals(
             buffer,
             "if (foobar == null) {%n",
-            "    System.out.println(\"null\");%n",
+            "    println(\"null\")%n",
             "}%n",
         )
     }
@@ -52,15 +52,15 @@ class IsNullConditionalTest {
         IsNullConditional.forName("foobar")
             .nullableVersions(Versions.parse(input = "0+", defaultVersions = null)!!)
             .possibleVersions(Versions.parse(input = "2+", defaultVersions = null)!!)
-            .ifNull { buffer.printf("System.out.println(\"null\");%n") }
-            .ifShouldNotBeNull { buffer.printf("System.out.println(\"not null\");%n") }
+            .ifNull { buffer.printf("println(\"null\")%n") }
+            .ifShouldNotBeNull { buffer.printf("println(\"not null\")%n") }
             .generate(buffer)
         VersionConditionalTest.claimEquals(
             buffer,
             "if (foobar == null) {%n",
-            "    System.out.println(\"null\");%n",
+            "    println(\"null\")%n",
             "} else {%n",
-            "    System.out.println(\"not null\");%n",
+            "    println(\"not null\")%n",
             "}%n",
         )
     }
@@ -72,12 +72,12 @@ class IsNullConditionalTest {
         IsNullConditional.forName("foobar")
             .nullableVersions(Versions.parse(input = "0+", defaultVersions = null)!!)
             .possibleVersions(Versions.parse(input = "2+", defaultVersions = null)!!)
-            .ifShouldNotBeNull { buffer.printf("System.out.println(\"not null\");%n") }
+            .ifShouldNotBeNull { buffer.printf("println(\"not null\")%n") }
             .generate(buffer)
         VersionConditionalTest.claimEquals(
             buffer,
             "if (foobar != null) {%n",
-            "    System.out.println(\"not null\");%n",
+            "    println(\"not null\")%n",
             "}%n",
         )
     }
@@ -89,10 +89,10 @@ class IsNullConditionalTest {
         IsNullConditional.forName("baz")
             .nullableVersions(Versions.parse(input = "0-2", defaultVersions = null)!!)
             .possibleVersions(Versions.parse(input = "3+", defaultVersions = null)!!)
-            .ifNull { buffer.printf("System.out.println(\"null\");%n") }
-            .ifShouldNotBeNull { buffer.printf("System.out.println(\"not null\");%n") }
+            .ifNull { buffer.printf("println(\"null\")%n") }
+            .ifShouldNotBeNull { buffer.printf("println(\"not null\")%n") }
             .generate(buffer)
-        VersionConditionalTest.claimEquals(buffer, "System.out.println(\"not null\");%n")
+        VersionConditionalTest.claimEquals(buffer, "println(\"not null\")%n")
     }
 
     @Test
@@ -102,14 +102,14 @@ class IsNullConditionalTest {
         IsNullConditional.forName("baz")
             .nullableVersions(Versions.parse(input = "0-2", defaultVersions = null)!!)
             .possibleVersions(Versions.parse(input = "3+", defaultVersions = null)!!)
-            .ifNull { buffer.printf("System.out.println(\"null\");%n") }
-            .ifShouldNotBeNull { buffer.printf("System.out.println(\"not null\");%n") }
+            .ifNull { buffer.printf("println(\"null\")%n") }
+            .ifShouldNotBeNull { buffer.printf("println(\"not null\")%n") }
             .alwaysEmitBlockScope(true)
             .generate(buffer)
         VersionConditionalTest.claimEquals(
             buffer,
-            "{%n",
-            "    System.out.println(\"not null\");%n",
+            "run {%n",
+            "    println(\"not null\")%n",
             "}%n",
         )
     }

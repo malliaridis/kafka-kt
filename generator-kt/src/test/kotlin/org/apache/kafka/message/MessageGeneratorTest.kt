@@ -117,16 +117,4 @@ class MessageGeneratorTest {
         } catch (e: RuntimeException) {
         }
     }
-
-    @Test
-    fun testConstants() {
-        assertEquals(
-            expected = MessageGenerator.UNSIGNED_SHORT_MAX,
-            actual = 0xFFFF,
-        )
-        assertEquals(
-            expected = MessageGenerator.UNSIGNED_INT_MAX,
-            actual = 0xFFFFFFFFL,
-        )
-    }
 }

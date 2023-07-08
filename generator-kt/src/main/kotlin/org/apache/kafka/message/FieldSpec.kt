@@ -227,7 +227,10 @@ class FieldSpec @JsonCreator constructor(
         headerGenerator: HeaderGenerator,
         structRegistry: StructRegistry,
     ): String {
-        if ((fieldDefault.isNullOrEmpty() || fieldDefault == "null") && type.isNullable) return "null"
+        if ((fieldDefault.isNullOrEmpty() || fieldDefault == "null") && type.isNullable) {
+            validateNullDefault()
+            return "null"
+        }
 
         if (type is BoolFieldType) {
             return if (fieldDefault.isNullOrEmpty()) "false"
@@ -343,7 +346,7 @@ class FieldSpec @JsonCreator constructor(
                     else {
                         try {
                             val value = defaultString.toUInt(base)
-                            if (value < 0U || value > MessageGenerator.UNSIGNED_INT_MAX)
+                            if (value < 0U || value > UInt.MAX_VALUE)
                                 throw RuntimeException(
                                     "Invalid default for uint32 field $name: out of range."
                                 )

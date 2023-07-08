@@ -37,17 +37,17 @@ class CodeBufferTest {
     @Throws(Exception::class)
     fun testWrite() {
         val buffer = CodeBuffer()
-        buffer.printf("public static void main(String[] args) throws Exception {%n")
+        buffer.printf("fun main() {%n")
         buffer.incrementIndent()
-        buffer.printf("System.out.println(\"%s\");%n", "hello world")
+        buffer.printf("println(\"%s\")%n", "hello world")
         buffer.decrementIndent()
         buffer.printf("}%n")
         val stringWriter = StringWriter()
         buffer.write(stringWriter)
         assertEquals(
             expected = stringWriter.toString(),
-            actual = String.format("public static void main(String[] args) throws Exception {%n") +
-                    String.format("    System.out.println(\"hello world\");%n") +
+            actual = String.format("fun main() {%n") +
+                    String.format("    println(\"hello world\")%n") +
                     String.format("}%n")
         )
     }
@@ -58,23 +58,23 @@ class CodeBufferTest {
         val buffer2 = CodeBuffer()
         assertEquals(
             expected = buffer1,
-            actual = buffer2
+            actual = buffer2,
         )
         buffer1.printf("hello world")
         assertNotEquals(
             illegal = buffer1,
-            actual = buffer2
+            actual = buffer2,
         )
         buffer2.printf("hello world")
         assertEquals(
             expected = buffer1,
-            actual = buffer2
+            actual = buffer2,
         )
         buffer1.printf("foo, bar, and baz")
         buffer2.printf("foo, bar, and baz")
         assertEquals(
             expected = buffer1,
-            actual = buffer2
+            actual = buffer2,
         )
     }
 
@@ -86,6 +86,6 @@ class CodeBufferTest {
         val e: RuntimeException = assertThrows(RuntimeException::class.java) {
             buffer.decrementIndent()
         }
-        assertTrue(e.message!!.contains("Indent < 0"))
+        assertTrue(e.message?.contains("Indent < 0") == true)
     }
 }

@@ -71,10 +71,10 @@ class MessageDataGenerator internal constructor(
         schemaGenerator.generateSchemas(message)
         messageFlexibleVersions = message.flexibleVersions
         generateClass(
-            message,
-            message.dataClassName(),
-            message.struct,
-            message.struct.versions
+            topLevelMessageSpec = message,
+            className = message.dataClassName(),
+            struct = message.struct,
+            parentVersions = message.struct.versions,
         )
         headerGenerator.generate()
     }

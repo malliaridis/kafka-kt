@@ -39,10 +39,10 @@ class VersionConditionalTest {
             containingVersions = Versions.parse("1-2", null)!!,
             possibleVersions = Versions.parse("3+", null)!!,
         )
-            .ifMember { buffer.printf("System.out.println(\"hello world\");%n") }
-            .ifNotMember { buffer.printf("System.out.println(\"foobar\");%n") }
+            .ifMember { buffer.printf("println(\"hello world\")%n") }
+            .ifNotMember { buffer.printf("println(\"foobar\")%n") }
             .generate(buffer)
-        claimEquals(buffer, "System.out.println(\"foobar\");%n")
+        claimEquals(buffer, "println(\"foobar\")%n")
     }
 
     @Test
@@ -53,10 +53,10 @@ class VersionConditionalTest {
             containingVersions = Versions.parse("3+", null)!!,
             possibleVersions = Versions.parse("1-2", null)!!
         )
-            .ifMember { buffer.printf("System.out.println(\"hello world\");%n") }
-            .ifNotMember { buffer.printf("System.out.println(\"foobar\");%n") }
+            .ifMember { buffer.printf("println(\"hello world\")%n") }
+            .ifNotMember { buffer.printf("println(\"foobar\")%n") }
             .generate(buffer)
-        claimEquals(buffer, "System.out.println(\"foobar\");%n")
+        claimEquals(buffer, "println(\"foobar\")%n")
     }
 
     @Test
@@ -68,8 +68,8 @@ class VersionConditionalTest {
                 containingVersions = Versions.parse("1-2", null)!!,
                 possibleVersions = Versions.parse("3+", null)!!,
             )
-                .ifMember { buffer.printf("System.out.println(\"hello world\");%n") }
-                .ifNotMember { buffer.printf("System.out.println(\"foobar\");%n") }
+                .ifMember { buffer.printf("println(\"hello world\")%n") }
+                .ifNotMember { buffer.printf("println(\"foobar\")%n") }
                 .allowMembershipCheckAlwaysFalse(false)
                 .generate(buffer)
         } catch (e: RuntimeException) {
@@ -84,10 +84,10 @@ class VersionConditionalTest {
         VersionConditional.forVersions(
             containingVersions = Versions.parse("1-5", null)!!,
             possibleVersions = Versions.parse("2-4", null)!!,
-        ).ifMember { buffer.printf("System.out.println(\"hello world\");%n") }
-            .ifNotMember { buffer.printf("System.out.println(\"foobar\");%n") }
+        ).ifMember { buffer.printf("println(\"hello world\")%n") }
+            .ifNotMember { buffer.printf("println(\"foobar\")%n") }
             .allowMembershipCheckAlwaysFalse(false).generate(buffer)
-        claimEquals(buffer, "System.out.println(\"hello world\");%n")
+        claimEquals(buffer, "println(\"hello world\")%n")
     }
 
     @Test
@@ -97,10 +97,10 @@ class VersionConditionalTest {
         VersionConditional.forVersions(
             containingVersions = Versions.parse("1-5", null)!!,
             possibleVersions = Versions.parse("2-4", null)!!,
-        ).ifMember { buffer.printf("System.out.println(\"hello world\");%n") }
-            .ifNotMember { buffer.printf("System.out.println(\"foobar\");%n") }
+        ).ifMember { buffer.printf("println(\"hello world\")%n") }
+            .ifNotMember { buffer.printf("println(\"foobar\")%n") }
             .alwaysEmitBlockScope(true).generate(buffer)
-        claimEquals(buffer, "{%n", "    System.out.println(\"hello world\");%n", "}%n")
+        claimEquals(buffer, "run {%n", "    println(\"hello world\")%n", "}%n")
     }
 
     @Test
@@ -111,15 +111,15 @@ class VersionConditionalTest {
             containingVersions = Versions.parse("1+", null)!!,
             possibleVersions = Versions.parse("0-100", null)!!,
         )
-            .ifMember { buffer.printf("System.out.println(\"hello world\");%n") }
-            .ifNotMember { buffer.printf("System.out.println(\"foobar\");%n") }
+            .ifMember { buffer.printf("println(\"hello world\")%n") }
+            .ifNotMember { buffer.printf("println(\"foobar\")%n") }
             .generate(buffer)
         claimEquals(
             buffer,
-            "if (_version >= 1) {%n",
-            "    System.out.println(\"hello world\");%n",
+            "if (version >= 1) {%n",
+            "    println(\"hello world\")%n",
             "} else {%n",
-            "    System.out.println(\"foobar\");%n",
+            "    println(\"foobar\")%n",
             "}%n",
         )
     }
@@ -132,12 +132,12 @@ class VersionConditionalTest {
             containingVersions = Versions.parse("1+", null)!!,
             possibleVersions = Versions.parse("0-100", null)!!,
         )
-            .ifMember { buffer.printf("System.out.println(\"hello world\");%n") }
+            .ifMember { buffer.printf("println(\"hello world\")%n") }
             .generate(buffer)
         claimEquals(
             buffer,
-            "if (_version >= 1) {%n",
-            "    System.out.println(\"hello world\");%n",
+            "if (version >= 1) {%n",
+            "    println(\"hello world\")%n",
             "}%n",
         )
     }
@@ -150,12 +150,12 @@ class VersionConditionalTest {
             containingVersions = Versions.parse("1+", null)!!,
             possibleVersions = Versions.parse("0-100", null)!!,
         )
-            .ifNotMember { buffer.printf("System.out.println(\"hello world\");%n") }
+            .ifNotMember { buffer.printf("println(\"hello world\")%n") }
             .generate(buffer)
         claimEquals(
             buffer,
-            "if (_version < 1) {%n",
-            "    System.out.println(\"hello world\");%n",
+            "if (version < 1) {%n",
+            "    println(\"hello world\")%n",
             "}%n",
         )
     }
@@ -168,15 +168,15 @@ class VersionConditionalTest {
             containingVersions = Versions.parse("0-10", null)!!,
             possibleVersions = Versions.parse("4+", null)!!,
         )
-            .ifMember { buffer.printf("System.out.println(\"hello world\");%n") }
-            .ifNotMember { buffer.printf("System.out.println(\"foobar\");%n") }
+            .ifMember { buffer.printf("println(\"hello world\")%n") }
+            .ifNotMember { buffer.printf("println(\"foobar\")%n") }
             .generate(buffer)
         claimEquals(
             buffer,
-            "if (_version <= 10) {%n",
-            "    System.out.println(\"hello world\");%n",
+            "if (version <= 10) {%n",
+            "    println(\"hello world\")%n",
             "} else {%n",
-            "    System.out.println(\"foobar\");%n",
+            "    println(\"foobar\")%n",
             "}%n",
         )
     }
@@ -189,12 +189,12 @@ class VersionConditionalTest {
             containingVersions = Versions.parse("0-10", null)!!,
             possibleVersions = Versions.parse("4+", null)!!,
         )
-            .ifMember { buffer.printf("System.out.println(\"hello world\");%n") }
+            .ifMember { buffer.printf("println(\"hello world\")%n") }
             .generate(buffer)
         claimEquals(
             buffer,
-            "if (_version <= 10) {%n",
-            "    System.out.println(\"hello world\");%n",
+            "if (version <= 10) {%n",
+            "    println(\"hello world\")%n",
             "}%n",
         )
     }
@@ -207,12 +207,12 @@ class VersionConditionalTest {
             containingVersions = Versions.parse("1+", null)!!,
             possibleVersions = Versions.parse("0-100", null)!!,
         )
-            .ifNotMember { buffer.printf("System.out.println(\"hello world\");%n") }
+            .ifNotMember { buffer.printf("println(\"hello world\")%n") }
             .generate(buffer)
         claimEquals(
             buffer,
-            "if (_version < 1) {%n",
-            "    System.out.println(\"hello world\");%n",
+            "if (version < 1) {%n",
+            "    println(\"hello world\")%n",
             "}%n",
         )
     }
@@ -224,12 +224,12 @@ class VersionConditionalTest {
         VersionConditional.forVersions(
             containingVersions = Versions.parse("5-10", null)!!,
             possibleVersions = Versions.parse("1+", null)!!,
-        ).ifMember { buffer.printf("System.out.println(\"hello world\");%n") }
+        ).ifMember { buffer.printf("println(\"hello world\")%n") }
             .allowMembershipCheckAlwaysFalse(false).generate(buffer)
         claimEquals(
             buffer,
-            "if ((_version >= 5) && (_version <= 10)) {%n",
-            "    System.out.println(\"hello world\");%n",
+            "if ((version >= 5) && (version <= 10)) {%n",
+            "    println(\"hello world\")%n",
             "}%n",
         )
     }
