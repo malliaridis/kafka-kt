@@ -5,6 +5,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.Timeout
 import java.util.concurrent.TimeUnit
+import kotlin.test.Ignore
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
@@ -17,7 +18,7 @@ class MessageDataGeneratorTest {
     @Test
     @Throws(Exception::class)
     fun testNullDefaults() {
-        val testMessageSpec: MessageSpec = MessageGenerator.JSON_SERDE.readValue(
+        val testMessageSpec = MessageGenerator.JSON_SERDE.readValue(
             """
             {
               "type": "request",
@@ -50,7 +51,7 @@ class MessageDataGeneratorTest {
     @Test
     @Throws(Exception::class)
     fun testInvalidNullDefaultForInt() {
-        val testMessageSpec: MessageSpec = MessageGenerator.JSON_SERDE.readValue(
+        val testMessageSpec = MessageGenerator.JSON_SERDE.readValue(
             """
             {
               "type": "request",
@@ -75,8 +76,30 @@ class MessageDataGeneratorTest {
 
     @Test
     @Throws(Exception::class)
+    fun testValidNullDefaultForInt() {
+        val testMessageSpec = MessageGenerator.JSON_SERDE.readValue(
+            """
+            {
+              "type": "request",
+              "name": "FooBar",
+              "validVersions": "0-2",
+              "flexibleVersions": "none",
+              "fields": [
+                { "name": "field1", "type": "int32", "versions": "0+", "nullableVersions": "0+",
+                 "default": "null" }
+              ]
+            }
+            """.trimIndent(),
+            MessageSpec::class.java,
+        )
+        MessageDataGenerator("org.apache.kafka.common.message")
+            .generate(testMessageSpec)
+    }
+
+    @Test
+    @Throws(Exception::class)
     fun testInvalidNullDefaultForPotentiallyNonNullableArray() {
-        val testMessageSpec: MessageSpec = MessageGenerator.JSON_SERDE.readValue(
+        val testMessageSpec = MessageGenerator.JSON_SERDE.readValue(
             """
             {
               "type": "request",
@@ -97,6 +120,139 @@ class MessageDataGeneratorTest {
                     .generate(testMessageSpec)
             }.message!!
         )
+    }
+
+    @Test
+    @Throws(Exception::class)
+    fun testInvalidNullDefaultForPotentiallyNonNullableField() {
+        val testMessageSpec: MessageSpec = MessageGenerator.JSON_SERDE.readValue(
+            """
+            {
+              "type": "request",
+              "name": "FooBar",
+              "validVersions": "0-2",
+              "flexibleVersions": "none",
+              "fields": [
+                { "name": "field1", "type": "int8", "versions": "0+", "nullableVersions": "1+",
+                 "default": "null" }
+              ]
+            }
+            """.trimIndent(),
+            MessageSpec::class.java,
+        )
+        assertStringContains("not all versions of this field are nullable",
+            assertThrows(RuntimeException::class.java) {
+                MessageDataGenerator("org.apache.kafka.common.message")
+                    .generate(testMessageSpec)
+            }.message!!
+        )
+    }
+
+    @Test
+    @Throws(Exception::class)
+    fun testNoDefaultForPotentiallyNonNullableArray() {
+        val testMessageSpec = MessageGenerator.JSON_SERDE.readValue(
+            """
+            {
+              "type": "request",
+              "name": "FooBar",
+              "validVersions": "0-2",
+              "flexibleVersions": "none",
+              "fields": [
+                { "name": "field1", "type": "[]int32", "versions": "0+", "nullableVersions": "1+" }
+              ]
+            }
+            """.trimIndent(),
+            MessageSpec::class.java,
+        )
+        MessageDataGenerator("org.apache.kafka.common.message")
+            .generate(testMessageSpec)
+    }
+
+    @Test
+    @Ignore("validVersions field with nullable versions are not taken into account yet.")
+    @Throws(Exception::class)
+    fun testNullDefaultForNonNullableVersions() {
+        val testMessageSpec = MessageGenerator.JSON_SERDE.readValue(
+            """
+            {
+              "type": "request",
+              "name": "FooBar",
+              "validVersions": "1-2",
+              "flexibleVersions": "none",
+              "fields": [
+                { "name": "field1", "type": "[]int32", "versions": "0+", "nullableVersions": "1+",
+                 "default": "null" }
+              ]
+            }
+            """.trimIndent(),
+            MessageSpec::class.java,
+        )
+        MessageDataGenerator("org.apache.kafka.common.message")
+            .generate(testMessageSpec)
+    }
+
+    @Test
+    @Throws(Exception::class)
+    fun testNoDefaultForPotentiallyNonNullableField() {
+        val testMessageSpec: MessageSpec = MessageGenerator.JSON_SERDE.readValue(
+            """
+            {
+              "type": "request",
+              "name": "FooBar",
+              "validVersions": "0-2",
+              "flexibleVersions": "none",
+              "fields": [
+                { "name": "field1", "type": "int8", "versions": "0+", "nullableVersions": "1+" }
+              ]
+            }
+            """.trimIndent(),
+            MessageSpec::class.java,
+        )
+        MessageDataGenerator("org.apache.kafka.common.message")
+            .generate(testMessageSpec)
+    }
+
+    @Test
+    @Throws(Exception::class)
+    fun testNoDefaultForNonNullableField() {
+        val testMessageSpec = MessageGenerator.JSON_SERDE.readValue(
+            """
+            {
+              "type": "request",
+              "name": "FooBar",
+              "validVersions": "0-2",
+              "flexibleVersions": "none",
+              "fields": [
+                { "name": "field1", "type": "int8", "versions": "0+" }
+              ]
+            }
+            """.trimIndent(),
+            MessageSpec::class.java,
+        )
+        MessageDataGenerator("org.apache.kafka.common.message")
+            .generate(testMessageSpec)
+    }
+
+    @Test
+    @Throws(Exception::class)
+    fun testDefaultForField() {
+        val testMessageSpec = MessageGenerator.JSON_SERDE.readValue(
+            """
+            {
+              "type": "request",
+              "name": "FooBar",
+              "validVersions": "0-2",
+              "flexibleVersions": "none",
+              "fields": [
+                { "name": "field1", "type": "int8", "versions": "0+", "default": "8" }
+              ]
+            }
+            """.trimIndent(),
+            MessageSpec::class.java,
+        )
+        MessageDataGenerator("org.apache.kafka.common.message")
+            .generate(testMessageSpec)
     }
 
     /**
@@ -124,6 +280,8 @@ class MessageDataGeneratorTest {
             }.message!!
         )
     }
+
+    // TODO Add field name protection for Kotlin / Java keywords like "in", "for", "is" and so on.
 
     @Test
     fun testInvalidTagWithoutTaggedVersions() {
@@ -174,7 +332,7 @@ class MessageDataGeneratorTest {
     @Test
     fun testInvalidFlexibleVersionsRange() {
         assertStringContains("flexibleVersions must be either none, or an open-ended range",
-            assertThrows<Throwable>(Throwable::class.java) {
+            assertThrows(Throwable::class.java) {
                 MessageGenerator.JSON_SERDE.readValue(
                     """
                     {
