@@ -165,14 +165,18 @@ class MessageDataGeneratorTest {
             """.trimIndent(),
             MessageSpec::class.java,
         )
-        MessageDataGenerator("org.apache.kafka.common.message")
-            .generate(testMessageSpec)
+        assertStringContains("not all versions of this field are nullable",
+            assertThrows(RuntimeException::class.java) {
+                MessageDataGenerator("org.apache.kafka.common.message")
+                    .generate(testMessageSpec)
+            }.message!!
+        )
     }
 
     @Test
     @Ignore("validVersions field with nullable versions are not taken into account yet.")
     @Throws(Exception::class)
-    fun testNullDefaultForNonNullableVersions() {
+    fun testInvalidNullDefaultForValidVersions() {
         val testMessageSpec = MessageGenerator.JSON_SERDE.readValue(
             """
             {
@@ -195,7 +199,7 @@ class MessageDataGeneratorTest {
     @Test
     @Throws(Exception::class)
     fun testNoDefaultForPotentiallyNonNullableField() {
-        val testMessageSpec: MessageSpec = MessageGenerator.JSON_SERDE.readValue(
+        val testMessageSpec = MessageGenerator.JSON_SERDE.readValue(
             """
             {
               "type": "request",
@@ -204,6 +208,32 @@ class MessageDataGeneratorTest {
               "flexibleVersions": "none",
               "fields": [
                 { "name": "field1", "type": "int8", "versions": "0+", "nullableVersions": "1+" }
+              ]
+            }
+            """.trimIndent(),
+            MessageSpec::class.java,
+        )
+        assertStringContains("not all versions of this field are nullable",
+            assertThrows(RuntimeException::class.java) {
+                MessageDataGenerator("org.apache.kafka.common.message")
+                    .generate(testMessageSpec)
+            }.message!!
+        )
+    }
+
+    @Test
+    @Throws(Exception::class)
+    fun testEmptyDefaultForPotentiallyNonNullableArray() {
+        val testMessageSpec = MessageGenerator.JSON_SERDE.readValue(
+            """
+            {
+              "type": "request",
+              "name": "FooBar",
+              "validVersions": "0-2",
+              "flexibleVersions": "none",
+              "fields": [
+                { "name": "field1", "type": "int8", "versions": "0+", "nullableVersions": "1+",
+                 "default": "" }
               ]
             }
             """.trimIndent(),

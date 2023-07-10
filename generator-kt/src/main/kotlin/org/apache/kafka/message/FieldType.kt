@@ -71,7 +71,7 @@ interface FieldType {
         get() = false
 
     /**
-     * `true` if this field type is nullable.
+     * `true` if this field type has nullable versions.
      */
     val isNullable: Boolean
         get() = false
