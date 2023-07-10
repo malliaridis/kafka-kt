@@ -17,6 +17,7 @@
 
 package org.apache.kafka.message
 
+import org.apache.kafka.message.FieldSpec.Companion.primitiveArrayType
 import org.apache.kafka.message.FieldType.BoolFieldType
 import org.apache.kafka.message.FieldType.BytesFieldType
 import org.apache.kafka.message.FieldType.Float32FieldType
@@ -697,16 +698,22 @@ class MessageDataGenerator internal constructor(
             if (isStructArrayWithKeys) {
                 headerGenerator.addImport(MessageGenerator.IMPLICIT_LINKED_HASH_MULTI_COLLECTION_CLASS)
                 buffer.printf(
-                    "var newCollection: %s = %s(%s)%n",
+                    "val newCollection = %s(%s)%n",
                     FieldSpec.collectionType(arrayType.elementType.toString()),
-                    FieldSpec.collectionType(arrayType.elementType.toString()),
+                    lengthVar,
+                )
+            } else if (arrayType.elementType.isPrimitive) {
+                val primitiveArrayType = primitiveArrayType(arrayType.elementType)
+                buffer.printf(
+                    "val newCollection = %s(%s)%n",
+                    primitiveArrayType,
                     lengthVar,
                 )
             } else {
                 headerGenerator.addImport(MessageGenerator.ARRAYLIST_CLASS)
                 val boxedArrayType = arrayType.elementType.getBoxedKotlinType(headerGenerator)
                 buffer.printf(
-                    "var newCollection: ArrayList<%s> = ArrayList(%s)%n",
+                    "val newCollection: ArrayList<%s> = ArrayList(%s)%n",
                     boxedArrayType,
                     lengthVar,
                 )
@@ -728,7 +735,10 @@ class MessageDataGenerator internal constructor(
                     isStructArrayWithKeys = false,
                     zeroCopy = false,
                 )
-            } else buffer.printf(
+            } else if (arrayType.elementType.isPrimitive) buffer.printf(
+                "newCollection[i] = %s%n",
+                primitiveReadExpression(arrayType.elementType)
+            ) else buffer.printf(
                 "newCollection.add(%s)%n",
                 primitiveReadExpression(arrayType.elementType)
             )
@@ -1470,16 +1480,23 @@ class MessageDataGenerator internal constructor(
             || field.type is Float64FieldType
             || field.type is UUIDFieldType
             || field.type is StringFieldType
-            || field.type.isStructArray -> buffer.printf(
+                    || field.type.isStructArray -> buffer.printf(
                 "if (%s != other.%s) return false%n",
                 field.prefixedCamelCaseName(),
                 field.camelCaseName(),
             )
             else -> {
                 if (field.type.isArray) {
-                    if (!field.type.isNullable) buffer.printf(
+                    field.type as FieldType.ArrayType
+                    if (field.type.elementType.isPrimitive) buffer.printf(
+                        // not nullable array fields
+                        "if (!%s.contentEquals(other.%s)) return false%n",
+                        field.camelCaseName(),
+                        field.camelCaseName(),
+                    )
+                    else if (!field.type.isNullable) buffer.printf(
                         // not nullable array field
-                        "if (%s != other.%s) return false%n", // TODO Differentiate between primitive entityType and non-primitive entityType
+                        "if (%s != other.%s) return false%n",
                         field.camelCaseName(),
                         field.camelCaseName(),
                     )
@@ -1652,28 +1669,36 @@ class MessageDataGenerator internal constructor(
                 }
             } else if (field.type.isArray) {
                 cond.ifShouldNotBeNull {
-                    val newArrayName = "new${field.capitalizedCamelCaseName()}"
-                    val type = field.concreteKotlinType(headerGenerator, structRegistry)
-                    buffer.printf(
-                        "val %s = %s(%s.size)%n",
-                        newArrayName,
-                        type,
-                        target.sourceVariable,
-                    )
-                    buffer.printf("for (element in %s) {%n", target.sourceVariable)
-                    buffer.incrementIndent()
-                    generateFieldDuplicate(
-                        target.arrayElementTarget { input ->
-                            // TODO optimize with mapping function instead
-                            String.format("%s.add(%s)", newArrayName, input)
-                        }
-                    )
-                    buffer.decrementIndent()
-                    buffer.printf("}%n")
-                    buffer.printf(
+                    val arrayType = field.type as FieldType.ArrayType
+                    if (arrayType.elementType.isPrimitive) buffer.printf(
                         "%s%n",
-                        target.assignmentStatement("new${field.capitalizedCamelCaseName()}"),
-                    )
+                        target.assignmentStatement(
+                            String.format("%s.copyOf()", target.sourceVariable),
+                        ),
+                    ) else {
+                        val newArrayName = "new${field.capitalizedCamelCaseName()}"
+                        val type = field.concreteKotlinType(headerGenerator, structRegistry)
+                        buffer.printf(
+                            "val %s = %s(%s.size)%n",
+                            newArrayName,
+                            type,
+                            target.sourceVariable,
+                        )
+                        buffer.printf("for (element in %s) {%n", target.sourceVariable)
+                        buffer.incrementIndent()
+                        generateFieldDuplicate(
+                            target.arrayElementTarget { input ->
+                                // TODO optimize with mapping function instead
+                                String.format("%s.add(%s)", newArrayName, input)
+                            }
+                        )
+                        buffer.decrementIndent()
+                        buffer.printf("}%n")
+                        buffer.printf(
+                            "%s%n",
+                            target.assignmentStatement("new${field.capitalizedCamelCaseName()}"),
+                        )
+                    }
                 }
             } else throw RuntimeException("Unhandled field type " + field.type)
             cond.generate(buffer)

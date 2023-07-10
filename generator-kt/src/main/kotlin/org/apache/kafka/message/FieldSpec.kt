@@ -460,8 +460,9 @@ class FieldSpec @JsonCreator constructor(
                             "field is the empty array (empty string) or null (undefined or string \"null\")."
                 )
                 return String.format(
-                    "%s()",
+                    "%s(%s)",
                     concreteKotlinType(headerGenerator, structRegistry),
+                    if ((type as FieldType.ArrayType).elementType.isPrimitive) "0" else "",
                 )
             }
             else -> throw RuntimeException("Unsupported field type $type")
@@ -531,6 +532,8 @@ class FieldSpec @JsonCreator constructor(
                     is Uint32FieldType -> "UIntArray"
                     is Int64FieldType -> "LongArray"
                     is Uint64FieldType -> "ULongArray"
+                    is Float32FieldType -> "FloatArray"
+                    is Float64FieldType -> "DoubleArray"
                     else -> {
                         headerGenerator.addImport(MessageGenerator.LIST_CLASS)
                         String.format(
@@ -571,6 +574,8 @@ class FieldSpec @JsonCreator constructor(
                     is Uint32FieldType -> "UIntArray"
                     is Int64FieldType -> "LongArray"
                     is Uint64FieldType -> "ULongArray"
+                    is Float32FieldType -> "FloatArray"
+                    is Float64FieldType -> "DoubleArray"
                     else -> {
                         headerGenerator.addImport(MessageGenerator.ARRAYLIST_CLASS)
                         String.format(
@@ -701,5 +706,20 @@ class FieldSpec @JsonCreator constructor(
         private val VALID_FIELD_NAMES = Pattern.compile("[A-Za-z]([A-Za-z0-9]*)")
 
         fun collectionType(baseType: String): String = baseType + "Collection"
+
+        fun primitiveArrayType(baseType: FieldType): String = when(baseType) {
+            is BoolFieldType -> "BooleanArray"
+            is Int8FieldType -> "ByteArray"
+            is Uint8FieldType -> "UByteArray"
+            is Int16FieldType -> "ShortArray"
+            is Uint16FieldType -> "UShortArray"
+            is Int32FieldType -> "IntArray"
+            is Uint32FieldType -> "UIntArray"
+            is Int64FieldType -> "LongArray"
+            is Uint64FieldType -> "ULongArray"
+            is Float32FieldType -> "FloatArray"
+            is Float64FieldType -> "DoubleArray"
+            else -> throw RuntimeException("Base type $baseType is not a supported primitive type.")
+        }
     }
 }

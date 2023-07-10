@@ -420,6 +420,7 @@ class JsonConverterGenerator internal constructor(
                 )
             )
         } else if (target.field.type.isArray) {
+            val arrayType = target.field.type as FieldType.ArrayType
             buffer.printf("if (!%s.isArray) {%n", target.sourceVariable)
             buffer.incrementIndent()
             buffer.printf(
@@ -434,16 +435,32 @@ class JsonConverterGenerator internal constructor(
                 type,
                 target.sourceVariable,
             )
-            buffer.printf("%s%n", target.assignmentStatement("collection"))
             headerGenerator.addImport(MessageGenerator.JSON_NODE_CLASS)
-            buffer.printf("for (element in %s) {%n", target.sourceVariable)
-            buffer.incrementIndent()
-            generateTargetFromJson(
-                target.arrayElementTarget { input -> String.format("collection.add(%s)", input) },
-                curVersions,
-            )
-            buffer.decrementIndent()
-            buffer.printf("}%n")
+
+            if (arrayType.elementType.isPrimitive) {
+                buffer.printf("for ((index, element) in %s.withIndex()) {%n", target.sourceVariable)
+                buffer.incrementIndent()
+                generateTargetFromJson(
+                    target.arrayElementTarget { input ->
+                        String.format("collection[index] = %s", input)
+                    },
+                    curVersions,
+                )
+                buffer.decrementIndent()
+                buffer.printf("}%n")
+            } else {
+                buffer.printf("for (element in %s) {%n", target.sourceVariable)
+                buffer.incrementIndent()
+                generateTargetFromJson(
+                    target.arrayElementTarget { input ->
+                        String.format("collection.add(%s)", input)
+                    },
+                    curVersions,
+                )
+                buffer.decrementIndent()
+                buffer.printf("}%n")
+            }
+            buffer.printf("%s%n", target.assignmentStatement("collection"))
         } else if (target.field.type.isStruct) {
             buffer.printf(
                 "%s%n", target.assignmentStatement(
