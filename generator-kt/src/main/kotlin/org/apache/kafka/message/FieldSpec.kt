@@ -228,7 +228,13 @@ class FieldSpec @JsonCreator constructor(
         structRegistry: StructRegistry,
     ): String {
         when {
-            (fieldDefault == null || fieldDefault == "null") && type.isNullable -> {
+            (fieldDefault == null) && type.isNullable -> {
+                // No default value provided, use null if all fields are nullable
+                isNullDefaultAllowed()
+                return "null"
+            }
+            (fieldDefault == "null") && type.isNullable -> {
+                // Default value "null" provided, verify that all versions are nullable
                 validateNullDefault()
                 return "null"
             }
@@ -424,7 +430,9 @@ class FieldSpec @JsonCreator constructor(
                     "\"$fieldDefault\".toDouble()"
                 }
             }
-            type is StringFieldType -> return "\"$fieldDefault\""
+            type is StringFieldType ->
+                return if (fieldDefault.isNullOrEmpty()) "\"\""
+                else "\"$fieldDefault\""
             type.isBytes -> {
                 if (!fieldDefault.isNullOrEmpty()) throw RuntimeException(
                     "Invalid default for bytes field $name. The only valid default for a bytes field " +
@@ -475,6 +483,11 @@ class FieldSpec @JsonCreator constructor(
             "null cannot be the default for field $name, because not all versions of this field are nullable."
         )
     }
+
+    /**
+     * Returns `true` iff all versions are nullable versions.
+     */
+    private fun isNullDefaultAllowed(): Boolean = !nullableVersions.contains(versions)
 
     /**
      * Get the abstract Kotlin type of the field-- for example, List.
@@ -571,26 +584,6 @@ class FieldSpec @JsonCreator constructor(
     }
 
     /**
-     * Generates a copy of the variable for smart cast and adds a null check.
-     */
-    fun generateNullableValueCheck(
-        headerGenerator: HeaderGenerator,
-        structRegistry: StructRegistry,
-        buffer: CodeBuffer,
-        fieldPrefix: String? = null,
-    ) {
-        val fieldDefault = fieldDefault(headerGenerator, structRegistry)
-        val prefixedFieldName = fieldPrefix + camelCaseName()
-        var actualFieldName = prefixedFieldName
-        if (type.isNullable) {
-            // Generate copy variable for smart cast
-            buffer.printf("val %s = %s%n", camelCaseName(), prefixedFieldName)
-            actualFieldName = camelCaseName()
-        }
-        buffer.printf("if (%s == null) {%n", actualFieldName)
-    }
-
-    /**
      * Generate an if statement that checks if this field has a non-default value.
      *
      * @param headerGenerator The header generator in case we need to add imports.
@@ -610,11 +603,9 @@ class FieldSpec @JsonCreator constructor(
     ) {
         val fieldDefault = fieldDefault(headerGenerator, structRegistry)
         val prefixedFieldName = fieldPrefix + camelCaseName()
-        var actualFieldName = prefixedFieldName
         if (type.isNullable) {
             // Generate copy variable for smart cast
             buffer.printf("val %s = %s%n", camelCaseName(), prefixedFieldName)
-            actualFieldName = camelCaseName()
         }
 
         if (type.isArray) {

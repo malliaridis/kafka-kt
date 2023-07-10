@@ -515,6 +515,12 @@ interface FieldType {
         override val isNullable: Boolean = false,
     ) : FieldType {
 
+        init {
+            require(!elementType.isPrimitive || !elementType.isNullable) {
+                "Nullable element types of primitive type arrays are not supported."
+            }
+        }
+
         override fun serializationIsDifferentInFlexibleVersions(): Boolean = true
 
         override fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String =
