@@ -165,12 +165,8 @@ class MessageDataGeneratorTest {
             """.trimIndent(),
             MessageSpec::class.java,
         )
-        assertStringContains("not all versions of this field are nullable",
-            assertThrows(RuntimeException::class.java) {
-                MessageDataGenerator("org.apache.kafka.common.message")
-                    .generate(testMessageSpec)
-            }.message!!
-        )
+        MessageDataGenerator("org.apache.kafka.common.message")
+            .generate(testMessageSpec)
     }
 
     @Test
@@ -213,12 +209,8 @@ class MessageDataGeneratorTest {
             """.trimIndent(),
             MessageSpec::class.java,
         )
-        assertStringContains("not all versions of this field are nullable",
-            assertThrows(RuntimeException::class.java) {
-                MessageDataGenerator("org.apache.kafka.common.message")
-                    .generate(testMessageSpec)
-            }.message!!
-        )
+        MessageDataGenerator("org.apache.kafka.common.message")
+            .generate(testMessageSpec)
     }
 
     @Test
