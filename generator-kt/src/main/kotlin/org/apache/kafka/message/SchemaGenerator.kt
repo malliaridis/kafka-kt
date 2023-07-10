@@ -380,8 +380,8 @@ internal class SchemaGenerator(
         buffer.decrementIndent()
         buffer.printf(")%n")
         buffer.printf("%n")
-        buffer.printf("val LOWEST_SUPPORTED_VERSION: Short = %d%n", lowest)
-        buffer.printf("val HIGHEST_SUPPORTED_VERSION: Short = %d%n", highest)
+        buffer.printf("const val LOWEST_SUPPORTED_VERSION: Short = %d%n", lowest)
+        buffer.printf("const val HIGHEST_SUPPORTED_VERSION: Short = %d%n", highest)
         buffer.printf("%n")
 
         buffer.decrementIndent()
