@@ -676,7 +676,7 @@ class MessageDataGenerator internal constructor(
                 assignmentSuffix
             )
             else {
-                buffer.printf("var newBytes: ByteArray = readable.readArray(%s)%n", lengthVar)
+                buffer.printf("val newBytes: ByteArray = readable.readArray(%s)%n", lengthVar)
                 buffer.printf("%snewBytes%s", assignmentPrefix, assignmentSuffix)
             }
         } else if (type.isRecords) buffer.printf(
@@ -1031,13 +1031,13 @@ class MessageDataGenerator internal constructor(
                         if (zeroCopy) "$name.remaining()"
                         else "$name.size"
                     } else {
-                        if (zeroCopy) "this.$name.remaining()"
-                        else "this.$name.size"
+                        if (zeroCopy) "$name.remaining()"
+                        else "$name.size"
                     }
-                } else if (type.isRecords) "this.$name.sizeInBytes()"
+                } else if (type.isRecords) "$name.sizeInBytes()"
                 else if (type.isArray) {
                     if (type.isNullable) "$name.size"
-                    else "this.$name.size"
+                    else "$name.size"
                 }
                 else throw RuntimeException("Unhandled type $type")
 
@@ -1059,8 +1059,8 @@ class MessageDataGenerator internal constructor(
                 if (type.isString) buffer.printf("writable.writeByteArray(stringBytes)%n")
                 else if (type.isBytes) {
                     if (zeroCopy) buffer.printf("writable.writeByteBuffer(%s)%n", name)
-                    else buffer.printf("writable.writeByteArray(this.%s)%n", name)
-                } else if (type.isRecords) buffer.printf("writable.writeRecords(this.%s)%n", name)
+                    else buffer.printf("writable.writeByteArray(%s)%n", name)
+                } else if (type.isRecords) buffer.printf("writable.writeRecords(%s)%n", name)
                 else if (type.isArray) {
                     val arrayType = type as FieldType.ArrayType
                     val elementType = arrayType.elementType
@@ -1400,7 +1400,8 @@ class MessageDataGenerator internal constructor(
                             headerGenerator.addImport(MessageGenerator.BYTE_UTILS_CLASS)
                             buffer.printf(
                                 "size.addBytes(ByteUtils.sizeOfUnsignedVarint(%s.sizeInBytes() + 1))%n",
-                                field.prefixedCamelCaseName(),
+                                if (field.type.isNullable) field.camelCaseName()
+                                else field.prefixedCamelCaseName(),
                             )
                         }
                         .ifNotMember { buffer.printf("size.addBytes(4)%n") }
@@ -1409,7 +1410,8 @@ class MessageDataGenerator internal constructor(
                     buffer.printf("val sizeBeforeStruct = size.totalSize()%n",)
                     buffer.printf(
                         "%s.addSize(size, cache, version)%n",
-                        field.prefixedCamelCaseName(),
+                        if (field.type.isNullable) field.camelCaseName()
+                        else field.prefixedCamelCaseName(),
                     )
                     buffer.printf("val structSize = size.totalSize() - sizeBeforeStruct%n",)
                     if (tagged)

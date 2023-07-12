@@ -515,7 +515,7 @@ class FieldSpec @JsonCreator constructor(
             || type is RecordsFieldType
             || type.isString
             || (type.isBytes && zeroCopy) -> type.getBoxedKotlinType(headerGenerator)!!
-            type.isBytes -> "ByteArray"
+            type.isBytes -> "ByteArray" + if (type.isNullable) "?" else ""
             type.isStruct -> capitalizeFirst(typeString) + if (type.isNullable) "?" else ""
             type.isArray -> {
                 val arrayType = type as FieldType.ArrayType
