@@ -130,12 +130,10 @@ kotlin.sourceSets["test"].kotlin {
 
 tasks.compileKotlin {
     dependsOn("processMessages")
-    dependsOn("processKotlinMessages")
 }
 
 tasks.compileTestKotlin {
     dependsOn("processTestMessages")
-    dependsOn("processKotlinTestMessages")
 }
 
 tasks.javadoc {
