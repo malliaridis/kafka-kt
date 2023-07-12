@@ -542,7 +542,7 @@ class MessageDataGenerator internal constructor(
                 buffer.printf("val size: Int = readable.readUnsignedVarint()%n")
                 buffer.printf("when (tag) {%n")
                 buffer.incrementIndent()
-                for (field: FieldSpec in struct.fields) {
+                for (field in struct.fields) {
                     val validTaggedVersions = field.versions.intersect(field.taggedVersions)
                     if (!validTaggedVersions.isEmpty) {
                         if (field.tag == null) throw RuntimeException(
@@ -590,7 +590,6 @@ class MessageDataGenerator internal constructor(
                 buffer.printf(
                     "this.unknownTaggedFields = readable.readUnknownTaggedField(this.unknownTaggedFields?.toMutableList(), tag, size)%n"
                 )
-                // TODO Test this indentation
                 buffer.decrementIndent()
                 buffer.decrementIndent()
                 buffer.printf("}%n")
@@ -910,7 +909,7 @@ class MessageDataGenerator internal constructor(
                             } else if (field.type.isArray) {
                                 headerGenerator.addImport(MessageGenerator.BYTE_UTILS_CLASS)
                                 buffer.printf(
-                                    "writable.writeUnsignedVarint(cache.getArraySizeInBytes(%s))%n",
+                                    "writable.writeUnsignedVarint(cache.getArraySizeInBytes(%s)!!)%n",
                                     field.prefixedCamelCaseName()
                                 )
                                 generateVariableLengthWriter(
@@ -1316,7 +1315,7 @@ class MessageDataGenerator internal constructor(
                         }
                         .generate(buffer)
                 } else if (field.type.isArray) {
-                    if (tagged) buffer.printf("val sizeBeforeArray = size.totalSize()%n")
+                    if (tagged) buffer.printf("val sizeBeforeArray = size.totalSize%n")
                     VersionConditional.forVersions(fieldFlexibleVersions(field), possibleVersions)
                         .ifMember {
                             headerGenerator.addImport(MessageGenerator.BYTE_UTILS_CLASS)
@@ -1356,7 +1355,7 @@ class MessageDataGenerator internal constructor(
                     }
                     if (tagged) {
                         headerGenerator.addImport(MessageGenerator.BYTE_UTILS_CLASS)
-                        buffer.printf("val arraySize = size.totalSize() - sizeBeforeArray%n")
+                        buffer.printf("val arraySize = size.totalSize - sizeBeforeArray%n")
                         buffer.printf(
                             "cache.setArraySizeInBytes(%s, arraySize)%n",
                             field.camelCaseName(),
@@ -1364,7 +1363,7 @@ class MessageDataGenerator internal constructor(
                         buffer.printf("size.addBytes(ByteUtils.sizeOfUnsignedVarint(arraySize))%n")
                     }
                 } else if (field.type.isBytes) {
-                    if (tagged) buffer.printf("var sizeBeforeBytes: Int = size.totalSize()%n")
+                    if (tagged) buffer.printf("var sizeBeforeBytes: Int = size.totalSize%n")
                     if (field.zeroCopy) buffer.printf(
                         "size.addZeroCopyBytes(%s.remaining())%n",
                         field.camelCaseName()
@@ -1387,7 +1386,7 @@ class MessageDataGenerator internal constructor(
                         .generate(buffer)
                     if (tagged) {
                         headerGenerator.addImport(MessageGenerator.BYTE_UTILS_CLASS)
-                        buffer.printf("val bytesSize= size.totalSize() - sizeBeforeBytes%n")
+                        buffer.printf("val bytesSize= size.totalSize - sizeBeforeBytes%n")
                         buffer.printf("size.addBytes(ByteUtils.sizeOfUnsignedVarint(bytesSize))%n")
                     }
                 } else if (field.type.isRecords) {
@@ -1407,13 +1406,13 @@ class MessageDataGenerator internal constructor(
                         .ifNotMember { buffer.printf("size.addBytes(4)%n") }
                         .generate(buffer)
                 } else if (field.type.isStruct) {
-                    buffer.printf("val sizeBeforeStruct = size.totalSize()%n",)
+                    buffer.printf("val sizeBeforeStruct = size.totalSize%n",)
                     buffer.printf(
                         "%s.addSize(size, cache, version)%n",
                         if (field.type.isNullable) field.camelCaseName()
                         else field.prefixedCamelCaseName(),
                     )
-                    buffer.printf("val structSize = size.totalSize() - sizeBeforeStruct%n",)
+                    buffer.printf("val structSize = size.totalSize - sizeBeforeStruct%n",)
                     if (tagged)
                         buffer.printf("size.addBytes(ByteUtils.sizeOfUnsignedVarint(structSize))%n")
                 } else throw RuntimeException("unhandled type " + field.type)

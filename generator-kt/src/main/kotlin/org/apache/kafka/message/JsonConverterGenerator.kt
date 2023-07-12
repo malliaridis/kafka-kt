@@ -182,7 +182,7 @@ class JsonConverterGenerator internal constructor(
     private fun generateTargetFromJson(target: Target, curVersions: Versions) {
         when (target.field.type) {
             is BoolFieldType -> {
-                buffer.printf("if (!%s.isBoolean()) {%n", target.sourceVariable)
+                buffer.printf("if (!%s.isBoolean) {%n", target.sourceVariable)
                 buffer.incrementIndent()
                 buffer.printf(
                     "throw RuntimeException(\"%s expected Boolean type, but got \${node.nodeType}\")%n",
