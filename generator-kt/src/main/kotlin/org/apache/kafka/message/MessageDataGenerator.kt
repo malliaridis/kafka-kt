@@ -1488,10 +1488,15 @@ class MessageDataGenerator internal constructor(
                 field.camelCaseName(),
             )
             else -> {
-                if (field.type.isArray) {
+                if (field.type.isBytes && !field.zeroCopy) buffer.printf(
+                    // not nullable bytes fields (ByteArray only)
+                    "if (!%s.contentEquals(other.%s)) return false%n",
+                    field.camelCaseName(),
+                    field.camelCaseName(),
+                ) else if (field.type.isArray) {
                     field.type as FieldType.ArrayType
                     if (field.type.elementType.isPrimitive) buffer.printf(
-                        // not nullable array fields
+                        // not nullable primitive array fields
                         "if (!%s.contentEquals(other.%s)) return false%n",
                         field.camelCaseName(),
                         field.camelCaseName(),
@@ -1522,7 +1527,8 @@ class MessageDataGenerator internal constructor(
                         )
                     }
                 } else buffer.printf(
-                    // similar as numbers, includes field.type.isBytes, field.type.isStruct, field.type.isRecords
+                    // similar as numbers, includes field.type.isBytes (ByteBuffer only),
+                    // field.type.isStruct and field.type.isRecords
                     "if (%s != other.%s) return false%n",
                     field.camelCaseName(),
                     field.camelCaseName(),
