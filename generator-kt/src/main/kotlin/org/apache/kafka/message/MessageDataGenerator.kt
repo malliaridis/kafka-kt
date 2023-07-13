@@ -340,7 +340,11 @@ class MessageDataGenerator internal constructor(
     }
 
     private fun generateFieldDeclarationWithDefaults(field: FieldSpec) {
-        buffer.printf(
+        if (field.type.isLazilyLoaded) buffer.printf(
+            "lateinit var %s: %s%n",
+            field.camelCaseName(),
+            field.fieldAbstractKotlinType(headerGenerator, structRegistry),
+        ) else buffer.printf(
             "var %s: %s = %s%n",
             field.camelCaseName(),
             field.fieldAbstractKotlinType(headerGenerator, structRegistry),

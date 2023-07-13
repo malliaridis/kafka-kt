@@ -58,6 +58,9 @@ interface FieldType {
     val isRecords: Boolean
         get() = false
 
+    val isLazilyLoaded: Boolean
+        get() = false
+
     /**
      * Returns `true` if this is a floating point type.
      */
@@ -479,6 +482,9 @@ interface FieldType {
         override fun serializationIsDifferentInFlexibleVersions(): Boolean = true
 
         override val isRecords: Boolean = true
+
+        // Records should be lazily loaded if not nullable
+        override val isLazilyLoaded: Boolean = !isNullable
 
         override fun toString(): String = NAME
 
