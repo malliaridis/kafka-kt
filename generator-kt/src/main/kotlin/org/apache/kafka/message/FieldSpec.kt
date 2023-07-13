@@ -108,11 +108,15 @@ class FieldSpec @JsonCreator constructor(
         this.fields = fields?.toList() ?: emptyList()
 
         val parsedNullableVersions = Versions.parse(nullableVersions, Versions.NONE)!!
-        this.nullableVersions = parsedNullableVersions
-        this.type = FieldType.parse(
+
+        val type = FieldType.parse(
             string = type,
             isNullable = !this.versions.intersect(parsedNullableVersions).isEmpty,
         )
+
+        // Do not add nullable versions for array fields
+        this.nullableVersions = if (type.isArray) Versions.NONE else parsedNullableVersions
+        this.type = type
 
         this.entityType = entityType ?: EntityType.UNKNOWN
         this.entityType.verifyTypeMatches(name, this.type)
@@ -464,7 +468,7 @@ class FieldSpec @JsonCreator constructor(
                 return "$type()"
             }
             type.isArray -> {
-                if (fieldDefault?.isNotEmpty() == true) throw RuntimeException(
+                if (fieldDefault?.isNotEmpty() == true && fieldDefault != "null") throw RuntimeException(
                     "Invalid default for array field $name. The only valid default for an array " +
                             "field is the empty array (empty string) or null (undefined or string \"null\")."
                 )

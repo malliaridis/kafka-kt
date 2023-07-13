@@ -655,7 +655,10 @@ class MessageDataGenerator internal constructor(
         buffer.incrementIndent()
         VersionConditional.forVersions(nullableVersions, possibleVersions)
             .ifNotMember {
-                buffer.printf(
+                // Allow negative lengths only in case of collections (empty collections)
+                if (type.isArray)
+                    buffer.printf("%s%s%s", assignmentPrefix, fieldDefault, assignmentSuffix)
+                else buffer.printf(
                     "throw RuntimeException(\"non-nullable field %s was serialized as null\")%n",
                     name,
                 )
@@ -1662,7 +1665,14 @@ class MessageDataGenerator internal constructor(
         else {
             val cond = IsNullConditional.forName(target.sourceVariable, "this.")
                 .nullableVersions(target.field.nullableVersions)
-                .ifNull { buffer.printf("%s%n", target.assignmentStatement("null")) }
+                .ifNull {
+                    buffer.printf(
+                        "%s%n",
+                        target.assignmentStatement(
+                            field.fieldDefault(headerGenerator, structRegistry)
+                        ),
+                    )
+                }
             if (field.type.isBytes) {
                 if (field.zeroCopy) {
                     cond.ifShouldNotBeNull {
