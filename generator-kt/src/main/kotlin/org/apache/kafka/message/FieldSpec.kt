@@ -257,8 +257,8 @@ class FieldSpec @JsonCreator constructor(
                             e,
                         )
                     }
-                    if (isNegative) "$fieldDefault.toByte()"
-                    else "($fieldDefault).toByte()"
+                    if (isNegative) "($fieldDefault).toByte()"
+                    else "$fieldDefault.toByte()"
                 }
             }
             type is Uint8FieldType -> {
