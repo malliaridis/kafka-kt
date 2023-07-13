@@ -184,6 +184,13 @@ class FieldSpec @JsonCreator constructor(
     fun prefixedCamelCaseName(): String = "this.${camelCaseName()}"
 
     /**
+     * Returns the field's name with prefix "this." iff the type is not null.
+     */
+    fun safePrefixedCamelCaseName(prefix: String? = null): String =
+        if (type.isNullable) camelCaseName()
+        else "${prefix ?: "this."}${camelCaseName()}"
+
+    /**
      * Returns the field name in camelcase and with `this@[className].` prefixed.
      */
     fun classPrefixedCamelCaseName(className: String): String =
@@ -521,7 +528,7 @@ class FieldSpec @JsonCreator constructor(
                 val arrayType = type as FieldType.ArrayType
                 if (structRegistry.isStructArrayWithKeys(this)) {
                     headerGenerator.addImport(MessageGenerator.IMPLICIT_LINKED_HASH_MULTI_COLLECTION_CLASS)
-                    collectionType(arrayType.elementType.toString())
+                    collectionType(arrayType.elementType.toString()) + if (type.isNullable) "?" else ""
                 } else when(arrayType.elementType) {
                     is BoolFieldType -> "BooleanArray"
                     is Int8FieldType -> "ByteArray"
@@ -605,21 +612,23 @@ class FieldSpec @JsonCreator constructor(
         buffer: CodeBuffer,
         fieldPrefix: String?,
         nullableVersions: Versions,
+        disableSafeUnwrap: Boolean = false,
     ) {
         val fieldDefault = fieldDefault(headerGenerator, structRegistry)
-        val prefixedFieldName = fieldPrefix + camelCaseName()
-        if (type.isNullable) {
+        val prefixedFieldName = if (disableSafeUnwrap) "${fieldPrefix ?: "this."}${camelCaseName()}"
+            else safePrefixedCamelCaseName(fieldPrefix)
+        if (type.isNullable && !disableSafeUnwrap) {
             // Generate copy variable for smart cast
-            buffer.printf("val %s = %s%n", camelCaseName(), prefixedFieldName)
+            buffer.printf("val %s = %s%n", camelCaseName(), "${fieldPrefix ?: "this."}${camelCaseName()}")
         }
 
         if (type.isArray) {
             if (fieldDefault == "null")
                 buffer.printf("if (%s != null) {%n", prefixedFieldName)
             else if (nullableVersions.isEmpty)
-                buffer.printf("if (!%s.isEmpty()) {%n", prefixedFieldName)
+                buffer.printf("if (%s.isNotEmpty()) {%n", prefixedFieldName)
             else buffer.printf(
-                "if (%s == null || !%s.isEmpty()) {%n",
+                "if (%s == null || %s.isNotEmpty()) {%n",
                 prefixedFieldName,
                 prefixedFieldName,
             )
@@ -628,9 +637,11 @@ class FieldSpec @JsonCreator constructor(
                 buffer.printf("if (%s != null) {%n", prefixedFieldName)
             else if (nullableVersions.isEmpty) {
                 if (zeroCopy) buffer.printf(
+                    // it is a ByteBuffer
                     "if (%s.hasRemaining()) {%n",
                     prefixedFieldName,
                 )
+                // else it is a ByteArray
                 else buffer.printf("if (%s.length != 0) {%n", prefixedFieldName)
             } else {
                 if (zeroCopy) buffer.printf(

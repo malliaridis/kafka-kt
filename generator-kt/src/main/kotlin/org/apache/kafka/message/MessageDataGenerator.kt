@@ -683,7 +683,8 @@ class MessageDataGenerator internal constructor(
                 buffer.printf("%snewBytes%s", assignmentPrefix, assignmentSuffix)
             }
         } else if (type.isRecords) buffer.printf(
-            "%sreadable.readRecords(%s)%s",
+            // lengthVar should never be < 0 when this condition is reached
+            "%sreadable.readRecords(%s)!!%s",
             assignmentPrefix,
             lengthVar,
             assignmentSuffix,
@@ -757,8 +758,9 @@ class MessageDataGenerator internal constructor(
     }
 
     private fun generateClassWriter(
-        className: String, struct: StructSpec,
-        parentVersions: Versions
+        className: String,
+        struct: StructSpec,
+        parentVersions: Versions,
     ) {
         headerGenerator.addImport(MessageGenerator.WRITABLE_CLASS)
         headerGenerator.addImport(MessageGenerator.OBJECT_SERIALIZATION_CACHE_CLASS)
@@ -790,6 +792,7 @@ class MessageDataGenerator internal constructor(
                                     generateVariableLengthWriter(
                                         fieldFlexibleVersions = fieldFlexibleVersions(field),
                                         name = field.camelCaseName(),
+                                        fieldPrefix = "this.",
                                         type = field.type,
                                         possibleVersions = versions,
                                         nullableVersions = field.nullableVersions,
@@ -827,6 +830,7 @@ class MessageDataGenerator internal constructor(
                                 buffer = buffer,
                                 fieldPrefix = "this.",
                                 nullableVersions = field.nullableVersions,
+                                disableSafeUnwrap = true,
                             )
                             buffer.incrementIndent()
                             buffer.printf("numTaggedFields++%n")
@@ -868,7 +872,7 @@ class MessageDataGenerator internal constructor(
                     field.taggedVersions.intersect(field.versions),
                     flexibleVersions,
                 ).allowMembershipCheckAlwaysFalse(false).ifMember { presentAndTaggedVersions ->
-                    val cond = IsNullConditional.forName(field.camelCaseName())
+                    val cond = IsNullConditional.forName(field.camelCaseName(), "this.")
                         .nullableVersions(field.nullableVersions)
                         .possibleVersions(presentAndTaggedVersions)
                         .alwaysEmitBlockScope(true)
@@ -887,7 +891,7 @@ class MessageDataGenerator internal constructor(
                             if (field.type.isString) {
                                 buffer.printf(
                                     "val stringBytes: ByteArray = cache.getSerializedValue(%s)%n",
-                                    field.prefixedCamelCaseName(),
+                                    field.safePrefixedCamelCaseName(),
                                 )
                                 headerGenerator.addImport(MessageGenerator.BYTE_UTILS_CLASS)
                                 buffer.printf(
@@ -913,12 +917,13 @@ class MessageDataGenerator internal constructor(
                             } else if (field.type.isArray) {
                                 headerGenerator.addImport(MessageGenerator.BYTE_UTILS_CLASS)
                                 buffer.printf(
-                                    "writable.writeUnsignedVarint(cache.getArraySizeInBytes(%s)!!)%n",
+                                    "writable.writeUnsignedVarint(cache.getArraySizeInBytes(%s))%n",
                                     field.prefixedCamelCaseName()
                                 )
                                 generateVariableLengthWriter(
                                     fieldFlexibleVersions = fieldFlexibleVersions(field),
                                     name = field.camelCaseName(),
+                                    fieldPrefix = "this.",
                                     type = field.type,
                                     possibleVersions = presentAndTaggedVersions,
                                     nullableVersions = Versions.NONE,
@@ -1002,12 +1007,13 @@ class MessageDataGenerator internal constructor(
     private fun generateVariableLengthWriter(
         fieldFlexibleVersions: Versions,
         name: String,
+        fieldPrefix: String? = null,
         type: FieldType,
         possibleVersions: Versions,
         nullableVersions: Versions,
         zeroCopy: Boolean,
     ) {
-        IsNullConditional.forName(name, "this.")
+        IsNullConditional.forName(name, fieldPrefix)
             .possibleVersions(possibleVersions)
             .nullableVersions(nullableVersions)
             .alwaysEmitBlockScope(type.isString)
@@ -1027,7 +1033,7 @@ class MessageDataGenerator internal constructor(
             }
             .ifShouldNotBeNull {
                 val lengthExpression: String = if (type.isString) {
-                    buffer.printf("val stringBytes: ByteArray = cache.getSerializedValue(%s)!!%n", name)
+                    buffer.printf("val stringBytes: ByteArray = cache.getSerializedValue(%s)%n", name)
                     "stringBytes.size"
                 } else if (type.isBytes) {
                     if (type.isNullable) {
@@ -1336,8 +1342,7 @@ class MessageDataGenerator internal constructor(
 
                     if (elementType.fixedLength() != null) buffer.printf(
                         "size.addBytes(%s.size * %d)%n",
-                        if (field.type.isNullable) field.camelCaseName()
-                        else field.prefixedCamelCaseName(),
+                        field.safePrefixedCamelCaseName(),
                         elementType.fixedLength(),
                     ) else if (elementType is FieldType.ArrayType)
                         throw RuntimeException("Arrays of arrays are not supported (use a struct).")
@@ -1403,8 +1408,7 @@ class MessageDataGenerator internal constructor(
                             headerGenerator.addImport(MessageGenerator.BYTE_UTILS_CLASS)
                             buffer.printf(
                                 "size.addBytes(ByteUtils.sizeOfUnsignedVarint(%s.sizeInBytes() + 1))%n",
-                                if (field.type.isNullable) field.camelCaseName()
-                                else field.prefixedCamelCaseName(),
+                                field.safePrefixedCamelCaseName(),
                             )
                         }
                         .ifNotMember { buffer.printf("size.addBytes(4)%n") }
@@ -1413,12 +1417,12 @@ class MessageDataGenerator internal constructor(
                     buffer.printf("val sizeBeforeStruct = size.totalSize%n",)
                     buffer.printf(
                         "%s.addSize(size, cache, version)%n",
-                        if (field.type.isNullable) field.camelCaseName()
-                        else field.prefixedCamelCaseName(),
+                        field.safePrefixedCamelCaseName(),
                     )
-                    buffer.printf("val structSize = size.totalSize - sizeBeforeStruct%n",)
-                    if (tagged)
+                    if (tagged){
+                        buffer.printf("val structSize = size.totalSize - sizeBeforeStruct%n",)
                         buffer.printf("size.addBytes(ByteUtils.sizeOfUnsignedVarint(structSize))%n")
+                    }
                 } else throw RuntimeException("unhandled type " + field.type)
                 if (tagged && field.fieldDefault != "null") {
                     buffer.decrementIndent()
