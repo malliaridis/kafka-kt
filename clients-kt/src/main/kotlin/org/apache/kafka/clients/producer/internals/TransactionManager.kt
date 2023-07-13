@@ -238,7 +238,7 @@ class TransactionManager(
         if (lastError !is InvalidPidMappingException) {
             val builder = EndTxnRequest.Builder(
                 EndTxnRequestData()
-                    .setTransactionalId(transactionalId)
+                    .setTransactionalId(transactionalId!!)
                     .setProducerId(producerIdAndEpoch.producerId)
                     .setProducerEpoch(producerIdAndEpoch.epoch)
                     .setCommitted(transactionResult.id)
@@ -269,7 +269,7 @@ class TransactionManager(
         )
         val builder = AddOffsetsToTxnRequest.Builder(
             AddOffsetsToTxnRequestData()
-                .setTransactionalId(transactionalId)
+                .setTransactionalId(transactionalId!!)
                 .setProducerId(producerIdAndEpoch.producerId)
                 .setProducerEpoch(producerIdAndEpoch.epoch)
                 .setGroupId(groupMetadata.groupId)
@@ -537,7 +537,7 @@ class TransactionManager(
 
     @Synchronized
     fun addInFlightBatch(batch: ProducerBatch) {
-        if (batch.hasSequence()) {
+        if (batch.hasSequence) {
             "Can't track batch for partition ${batch.topicPartition} when sequence is not set."
         }
         txnPartitionMap[batch.topicPartition].inflightBatchesBySequence.add(batch)
@@ -899,7 +899,7 @@ class TransactionManager(
     }
 
     fun lookupCoordinator(request: TxnRequestHandler) =
-        lookupCoordinator(request.coordinatorType(), request.coordinatorKey())
+        lookupCoordinator(request.coordinatorType(), request.coordinatorKey()!!)
 
     fun setInFlightCorrelationId(correlationId: Int) {
         inFlightRequestCorrelationId = correlationId
@@ -1162,7 +1162,7 @@ class TransactionManager(
 
         val data = FindCoordinatorRequestData()
             .setKeyType(type.id)
-            .setKey(coordinatorKey)
+            .setKey(coordinatorKey!!)
         val builder = FindCoordinatorRequest.Builder(data)
         enqueueRequest(FindCoordinatorHandler(builder))
     }
@@ -1192,7 +1192,7 @@ class TransactionManager(
             pendingTxnOffsetCommits[partition] = committedOffset
         }
         val builder = TxnOffsetCommitRequest.Builder(
-            transactionalId = transactionalId,
+            transactionalId = transactionalId!!,
             consumerGroupId = groupMetadata.groupId,
             producerId = producerIdAndEpoch.producerId,
             producerEpoch = producerIdAndEpoch.epoch,
@@ -1298,7 +1298,7 @@ class TransactionManager(
         open fun retryBackoffMs(): Long = retryBackoffMs
 
         override fun onComplete(response: ClientResponse) {
-            if (response.requestHeader.correlationId() != inFlightRequestCorrelationId)
+            if (response.requestHeader.correlationId != inFlightRequestCorrelationId)
                 fatalError(
                     RuntimeException("Detected more than one in-flight transactional request.")
                 )
@@ -1306,7 +1306,7 @@ class TransactionManager(
                 clearInFlightCorrelationId()
                 if (response.disconnected) {
                     log.debug("Disconnected from {}. Will retry.", response.destination)
-                    if (needsCoordinator) lookupCoordinator(coordinatorType(), coordinatorKey())
+                    if (needsCoordinator) lookupCoordinator(coordinatorType(), coordinatorKey()!!)
                     reenqueue()
                 } else if (response.versionMismatch != null) fatalError(response.versionMismatch)
                 else if (response.hasResponse) {

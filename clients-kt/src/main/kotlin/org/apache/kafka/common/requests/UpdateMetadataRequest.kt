@@ -86,7 +86,8 @@ class UpdateMetadataRequest internal constructor(
 
     override fun controllerId(): Int = data.controllerId()
 
-    override fun isKRaftController(): Boolean = data.isKRaftController
+    override val isKRaftController: Boolean
+        get() = data.isKRaftController
 
     override fun controllerEpoch(): Int = data.controllerEpoch()
 
@@ -216,7 +217,7 @@ class UpdateMetadataRequest internal constructor(
                                 topicIds.getOrDefault(partition.topicName(), Uuid.ZERO_UUID)
                             )
                     }
-                    topicState.partitionStates().add(partition)
+                    topicState.partitionStates += partition
                 }
                 return topicStates
             }

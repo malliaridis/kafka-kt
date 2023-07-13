@@ -85,16 +85,15 @@ class OffsetFetchResponse : AbstractResponse {
                 defaultValue = OffsetFetchResponseTopic().setName(topicName)
             )
 
-            topic.partitions().add(
-                OffsetFetchResponsePartition()
-                    .setPartitionIndex(key.partition)
-                    .setErrorCode(partitionData.error.code)
-                    .setCommittedOffset(partitionData.offset)
-                    .setCommittedLeaderEpoch(
-                        partitionData.leaderEpoch ?: RecordBatch.NO_PARTITION_LEADER_EPOCH
-                    )
-                    .setMetadata(partitionData.metadata)
-            )
+            topic.partitions += OffsetFetchResponsePartition()
+                .setPartitionIndex(key.partition)
+                .setErrorCode(partitionData.error.code)
+                .setCommittedOffset(partitionData.offset)
+                .setCommittedLeaderEpoch(
+                    partitionData.leaderEpoch ?: RecordBatch.NO_PARTITION_LEADER_EPOCH
+                )
+                .setMetadata(partitionData.metadata)
+
             offsetFetchResponseTopicMap[topicName] = topic
         }
 
@@ -132,16 +131,14 @@ class OffsetFetchResponse : AbstractResponse {
                     OffsetFetchResponseTopics().setName(topicName)
                 )
 
-                topic.partitions().add(
-                    OffsetFetchResponsePartitions()
-                        .setPartitionIndex(key.partition)
-                        .setErrorCode(partitionData.error.code)
-                        .setCommittedOffset(partitionData.offset)
-                        .setCommittedLeaderEpoch(
-                            partitionData.leaderEpoch ?: RecordBatch.NO_PARTITION_LEADER_EPOCH
-                        )
-                        .setMetadata(partitionData.metadata)
-                )
+                topic.partitions += OffsetFetchResponsePartitions()
+                    .setPartitionIndex(key.partition)
+                    .setErrorCode(partitionData.error.code)
+                    .setCommittedOffset(partitionData.offset)
+                    .setCommittedLeaderEpoch(
+                        partitionData.leaderEpoch ?: RecordBatch.NO_PARTITION_LEADER_EPOCH
+                    )
+                    .setMetadata(partitionData.metadata)
 
                 offsetFetchResponseTopicsMap[topicName] = topic
             }
@@ -254,10 +251,10 @@ class OffsetFetchResponse : AbstractResponse {
 
                 responseData[TopicPartition(topic.name(), partition.partitionIndex())] =
                     PartitionData(
-                        partition.committedOffset(),
-                        RequestUtils.getLeaderEpoch(partition.committedLeaderEpoch()),
-                        partition.metadata(),
-                        Errors.forCode(partition.errorCode())
+                        offset = partition.committedOffset(),
+                        leaderEpoch = RequestUtils.getLeaderEpoch(partition.committedLeaderEpoch()),
+                        metadata = partition.metadata() ?: NO_METADATA,
+                        error = Errors.forCode(partition.errorCode())
                     )
             }
         }
@@ -279,7 +276,7 @@ class OffsetFetchResponse : AbstractResponse {
                     PartitionData(
                         offset = partition.committedOffset(),
                         leaderEpoch = RequestUtils.getLeaderEpoch(partition.committedLeaderEpoch()),
-                        metadata = partition.metadata(),
+                        metadata = partition.metadata() ?: NO_METADATA,
                         error = Errors.forCode(partition.errorCode())
                     )
             }

@@ -79,8 +79,8 @@ class UpdateFeaturesRequest(
         override fun toString(): String = data.toString()
     }
 
-    fun getFeature(name: String?): FeatureUpdateItem {
-        val update = data.featureUpdates().find(name)
+    fun getFeature(name: String): FeatureUpdateItem {
+        val update = data.featureUpdates().find(name)!!
 
         return if (super.version.toInt() == 0) {
             if (update.allowDowngrade()) FeatureUpdateItem(

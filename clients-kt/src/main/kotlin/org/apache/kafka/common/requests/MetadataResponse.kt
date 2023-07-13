@@ -77,7 +77,7 @@ class MetadataResponse internal constructor(
             checkNotNull(metadata.name()) {
                 "Use errorsByTopicId() when managing topic using topic id"
             }
-            if (metadata.errorCode() != Errors.NONE.code) errors[metadata.name()] =
+            if (metadata.errorCode() != Errors.NONE.code) errors[metadata.name!!] =
                 Errors.forCode(metadata.errorCode())
         }
         return errors
@@ -116,7 +116,7 @@ class MetadataResponse internal constructor(
     fun topicsByError(error: Errors): Set<String> {
         val errorTopics: MutableSet<String> = HashSet()
         for (metadata in data.topics())
-            if (metadata.errorCode() == error.code) errorTopics.add(metadata.name())
+            if (metadata.errorCode() == error.code) errorTopics.add(metadata.name!!)
 
         return errorTopics
     }
@@ -154,7 +154,7 @@ class MetadataResponse internal constructor(
      * Returns a 32-bit bitfield to represent authorized operations for this topic.
      */
     fun topicAuthorizedOperations(topicName: String): Int =
-        data.topics().find(topicName).topicAuthorizedOperations()
+        data.topics().find(topicName)!!.topicAuthorizedOperations()
 
     /**
      * Returns a 32-bit bitfield to represent authorized operations for this cluster.
@@ -199,7 +199,18 @@ class MetadataResponse internal constructor(
      * The cluster identifier returned in the metadata response.
      * @return cluster identifier if it is present in the response, null otherwise.
      */
-    fun clusterId(): String = data.clusterId()
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("clusterId"),
+    )
+    fun clusterId(): String? = data.clusterId
+
+    /**
+     * The cluster identifier returned in the metadata response or `null` if it is not present in
+     * the response.
+     */
+    val clusterId: String?
+        get() = data.clusterId
 
     /**
      * Check whether the leader epochs returned from the response can be relied on
@@ -354,7 +365,7 @@ class MetadataResponse internal constructor(
             val topicMetadataList: MutableList<TopicMetadata> = ArrayList()
             data.topics().forEach { topicMetadata ->
                 val topicError = Errors.forCode(topicMetadata.errorCode())
-                val topic = topicMetadata.name()
+                val topic = topicMetadata.name!!
                 val topicId = topicMetadata.topicId()
                 val isInternal = topicMetadata.isInternal
                 val partitionMetadataList: MutableList<PartitionMetadata> = ArrayList()
@@ -371,9 +382,9 @@ class MetadataResponse internal constructor(
                             topicPartition = topicPartition,
                             leaderId = leaderIdOpt,
                             leaderEpoch = leaderEpoch,
-                            replicaIds = partitionMetadata.replicaNodes(),
-                            inSyncReplicaIds = partitionMetadata.isrNodes(),
-                            offlineReplicaIds = partitionMetadata.offlineReplicas()
+                            replicaIds = partitionMetadata.replicaNodes.toList(),
+                            inSyncReplicaIds = partitionMetadata.isrNodes.toList(),
+                            offlineReplicaIds = partitionMetadata.offlineReplicas.toList(),
                         )
                     )
                 }

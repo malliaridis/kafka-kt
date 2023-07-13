@@ -249,7 +249,7 @@ class FetchRequest(
                         .setTopicId(topicIdPartition.topicId)
                 }
 
-                forgottenTopic.partitions().add(topicIdPartition.partition)
+                forgottenTopic.partitions += topicIdPartition.partition
             })
         }
 
@@ -272,7 +272,7 @@ class FetchRequest(
             // "forget" set in order to not remove the newly added partition in the "fetch" set.
             if (version >= 13) addToForgottenTopicMap(replaced, forgottenTopicMap)
 
-            fetchRequestData.forgottenTopicsData().addAll(forgottenTopicMap.values)
+            fetchRequestData.forgottenTopicsData += forgottenTopicMap.values
 
             // We collect the partitions in a single FetchTopic only if they appear sequentially in
             // the fetchData
@@ -285,7 +285,7 @@ class FetchRequest(
                         .setTopic(topicPartition.topic)
                         .setTopicId(partitionData.topicId)
                         .setPartitions(ArrayList())
-                    fetchRequestData.topics().add(fetchTopic)
+                    fetchRequestData.topics += fetchTopic
                 }
                 val fetchPartition = FetchPartition()
                     .setPartition(topicPartition.partition)
@@ -299,11 +299,11 @@ class FetchRequest(
                     .setLogStartOffset(partitionData.logStartOffset)
                     .setPartitionMaxBytes(partitionData.maxBytes)
 
-                fetchTopic!!.partitions().add(fetchPartition)
+                fetchTopic.partitions += fetchPartition
             }
             if (metadata != null) {
-                fetchRequestData.setSessionEpoch(metadata!!.epoch())
-                fetchRequestData.setSessionId(metadata!!.sessionId())
+                fetchRequestData.setSessionEpoch(metadata.epoch)
+                fetchRequestData.setSessionId(metadata.sessionId)
             }
 
             fetchRequestData.setRackId(rackId)

@@ -32,7 +32,7 @@ class DescribeDelegationTokenRequest(
 
     override fun data(): DescribeDelegationTokenRequestData = data
 
-    fun ownersListEmpty(): Boolean = data.owners() != null && data.owners().isEmpty()
+    fun ownersListEmpty(): Boolean = data.owners.isEmpty()
 
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse =
         DescribeDelegationTokenResponse(
@@ -42,13 +42,13 @@ class DescribeDelegationTokenRequest(
         )
 
     class Builder(
-        owners: List<KafkaPrincipal>?,
+        owners: List<KafkaPrincipal>,
     ) : AbstractRequest.Builder<DescribeDelegationTokenRequest>(ApiKeys.DESCRIBE_DELEGATION_TOKEN) {
         private val data: DescribeDelegationTokenRequestData
 
         init {
             data = DescribeDelegationTokenRequestData().setOwners(
-                owners?.map { (principalType, name) ->
+                owners.map { (principalType, name) ->
                     DescribeDelegationTokenOwner()
                         .setPrincipalName(name)
                         .setPrincipalType(principalType)

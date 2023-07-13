@@ -75,11 +75,9 @@ class StopReplicaRequest private constructor(
                     StopReplicaTopicState().setTopicName(topic)
                 }
 
-                topicState.partitionStates().add(
-                    StopReplicaPartitionState()
-                        .setPartitionIndex(partition.partitionIndex())
-                        .setDeletePartition(data.deletePartitions())
-                )
+                topicState.partitionStates += StopReplicaPartitionState()
+                    .setPartitionIndex(partition.partitionIndex())
+                    .setDeletePartition(data.deletePartitions())
             }
             topicStates.values
 
@@ -126,7 +124,8 @@ class StopReplicaRequest private constructor(
 
     override fun controllerId(): Int = data.controllerId()
 
-    override fun isKRaftController(): Boolean = data.isKRaftController
+    override val isKRaftController: Boolean
+        get() = data.isKRaftController
 
     override fun controllerEpoch(): Int = data.controllerEpoch()
 
@@ -165,7 +164,7 @@ class StopReplicaRequest private constructor(
                     StopReplicaTopicV1()
                         .setName(topic.topicName())
                         .setPartitionIndexes(
-                            topic.partitionStates().map { obj -> obj.partitionIndex() }
+                            topic.partitionStates().map { it.partitionIndex() }.toIntArray()
                         )
                 }
 

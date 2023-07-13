@@ -852,7 +852,7 @@ enum class Errors(
          * (or UNKNOWN if there is none). If there are multiple matches in the class hierarchy,
          * the first match starting from the bottom is used.
          */
-        fun forException(t: Throwable): Errors {
+        fun forException(t: Throwable?): Errors {
             val cause = maybeUnwrapException(t)
             var clazz: Class<*>? = cause?.javaClass
             while (clazz != null) {

@@ -109,14 +109,14 @@ class FieldSpec @JsonCreator constructor(
 
         val parsedNullableVersions = Versions.parse(nullableVersions, Versions.NONE)!!
 
-        val type = FieldType.parse(
+        val parsedType = FieldType.parse(
             string = type,
             isNullable = !this.versions.intersect(parsedNullableVersions).isEmpty,
         )
 
         // Do not add nullable versions for array fields
-        this.nullableVersions = if (type.isArray) Versions.NONE else parsedNullableVersions
-        this.type = type
+        this.nullableVersions = if (parsedType.isArray) Versions.NONE else parsedNullableVersions
+        this.type = parsedType
 
         this.entityType = entityType ?: EntityType.UNKNOWN
         this.entityType.verifyTypeMatches(name, this.type)
@@ -416,7 +416,7 @@ class FieldSpec @JsonCreator constructor(
                 }
             }
             type is Float32FieldType -> {
-                return if (fieldDefault.isNullOrEmpty()) "0.0"
+                return if (fieldDefault.isNullOrEmpty()) "0.0f"
                 else {
                     try {
                         fieldDefault.toFloat()
@@ -447,7 +447,7 @@ class FieldSpec @JsonCreator constructor(
                 return if (fieldDefault.isNullOrEmpty()) "\"\""
                 else "\"$fieldDefault\""
             type.isBytes -> {
-                if (!fieldDefault.isNullOrEmpty()) throw RuntimeException(
+                if (fieldDefault?.isNotEmpty() == true && fieldDefault != "null") throw RuntimeException(
                     "Invalid default for bytes field $name. The only valid default for a bytes field " +
                             "is empty or null."
                 )

@@ -168,7 +168,7 @@ abstract class AbstractCoordinator(
      *
      * @return Non-empty map of supported protocols and metadata
      */
-    protected abstract fun metadata(): JoinGroupRequestProtocolCollection?
+    protected abstract fun metadata(): JoinGroupRequestProtocolCollection
 
     /**
      * Invoked prior to each group join or rejoin. This is typically used to perform any cleanup
@@ -732,7 +732,7 @@ abstract class AbstractCoordinator(
             // perform the leader synchronization and send back the assignment for the group
             val groupAssignment = onLeaderElected(
                 joinResponse.data().leader(),
-                joinResponse.data().protocolName(),
+                joinResponse.data().protocolName()!!,
                 joinResponse.data().members(),
                 joinResponse.data().skipAssignment(),
             )
@@ -1236,8 +1236,8 @@ abstract class AbstractCoordinator(
                 leaveReason,
             )
             val request = LeaveGroupRequest.Builder(
-                rebalanceConfig.groupId,
-                listOf(
+                groupId = rebalanceConfig.groupId,
+                members = listOf(
                     MemberIdentity()
                         .setMemberId(generation.memberId)
                         .setReason(JoinGroupRequest.maybeTruncateReason(leaveReason))

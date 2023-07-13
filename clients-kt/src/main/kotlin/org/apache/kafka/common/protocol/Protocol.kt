@@ -32,12 +32,12 @@ object Protocol {
         return b.toString()
     }
 
-    private fun schemaToBnfHtml(schema: Schema, b: StringBuilder, indentSize: Int) {
+    private fun schemaToBnfHtml(schema: Schema?, b: StringBuilder, indentSize: Int) {
         val indentStr = indentString(indentSize)
         val subTypes: MutableMap<String, Type> = LinkedHashMap()
 
         // Top level fields
-        for (field in schema.fields()) {
+        schema?.fields()?.forEach { field ->
             val type = field.def.type
             if (type.isArray) {
                 b.append("[")
@@ -74,8 +74,8 @@ object Protocol {
         }
     }
 
-    private fun populateSchemaFields(schema: Schema, fields: MutableSet<BoundField>) {
-        for (field in schema.fields()) {
+    private fun populateSchemaFields(schema: Schema?, fields: MutableSet<BoundField>) {
+        schema?.fields()?.forEach { field ->
             fields.add(field)
             if (field.def.type.isArray) {
                 val innerType = field.def.type.arrayElementType()!!
@@ -85,8 +85,8 @@ object Protocol {
         }
     }
 
-    private fun schemaToFieldTableHtml(schema: Schema, b: StringBuilder) {
-        val fields: MutableSet<BoundField> = LinkedHashSet()
+    private fun schemaToFieldTableHtml(schema: Schema?, b: StringBuilder) {
+        val fields = mutableSetOf<BoundField>()
         populateSchemaFields(schema, fields)
         b.append("<table class=\"data-table\"><tbody>\n")
         b.append("<tr>")
@@ -109,20 +109,22 @@ object Protocol {
     fun toHtml(): String {
         val b = StringBuilder()
         b.append("<h5>Headers:</h5>\n")
-        for (i in RequestHeaderData.SCHEMAS.indices) {
+        RequestHeaderData.SCHEMAS.forEachIndexed { index, schema ->
             b.append("<pre>")
-            b.append("Request Header v").append(i).append(" => ")
-            schemaToBnfHtml(RequestHeaderData.SCHEMAS[i], b, 2)
+            b.append("Request Header v").append(index).append(" => ")
+            schemaToBnfHtml(schema, b, 2)
             b.append("</pre>\n")
-            schemaToFieldTableHtml(RequestHeaderData.SCHEMAS[i], b)
+            schemaToFieldTableHtml(schema, b)
         }
-        for (i in ResponseHeaderData.SCHEMAS.indices) {
+
+        ResponseHeaderData.SCHEMAS.forEachIndexed { index, schema ->
             b.append("<pre>")
-            b.append("Response Header v").append(i).append(" => ")
-            schemaToBnfHtml(ResponseHeaderData.SCHEMAS[i], b, 2)
+            b.append("Response Header v").append(index).append(" => ")
+            schemaToBnfHtml(schema, b, 2)
             b.append("</pre>\n")
-            schemaToFieldTableHtml(ResponseHeaderData.SCHEMAS[i], b)
+            schemaToFieldTableHtml(schema, b)
         }
+
         for (key in ApiKeys.clientApis()) {
             // Key
             b.append("<h5>")

@@ -68,13 +68,11 @@ class AlterConsumerGroupOffsetsHandler(
         offsets.forEach { (topicPartition, offsetAndMetadata) ->
             offsetData.computeIfAbsent(topicPartition.topic) {
                 OffsetCommitRequestTopic().setName(topicPartition.topic)
-            }.partitions().add(
-                OffsetCommitRequestPartition()
-                    .setCommittedOffset(offsetAndMetadata.offset)
-                    .setCommittedLeaderEpoch(offsetAndMetadata.leaderEpoch() ?: -1)
-                    .setCommittedMetadata(offsetAndMetadata.metadata)
-                    .setPartitionIndex(topicPartition.partition)
-            )
+            }.partitions += OffsetCommitRequestPartition()
+                .setCommittedOffset(offsetAndMetadata.offset)
+                .setCommittedLeaderEpoch(offsetAndMetadata.leaderEpoch() ?: -1)
+                .setCommittedMetadata(offsetAndMetadata.metadata)
+                .setPartitionIndex(topicPartition.partition)
         }
         val data = OffsetCommitRequestData()
             .setGroupId(groupId.idValue)

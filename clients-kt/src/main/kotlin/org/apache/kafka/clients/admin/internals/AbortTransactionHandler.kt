@@ -62,13 +62,11 @@ class AbortTransactionHandler(
             .setProducerEpoch(abortSpec.producerEpoch)
             .setProducerId(abortSpec.producerId)
             .setTransactionResult(false)
-        marker.topics().add(
-            WritableTxnMarkerTopic()
-                .setName(abortSpec.topicPartition.topic)
-                .setPartitionIndexes(listOf(abortSpec.topicPartition.partition))
-        )
+        marker.topics += WritableTxnMarkerTopic()
+            .setName(abortSpec.topicPartition.topic)
+            .setPartitionIndexes(intArrayOf(abortSpec.topicPartition.partition))
         val request = WriteTxnMarkersRequestData()
-        request.markers().add(marker)
+        request.markers += marker
         return WriteTxnMarkersRequest.Builder(request)
     }
 

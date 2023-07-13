@@ -38,13 +38,11 @@ class DescribeTransactionsRequest private constructor(
         val error = Errors.forException(e)
         val response = DescribeTransactionsResponseData().setThrottleTimeMs(throttleTimeMs)
 
-        response.transactionStates().addAll(
-            data.transactionalIds().map { transactionalId ->
-                DescribeTransactionsResponseData.TransactionState()
-                    .setTransactionalId(transactionalId)
-                    .setErrorCode(error.code)
-            }
-        )
+        response.transactionStates += data.transactionalIds().map { transactionalId ->
+            DescribeTransactionsResponseData.TransactionState()
+                .setTransactionalId(transactionalId)
+                .setErrorCode(error.code)
+        }
 
         return DescribeTransactionsResponse(response)
     }

@@ -41,12 +41,12 @@ class TxnOffsetCommitRequest(
         val topics = data.topics()
         val offsetMap: MutableMap<TopicPartition, CommittedOffset> = HashMap()
         for (topic: TxnOffsetCommitRequestTopic in topics) {
-            for (partition: TxnOffsetCommitRequestPartition in topic.partitions()) {
-                offsetMap[TopicPartition(topic.name(), partition.partitionIndex())] =
+            for (partition in topic.partitions()) {
+                offsetMap[TopicPartition(topic.name, partition.partitionIndex)] =
                     CommittedOffset(
-                        partition.committedOffset(),
-                        partition.committedMetadata(),
-                        RequestUtils.getLeaderEpoch(partition.committedLeaderEpoch())
+                        offset = partition.committedOffset,
+                        metadata = partition.committedMetadata,
+                        leaderEpoch = RequestUtils.getLeaderEpoch(partition.committedLeaderEpoch()),
                     )
             }
         }
@@ -70,7 +70,7 @@ class TxnOffsetCommitRequest(
 
     data class CommittedOffset(
         val offset: Long,
-        val metadata: String,
+        val metadata: String?,
         val leaderEpoch: Int?,
     ) {
 
@@ -83,12 +83,12 @@ class TxnOffsetCommitRequest(
     }
 
     class Builder(
-        transactionalId: String?,
-        consumerGroupId: String?,
+        transactionalId: String,
+        consumerGroupId: String,
         producerId: Long,
         producerEpoch: Short,
         pendingTxnOffsetCommits: Map<TopicPartition, CommittedOffset>,
-        memberId: String? = JoinGroupRequest.UNKNOWN_MEMBER_ID,
+        memberId: String = JoinGroupRequest.UNKNOWN_MEMBER_ID,
         generationId: Int = JoinGroupRequest.UNKNOWN_GENERATION_ID,
         groupInstanceId: String? = null,
     ) : AbstractRequest.Builder<TxnOffsetCommitRequest>(ApiKeys.TXN_OFFSET_COMMIT) {

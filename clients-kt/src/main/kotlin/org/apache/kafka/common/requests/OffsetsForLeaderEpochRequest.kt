@@ -46,16 +46,13 @@ class OffsetsForLeaderEpochRequest(
         data.topics().forEach { topic: OffsetForLeaderTopic ->
             val topicData = OffsetForLeaderTopicResult().setTopic(topic.topic())
 
-            topic.partitions()
-                .forEach { partition: OffsetForLeaderPartition ->
-                    topicData.partitions().add(
-                        OffsetForLeaderEpochResponseData.EpochEndOffset()
-                            .setPartition(partition.partition())
-                            .setErrorCode(error.code)
-                            .setLeaderEpoch(OffsetsForLeaderEpochResponse.UNDEFINED_EPOCH)
-                            .setEndOffset(OffsetsForLeaderEpochResponse.UNDEFINED_EPOCH_OFFSET)
-                    )
-                }
+            topic.partitions().forEach { partition ->
+                topicData.partitions += OffsetForLeaderEpochResponseData.EpochEndOffset()
+                    .setPartition(partition.partition())
+                    .setErrorCode(error.code)
+                    .setLeaderEpoch(OffsetsForLeaderEpochResponse.UNDEFINED_EPOCH)
+                    .setEndOffset(OffsetsForLeaderEpochResponse.UNDEFINED_EPOCH_OFFSET)
+            }
             responseData.topics().add(topicData)
         }
         return OffsetsForLeaderEpochResponse(responseData)
@@ -82,7 +79,7 @@ class OffsetsForLeaderEpochRequest(
 
         companion object {
 
-            fun forConsumer(epochsByPartition: OffsetForLeaderTopicCollection?): Builder {
+            fun forConsumer(epochsByPartition: OffsetForLeaderTopicCollection): Builder {
                 // Old versions of this API require CLUSTER permission which is not typically
                 // granted to clients. Beginning with version 3, the broker requires only TOPIC
                 // Describe permission for the topic of each requested partition. In order to ensure
@@ -96,7 +93,7 @@ class OffsetsForLeaderEpochRequest(
 
             fun forFollower(
                 version: Short,
-                epochsByPartition: OffsetForLeaderTopicCollection?,
+                epochsByPartition: OffsetForLeaderTopicCollection,
                 replicaId: Int,
             ): Builder {
                 val data = OffsetForLeaderEpochRequestData()

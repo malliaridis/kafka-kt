@@ -89,7 +89,7 @@ class FindCoordinatorRequest private constructor(
                     data.setKey(data.coordinatorKeys()[0])
                     data.setCoordinatorKeys(emptyList())
                 }
-            } else if (batchedKeys == 0 && data.key() != null) {
+            } else if (batchedKeys == 0 && data.key != null) {
                 data.setCoordinatorKeys(listOf(data.key()))
                 data.setKey("") // default value
             }

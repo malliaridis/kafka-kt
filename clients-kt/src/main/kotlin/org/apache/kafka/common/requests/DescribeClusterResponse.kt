@@ -32,13 +32,13 @@ class DescribeClusterResponse(
 ) : AbstractResponse(ApiKeys.DESCRIBE_CLUSTER) {
 
     fun nodes(): Map<Int, Node> = data.brokers().associateBy(
-        keySelector = DescribeClusterBroker::brokerId,
+        keySelector = { it.brokerId },
         valueTransform = { broker ->
             Node(
-                broker.brokerId(),
-                broker.host(),
-                broker.port(),
-                broker.rack()
+                id = broker.brokerId,
+                host = broker.host,
+                port = broker.port,
+                rack = broker.rack
             )
         }
     )

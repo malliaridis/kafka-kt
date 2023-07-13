@@ -66,9 +66,9 @@ class DescribeProducersHandler(
         val builder = DescribeProducersRequest.Builder(request)
 
         CollectionUtils.groupPartitionsByTopic(
-            keys, { topic: String? -> builder.addTopic(topic) }
-        ) { topicRequest: TopicRequest, partitionId: Int? ->
-            topicRequest.partitionIndexes().add(partitionId)
+            keys, { topic -> builder.addTopic(topic) }
+        ) { topicRequest, partitionId ->
+            topicRequest.partitionIndexes += partitionId
         }
 
         return builder

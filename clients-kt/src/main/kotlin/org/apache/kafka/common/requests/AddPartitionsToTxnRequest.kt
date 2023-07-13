@@ -64,12 +64,12 @@ class AddPartitionsToTxnRequest(
                 partitionMap.map { (key, value) ->
                     AddPartitionsToTxnTopic()
                         .setName(key)
-                        .setPartitions(value)
+                        .setPartitions(value.toIntArray())
                 }
             )
 
             data = AddPartitionsToTxnRequestData()
-                .setTransactionalId(transactionalId)
+                .setTransactionalId(transactionalId!!)
                 .setProducerId(producerId)
                 .setProducerEpoch(producerEpoch)
                 .setTopics(topics)

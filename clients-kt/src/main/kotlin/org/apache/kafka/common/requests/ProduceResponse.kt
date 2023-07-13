@@ -143,22 +143,20 @@ class ProduceResponse(private val data: ProduceResponseData) : AbstractResponse(
                 (data.responses().find(tp.topic) ?: TopicProduceResponse().setName(tp.topic).also {
                     data.responses().add(it)
                 }).apply {
-                    partitionResponses().add(
-                        PartitionProduceResponse()
-                            .setIndex(tp.partition)
-                            .setBaseOffset(response.baseOffset)
-                            .setLogStartOffset(response.logStartOffset)
-                            .setLogAppendTimeMs(response.logAppendTime)
-                            .setErrorMessage(response.errorMessage)
-                            .setErrorCode(response.error.code)
-                            .setRecordErrors(
-                                response.recordErrors.map { e: RecordError ->
-                                    BatchIndexAndErrorMessage()
-                                        .setBatchIndex(e.batchIndex)
-                                        .setBatchIndexErrorMessage(e.message)
-                                }
-                            )
-                    )
+                    partitionResponses += PartitionProduceResponse()
+                        .setIndex(tp.partition)
+                        .setBaseOffset(response.baseOffset)
+                        .setLogStartOffset(response.logStartOffset)
+                        .setLogAppendTimeMs(response.logAppendTime)
+                        .setErrorMessage(response.errorMessage)
+                        .setErrorCode(response.error.code)
+                        .setRecordErrors(
+                            response.recordErrors.map { e: RecordError ->
+                                BatchIndexAndErrorMessage()
+                                    .setBatchIndex(e.batchIndex)
+                                    .setBatchIndexErrorMessage(e.message)
+                            }
+                        )
                 }
             }
             return data

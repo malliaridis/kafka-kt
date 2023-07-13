@@ -171,12 +171,7 @@ object MessageUtil {
         return node.asDouble()
     }
 
-    fun duplicate(array: ByteArray?): ByteArray? =
-        if (array == null) null
-        else array.copyOf(array.size)
-
-    fun duplicate(array: ByteArray): ByteArray =
-        array.copyOf(array.size)
+    fun duplicate(array: ByteArray): ByteArray = array.copyOf(array.size)
 
     /**
      * Compare two RawTaggedFields lists. A `null` list is equivalent to an empty one in this

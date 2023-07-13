@@ -60,7 +60,7 @@ class CreateDelegationTokenResponse(
             issueTimestamp: Long = -1,
             expiryTimestamp: Long = -1,
             maxTimestamp: Long = -1,
-            tokenId: String? = "",
+            tokenId: String = "",
             hmac: ByteBuffer = ByteBuffer.wrap(byteArrayOf()),
         ): CreateDelegationTokenResponse {
             val data = CreateDelegationTokenResponseData()

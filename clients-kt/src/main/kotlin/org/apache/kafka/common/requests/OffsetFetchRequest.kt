@@ -48,9 +48,9 @@ class OffsetFetchRequest private constructor(
             if (group.topics() !== ALL_TOPIC_PARTITIONS_BATCH) {
                 tpList = ArrayList()
 
-                for (topic: OffsetFetchRequestTopics in group.topics())
+                for (topic in group.topics)
                     for (partitionIndex in topic.partitionIndexes())
-                        tpList.add(TopicPartition(topic.name(), partitionIndex))
+                        tpList.add(TopicPartition(topic.name, partitionIndex))
             }
             groupIdsToPartitions[group.groupId()] = tpList
         }
@@ -60,11 +60,11 @@ class OffsetFetchRequest private constructor(
 
     fun groupIdsToTopics(): Map<String, List<OffsetFetchRequestTopics>> =
         data.groups().associateBy(
-            keySelector = OffsetFetchRequestGroup::groupId,
-            valueTransform = OffsetFetchRequestGroup::topics
+            keySelector = { it.groupId },
+            valueTransform = { it.topics },
         )
 
-    fun groupIds(): List<String> = data.groups().map(OffsetFetchRequestGroup::groupId)
+    fun groupIds(): List<String> = data.groups().map { it.groupId }
 
     fun getErrorResponse(error: Errors): OffsetFetchResponse =
         getErrorResponse(AbstractResponse.DEFAULT_THROTTLE_TIME, error)
@@ -80,7 +80,7 @@ class OffsetFetchRequest private constructor(
                 error = error
             )
 
-            for (topic in data.topics()) {
+            for (topic in data.topics) {
                 for (partitionIndex in topic.partitionIndexes())
                     responsePartitions[TopicPartition(topic.name(), partitionIndex)] =
                         partitionError
@@ -112,11 +112,11 @@ class OffsetFetchRequest private constructor(
         getErrorResponse(throttleTimeMs, Errors.forException(e))
 
     val isAllPartitions: Boolean
-        get() = data.topics() === ALL_TOPIC_PARTITIONS
+        get() = data.topics() == ALL_TOPIC_PARTITIONS
 
     fun isAllPartitionsForGroup(groupId: String): Boolean {
         val group = data.groups().first { group -> (group.groupId() == groupId) }
-        return group.topics() === ALL_TOPIC_PARTITIONS_BATCH
+        return group.topics() == ALL_TOPIC_PARTITIONS_BATCH
     }
 
     override fun data(): OffsetFetchRequestData {
@@ -130,26 +130,27 @@ class OffsetFetchRequest private constructor(
         private val throwOnFetchStableOffsetsUnsupported: Boolean
 
         constructor(
-            groupId: String?,
+            groupId: String,
             requireStable: Boolean,
             partitions: List<TopicPartition>?,
             throwOnFetchStableOffsetsUnsupported: Boolean,
         ) : super(ApiKeys.OFFSET_FETCH) {
-            val topics: List<OffsetFetchRequestTopic>?
+            val topics: List<OffsetFetchRequestTopic>
             if (partitions != null) {
                 val offsetFetchRequestTopicMap = mutableMapOf<String, OffsetFetchRequestTopic>()
 
-                for (topicPartition: TopicPartition in partitions) {
+                for (topicPartition in partitions) {
                     val topicName = topicPartition.topic
                     val topic = offsetFetchRequestTopicMap.getOrDefault(
                         topicName, OffsetFetchRequestTopic().setName(topicName)
                     )
-                    topic.partitionIndexes().add(topicPartition.partition)
+                    topic.partitionIndexes += topicPartition.partition
                     offsetFetchRequestTopicMap[topicName] = topic
                 }
                 topics = ArrayList(offsetFetchRequestTopicMap.values)
             } else {
-                // If passed in partition list is null, it is requesting offsets for all topic partitions.
+                // If passed in partition list is empty (before migration nul), it is requesting
+                // offsets for all topic partitions.
                 topics = ALL_TOPIC_PARTITIONS
             }
             data = OffsetFetchRequestData()
@@ -172,7 +173,7 @@ class OffsetFetchRequest private constructor(
             for (entry in groupIdToTopicPartitionMap) {
                 val groupName = entry.key
                 val tpList = entry.value
-                val topics: List<OffsetFetchRequestTopics>?
+                val topics: List<OffsetFetchRequestTopics>
                 if (tpList != null) {
                     val offsetFetchRequestTopicMap =
                         mutableMapOf<String, OffsetFetchRequestTopics>()
@@ -184,7 +185,7 @@ class OffsetFetchRequest private constructor(
                             OffsetFetchRequestTopics().setName(topicName)
                         )
 
-                        topic.partitionIndexes().add(topicPartition.partition)
+                        topic.partitionIndexes += topicPartition.partition
                         offsetFetchRequestTopicMap[topicName] = topic
                     }
                     topics = ArrayList(offsetFetchRequestTopicMap.values)
@@ -238,8 +239,7 @@ class OffsetFetchRequest private constructor(
                     val group = data.groups()[0]
                     val groupName = group.groupId()
                     val topics = group.topics()
-                    var oldFormatTopics: List<OffsetFetchRequestTopic>? = null
-                    if (topics != null) oldFormatTopics = topics.map { topic ->
+                    val oldFormatTopics = topics.map { topic ->
                         OffsetFetchRequestTopic()
                             .setName(topic.name())
                             .setPartitionIndexes(topic.partitionIndexes())
@@ -254,8 +254,7 @@ class OffsetFetchRequest private constructor(
             } else if (data.groups().isEmpty()) {
                 val groupName = data.groupId()
                 val oldFormatTopics = data.topics()
-                var topics: List<OffsetFetchRequestTopics>? = null
-                if (oldFormatTopics != null) topics = oldFormatTopics.map { topic ->
+                val topics = oldFormatTopics.map { topic ->
                     OffsetFetchRequestTopics()
                         .setName(topic.name())
                         .setPartitionIndexes(topic.partitionIndexes())
@@ -306,9 +305,9 @@ class OffsetFetchRequest private constructor(
 
         private val log = LoggerFactory.getLogger(OffsetFetchRequest::class.java)
 
-        private val ALL_TOPIC_PARTITIONS: List<OffsetFetchRequestTopic>? = null
+        private val ALL_TOPIC_PARTITIONS: List<OffsetFetchRequestTopic> = emptyList()
 
-        private val ALL_TOPIC_PARTITIONS_BATCH: List<OffsetFetchRequestTopics>? = null
+        private val ALL_TOPIC_PARTITIONS_BATCH: List<OffsetFetchRequestTopics> = emptyList()
 
         fun parse(buffer: ByteBuffer, version: Short): OffsetFetchRequest =
             OffsetFetchRequest(OffsetFetchRequestData(ByteBufferAccessor(buffer), version), version)

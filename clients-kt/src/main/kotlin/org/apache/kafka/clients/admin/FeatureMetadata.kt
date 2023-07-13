@@ -30,16 +30,6 @@ data class FeatureMetadata(
     val supportedFeatures: Map<String, SupportedVersionRange> = emptyMap(),
 ) {
 
-    constructor(
-        finalizedFeatures: Map<String, FinalizedVersionRange>? = null,
-        finalizedFeaturesEpoch: Long? = null,
-        supportedFeatures: Map<String, SupportedVersionRange>? = null,
-    ) : this(
-        finalizedFeatures = finalizedFeatures ?: emptyMap(),
-        finalizedFeaturesEpoch = finalizedFeaturesEpoch,
-        supportedFeatures = supportedFeatures ?: emptyMap(),
-    )
-
     /**
      * Returns a map of finalized feature versions. Each entry in the map contains a key being a
      * feature name and the value being a range of version levels supported by every broker in the

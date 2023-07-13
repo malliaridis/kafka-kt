@@ -76,9 +76,9 @@ class IncrementalAlterConfigsRequest(
                 alterableConfigSet.addAll(
                         configs[resource]!!.map { configEntry ->
                             IncrementalAlterConfigsRequestData.AlterableConfig()
-                                .setName(configEntry.configEntry().name)
-                                .setValue(configEntry.configEntry().value)
-                                .setConfigOperation(configEntry.opType().id())
+                                .setName(configEntry.configEntry.name)
+                                .setValue(configEntry.configEntry.value)
+                                .setConfigOperation(configEntry.opType.id)
                         }
                     )
 

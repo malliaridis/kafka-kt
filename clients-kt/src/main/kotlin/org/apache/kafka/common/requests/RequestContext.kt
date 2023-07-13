@@ -49,19 +49,19 @@ class RequestContext(
             val apiVersionsRequest = ApiVersionsRequest(
                 ApiVersionsRequestData(),
                 0.toShort(),
-                header.apiVersion()
+                header.apiVersion
             )
 
             return RequestAndSize(apiVersionsRequest, 0)
         } else {
-            val apiKey = header.apiKey()
+            val apiKey = header.apiKey
             try {
-                val apiVersion = header.apiVersion()
+                val apiVersion = header.apiVersion
                 return AbstractRequest.parseRequest(apiKey, apiVersion, buffer!!)
             } catch (ex: Throwable) {
                 throw InvalidRequestException(
                     "Error getting request for apiKey: $apiKey" +
-                            ", apiVersion: ${header.apiVersion()}" +
+                            ", apiVersion: ${header.apiVersion}" +
                             ", connectionId: $connectionId" +
                             ", listenerName: $listenerName" +
                             ", principal: $principal",
@@ -93,13 +93,13 @@ class RequestContext(
     }
 
     private val isUnsupportedApiVersionsRequest: Boolean
-        get() = header.apiKey() === ApiKeys.API_VERSIONS
-                && !ApiKeys.API_VERSIONS.isVersionSupported(header.apiVersion())
+        get() = header.apiKey === ApiKeys.API_VERSIONS
+                && !ApiKeys.API_VERSIONS.isVersionSupported(header.apiVersion)
 
     fun apiVersion(): Short {
         // Use v0 when serializing an unhandled ApiVersion response
         return if (isUnsupportedApiVersionsRequest) 0
-        else header.apiVersion()
+        else header.apiVersion
     }
 
     override fun listenerName(): String? = listenerName?.value
@@ -110,13 +110,13 @@ class RequestContext(
 
     override fun clientAddress(): InetAddress = clientAddress
 
-    override fun requestType(): Int = header.apiKey().id.toInt()
+    override fun requestType(): Int = header.apiKey.id.toInt()
 
-    override fun requestVersion(): Int = header.apiVersion().toInt()
+    override fun requestVersion(): Int = header.apiVersion.toInt()
 
-    override fun clientId(): String = header.clientId()
+    override fun clientId(): String? = header.clientId
 
-    override fun correlationId(): Int = header.correlationId()
+    override fun correlationId(): Int = header.correlationId
 
     override fun toString(): String {
         return "RequestContext(" +

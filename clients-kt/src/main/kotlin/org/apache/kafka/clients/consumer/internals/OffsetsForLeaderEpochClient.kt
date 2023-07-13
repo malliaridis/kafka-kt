@@ -62,15 +62,13 @@ class OffsetsForLeaderEpochClient internal constructor(
                     topic = OffsetForLeaderTopic().setTopic(topicPartition.topic)
                     topics.add(topic)
                 }
-                topic.partitions().add(
-                    OffsetForLeaderPartition()
-                        .setPartition(topicPartition.partition)
-                        .setLeaderEpoch(fetchEpoch)
-                        .setCurrentLeaderEpoch(
-                            fetchPosition.currentLeader.epoch
-                                ?: RecordBatch.NO_PARTITION_LEADER_EPOCH
-                        )
-                )
+                topic.partitions += OffsetForLeaderPartition()
+                    .setPartition(topicPartition.partition)
+                    .setLeaderEpoch(fetchEpoch)
+                    .setCurrentLeaderEpoch(
+                        fetchPosition.currentLeader.epoch
+                            ?: RecordBatch.NO_PARTITION_LEADER_EPOCH
+                    )
             }
         }
         return OffsetsForLeaderEpochRequest.Builder.forConsumer(topics)

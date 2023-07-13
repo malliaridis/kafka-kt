@@ -50,7 +50,7 @@ class InitProducerIdRequest private constructor(
             require(data.transactionTimeoutMs() > 0) {
                 "transaction timeout value is not positive: " + data.transactionTimeoutMs()
             }
-            require(!(data.transactionalId() != null && data.transactionalId().isEmpty())) {
+            require(!(data.transactionalId() != null && data.transactionalId.isNullOrEmpty())) {
                 "Must set either a null or a non-empty transactional id."
             }
 

@@ -65,7 +65,7 @@ class ListOffsetsRequest private constructor(
                     .setErrorCode(errorCode)
                     .setPartitionIndex(partition.partitionIndex())
                 if (versionId.toInt() == 0) {
-                    partitionResponse.setOldStyleOffsets(emptyList())
+                    partitionResponse.setOldStyleOffsets(longArrayOf())
                 } else {
                     partitionResponse.setOffset(ListOffsetsResponse.UNKNOWN_OFFSET)
                         .setTimestamp(ListOffsetsResponse.UNKNOWN_TIMESTAMP)
@@ -133,7 +133,7 @@ class ListOffsetsRequest private constructor(
             .setIsolationLevel(isolationLevel.id())
             .setReplicaId(replicaId)
 
-        fun setTargetTimes(topics: List<ListOffsetsTopic?>?): Builder {
+        fun setTargetTimes(topics: List<ListOffsetsTopic>): Builder {
             data.setTopics(topics)
             return this
         }
@@ -191,19 +191,19 @@ class ListOffsetsRequest private constructor(
             )
 
         fun toListOffsetsTopics(
-            timestampsToSearch: Map<TopicPartition, ListOffsetsPartition?>,
+            timestampsToSearch: Map<TopicPartition, ListOffsetsPartition>,
         ): List<ListOffsetsTopic> {
             val topics: MutableMap<String, ListOffsetsTopic> = HashMap()
 
             for ((tp, value) in timestampsToSearch) {
                 val topic = topics.computeIfAbsent(tp.topic) { ListOffsetsTopic().setName(tp.topic) }
-                topic.partitions().add(value)
+                topic.partitions += value
             }
             return ArrayList(topics.values)
         }
 
         fun singletonRequestData(
-            topic: String?,
+            topic: String,
             partitionIndex: Int,
             timestamp: Long,
             maxNumOffsets: Int,

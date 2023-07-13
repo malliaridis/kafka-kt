@@ -27,7 +27,7 @@ import org.apache.kafka.common.security.auth.KafkaPrincipal
  */
 @Evolving
 class DescribeDelegationTokenOptions : AbstractOptions<DescribeDelegationTokenOptions>() {
-    var owners: List<KafkaPrincipal>? = null
+    var owners: List<KafkaPrincipal> = emptyList()
 
     /**
      * if owners is `null`, all the user owned tokens and tokens where user have Describe permission
@@ -37,7 +37,7 @@ class DescribeDelegationTokenOptions : AbstractOptions<DescribeDelegationTokenOp
      * @return this instance
      */
     @Deprecated("User property instead")
-    fun owners(owners: List<KafkaPrincipal>?): DescribeDelegationTokenOptions {
+    fun owners(owners: List<KafkaPrincipal>): DescribeDelegationTokenOptions {
         this.owners = owners
         return this
     }
@@ -46,5 +46,5 @@ class DescribeDelegationTokenOptions : AbstractOptions<DescribeDelegationTokenOp
         message = "User property instead",
         replaceWith = ReplaceWith("owners"),
     )
-    fun owners(): List<KafkaPrincipal>? = owners
+    fun owners(): List<KafkaPrincipal> = owners
 }

@@ -94,7 +94,7 @@ object NetworkClientUtils {
             while (client.active()) {
                 val responses = client.poll(Long.MAX_VALUE, time.milliseconds())
                 for (response in responses) {
-                    if (response.requestHeader.correlationId() == request.correlationId) {
+                    if (response.requestHeader.correlationId == request.correlationId) {
                         if (response.disconnected) throw IOException(
                             "Connection to ${response.destination} was disconnected before the " +
                                     "response was read"

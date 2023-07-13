@@ -47,19 +47,19 @@ import org.apache.kafka.common.utils.Utils.propsToMap
  *
  * The operations exposed by Admin follow a consistent pattern:
  *
- *  * Admin instances should be created using [Admin.create] or [Admin.create]
- *  * Each operation typically has two overloaded methods, one which uses a default set of options
+ * - Admin instances should be created using [Admin.create] or [Admin.create]
+ * - Each operation typically has two overloaded methods, one which uses a default set of options
  *  and an overloaded method where the last parameter is an explicit options object.
- *  * The operation method's first parameter is a `Collection` of items to perform the operation on.
+ * - The operation method's first parameter is a `Collection` of items to perform the operation on.
  *  Batching multiple requests into a single call is more efficient and should be preferred over
  *  multiple calls to the same method.
- *  * The operation methods execute asynchronously.
- *  * Each `xxx` operation method returns an `XxxResult` class with methods which expose
+ * - The operation methods execute asynchronously.
+ * - Each `xxx` operation method returns an `XxxResult` class with methods which expose
  *  [KafkaFuture] for accessing the result(s) of the operation.
- *  * Typically an `all()` method is provided for getting the overall success/failure of the batch
+ * - Typically an `all()` method is provided for getting the overall success/failure of the batch
  *  and a `values()` method provided access to each item in a request batch.
  * Other methods may also be provided.
- *  * For synchronous behaviour use [KafkaFuture.get]
+ * - For synchronous behaviour use [KafkaFuture.get]
  *
  * Here is a simple example of using an Admin client instance to create a new topic:
  * <pre>
@@ -217,7 +217,7 @@ interface Admin : AutoCloseable {
      * During this time, [listTopics] and [describeTopics]
      * may continue to return information about the deleted topics.
      *
-     * If delete.topic.enable is false on the brokers, deleteTopics will mark
+     *   If delete.topic.enable is false on the brokers, deleteTopics will mark
      * the topics for deletion, but not actually delete them. The futures will
      * return successfully in this case.
      *
@@ -357,7 +357,7 @@ interface Admin : AutoCloseable {
      *
      * This operation is not transactional so it may succeed for some ACLs while fail for others.
      *
-     * If you attempt to add an ACL that duplicates an existing ACL, no error will be raised, but
+     *   If you attempt to add an ACL that duplicates an existing ACL, no error will be raised, but
      * no changes will be made.
      *
      * This operation is supported by brokers with version 0.11.0.0 or higher.
@@ -492,14 +492,14 @@ interface Admin : AutoCloseable {
      * The following exceptions can be anticipated when calling `get()` on the futures obtained from
      * the returned [AlterConfigsResult]:
      *
-     *  * [org.apache.kafka.common.errors.ClusterAuthorizationException]
-     * if the authenticated user didn't have alter access to the cluster.
-     *  * [org.apache.kafka.common.errors.TopicAuthorizationException]
-     * if the authenticated user didn't have alter access to the Topic.
-     *  * [org.apache.kafka.common.errors.UnknownTopicOrPartitionException]
-     * if the Topic doesn't exist.
-     *  * [org.apache.kafka.common.errors.InvalidRequestException]
-     * if the request details are invalid. e.g., a configuration key was specified more than once
+     * - [org.apache.kafka.common.errors.ClusterAuthorizationException]
+     *   if the authenticated user didn't have alter access to the cluster.
+     * - [org.apache.kafka.common.errors.TopicAuthorizationException]
+     *   if the authenticated user didn't have alter access to the Topic.
+     * - [org.apache.kafka.common.errors.UnknownTopicOrPartitionException]
+     *   if the Topic doesn't exist.
+     * - [org.apache.kafka.common.errors.InvalidRequestException]
+     *   if the request details are invalid. e.g., a configuration key was specified more than once
      * for a resource
      *
      * This operation is supported by brokers with version 2.3.0 or higher.
@@ -652,19 +652,19 @@ interface Admin : AutoCloseable {
      * The following exceptions can be anticipated when calling `get()` on the futures obtained from
      * the [values()][CreatePartitionsResult.futures] method of the returned [CreatePartitionsResult]
      *
-     *  * [org.apache.kafka.common.errors.AuthorizationException]
-     * if the authenticated user is not authorized to alter the topic
-     *  * [org.apache.kafka.common.errors.TimeoutException]
-     * if the request was not completed in within the given [CreatePartitionsOptions.timeoutMs].
-     *  * [org.apache.kafka.common.errors.ReassignmentInProgressException]
-     * if a partition reassignment is currently in progress
-     *  * [org.apache.kafka.common.errors.BrokerNotAvailableException]
-     * if the requested [NewPartitions.newAssignments] contain a broker that is currently unavailable.
-     *  * [org.apache.kafka.common.errors.InvalidReplicationFactorException]
-     * if no [NewPartitions.newAssignments] are given and it is impossible for the broker to assign
+     * - [org.apache.kafka.common.errors.AuthorizationException]
+     *   if the authenticated user is not authorized to alter the topic
+     * - [org.apache.kafka.common.errors.TimeoutException]
+     *   if the request was not completed in within the given [CreatePartitionsOptions.timeoutMs].
+     * - [org.apache.kafka.common.errors.ReassignmentInProgressException]
+     *   if a partition reassignment is currently in progress
+     * - [org.apache.kafka.common.errors.BrokerNotAvailableException]
+     *   if the requested [NewPartitions.newAssignments] contain a broker that is currently unavailable.
+     * - [org.apache.kafka.common.errors.InvalidReplicationFactorException]
+     *   if no [NewPartitions.newAssignments] are given and it is impossible for the broker to assign
      * replicas with the topics replication factor.
-     *  * Subclasses of [org.apache.kafka.common.KafkaException]
-     * if the request is invalid in some way.
+     * - Subclasses of [org.apache.kafka.common.KafkaException]
+     *   if the request is invalid in some way.
      *
      * @param newPartitions The topics which should have new partitions created, and corresponding
      * parameters for the created partitions.
@@ -728,15 +728,15 @@ interface Admin : AutoCloseable {
      * the [delegationToken()][CreateDelegationTokenResult.delegationToken] method of the returned
      * [CreateDelegationTokenResult]
      *
-     *  * [org.apache.kafka.common.errors.UnsupportedByAuthenticationException]
-     * If the request sent on PLAINTEXT/1-way SSL channels or delegation token authenticated
+     * - [org.apache.kafka.common.errors.UnsupportedByAuthenticationException]
+     *   If the request sent on PLAINTEXT/1-way SSL channels or delegation token authenticated
      * channels.
-     *  * [org.apache.kafka.common.errors.InvalidPrincipalTypeException]
-     * if the renewers principal type is not supported.
-     *  * [org.apache.kafka.common.errors.DelegationTokenDisabledException]
-     * if the delegation token feature is disabled.
-     *  * [org.apache.kafka.common.errors.TimeoutException]
-     * if the request was not completed in within the given [CreateDelegationTokenOptions.timeoutMs].
+     * - [org.apache.kafka.common.errors.InvalidPrincipalTypeException]
+     *   if the renewers principal type is not supported.
+     * - [org.apache.kafka.common.errors.DelegationTokenDisabledException]
+     *   if the delegation token feature is disabled.
+     * - [org.apache.kafka.common.errors.TimeoutException]
+     *   if the request was not completed in within the given [CreateDelegationTokenOptions.timeoutMs].
      *
      *
      * @param options The options to use when creating delegation token.
@@ -766,18 +766,18 @@ interface Admin : AutoCloseable {
      * the [expiryTimestamp()][RenewDelegationTokenResult.expiryTimestamp] method of the returned
      * [RenewDelegationTokenResult]
      *
-     *  * [org.apache.kafka.common.errors.UnsupportedByAuthenticationException]
-     * If the request sent on PLAINTEXT/1-way SSL channels or delegation token authenticated channels.
-     *  * [org.apache.kafka.common.errors.DelegationTokenDisabledException]
-     * if the delegation token feature is disabled.
-     *  * [org.apache.kafka.common.errors.DelegationTokenNotFoundException]
-     * if the delegation token is not found on server.
-     *  * [org.apache.kafka.common.errors.DelegationTokenOwnerMismatchException]
-     * if the authenticated user is not owner/renewer of the token.
-     *  * [org.apache.kafka.common.errors.DelegationTokenExpiredException]
-     * if the delegation token is expired.
-     *  * [org.apache.kafka.common.errors.TimeoutException]
-     * if the request was not completed in within the given [RenewDelegationTokenOptions.timeoutMs].
+     * - [org.apache.kafka.common.errors.UnsupportedByAuthenticationException]
+     *   If the request sent on PLAINTEXT/1-way SSL channels or delegation token authenticated channels.
+     * - [org.apache.kafka.common.errors.DelegationTokenDisabledException]
+     *   if the delegation token feature is disabled.
+     * - [org.apache.kafka.common.errors.DelegationTokenNotFoundException]
+     *   if the delegation token is not found on server.
+     * - [org.apache.kafka.common.errors.DelegationTokenOwnerMismatchException]
+     *   if the authenticated user is not owner/renewer of the token.
+     * - [org.apache.kafka.common.errors.DelegationTokenExpiredException]
+     *   if the delegation token is expired.
+     * - [org.apache.kafka.common.errors.TimeoutException]
+     *   if the request was not completed in within the given [RenewDelegationTokenOptions.timeoutMs].
      *
      * @param hmac    HMAC of the Delegation token
      * @param options The options to use when renewing delegation token.
@@ -807,18 +807,18 @@ interface Admin : AutoCloseable {
      * the [expiryTimestamp()][ExpireDelegationTokenResult.expiryTimestamp] method of the returned
      * [ExpireDelegationTokenResult]
      *
-     *  * [org.apache.kafka.common.errors.UnsupportedByAuthenticationException]
-     * If the request sent on PLAINTEXT/1-way SSL channels or delegation token authenticated channels.
-     *  * [org.apache.kafka.common.errors.DelegationTokenDisabledException]
-     * if the delegation token feature is disabled.
-     *  * [org.apache.kafka.common.errors.DelegationTokenNotFoundException]
-     * if the delegation token is not found on server.
-     *  * [org.apache.kafka.common.errors.DelegationTokenOwnerMismatchException]
-     * if the authenticated user is not owner/renewer of the requested token.
-     *  * [org.apache.kafka.common.errors.DelegationTokenExpiredException]
-     * if the delegation token is expired.
-     *  * [org.apache.kafka.common.errors.TimeoutException]
-     * if the request was not completed in within the given [ExpireDelegationTokenOptions.timeoutMs].
+     * - [org.apache.kafka.common.errors.UnsupportedByAuthenticationException]
+     *   If the request sent on PLAINTEXT/1-way SSL channels or delegation token authenticated channels.
+     * - [org.apache.kafka.common.errors.DelegationTokenDisabledException]
+     *   if the delegation token feature is disabled.
+     * - [org.apache.kafka.common.errors.DelegationTokenNotFoundException]
+     *   if the delegation token is not found on server.
+     * - [org.apache.kafka.common.errors.DelegationTokenOwnerMismatchException]
+     *   if the authenticated user is not owner/renewer of the requested token.
+     * - [org.apache.kafka.common.errors.DelegationTokenExpiredException]
+     *   if the delegation token is expired.
+     * - [org.apache.kafka.common.errors.TimeoutException]
+     *   if the request was not completed in within the given [ExpireDelegationTokenOptions.timeoutMs].
      *
      * @param hmac    HMAC of the Delegation token
      * @param options The options to use when expiring delegation token.
@@ -851,12 +851,12 @@ interface Admin : AutoCloseable {
      * the [delegationTokens()][DescribeDelegationTokenResult.delegationTokens] method of the
      * returned [DescribeDelegationTokenResult]
      *
-     *  * [org.apache.kafka.common.errors.UnsupportedByAuthenticationException]
-     * If the request sent on PLAINTEXT/1-way SSL channels or delegation token authenticated channels.
-     *  * [org.apache.kafka.common.errors.DelegationTokenDisabledException]
-     * if the delegation token feature is disabled.
-     *  * [org.apache.kafka.common.errors.TimeoutException]
-     * if the request was not completed in within the given [DescribeDelegationTokenOptions.timeoutMs].
+     * - [org.apache.kafka.common.errors.UnsupportedByAuthenticationException]
+     *   If the request sent on PLAINTEXT/1-way SSL channels or delegation token authenticated channels.
+     * - [org.apache.kafka.common.errors.DelegationTokenDisabledException]
+     *   if the delegation token feature is disabled.
+     * - [org.apache.kafka.common.errors.TimeoutException]
+     *   if the request was not completed in within the given [DescribeDelegationTokenOptions.timeoutMs].
      *
      *
      * @param options The options to use when describing delegation tokens.
@@ -1036,22 +1036,22 @@ interface Admin : AutoCloseable {
      * The following exceptions can be anticipated when calling `get()` on the future obtained
      * from the returned [ElectLeadersResult]:
      *
-     *  * [org.apache.kafka.common.errors.ClusterAuthorizationException]
-     * if the authenticated user didn't have alter access to the cluster.
-     *  * [org.apache.kafka.common.errors.UnknownTopicOrPartitionException]
-     * if the topic or partition did not exist within the cluster.
-     *  * [org.apache.kafka.common.errors.InvalidTopicException]
-     * if the topic was already queued for deletion.
-     *  * [org.apache.kafka.common.errors.NotControllerException]
-     * if the request was sent to a broker that was not the controller for the cluster.
-     *  * [org.apache.kafka.common.errors.TimeoutException]
-     * if the request timed out before the election was complete.
-     *  * [org.apache.kafka.common.errors.LeaderNotAvailableException]
-     * if the preferred leader was not alive or not in the ISR.
+     * - [org.apache.kafka.common.errors.ClusterAuthorizationException]
+     *   if the authenticated user didn't have alter access to the cluster.
+     * - [org.apache.kafka.common.errors.UnknownTopicOrPartitionException]
+     *   if the topic or partition did not exist within the cluster.
+     * - [org.apache.kafka.common.errors.InvalidTopicException]
+     *   if the topic was already queued for deletion.
+     * - [org.apache.kafka.common.errors.NotControllerException]
+     *   if the request was sent to a broker that was not the controller for the cluster.
+     * - [org.apache.kafka.common.errors.TimeoutException]
+     *   if the request timed out before the election was complete.
+     * - [org.apache.kafka.common.errors.LeaderNotAvailableException]
+     *   if the preferred leader was not alive or not in the ISR.
      *
      * @param electionType The type of election to conduct.
-     * @param partitions   The topics and partitions for which to conduct elections.
-     * @param options      The options to use when electing the leaders.
+     * @param partitions The topics and partitions for which to conduct elections.
+     * @param options The options to use when electing the leaders.
      * @return The ElectLeadersResult.
      */
     fun electLeaders(
@@ -1080,16 +1080,16 @@ interface Admin : AutoCloseable {
      * The following exceptions can be anticipated when calling `get()` on the futures obtained from
      * the returned `AlterPartitionReassignmentsResult`:
      *
-     *  * [org.apache.kafka.common.errors.ClusterAuthorizationException]
-     * If the authenticated user didn't have alter access to the cluster.
-     *  * [org.apache.kafka.common.errors.UnknownTopicOrPartitionException]
-     * If the topic or partition does not exist within the cluster.
-     *  * [org.apache.kafka.common.errors.TimeoutException]
-     * if the request timed out before the controller could record the new assignments.
-     *  * [org.apache.kafka.common.errors.InvalidReplicaAssignmentException]
-     * If the specified assignment was not valid.
-     *  * [org.apache.kafka.common.errors.NoReassignmentInProgressException]
-     * If there was an attempt to cancel a reassignment for a partition which was not being
+     * - [org.apache.kafka.common.errors.ClusterAuthorizationException]
+     *   If the authenticated user didn't have alter access to the cluster.
+     * - [org.apache.kafka.common.errors.UnknownTopicOrPartitionException]
+     *   If the topic or partition does not exist within the cluster.
+     * - [org.apache.kafka.common.errors.TimeoutException]
+     *   if the request timed out before the controller could record the new assignments.
+     * - [org.apache.kafka.common.errors.InvalidReplicaAssignmentException]
+     *   If the specified assignment was not valid.
+     * - [org.apache.kafka.common.errors.NoReassignmentInProgressException]
+     *   If there was an attempt to cancel a reassignment for a partition which was not being
      * reassigned.
      *
      * @param reassignments The reassignments to add, modify, or remove. See
@@ -1101,30 +1101,29 @@ interface Admin : AutoCloseable {
         reassignments: Map<TopicPartition, NewPartitionReassignment?>,
         options: AlterPartitionReassignmentsOptions
     ): AlterPartitionReassignmentsResult
+
     /**
      * List the current reassignments for the given partitions
      *
      * The following exceptions can be anticipated when calling `get()` on the futures obtained from
      * the returned `ListPartitionReassignmentsResult`:
      *
-     *  * [org.apache.kafka.common.errors.ClusterAuthorizationException]
-     * If the authenticated user doesn't have alter access to the cluster.
-     *  * [org.apache.kafka.common.errors.UnknownTopicOrPartitionException]
-     * If a given topic or partition does not exist.
-     *  * [org.apache.kafka.common.errors.TimeoutException]
-     * If the request timed out before the controller could list the current reassignments.
+     * - [org.apache.kafka.common.errors.ClusterAuthorizationException]
+     *   If the authenticated user doesn't have alter access to the cluster.
+     * - [org.apache.kafka.common.errors.UnknownTopicOrPartitionException]
+     *   If a given topic or partition does not exist.
+     * - [org.apache.kafka.common.errors.TimeoutException]
+     *   If the request timed out before the controller could list the current reassignments.
      *
-     *
-     * @param partitions      The topic partitions to list reassignments for.
-     * @param options         The options to use.
-     * @return                The result.
+     * @param partitions The topic partitions to list reassignments for. Provide empty set for
+     * all the partition reassignments.
+     * @param options The options to use.
+     * @return The result.
      */
     fun listPartitionReassignments(
         partitions: Set<TopicPartition>,
         options: ListPartitionReassignmentsOptions = ListPartitionReassignmentsOptions()
-    ): ListPartitionReassignmentsResult {
-        return listPartitionReassignments(partitions, options)
-    }
+    ): ListPartitionReassignmentsResult
 
     /**
      * List all of the current partition reassignments
@@ -1132,33 +1131,21 @@ interface Admin : AutoCloseable {
      * The following exceptions can be anticipated when calling `get()` on the futures obtained from
      * the returned `ListPartitionReassignmentsResult`:
      *
-     *  * [org.apache.kafka.common.errors.ClusterAuthorizationException]
-     * If the authenticated user doesn't have alter access to the cluster.
-     *  * [org.apache.kafka.common.errors.UnknownTopicOrPartitionException]
-     * If a given topic or partition does not exist.
-     *  * [org.apache.kafka.common.errors.TimeoutException]
-     * If the request timed out before the controller could list the current reassignments.
-     *
-     * @param options         The options to use.
-     * @return                The result.
-     */
-    fun listPartitionReassignments(
-        options: ListPartitionReassignmentsOptions = ListPartitionReassignmentsOptions()
-    ): ListPartitionReassignmentsResult {
-        return listPartitionReassignments(null, options)
-    }
-
-    /**
-     * @param partitions the partitions we want to get reassignment for, or `null` if we want to get
-     * the reassignments for all partitions in the cluster.
+     * - [org.apache.kafka.common.errors.ClusterAuthorizationException]
+     *   If the authenticated user doesn't have alter access to the cluster.
+     * - [org.apache.kafka.common.errors.UnknownTopicOrPartitionException]
+     *   If a given topic or partition does not exist.
+     * - [org.apache.kafka.common.errors.TimeoutException]
+     *   If the request timed out before the controller could list the current reassignments.
      *
      * @param options The options to use.
      * @return The result.
      */
     fun listPartitionReassignments(
-        partitions: Set<TopicPartition>?,
-        options: ListPartitionReassignmentsOptions
-    ): ListPartitionReassignmentsResult
+        options: ListPartitionReassignmentsOptions = ListPartitionReassignmentsOptions()
+    ): ListPartitionReassignmentsResult {
+        return listPartitionReassignments(emptySet(), options)
+    }
 
     /**
      * Remove members from the consumer group by given member identities.
@@ -1257,12 +1244,12 @@ interface Admin : AutoCloseable {
      * The following exceptions can be anticipated when calling `get()` on the future from the
      * returned [DescribeClientQuotasResult]:
      *
-     *  * [org.apache.kafka.common.errors.ClusterAuthorizationException]
-     * If the authenticated user didn't have describe access to the cluster.
-     *  * [org.apache.kafka.common.errors.InvalidRequestException]
-     * If the request details are invalid. e.g., an invalid entity type was specified.
-     *  * [org.apache.kafka.common.errors.TimeoutException]
-     * If the request timed out before the describe could finish.
+     * - [org.apache.kafka.common.errors.ClusterAuthorizationException]
+     *   If the authenticated user didn't have describe access to the cluster.
+     * - [org.apache.kafka.common.errors.InvalidRequestException]
+     *   If the request details are invalid. e.g., an invalid entity type was specified.
+     * - [org.apache.kafka.common.errors.TimeoutException]
+     *   If the request timed out before the describe could finish.
      *
      * This operation is supported by brokers with version 2.6.0 or higher.
      *
@@ -1299,12 +1286,12 @@ interface Admin : AutoCloseable {
      * The following exceptions can be anticipated when calling `get()` on the futures obtained from
      * the returned [AlterClientQuotasResult]:
      *
-     *  * [org.apache.kafka.common.errors.ClusterAuthorizationException]
-     * If the authenticated user didn't have alter access to the cluster.
-     *  * [org.apache.kafka.common.errors.InvalidRequestException]
-     * If the request details are invalid. e.g., a configuration key was specified more than once for an entity.
-     *  * [org.apache.kafka.common.errors.TimeoutException]
-     * If the request timed out before the alterations could finish. It cannot be guaranteed whether the update
+     * - [org.apache.kafka.common.errors.ClusterAuthorizationException]
+     *   If the authenticated user didn't have alter access to the cluster.
+     * - [org.apache.kafka.common.errors.InvalidRequestException]
+     *   If the request details are invalid. e.g., a configuration key was specified more than once for an entity.
+     * - [org.apache.kafka.common.errors.TimeoutException]
+     *   If the request timed out before the alterations could finish. It cannot be guaranteed whether the update
      * succeed or not.
      *
      * This operation is supported by brokers with version 2.6.0 or higher.
@@ -1347,14 +1334,14 @@ interface Admin : AutoCloseable {
      * The following exceptions can be anticipated when calling `get()` on the futures from the
      * returned [DescribeUserScramCredentialsResult]:
      *
-     *  * [org.apache.kafka.common.errors.ClusterAuthorizationException]
-     * If the authenticated user didn't have describe access to the cluster.
-     *  * [org.apache.kafka.common.errors.ResourceNotFoundException]
-     * If the user did not exist/had no SCRAM credentials.
-     *  * [org.apache.kafka.common.errors.DuplicateResourceException]
-     * If the user was requested to be described more than once in the original request.
-     *  * [org.apache.kafka.common.errors.TimeoutException]
-     * If the request timed out before the describe operation could finish.
+     * - [org.apache.kafka.common.errors.ClusterAuthorizationException]
+     *   If the authenticated user didn't have describe access to the cluster.
+     * - [org.apache.kafka.common.errors.ResourceNotFoundException]
+     *   If the user did not exist/had no SCRAM credentials.
+     * - [org.apache.kafka.common.errors.DuplicateResourceException]
+     *   If the user was requested to be described more than once in the original request.
+     * - [org.apache.kafka.common.errors.TimeoutException]
+     *   If the request timed out before the describe operation could finish.
      *
      * This operation is supported by brokers with version 2.7.0 or higher.
      *
@@ -1386,18 +1373,18 @@ interface Admin : AutoCloseable {
      * The following exceptions can be anticipated when calling `get()` any of the futures from the
      * returned [AlterUserScramCredentialsResult]:
      *
-     *  * [org.apache.kafka.common.errors.NotControllerException]
-     * If the request is not sent to the Controller broker.
-     *  * [org.apache.kafka.common.errors.ClusterAuthorizationException]
-     * If the authenticated user didn't have alter access to the cluster.
-     *  * [org.apache.kafka.common.errors.UnsupportedByAuthenticationException]
-     * If the user authenticated with a delegation token.
-     *  * [org.apache.kafka.common.errors.UnsupportedSaslMechanismException]
-     * If the requested SCRAM mechanism is unrecognized or otherwise unsupported.
-     *  * [org.apache.kafka.common.errors.UnacceptableCredentialException]
-     * If the username is empty or the requested number of iterations is too small or too large.
-     *  * [org.apache.kafka.common.errors.TimeoutException]
-     * If the request timed out before the describe could finish.
+     * - [org.apache.kafka.common.errors.NotControllerException]
+     *   If the request is not sent to the Controller broker.
+     * - [org.apache.kafka.common.errors.ClusterAuthorizationException]
+     *   If the authenticated user didn't have alter access to the cluster.
+     * - [org.apache.kafka.common.errors.UnsupportedByAuthenticationException]
+     *   If the user authenticated with a delegation token.
+     * - [org.apache.kafka.common.errors.UnsupportedSaslMechanismException]
+     *   If the requested SCRAM mechanism is unrecognized or otherwise unsupported.
+     * - [org.apache.kafka.common.errors.UnacceptableCredentialException]
+     *   If the username is empty or the requested number of iterations is too small or too large.
+     * - [org.apache.kafka.common.errors.TimeoutException]
+     *   If the request timed out before the describe could finish.
      *
      * This operation is supported by brokers with version 2.7.0 or higher.
      *
@@ -1429,8 +1416,8 @@ interface Admin : AutoCloseable {
      * The following exceptions can be anticipated when calling `get()` on the future from the
      * returned [DescribeFeaturesResult]:
      *
-     *  * [org.apache.kafka.common.errors.TimeoutException]
-     * If the request timed out before the describe operation could finish.
+     * - [org.apache.kafka.common.errors.TimeoutException]
+     *   If the request timed out before the describe operation could finish.
      *
      * @param options the options to use
      * @return the [DescribeFeaturesResult] containing the result
@@ -1448,27 +1435,27 @@ interface Admin : AutoCloseable {
      * error code for each supplied [FeatureUpdate], and the code indicates if the update
      * succeeded or failed in the controller.
      *
-     *  * Downgrade of feature version level is not a regular operation/intent. It is only allowed
+     * - Downgrade of feature version level is not a regular operation/intent. It is only allowed
      * in the controller if the [FeatureUpdate] has the allowDowngrade flag set. Setting this
      * flag conveys user intent to attempt downgrade of a feature max version level. Note that
      * despite the allowDowngrade flag being set, certain downgrades may be rejected by the
      * controller if it is deemed impossible.
-     *  * Deletion of a finalized feature version is not a regular operation/intent. It could be
+     * - Deletion of a finalized feature version is not a regular operation/intent. It could be
      * done by setting the allowDowngrade flag to true in the [FeatureUpdate], and, setting
      * the max version level to a value less than 1.
      *
      * The following exceptions can be anticipated when calling `get()` on the futures
      * obtained from the returned [UpdateFeaturesResult]:
      *
-     *  * [org.apache.kafka.common.errors.ClusterAuthorizationException]
-     * If the authenticated user didn't have alter access to the cluster.
-     *  * [org.apache.kafka.common.errors.InvalidRequestException]
-     * If the request details are invalid. e.g., a non-existing finalized feature is attempted
+     * - [org.apache.kafka.common.errors.ClusterAuthorizationException]
+     *   If the authenticated user didn't have alter access to the cluster.
+     * - [org.apache.kafka.common.errors.InvalidRequestException]
+     *   If the request details are invalid. e.g., a non-existing finalized feature is attempted
      * to be deleted or downgraded.
-     *  * [org.apache.kafka.common.errors.TimeoutException]
-     * If the request timed out before the updates could finish. It cannot be guaranteed whether
+     * - [org.apache.kafka.common.errors.TimeoutException]
+     *   If the request timed out before the updates could finish. It cannot be guaranteed whether
      * the updates succeeded or not.
-     *  * [FeatureUpdateFailedException]
+     * - [FeatureUpdateFailedException]
      * This means there was an unexpected error encountered when the update was applied on
      * the controller. There is no guarantee on whether the update succeeded or failed. The best
      * way to find out is to issue a [Admin.describeFeatures]
@@ -1503,10 +1490,10 @@ interface Admin : AutoCloseable {
      * The following exceptions can be anticipated when calling `get()` on the futures obtained from
      * the returned `DescribeMetadataQuorumResult`:
      *
-     *  * [org.apache.kafka.common.errors.ClusterAuthorizationException]
-     * If the authenticated user didn't have `DESCRIBE` access to the cluster.
-     *  * [org.apache.kafka.common.errors.TimeoutException]
-     * If the request timed out before the controller could list the cluster links.
+     * - [org.apache.kafka.common.errors.ClusterAuthorizationException]
+     *   If the authenticated user didn't have `DESCRIBE` access to the cluster.
+     * - [org.apache.kafka.common.errors.TimeoutException]
+     *   If the request timed out before the controller could list the cluster links.
      *
      * @param options The [DescribeMetadataQuorumOptions] to use when describing the quorum.
      * @return the [DescribeMetadataQuorumResult] containing the result
@@ -1539,10 +1526,10 @@ interface Admin : AutoCloseable {
      * The following exceptions can be anticipated when calling `get()` on the future from the
      * returned [UnregisterBrokerResult]:
      *
-     *  * [org.apache.kafka.common.errors.TimeoutException]
-     * If the request timed out before the describe operation could finish.
-     *  * [org.apache.kafka.common.errors.UnsupportedVersionException]
-     * If the software is too old to support the unregistration API, or if the
+     * - [org.apache.kafka.common.errors.TimeoutException]
+     *   If the request timed out before the describe operation could finish.
+     * - [org.apache.kafka.common.errors.UnsupportedVersionException]
+     *   If the software is too old to support the unregistration API, or if the
      * cluster is not using Raft to store metadata.
      *
      * @param brokerId  the broker id to unregister.

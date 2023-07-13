@@ -52,7 +52,7 @@ class ListTransactionsHandler(
         keys: Set<BrokerKey>,
     ): ListTransactionsRequest.Builder {
         val request = ListTransactionsRequestData()
-        request.setProducerIdFilters(ArrayList(options.filteredProducerIds()))
+        request.setProducerIdFilters(options.filteredProducerIds().toLongArray())
         request.setStateFilters(options.filteredStates().map { obj -> obj.toString() })
         return ListTransactionsRequest.Builder(request)
     }

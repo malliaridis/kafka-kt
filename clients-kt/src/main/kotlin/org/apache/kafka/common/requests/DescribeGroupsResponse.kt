@@ -61,12 +61,12 @@ class DescribeGroupsResponse(
         const val AUTHORIZED_OPERATIONS_OMITTED = Int.MIN_VALUE
 
         fun groupMember(
-            memberId: String?,
+            memberId: String,
             groupInstanceId: String?,
-            clientId: String?,
-            clientHost: String?,
-            assignment: ByteArray?,
-            metadata: ByteArray?
+            clientId: String,
+            clientHost: String,
+            assignment: ByteArray,
+            metadata: ByteArray
         ): DescribedGroupMember = DescribedGroupMember()
             .setMemberId(memberId)
             .setGroupInstanceId(groupInstanceId)
@@ -76,11 +76,11 @@ class DescribeGroupsResponse(
             .setMemberMetadata(metadata)
 
         fun groupMetadata(
-            groupId: String?,
+            groupId: String,
             error: Errors,
-            state: String?,
-            protocolType: String?,
-            protocol: String?,
+            state: String,
+            protocolType: String,
+            protocol: String,
             members: List<DescribedGroupMember>,
             authorizedOperations: Set<Byte>
         ): DescribedGroup = DescribedGroup()
@@ -93,11 +93,11 @@ class DescribeGroupsResponse(
                 .setAuthorizedOperations(to32BitField(authorizedOperations))
 
         fun groupMetadata(
-            groupId: String?,
+            groupId: String,
             error: Errors,
-            state: String?,
-            protocolType: String?,
-            protocol: String?,
+            state: String,
+            protocolType: String,
+            protocol: String,
             members: List<DescribedGroupMember>,
             authorizedOperations: Int
         ): DescribedGroup = DescribedGroup()
@@ -115,7 +115,7 @@ class DescribeGroupsResponse(
 
         const val UNKNOWN_PROTOCOL = ""
 
-        fun forError(groupId: String?, error: Errors): DescribedGroup {
+        fun forError(groupId: String, error: Errors): DescribedGroup {
             return groupMetadata(
                 groupId = groupId,
                 error = error,
@@ -136,7 +136,7 @@ class DescribeGroupsResponse(
             describeGroupsResponseData.setThrottleTimeMs(throttleTimeMs)
 
             for (groupId in groupIds)
-                describeGroupsResponseData.groups().add(forError(groupId, error))
+                describeGroupsResponseData.groups += forError(groupId, error)
 
             return DescribeGroupsResponse(describeGroupsResponseData)
         }

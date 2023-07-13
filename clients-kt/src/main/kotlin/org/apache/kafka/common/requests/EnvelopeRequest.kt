@@ -51,9 +51,9 @@ class EnvelopeRequest(
         message = "User property instead",
         replaceWith = ReplaceWith("requestPrincipal"),
     )
-    fun requestPrincipal(): ByteArray = data.requestPrincipal()
+    fun requestPrincipal(): ByteArray? = data.requestPrincipal()
 
-    val requestPrincipal: ByteArray
+    val requestPrincipal: ByteArray?
         get() = data.requestPrincipal()
 
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse =
@@ -62,9 +62,9 @@ class EnvelopeRequest(
     override fun data(): EnvelopeRequestData = data
 
     class Builder(
-        requestData: ByteBuffer?,
+        requestData: ByteBuffer,
         serializedPrincipal: ByteArray?,
-        clientAddress: ByteArray?
+        clientAddress: ByteArray,
     ) :
         AbstractRequest.Builder<EnvelopeRequest>(ApiKeys.ENVELOPE) {
         private val data: EnvelopeRequestData

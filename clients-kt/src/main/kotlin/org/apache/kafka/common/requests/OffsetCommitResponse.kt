@@ -64,11 +64,10 @@ class OffsetCommitResponse : AbstractResponse {
                 topicName,
                 OffsetCommitResponseTopic().setName(topicName)
             )
-            topic.partitions().add(
-                OffsetCommitResponsePartition()
-                    .setErrorCode(value.code)
-                    .setPartitionIndex(topicPartition.partition)
-            )
+            topic.partitions += OffsetCommitResponsePartition()
+                .setErrorCode(value.code)
+                .setPartitionIndex(topicPartition.partition)
+
             responseTopicDataMap[topicName] = topic
         }
 

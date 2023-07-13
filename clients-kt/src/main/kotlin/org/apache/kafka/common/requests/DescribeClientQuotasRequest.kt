@@ -61,7 +61,7 @@ class DescribeClientQuotasRequest(
                 .setThrottleTimeMs(throttleTimeMs)
                 .setErrorCode(error1.code)
                 .setErrorMessage(message)
-                .setEntries(null)
+                .setEntries(emptyList())
         )
     }
 

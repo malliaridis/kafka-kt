@@ -533,7 +533,7 @@ class Sender(
         now: Long,
     ) {
         val requestHeader = response.requestHeader
-        val correlationId = requestHeader.correlationId()
+        val correlationId = requestHeader.correlationId
         if (response.disconnected) {
             log.trace(
                 "Cancelled request with header {} due to node {} being disconnected",
@@ -854,11 +854,10 @@ class Sender(
                 tpData = TopicProduceData().setName(tp.topic)
                 tpd.add(tpData)
             }
-            tpData.partitionData().add(
-                PartitionProduceData()
-                    .setIndex(tp.partition)
-                    .setRecords(records)
-            )
+            tpData.partitionData += PartitionProduceData()
+                .setIndex(tp.partition)
+                .setRecords(records)
+
             recordsByPartition[tp] = batch
         }
         var transactionalId: String? = null

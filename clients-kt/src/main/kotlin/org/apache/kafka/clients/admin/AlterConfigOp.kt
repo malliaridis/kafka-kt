@@ -44,7 +44,7 @@ data class AlterConfigOp(
 
     override fun toString(): String = "AlterConfigOp{opType=$opType, configEntry=$configEntry}"
 
-    enum class OpType(private val id: Byte) {
+    enum class OpType(val id: Byte) {
 
         /**
          * Set the value of the configuration entry.

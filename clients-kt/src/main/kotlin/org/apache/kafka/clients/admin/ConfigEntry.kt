@@ -27,14 +27,15 @@ import org.apache.kafka.common.annotation.InterfaceStability.Evolving
  * @property name the non-null config name
  * @property value the config value or null
  * @property source the source of this config entry
- * @property isSensitive whether the config value is sensitive, the broker never returns the value if it is sensitive
+ * @property isSensitive whether the config value is sensitive, the broker never returns the value
+ * if it is sensitive
  * @property isReadOnly whether the config is read-only and cannot be updated
  * @property synonyms Synonym configs in order of precedence
  */
 @Evolving
 data class ConfigEntry(
     val name: String,
-    val value: String,
+    val value: String?,
     val source: ConfigSource = ConfigSource.UNKNOWN,
     val isSensitive: Boolean? = false,
     val isReadOnly: Boolean = false,
@@ -50,9 +51,7 @@ data class ConfigEntry(
         message = "Use property instead.",
         replaceWith = ReplaceWith("name"),
     )
-    fun name(): String {
-        return name
-    }
+    fun name(): String = name
 
     /**
      * Return the value or null. Null is returned if the config is unset or if isSensitive is true.
@@ -61,9 +60,7 @@ data class ConfigEntry(
         message = "Use property instead.",
         replaceWith = ReplaceWith("value"),
     )
-    fun value(): String {
-        return value
-    }
+    fun value(): String? = value
 
     /**
      * Return the source of this configuration entry.
@@ -72,9 +69,7 @@ data class ConfigEntry(
         message = "Use property instead.",
         replaceWith = ReplaceWith("source"),
     )
-    fun source(): ConfigSource {
-        return source
-    }
+    fun source(): ConfigSource = source
 
     /**
      * Return whether the config value is the default or if it's been explicitly set.
@@ -91,9 +86,7 @@ data class ConfigEntry(
         message = "Use property instead.",
         replaceWith = ReplaceWith("synonyms"),
     )
-    fun synonyms(): List<ConfigSynonym> {
-        return synonyms
-    }
+    fun synonyms(): List<ConfigSynonym> = synonyms
 
     /**
      * Return the config data type.
@@ -102,9 +95,7 @@ data class ConfigEntry(
         message = "Use property instead.",
         replaceWith = ReplaceWith("type"),
     )
-    fun type(): ConfigType {
-        return type
-    }
+    fun type(): ConfigType = type
 
     /**
      * Return the config documentation.
@@ -113,9 +104,7 @@ data class ConfigEntry(
         message = "Use property instead.",
         replaceWith = ReplaceWith("documentation"),
     )
-    fun documentation(): String? {
-        return documentation
-    }
+    fun documentation(): String? = documentation
 
     /**
      * Override toString to redact sensitive value.
@@ -123,14 +112,14 @@ data class ConfigEntry(
      */
     override fun toString(): String {
         return "ConfigEntry(" +
-                "name=" + name +
+                "name=$name" +
                 ", value=" + (if (isSensitive != false) "Redacted" else value) +
-                ", source=" + source +
-                ", isSensitive=" + isSensitive +
-                ", isReadOnly=" + isReadOnly +
-                ", synonyms=" + synonyms +
-                ", type=" + type +
-                ", documentation=" + documentation +
+                ", source=$source" +
+                ", isSensitive=$isSensitive" +
+                ", isReadOnly=$isReadOnly" +
+                ", synonyms=$synonyms" +
+                ", type=$type" +
+                ", documentation=$documentation" +
                 ")"
     }
 
@@ -185,8 +174,8 @@ data class ConfigEntry(
      */
     data class ConfigSynonym internal constructor(
         val name: String,
-        val value: String,
-        val source: ConfigSource
+        val value: String?,
+        val source: ConfigSource,
     ) {
         /**
          * Returns the name of this configuration.
@@ -195,9 +184,7 @@ data class ConfigEntry(
             message = "Use property instead.",
             replaceWith = ReplaceWith("name"),
         )
-        fun name(): String {
-            return name
-        }
+        fun name(): String = name
 
         /**
          * Returns the value of this configuration, which may be null if the configuration is sensitive.
@@ -206,9 +193,7 @@ data class ConfigEntry(
             message = "Use property instead.",
             replaceWith = ReplaceWith("value"),
         )
-        fun value(): String {
-            return value
-        }
+        fun value(): String? = value
 
         /**
          * Returns the source of this configuration.
@@ -223,9 +208,9 @@ data class ConfigEntry(
 
         override fun toString(): String {
             return "ConfigSynonym(" +
-                    "name=" + name +
-                    ", value=" + value +
-                    ", source=" + source +
+                    "name=$name" +
+                    ", value=$value" +
+                    ", source=$source" +
                     ")"
         }
     }

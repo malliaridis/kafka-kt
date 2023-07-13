@@ -175,9 +175,9 @@ class SendBuilder internal constructor(size: Int) : Writable {
             apiRequest: Message
         ): Send = buildSend(
             header.data(),
-            header.headerVersion(),
+            header.headerVersion,
             apiRequest,
-            header.apiVersion()
+            header.apiVersion
         )
 
         fun buildResponseSend(

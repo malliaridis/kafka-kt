@@ -51,11 +51,14 @@ class ProduceRequest(
      * We have to copy acks, timeout, transactionalId and partitionSizes from data since data maybe
      * reset to eliminate the reference to ByteBuffer but those metadata are still useful.
      */
-    private val acks: Short = this.data.acks()
+    val acks: Short
+        get() = this.data.acks()
 
-    private val timeout: Int = this.data.timeoutMs()
+    val timeout: Int
+        get() = this.data.timeoutMs()
 
-    private val transactionalId: String = this.data.transactionalId()
+    val transactionalId: String?
+        get() = this.data.transactionalId
 
     // the partitionSizes is lazily initialized since it is used by server-side in production.
     private val partitionSizes: MutableMap<TopicPartition, Int> by lazy {
@@ -66,7 +69,7 @@ class ProduceRequest(
                 partitionSizes.compute(
                     TopicPartition(topicData.name(), partitionData.index())
                 ) { _, previousValue ->
-                    partitionData.records().sizeInBytes() + (previousValue ?: 0)
+                    (partitionData.records?.sizeInBytes() ?: 0) + (previousValue ?: 0)
                 }
             }
         }
@@ -86,7 +89,7 @@ class ProduceRequest(
      */
     override fun data(): ProduceRequestData {
         // Store it in a local variable to protect against concurrent updates
-        return data ?: error(
+        return _data ?: error(
             "The partition records are no longer available because clearPartitionRecords() has " +
                     "been invoked."
         )
@@ -121,18 +124,14 @@ class ProduceRequest(
         val data = ProduceResponseData().setThrottleTimeMs(throttleTimeMs)
 
         partitionSizes.forEach { (tp, _) ->
-            data.responses()
-                .find(tp.topic)
-                .partitionResponses().add(
-                    PartitionProduceResponse()
-                        .setIndex(tp.partition)
-                        .setRecordErrors(emptyList())
-                        .setBaseOffset(ProduceResponse.INVALID_OFFSET)
-                        .setLogAppendTimeMs(RecordBatch.NO_TIMESTAMP)
-                        .setLogStartOffset(ProduceResponse.INVALID_OFFSET)
-                        .setErrorMessage(apiError.message)
-                        .setErrorCode(apiError.error.code),
-                )
+            data.responses().find(tp.topic)!!.partitionResponses += PartitionProduceResponse()
+                    .setIndex(tp.partition)
+                    .setRecordErrors(emptyList())
+                    .setBaseOffset(ProduceResponse.INVALID_OFFSET)
+                    .setLogAppendTimeMs(RecordBatch.NO_TIMESTAMP)
+                    .setLogStartOffset(ProduceResponse.INVALID_OFFSET)
+                    .setErrorMessage(apiError.message)
+                    .setErrorCode(apiError.error.code)
         }
         return ProduceResponse(data)
     }
@@ -142,11 +141,23 @@ class ProduceRequest(
         return Collections.singletonMap(error, partitionSizes.size)
     }
 
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("acks"),
+    )
     fun acks(): Short = acks
 
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("timeout"),
+    )
     fun timeout(): Int = timeout
 
-    fun transactionalId(): String = transactionalId
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("transactionalId"),
+    )
+    fun transactionalId(): String? = transactionalId
 
     fun clearPartitionRecords() {
         // lazily initialize partitionSizes.

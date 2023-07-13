@@ -68,7 +68,7 @@ class AllBrokersStrategy(
 
         val brokerKeys = brokers.associateBy(
             keySelector = { BrokerKey(it.nodeId()) },
-            valueTransform = MetadataResponseBroker::nodeId
+            valueTransform = { it.nodeId }
         )
 
         return AdminApiLookupStrategy.LookupResult(

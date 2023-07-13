@@ -324,12 +324,6 @@ class KafkaLZ4BlockOutputStream(
             if (reserved3 != 0) throw RuntimeException("Reserved3 field must be 0")
         }
 
-        @Deprecated(
-            message = "Use property instead",
-            replaceWith = ReplaceWith("blockMaximumSize"),
-        )
-        fun getBlockMaximumSize(): Int = blockMaximumSize
-
         val blockMaximumSize: Int
             // 2^(2n+8)
             get() = 1 shl 2 * blockSizeValue + 8

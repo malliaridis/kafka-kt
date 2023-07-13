@@ -123,9 +123,9 @@ class Metrics(
         name: String,
         group: String,
         description: String = "",
-        tags: Map<String, String> = emptyMap()
+        tags: Map<String, String?> = emptyMap()
     ): MetricName {
-        val combinedTag: MutableMap<String, String> = LinkedHashMap(config.tags)
+        val combinedTag: MutableMap<String, String?> = LinkedHashMap(config.tags)
         combinedTag.putAll(tags)
         return MetricName(name, group, description, combinedTag.toMap())
     }

@@ -113,7 +113,7 @@ data class NewTopic(
             .setReplicationFactor(replicationFactor)
         replicasAssignments.forEach { (key, value) ->
             creatableTopic.assignments()
-                .add(CreatableReplicaAssignment().setPartitionIndex(key).setBrokerIds(value))
+                .add(CreatableReplicaAssignment().setPartitionIndex(key).setBrokerIds(value.toIntArray()))
         }
 
         configs.forEach { (key, value) ->

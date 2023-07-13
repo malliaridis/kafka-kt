@@ -18,7 +18,7 @@ class ElectLeadersResponse(
     constructor(
         throttleTimeMs: Int,
         errorCode: Short,
-        electionResults: List<ReplicaElectionResult?>?,
+        electionResults: List<ReplicaElectionResult>,
         version: Short
     ) : this(data = ElectLeadersResponseData()) {
         data.setThrottleTimeMs(throttleTimeMs)

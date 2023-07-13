@@ -222,14 +222,14 @@ class Fetcher<K, V>(
                             )
                             return
                         }
-                        if (!handler.handleResponse(response!!, value.requestHeader.apiVersion())) {
+                        if (!handler.handleResponse(response!!, value.requestHeader.apiVersion)) {
                             if (response.error() === Errors.FETCH_SESSION_TOPIC_ID_ERROR)
                                 metadata.requestUpdate()
                             return
                         }
                         val responseData = response.responseData(
                             topicNames = handler.sessionTopicNames(),
-                            version = value.requestHeader.apiVersion(),
+                            version = value.requestHeader.apiVersion,
                         )
                         val partitions = responseData.keys.toMutableSet()
                         val metricAggregator = FetchResponseMetricAggregator(
@@ -274,7 +274,7 @@ class Fetcher<K, V>(
                                     .batches()
                                     .iterator()
 
-                                val responseVersion = value.requestHeader.apiVersion()
+                                val responseVersion = value.requestHeader.apiVersion
                                 completedFetches.add(
                                     CompletedFetch(
                                         partition = partition,
@@ -960,8 +960,8 @@ class Fetcher<K, V>(
     private fun groupListOffsetRequests(
         timestampsToSearch: Map<TopicPartition, Long>,
         partitionsToRetry: MutableSet<TopicPartition>
-    ): Map<Node?, Map<TopicPartition, ListOffsetsPartition?>> {
-        val partitionDataMap: MutableMap<TopicPartition, ListOffsetsPartition?> = HashMap()
+    ): Map<Node, Map<TopicPartition, ListOffsetsPartition>> {
+        val partitionDataMap: MutableMap<TopicPartition, ListOffsetsPartition> = HashMap()
         for ((tp, offset) in timestampsToSearch) {
             val leaderAndEpoch = metadata.currentLeader(tp)
             if (leaderAndEpoch.leader == null) {
@@ -1007,7 +1007,7 @@ class Fetcher<K, V>(
      */
     private fun sendListOffsetRequest(
         node: Node?,
-        timestampsToSearch: Map<TopicPartition, ListOffsetsPartition?>,
+        timestampsToSearch: Map<TopicPartition, ListOffsetsPartition>,
         requireTimestamp: Boolean,
     ): RequestFuture<ListOffsetResult> {
         val builder = ListOffsetsRequest.Builder.forConsumer(
@@ -1299,8 +1299,8 @@ class Fetcher<K, V>(
 
     private fun <T> regroupPartitionMapByNode(
         partitionMap: Map<TopicPartition, T>,
-    ): Map<Node?, Map<TopicPartition, T>> {
-        return partitionMap.entries.groupBy { metadata.fetch().leaderFor(it.key) }
+    ): Map<Node, Map<TopicPartition, T>> {
+        return partitionMap.entries.groupBy { metadata.fetch().leaderFor(it.key)!! }
             .mapValues { (_, value) -> value.associate { it.key to it.value } }
     }
 
@@ -1809,16 +1809,14 @@ class Fetcher<K, V>(
         private fun abortedTransactions(
             partition: FetchResponseData.PartitionData,
         ): PriorityQueue<AbortedTransaction>? {
-            if (
-                partition.abortedTransactions() == null
-                || partition.abortedTransactions().isEmpty()
-            ) return null
+            val abortedTransactionsList = partition.abortedTransactions
+            if (abortedTransactionsList.isEmpty()) return null
 
             val abortedTransactions = PriorityQueue(
-                partition.abortedTransactions().size,
-                Comparator.comparingLong(AbortedTransaction::firstOffset),
+                abortedTransactionsList.size,
+                Comparator.comparingLong<AbortedTransaction> { it.firstOffset },
             )
-            abortedTransactions.addAll(partition.abortedTransactions())
+            abortedTransactions.addAll(abortedTransactionsList)
             return abortedTransactions
         }
 

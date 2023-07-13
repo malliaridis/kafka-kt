@@ -35,7 +35,7 @@ class EnvelopeResponse(
         .setErrorCode(error.code),
     )
 
-    fun responseData(): ByteBuffer = data.responseData()
+    fun responseData(): ByteBuffer? = data.responseData()
 
     override fun errorCounts(): Map<Errors, Int> = errorCounts(error())
 

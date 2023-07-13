@@ -56,11 +56,10 @@ class WriteTxnMarkersResponse : AbstractResponse {
                     topicName,
                     WritableTxnMarkerTopicResult().setName(topicName)
                 )
-                topic.partitions().add(
-                    WritableTxnMarkerPartitionResult()
-                        .setErrorCode(value1.code)
-                        .setPartitionIndex(topicPartition.partition)
-                )
+                topic.partitions += WritableTxnMarkerPartitionResult()
+                    .setErrorCode(value1.code)
+                    .setPartitionIndex(topicPartition.partition)
+
                 responseTopicDataMap[topicName] = topic
             }
             WritableTxnMarkerResult()

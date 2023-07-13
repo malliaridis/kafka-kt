@@ -48,15 +48,13 @@ class AlterConfigsRequest(
         val (error1, message) = ApiError.fromThrowable(e)
         val data = AlterConfigsResponseData().setThrottleTimeMs(throttleTimeMs)
 
-        data.responses().addAll(
-            this.data.resources().map { resource ->
-                AlterConfigsResponseData.AlterConfigsResourceResponse()
-                    .setResourceType(resource.resourceType())
-                    .setResourceName(resource.resourceName())
-                    .setErrorMessage(message)
-                    .setErrorCode(error1.code)
-            }
-        )
+        data.responses += this.data.resources().map { resource ->
+            AlterConfigsResponseData.AlterConfigsResourceResponse()
+                .setResourceType(resource.resourceType())
+                .setResourceName(resource.resourceName())
+                .setErrorMessage(message)
+                .setErrorCode(error1.code)
+        }
 
         return AlterConfigsResponse(data)
     }
@@ -70,7 +68,7 @@ class AlterConfigsRequest(
         fun entries(): Collection<ConfigEntry> = entries
     }
 
-    class ConfigEntry(val name: String, val value: String) {
+    class ConfigEntry(val name: String, val value: String?) {
 
         @Deprecated(
             message = "User property instead",
@@ -82,7 +80,7 @@ class AlterConfigsRequest(
             message = "User property instead",
             replaceWith = ReplaceWith("value"),
         )
-        fun value(): String = value
+        fun value(): String? = value
     }
 
     class Builder(

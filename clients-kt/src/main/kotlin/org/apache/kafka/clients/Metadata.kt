@@ -308,7 +308,7 @@ open class Metadata(
             needFullUpdate = false
             lastSuccessfulRefreshMs = nowMs
         }
-        val previousClusterId = cache.clusterResource().clusterId()
+        val previousClusterId = cache.clusterResource().clusterId
         cache = handleMetadataResponse(response, isPartialUpdate, nowMs)
         val cluster = cache.cluster()
         maybeSetMetadataError(cluster)
@@ -319,7 +319,7 @@ open class Metadata(
                 nowMs = nowMs
             )
         }
-        val newClusterId = cache.clusterResource().clusterId()
+        val newClusterId = cache.clusterResource().clusterId
         if (previousClusterId != newClusterId) {
             log.info("Cluster ID: {}", newClusterId)
         }
@@ -413,7 +413,7 @@ open class Metadata(
         }
         val nodes = metadataResponse.brokersById()
         return if (isPartialUpdate) cache.mergeWith(
-            newClusterId = metadataResponse.clusterId(),
+            newClusterId = metadataResponse.clusterId,
             newNodes = nodes,
             addPartitions = partitions,
             addUnauthorizedTopics = unauthorizedTopics,
@@ -425,7 +425,7 @@ open class Metadata(
                 !topics.contains(topic) && retainTopic(topic, isInternal, nowMs)
             }
         ) else MetadataCache(
-            clusterId = metadataResponse.clusterId(),
+            clusterId = metadataResponse.clusterId,
             nodes = nodes,
             partitions = partitions,
             unauthorizedTopics = unauthorizedTopics,
@@ -614,7 +614,7 @@ open class Metadata(
      *
      * @return the constructed non-null metadata builder
      */
-    fun newMetadataRequestBuilder(): MetadataRequest.Builder {
+    open fun newMetadataRequestBuilder(): MetadataRequest.Builder {
         return MetadataRequest.Builder.allTopics()
     }
 
@@ -628,10 +628,10 @@ open class Metadata(
         return null
     }
 
-    private fun retainTopic(
-        topic: String?,
+    internal open fun retainTopic(
+        topic: String,
         isInternal: Boolean,
-        nowMs: Long
+        nowMs: Long,
     ): Boolean = true
 
     class MetadataRequestAndVersion internal constructor(

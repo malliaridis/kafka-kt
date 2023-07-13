@@ -53,15 +53,15 @@ class DeleteTopicsRequest private constructor(
     }
 
     fun topicNames(): List<String> =
-        if (version >= 6) data.topics().map(DeleteTopicState::name)
-        else data.topicNames()
+        if (version >= 6) data.topics.mapNotNull { it.name }
+        else data.topicNames
 
     fun numberOfTopics(): Int =
         if (version >= 6) data.topics().size
         else data.topicNames().size
 
     fun topicIds(): List<Uuid> =
-        if (version >= 6) data.topics().map(DeleteTopicState::topicId)
+        if (version >= 6) data.topics.map { it.topicId }
         else emptyList()
 
     fun topics(): List<DeleteTopicState> =

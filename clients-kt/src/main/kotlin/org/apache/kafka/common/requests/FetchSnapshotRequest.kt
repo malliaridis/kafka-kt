@@ -66,7 +66,7 @@ class FetchSnapshotRequest(
         fun singleton(
             clusterId: String?,
             topicPartition: TopicPartition,
-            operator: UnaryOperator<FetchSnapshotRequestData.PartitionSnapshot?>,
+            operator: UnaryOperator<FetchSnapshotRequestData.PartitionSnapshot>,
         ): FetchSnapshotRequestData {
             val partitionSnapshot = operator.apply(
                 FetchSnapshotRequestData.PartitionSnapshot()

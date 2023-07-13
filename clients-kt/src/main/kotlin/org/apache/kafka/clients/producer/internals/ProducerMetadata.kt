@@ -52,7 +52,7 @@ class ProducerMetadata(
     private val log: Logger = logContext.logger(ProducerMetadata::class.java)
 
     @Synchronized
-    fun newMetadataRequestBuilder(): MetadataRequest.Builder {
+    override fun newMetadataRequestBuilder(): MetadataRequest.Builder {
         return MetadataRequest.Builder(ArrayList(topics.keys), true)
     }
 
@@ -87,7 +87,7 @@ class ProducerMetadata(
     fun containsTopic(topic: String): Boolean = topics.containsKey(topic)
 
     @Synchronized
-    fun retainTopic(
+    override fun retainTopic(
         topic: String,
         isInternal: Boolean,
         nowMs: Long,

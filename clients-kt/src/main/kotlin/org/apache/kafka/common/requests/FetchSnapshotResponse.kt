@@ -73,7 +73,7 @@ class FetchSnapshotResponse(private val data: FetchSnapshotResponseData) : Abstr
          */
         fun singleton(
             topicPartition: TopicPartition,
-            operator: UnaryOperator<FetchSnapshotResponseData.PartitionSnapshot?>,
+            operator: UnaryOperator<FetchSnapshotResponseData.PartitionSnapshot>,
         ): FetchSnapshotResponseData {
             val partitionSnapshot = operator.apply(
                 FetchSnapshotResponseData.PartitionSnapshot().setIndex(topicPartition.partition)

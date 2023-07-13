@@ -172,7 +172,7 @@ class WriteTxnMarkersRequest private constructor(
                         topic1,
                         WritableTxnMarkerTopic().setName(topic1)
                     )
-                    topic.partitionIndexes().add(partition)
+                    topic.partitionIndexes += partition
                     topicMap[topic1] = topic
                 }
                 dataMarkers.add(

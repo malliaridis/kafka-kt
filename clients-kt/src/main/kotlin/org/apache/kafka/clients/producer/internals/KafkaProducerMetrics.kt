@@ -24,7 +24,7 @@ import org.apache.kafka.common.metrics.stats.CumulativeSum
 
 class KafkaProducerMetrics(private val metrics: Metrics) : AutoCloseable {
 
-    private val tags: Map<String, String> = metrics.config.tags
+    private val tags: Map<String, String?> = metrics.config.tags
 
     private val flushTimeSensor: Sensor = newLatencySensor(
         name = FLUSH,

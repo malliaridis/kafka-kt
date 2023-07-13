@@ -38,19 +38,19 @@ class DescribeClientQuotasResponse(
         }
 
         val result: Map<ClientQuotaEntity, Map<String, Double>> =
-            data.entries().associate { entry ->
-                val entityMap = entry.entity().associateBy(
-                    keySelector = DescribeClientQuotasResponseData.EntityData::entityType,
-                    valueTransform = DescribeClientQuotasResponseData.EntityData::entityName,
+            data.entries?.associate { entry ->
+                val entityMap = entry.entity.associateBy(
+                    keySelector = { it.entityType },
+                    valueTransform = { it.entityName },
                 )
 
-                val values = entry.values().associateBy(
-                    keySelector = DescribeClientQuotasResponseData.ValueData::key,
-                    valueTransform = DescribeClientQuotasResponseData.ValueData::value,
+                val values = entry.values.associateBy(
+                    keySelector = { it.key },
+                    valueTransform = { it.value },
                 )
 
                 ClientQuotaEntity(entityMap) to values
-            }
+            } ?: emptyMap()
 
         future.complete(result)
     }

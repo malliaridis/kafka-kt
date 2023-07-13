@@ -63,11 +63,10 @@ class TxnOffsetCommitResponse : AbstractResponse {
             val topic = responseTopicDataMap.getOrDefault(
                 topicName, TxnOffsetCommitResponseTopic().setName(topicName)
             )
-            topic.partitions().add(
-                TxnOffsetCommitResponsePartition()
-                    .setErrorCode(value.code)
-                    .setPartitionIndex(topicPartition.partition)
-            )
+            topic.partitions += TxnOffsetCommitResponsePartition()
+                .setErrorCode(value.code)
+                .setPartitionIndex(topicPartition.partition)
+
             responseTopicDataMap[topicName] = topic
         }
 

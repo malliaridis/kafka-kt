@@ -72,7 +72,7 @@ class EndQuorumEpochRequest private constructor(
                                     .setPartitionIndex(topicPartition.partition)
                                     .setLeaderEpoch(leaderEpoch)
                                     .setLeaderId(leaderId)
-                                    .setPreferredSuccessors(preferredSuccessors)
+                                    .setPreferredSuccessors(preferredSuccessors.toIntArray())
                             )
                         )
                 )

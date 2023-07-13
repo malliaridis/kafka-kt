@@ -46,11 +46,9 @@ class PartitionLeaderStrategy(logContext: LogContext) : AdminApiLookupStrategy<T
     override fun buildRequest(keys: Set<TopicPartition>): MetadataRequest.Builder {
         val request = MetadataRequestData()
         request.setAllowAutoTopicCreation(false)
-        keys.map { obj: TopicPartition -> obj.topic }
+        keys.map { obj -> obj.topic }
             .distinct()
-            .forEach { topic: String? ->
-                request.topics().add(MetadataRequestTopic().setName(topic))
-            }
+            .forEach { topic -> request.topics += MetadataRequestTopic().setName(topic) }
         return MetadataRequest.Builder(request)
     }
 
@@ -106,7 +104,7 @@ class PartitionLeaderStrategy(logContext: LogContext) : AdminApiLookupStrategy<T
                 ) { tp: TopicPartition ->
                     topicError.exception(
                         "Failed to fetch metadata for partition $tp due to unexpected error for topic `$topic`"
-                    )!!
+                    )
                 }
             }
         }
@@ -158,7 +156,7 @@ class PartitionLeaderStrategy(logContext: LogContext) : AdminApiLookupStrategy<T
         val failed: MutableMap<TopicPartition, Throwable> = HashMap()
         val mapped: MutableMap<TopicPartition, Int> = HashMap()
         (response as MetadataResponse).data().topics().forEach { topicMetadata ->
-            val topic = topicMetadata.name()
+            val topic = topicMetadata.name!!
             val topicError = Errors.forCode(topicMetadata.errorCode())
             if (topicError != Errors.NONE) {
                 handleTopicError(topic, topicError, keys, failed)

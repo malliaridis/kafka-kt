@@ -63,7 +63,7 @@ interface AuthorizableRequestContext {
     /**
      * Returns the client id from the request header.
      */
-    fun clientId(): String
+    fun clientId(): String?
 
     /**
      * Returns the correlation id from the request header.

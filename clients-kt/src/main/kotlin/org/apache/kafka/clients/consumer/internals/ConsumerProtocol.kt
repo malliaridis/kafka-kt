@@ -65,8 +65,8 @@ object ConsumerProtocol {
         subscription: ConsumerPartitionAssignor.Subscription,
         version: Short = ConsumerProtocolSubscription.HIGHEST_SUPPORTED_VERSION,
     ): ByteBuffer {
-        var version = version
-        version = checkSubscriptionVersion(version)
+        var checkedVersion = version
+        checkedVersion = checkSubscriptionVersion(checkedVersion)
         val data = ConsumerProtocolSubscription()
         val topics = subscription.topics.sorted()
 
@@ -87,11 +87,11 @@ object ConsumerProtocol {
                 partition = ConsumerProtocolSubscription.TopicPartition().setTopic(topic)
                 data.ownedPartitions().add(partition)
             }
-            partition!!.partitions().add(partition1)
+            partition.partitions += partition1
         }
         subscription.rackId?.let { data.setRackId(it) }
         data.setGenerationId(subscription.generationId ?: -1)
-        return toVersionPrefixedByteBuffer(version, data)
+        return toVersionPrefixedByteBuffer(checkedVersion, data)
     }
 
     @JvmOverloads
@@ -99,23 +99,21 @@ object ConsumerProtocol {
         buffer: ByteBuffer,
         version: Short = deserializeVersion(buffer)
     ): ConsumerPartitionAssignor.Subscription {
-        var version = version
-        version = checkSubscriptionVersion(version)
+        val checkedVersion = checkSubscriptionVersion(version)
         return try {
-            val data = ConsumerProtocolSubscription(ByteBufferAccessor(buffer), version)
+            val data = ConsumerProtocolSubscription(ByteBufferAccessor(buffer), checkedVersion)
             val ownedPartitions = mutableListOf<TopicPartition>()
 
             for (tp in data.ownedPartitions())
                 for (partition in tp.partitions())
-                    ownedPartitions.add(TopicPartition(tp.topic(), partition!!))
+                    ownedPartitions.add(TopicPartition(tp.topic(), partition))
 
             ConsumerPartitionAssignor.Subscription(
                 topics = data.topics(),
-                userData = if (data.userData() != null) data.userData().duplicate() else null,
+                userData = data.userData?.duplicate(),
                 ownedPartitions = ownedPartitions,
                 generationId = data.generationId(),
-                rackId = if (data.rackId() == null || data.rackId().isEmpty()) null
-                else data.rackId()
+                rackId = if (data.rackId.isNullOrEmpty()) null else data.rackId
             )
         } catch (e: BufferUnderflowException) {
             throw SchemaException(
@@ -129,8 +127,7 @@ object ConsumerProtocol {
         assignment: ConsumerPartitionAssignor.Assignment,
         version: Short = ConsumerProtocolAssignment.HIGHEST_SUPPORTED_VERSION,
     ): ByteBuffer {
-        var version = version
-        version = checkAssignmentVersion(version)
+        val checkedVersion = checkAssignmentVersion(version)
         val data = ConsumerProtocolAssignment()
         data.setUserData(assignment.userData?.duplicate())
         assignment.partitions.forEach { (topic, partition1) ->
@@ -138,9 +135,9 @@ object ConsumerProtocol {
                 ?: ConsumerProtocolAssignment.TopicPartition().setTopic(topic)
                     .also { data.assignedPartitions().add(it) }
 
-            partition.partitions().add(partition1)
+            partition.partitions += partition1
         }
-        return toVersionPrefixedByteBuffer(version, data)
+        return toVersionPrefixedByteBuffer(checkedVersion, data)
     }
 
     @JvmOverloads
@@ -148,19 +145,18 @@ object ConsumerProtocol {
         buffer: ByteBuffer,
         version: Short = deserializeVersion(buffer)
     ): ConsumerPartitionAssignor.Assignment {
-        var version = version
-        version = checkAssignmentVersion(version)
+        val checkedVersion = checkAssignmentVersion(version)
         return try {
-            val data = ConsumerProtocolAssignment(ByteBufferAccessor(buffer), version)
+            val data = ConsumerProtocolAssignment(ByteBufferAccessor(buffer), checkedVersion)
             val assignedPartitions = mutableListOf<TopicPartition>()
 
             for (tp in data.assignedPartitions())
                 for (partition in tp.partitions())
-                    assignedPartitions.add(TopicPartition(tp.topic(), partition!!))
+                    assignedPartitions.add(TopicPartition(tp.topic(), partition))
 
             ConsumerPartitionAssignor.Assignment(
                 partitions = assignedPartitions,
-                userData = if (data.userData() != null) data.userData().duplicate() else null
+                userData = data.userData?.duplicate()
             )
         } catch (e: BufferUnderflowException) {
             throw SchemaException(

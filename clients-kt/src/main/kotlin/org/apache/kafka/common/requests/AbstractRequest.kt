@@ -105,14 +105,14 @@ abstract class AbstractRequest(
      * size prefix).
      */
     fun serializeWithHeader(header: RequestHeader): ByteBuffer {
-        require(header.apiKey() === apiKey) {
-            "Could not build request $apiKey with header api key ${header.apiKey()}"
+        require(header.apiKey === apiKey) {
+            "Could not build request $apiKey with header api key ${header.apiKey}"
         }
-        require(header.apiVersion() == version) {
-            "Could not build request version $version with header version ${header.apiVersion()}"
+        require(header.apiVersion == version) {
+            "Could not build request version $version with header version ${header.apiVersion}"
         }
 
-        return RequestUtils.serialize(header.data(), header.headerVersion(), data(), version)
+        return RequestUtils.serialize(header.data(), header.headerVersion, data(), version)
     }
 
     // Visible for testing

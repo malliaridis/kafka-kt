@@ -33,18 +33,18 @@ class AlterClientQuotasResponse(
     fun complete(futures: Map<ClientQuotaEntity, KafkaFutureImpl<Unit>>) {
 
         data.entries().forEach { entryData ->
-            val entityEntries: MutableMap<String, String> = HashMap(entryData.entity().size)
+            val entityEntries: MutableMap<String, String?> = HashMap(entryData.entity.size)
 
-            entryData.entity().forEach { entityData ->
-                entityEntries[entityData.entityType()] = entityData.entityName()
+            entryData.entity.forEach { entityData ->
+                entityEntries[entityData.entityType] = entityData.entityName
             }
 
             val entity = ClientQuotaEntity(entityEntries)
             val future = requireNotNull(futures[entity]) { "Future map must contain entity $entity" }
-            val error = Errors.forCode(entryData.errorCode())
+            val error = Errors.forCode(entryData.errorCode)
 
             if (error === Errors.NONE) future.complete(Unit)
-            else future.completeExceptionally(error.exception(entryData.errorMessage()))
+            else future.completeExceptionally(error.exception(entryData.errorMessage))
         }
     }
 
@@ -78,18 +78,11 @@ class AlterClientQuotasResponse(
         private fun toEntityData(
             entity: ClientQuotaEntity,
         ): List<AlterClientQuotasResponseData.EntityData> {
-
-            val entityData: MutableList<AlterClientQuotasResponseData.EntityData> =
-                ArrayList(entity.entries().size)
-
-            entity.entries().forEach { (key, value) ->
-                entityData.add(
-                    AlterClientQuotasResponseData.EntityData()
-                        .setEntityType(key)
-                        .setEntityName(value)
-                )
+            return entity.entries.map { (key, value) ->
+                AlterClientQuotasResponseData.EntityData()
+                    .setEntityType(key)
+                    .setEntityName(value)
             }
-            return entityData
         }
 
         fun parse(buffer: ByteBuffer?, version: Short): AlterClientQuotasResponse {

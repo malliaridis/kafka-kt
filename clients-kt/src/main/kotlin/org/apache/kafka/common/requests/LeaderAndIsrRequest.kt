@@ -81,7 +81,8 @@ class LeaderAndIsrRequest internal constructor(
 
     override fun controllerId(): Int = data.controllerId()
 
-    override fun isKRaftController(): Boolean = data.isKRaftController
+    override val isKRaftController: Boolean
+        get() = data.isKRaftController
 
     override fun controllerEpoch(): Int = data.controllerEpoch()
 
@@ -113,13 +114,13 @@ class LeaderAndIsrRequest internal constructor(
         private val topicIds: Map<String, Uuid>,
         private val liveLeaders: Collection<Node>,
         kraftController: Boolean = false,
-    ) : AbstractControlRequest.Builder<LeaderAndIsrRequest?>(
-        ApiKeys.LEADER_AND_ISR,
-        version,
-        controllerId,
-        controllerEpoch,
-        brokerEpoch,
-        kraftController
+    ) : AbstractControlRequest.Builder<LeaderAndIsrRequest>(
+        api = ApiKeys.LEADER_AND_ISR,
+        version = version,
+        controllerId = controllerId,
+        controllerEpoch = controllerEpoch,
+        brokerEpoch = brokerEpoch,
+        kraftController = kraftController,
     ) {
 
         override fun build(version: Short): LeaderAndIsrRequest {
@@ -170,7 +171,7 @@ class LeaderAndIsrRequest internal constructor(
                             .setTopicName(partition.topicName())
                             .setTopicId(topicIds[partition.topicName()] ?: Uuid.ZERO_UUID)
                     }
-                    topicState.partitionStates().add(partition)
+                    topicState.partitionStates += partition
                 }
                 return topicStates
             }

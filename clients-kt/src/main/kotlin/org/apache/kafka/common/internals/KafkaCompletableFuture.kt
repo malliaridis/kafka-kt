@@ -69,15 +69,14 @@ class KafkaCompletableFuture<T> : CompletableFuture<T>() {
     }
 
     // @Override // enable once Kafka no longer supports Java 8
-    fun <U> newIncompleteFuture(): CompletableFuture<U> {
-        return KafkaCompletableFuture()
-    }
+//    fun <U> newIncompleteFuture(): CompletableFuture<U> {
+//        return KafkaCompletableFuture()
+//    }
 
     // @Override // enable once Kafka no longer supports Java 8
-    @Deprecated("Use kotlin function parameters instead.")
-    fun completeAsync(supplier: Supplier<out T>, executor: Executor): CompletableFuture<T> {
-        throw erroneousCompletionException()
-    }
+//    fun completeAsync(supplier: Supplier<out T>, executor: Executor): CompletableFuture<T> {
+//        throw erroneousCompletionException()
+//    }
 
     // @Override // enable once Kafka no longer supports Java 8
     fun completeAsync(supplier: () -> T, executor: () -> Unit): CompletableFuture<T> {
@@ -85,20 +84,19 @@ class KafkaCompletableFuture<T> : CompletableFuture<T>() {
     }
 
     //@Override // enable once Kafka no longer supports Java 8
-    @Deprecated("Use kotlin function parameters instead.")
-    fun completeAsync(supplier: Supplier<out T>?): CompletableFuture<T> {
-        throw erroneousCompletionException()
-    }
+//    fun completeAsync(supplier: Supplier<out T>?): CompletableFuture<T> {
+//        throw erroneousCompletionException()
+//    }
 
     //@Override // enable once Kafka no longer supports Java 8
-    fun completeAsync(supplier: () -> T): CompletableFuture<T> {
-        throw erroneousCompletionException()
-    }
+//    fun completeAsync(supplier: () -> T): CompletableFuture<T> {
+//        throw erroneousCompletionException()
+//    }
 
     //@Override // enable once Kafka no longer supports Java 8
-    fun completeOnTimeout(value: T, timeout: Long, unit: TimeUnit): CompletableFuture<T> {
-        throw erroneousCompletionException()
-    }
+//    fun completeOnTimeout(value: T, timeout: Long, unit: TimeUnit): CompletableFuture<T> {
+//        throw erroneousCompletionException()
+//    }
 
     private fun erroneousCompletionException(): UnsupportedOperationException {
         return UnsupportedOperationException("User code should not complete futures returned from Kafka clients")

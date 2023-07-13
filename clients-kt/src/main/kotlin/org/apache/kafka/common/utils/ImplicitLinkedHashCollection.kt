@@ -122,7 +122,7 @@ open class ImplicitLinkedHashCollection<E : ImplicitLinkedHashCollection.Element
     fun find(key: E): E? {
         val index = findIndexOfEqualElement(key)
         return if (index == INVALID_INDEX) null
-        else elements[index] as E?
+        else elements[index] as E
     }
 
     /**

@@ -133,7 +133,7 @@ class FetchResponse(private val data: FetchResponseData) : AbstractResponse(ApiK
     // Fetch versions 13 and above should have topic IDs for all topics.
     // Fetch versions < 13 should return the empty set.
     fun topicIds(): Set<Uuid> = data.responses()
-        .map(FetchableTopicResponse::topicId)
+        .map { it.topicId }
         .filter { id -> id != Uuid.ZERO_UUID }
         .toSet()
 
@@ -215,7 +215,7 @@ class FetchResponse(private val data: FetchResponseData) : AbstractResponse(ApiK
             if (partition.records() is Records) return partition.records() as Records
 
             throw ClassCastException(
-                "The record type is ${partition.records().javaClass.simpleName}, which is not a " +
+                "The record type is ${partition.records?.javaClass?.simpleName}, which is not a " +
                     "subtype of ${Records::class.java.simpleName}. This method is only safe to " +
                     "call if the `FetchResponse` was deserialized from bytes."
             )
@@ -226,8 +226,7 @@ class FetchResponse(private val data: FetchResponseData) : AbstractResponse(ApiK
          * null.
          */
         fun recordsSize(partition: FetchResponseData.PartitionData): Int =
-            if (partition.records() == null) 0
-            else partition.records().sizeInBytes()
+            partition.records?.sizeInBytes() ?: 0
 
         // TODO: remove as a part of KAFKA-12410
         @Deprecated("Remove as part of KAFKA-12410")
@@ -277,7 +276,7 @@ class FetchResponse(private val data: FetchResponseData) : AbstractResponse(ApiK
                 else topicResponseList[topicResponseList.size - 1]
 
                 if (matchingTopic(previousTopic, key))
-                    previousTopic!!.partitions().add(partitionData)
+                    previousTopic!!.partitions += partitionData
                 else topicResponseList.add(
                     FetchableTopicResponse()
                         .setTopic(key.topicPartition.topic)

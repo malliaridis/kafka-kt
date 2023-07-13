@@ -69,7 +69,7 @@ class FindCoordinatorResponse(
             val coordinator = FindCoordinatorResponseData.Coordinator()
                 .setErrorCode(data.errorCode())
                 .setErrorMessage(data.errorMessage())
-                .setKey(null)
+                .setKey("")
                 .setNodeId(data.nodeId())
                 .setHost(data.host())
                 .setPort(data.port())
@@ -94,7 +94,7 @@ class FindCoordinatorResponse(
             return FindCoordinatorResponse(data)
         }
 
-        fun prepareResponse(error: Errors, key: String?, node: Node): FindCoordinatorResponse {
+        fun prepareResponse(error: Errors, key: String, node: Node): FindCoordinatorResponse {
             val data = FindCoordinatorResponseData()
             data.setCoordinators(
                 listOf(
@@ -111,7 +111,7 @@ class FindCoordinatorResponse(
             return FindCoordinatorResponse(data)
         }
 
-        fun prepareErrorResponse(error: Errors, keys: List<String?>): FindCoordinatorResponse {
+        fun prepareErrorResponse(error: Errors, keys: List<String>): FindCoordinatorResponse {
             val data = FindCoordinatorResponseData()
             data.setCoordinators(
                 keys.map { key ->

@@ -65,7 +65,7 @@ class DeleteAclsResponse(
 
     private fun validate(version: Short) {
         if (version.toInt() == 0) {
-            val unsupported = filterResults().flatMap(DeleteAclsFilterResult::matchingAcls)
+            val unsupported = filterResults().flatMap { it.matchingAcls }
                 .any { matchingAcl -> matchingAcl.patternType() != PatternType.LITERAL.code }
             if (unsupported) throw UnsupportedVersionException(
                 "Version 0 only supports literal resource pattern types"
@@ -73,7 +73,7 @@ class DeleteAclsResponse(
         }
 
         val unknown = filterResults()
-            .flatMap(DeleteAclsFilterResult::matchingAcls)
+            .flatMap { it.matchingAcls }
             .any { matchingAcl ->
                 matchingAcl.patternType() == PatternType.UNKNOWN.code
                         || matchingAcl.resourceType() == ResourceType.UNKNOWN.code

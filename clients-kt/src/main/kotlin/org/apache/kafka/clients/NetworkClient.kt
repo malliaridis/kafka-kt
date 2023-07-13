@@ -75,7 +75,7 @@ class NetworkClient(
     metadataUpdater: MetadataUpdater? = null,
     metadata: Metadata? = null,
     private val selector: Selectable,
-    private val clientId: String,
+    private val clientId: String?,
     maxInFlightRequestsPerConnection: Int,
     private val reconnectBackoffMs: Long,
     reconnectBackoffMax: Long,
@@ -195,7 +195,7 @@ class NetworkClient(
                 log.debug(
                     "Cancelled in-flight {} request with correlation id {} due to node {} being disconnected " +
                             "(elapsed time since creation: {}ms, elapsed time since send: {}ms, request timeout: {}ms): {}",
-                    request.header.apiKey(), request.header.correlationId(), nodeId,
+                    request.header.apiKey, request.header.correlationId, nodeId,
                     request.timeElapsedSinceCreateMs(now), request.timeElapsedSinceSendMs(now),
                     request.requestTimeoutMs, request.request
                 )
@@ -203,14 +203,14 @@ class NetworkClient(
                 log.info(
                     "Cancelled in-flight {} request with correlation id {} due to node {} being disconnected " +
                             "(elapsed time since creation: {}ms, elapsed time since send: {}ms, request timeout: {}ms)",
-                    request.header.apiKey(), request.header.correlationId(), nodeId,
+                    request.header.apiKey, request.header.correlationId, nodeId,
                     request.timeElapsedSinceCreateMs(now), request.timeElapsedSinceSendMs(now),
                     request.requestTimeoutMs
                 )
             }
             if (!request.isInternalRequest) {
                 responses?.add(request.disconnected(now, null))
-            } else if (request.header.apiKey() == ApiKeys.METADATA) {
+            } else if (request.header.apiKey == ApiKeys.METADATA) {
                 metadataUpdater.handleFailedRequest(now, null)
             }
         }
@@ -764,12 +764,12 @@ class NetworkClient(
             if (log.isDebugEnabled) {
                 log.debug(
                     "Received {} response from node {} for request with header {}: {}",
-                    req.header.apiKey(), req.destination, req.header, response
+                    req.header.apiKey, req.destination, req.header, response
                 )
             }
 
             // If the received response includes a throttle delay, throttle the connection.
-            maybeThrottle(response, req.header.apiVersion(), req.destination, now)
+            maybeThrottle(response, req.header.apiVersion, req.destination, now)
             if (req.isInternalRequest && response is MetadataResponse) metadataUpdater.handleSuccessfulResponse(
                 req.header, now,
                 response
@@ -796,7 +796,7 @@ class NetworkClient(
                             "Disconnecting.",
                     Errors.forCode(apiVersionsResponse.data().errorCode()),
                     node,
-                    req.header.correlationId()
+                    req.header.correlationId
                 )
                 selector.close(node)
                 processDisconnection(responses, node, now, ChannelState.LOCAL_CLOSE)
@@ -1008,7 +1008,7 @@ class NetworkClient(
             val errors = response.errors()
             if (errors.isNotEmpty()) log.warn(
                 "Error while fetching metadata with correlation id {} : {}",
-                requestHeader!!.correlationId(),
+                requestHeader!!.correlationId,
                 errors
             )
 
@@ -1017,7 +1017,7 @@ class NetworkClient(
             if (response.brokers().isEmpty()) {
                 log.trace(
                     "Ignoring empty metadata response with correlation id {}.",
-                    requestHeader!!.correlationId()
+                    requestHeader!!.correlationId
                 )
                 metadata.failedUpdate(now)
             } else {
@@ -1240,7 +1240,7 @@ class NetworkClient(
                     exception
                 )
             } catch (exception: CorrelationIdMismatchException) {
-                throw if ((SaslClientAuthenticator.isReserved(requestHeader.correlationId())
+                throw if ((SaslClientAuthenticator.isReserved(requestHeader.correlationId)
                             && !SaslClientAuthenticator.isReserved(exception.responseCorrelationId))
                 ) SchemaException(
                     ("The response is unrelated to Sasl request since its correlation id is "

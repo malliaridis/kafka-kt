@@ -88,9 +88,9 @@ class ApiVersionsResponse(
             listenerType: ListenerType
         ): ApiVersionsResponse {
             return createApiVersionsResponse(
-                throttleTimeMs,
-                filterApis(RecordVersion.current(), listenerType),
-                Features.emptySupportedFeatures()
+                throttleTimeMs = throttleTimeMs,
+                apiVersions = filterApis(RecordVersion.current(), listenerType),
+                latestSupportedFeatures = Features.emptySupportedFeatures(),
             )
         }
 
@@ -98,7 +98,7 @@ class ApiVersionsResponse(
             throttleTimeMs: Int,
             minRecordVersion: RecordVersion,
             latestSupportedFeatures: Features<SupportedVersionRange>,
-            finalizedFeatures: Map<String?, Short>,
+            finalizedFeatures: Map<String, Short>,
             finalizedFeaturesEpoch: Long,
             controllerApiVersions: NodeApiVersions?,
             listenerType: ListenerType,
@@ -109,11 +109,11 @@ class ApiVersionsResponse(
             else filterApis(minRecordVersion, listenerType)
 
             return createApiVersionsResponse(
-                throttleTimeMs,
-                apiKeys,
-                latestSupportedFeatures,
-                finalizedFeatures,
-                finalizedFeaturesEpoch
+                throttleTimeMs = throttleTimeMs,
+                apiVersions = apiKeys,
+                latestSupportedFeatures = latestSupportedFeatures,
+                finalizedFeatures = finalizedFeatures,
+                finalizedFeaturesEpoch = finalizedFeaturesEpoch,
             )
         }
 
@@ -121,7 +121,7 @@ class ApiVersionsResponse(
             throttleTimeMs: Int,
             apiVersions: ApiVersionCollection,
             latestSupportedFeatures: Features<SupportedVersionRange> = Features.emptySupportedFeatures(),
-            finalizedFeatures: Map<String?, Short> = emptyMap(),
+            finalizedFeatures: Map<String, Short> = emptyMap(),
             finalizedFeaturesEpoch: Long = UNKNOWN_FINALIZED_FEATURES_EPOCH
         ): ApiVersionsResponse {
             return ApiVersionsResponse(
@@ -210,7 +210,7 @@ class ApiVersionsResponse(
         }
 
         private fun createFinalizedFeatureKeys(
-            finalizedFeatures: Map<String?, Short>
+            finalizedFeatures: Map<String, Short>
         ): FinalizedFeatureKeyCollection {
             val converted = FinalizedFeatureKeyCollection()
 
