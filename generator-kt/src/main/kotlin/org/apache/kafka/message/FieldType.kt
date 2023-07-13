@@ -518,7 +518,6 @@ interface FieldType {
 
     class ArrayType internal constructor(
         val elementType: FieldType,
-        override val isNullable: Boolean = false,
     ) : FieldType {
 
         init {
@@ -605,7 +604,7 @@ interface FieldType {
                     "Can't have an array of arrays. Use an array of structs containing an " +
                             "array instead."
                 )
-                ArrayType(elementType, isNullable)
+                ArrayType(elementType)
 
             } else if (MessageGenerator.firstIsCapitalized(trimmed)) StructType(trimmed, isNullable)
             else throw RuntimeException("Can't parse type $trimmed")

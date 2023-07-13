@@ -249,7 +249,7 @@ class MessageDataGenerator internal constructor(
     }
 
     private fun generateHashSetSizeArgConstructor() {
-        buffer.printf("constructor(expectedNumElements: Int) : super(expectedNumElements)%n",)
+        buffer.printf("constructor(expectedNumElements: Int) : super(expectedNumElements)%n")
     }
 
     private fun generateHashSetIteratorConstructor(className: String) {
@@ -503,7 +503,11 @@ class MessageDataGenerator internal constructor(
                                 type = field.type,
                                 possibleVersions = versions,
                                 nullableVersions = field.nullableVersions,
-                                assignmentPrefix = String.format("%s = ", field.prefixedCamelCaseName()),
+                                assignmentPrefix = String.format(
+                                    "%s = ",
+                                    field.prefixedCamelCaseName()
+                                ),
+                                fieldDefault = field.fieldDefault(headerGenerator, structRegistry),
                                 assignmentSuffix = String.format("%n"),
                                 isStructArrayWithKeys = structRegistry.isStructArrayWithKeys(field),
                                 zeroCopy = field.zeroCopy,
@@ -567,6 +571,8 @@ class MessageDataGenerator internal constructor(
                                         nullableVersions = field.nullableVersions,
                                         assignmentPrefix =
                                         String.format("%s = ", field.prefixedCamelCaseName()),
+                                        fieldDefault =
+                                        field.fieldDefault(headerGenerator, structRegistry),
                                         assignmentSuffix = String.format("%n"),
                                         isStructArrayWithKeys =
                                         structRegistry.isStructArrayWithKeys(field),
@@ -628,6 +634,7 @@ class MessageDataGenerator internal constructor(
         possibleVersions: Versions,
         nullableVersions: Versions,
         assignmentPrefix: String,
+        fieldDefault: String,
         assignmentSuffix: String,
         isStructArrayWithKeys: Boolean,
         zeroCopy: Boolean,
@@ -643,15 +650,19 @@ class MessageDataGenerator internal constructor(
                 buffer.printf("%s = readable.readInt()%n", lengthVar)
             else throw RuntimeException("Can't handle variable length type $type")
         }.generate(buffer)
+
         buffer.printf("if (%s < 0) {%n", lengthVar)
         buffer.incrementIndent()
-        VersionConditional.forVersions(nullableVersions, possibleVersions).ifNotMember {
-            buffer.printf(
-                "throw RuntimeException(\"non-nullable field %s was serialized as null\")%n",
-                name,
-            )
-        }.ifMember { buffer.printf("%snull%s", assignmentPrefix, assignmentSuffix) }
+        VersionConditional.forVersions(nullableVersions, possibleVersions)
+            .ifNotMember {
+                buffer.printf(
+                    "throw RuntimeException(\"non-nullable field %s was serialized as null\")%n",
+                    name,
+                )
+            }
+            .ifMember { buffer.printf("%s%s%s", assignmentPrefix, fieldDefault, assignmentSuffix) }
             .generate(buffer)
+
         buffer.decrementIndent()
         if (type.isString) {
             buffer.printf("} else if (%s > 0x7fff) {%n", lengthVar)
@@ -735,6 +746,7 @@ class MessageDataGenerator internal constructor(
                     possibleVersions = possibleVersions,
                     nullableVersions = Versions.NONE,
                     assignmentPrefix = "newCollection.add(",
+                    fieldDefault = "null",
                     assignmentSuffix = String.format(")%n"),
                     isStructArrayWithKeys = false,
                     zeroCopy = false,
@@ -987,9 +999,16 @@ class MessageDataGenerator internal constructor(
     }
 
     private fun primitiveWriteExpression(type: FieldType, name: String): String = when (type) {
-        is BoolFieldType -> String.format("writable.writeByte(if (%s) 1.toByte() else 0.toByte())", name)
+        is BoolFieldType -> String.format(
+            "writable.writeByte(if (%s) 1.toByte() else 0.toByte())",
+            name
+        )
+
         is Int8FieldType -> String.format("writable.writeByte(%s)", name)
-        is Uint8FieldType -> String.format("writable.writeUnsignedByte(%s.toShort())", name) // Not supported, eventually through writeUnsignedVarint
+        is Uint8FieldType -> String.format(
+            "writable.writeUnsignedByte(%s.toShort())",
+            name
+        ) // Not supported, eventually through writeUnsignedVarint
         is Int16FieldType -> String.format("writable.writeShort(%s)", name)
         is Uint16FieldType -> String.format("writable.writeUnsignedShort(%s.toInt())", name)
         is Int32FieldType -> String.format("writable.writeInt(%s)", name)
@@ -1033,7 +1052,10 @@ class MessageDataGenerator internal constructor(
             }
             .ifShouldNotBeNull {
                 val lengthExpression: String = if (type.isString) {
-                    buffer.printf("val stringBytes: ByteArray = cache.getSerializedValue(%s)%n", name)
+                    buffer.printf(
+                        "val stringBytes: ByteArray = cache.getSerializedValue(%s)%n",
+                        name
+                    )
                     "stringBytes.size"
                 } else if (type.isBytes) {
                     if (type.isNullable) {
@@ -1047,8 +1069,7 @@ class MessageDataGenerator internal constructor(
                 else if (type.isArray) {
                     if (type.isNullable) "$name.size"
                     else "$name.size"
-                }
-                else throw RuntimeException("Unhandled type $type")
+                } else throw RuntimeException("Unhandled type $type")
 
                 // Check whether we're dealing with a flexible version or not. In a flexible
                 // version, the length is serialized differently.
@@ -1414,13 +1435,13 @@ class MessageDataGenerator internal constructor(
                         .ifNotMember { buffer.printf("size.addBytes(4)%n") }
                         .generate(buffer)
                 } else if (field.type.isStruct) {
-                    buffer.printf("val sizeBeforeStruct = size.totalSize%n",)
+                    buffer.printf("val sizeBeforeStruct = size.totalSize%n")
                     buffer.printf(
                         "%s.addSize(size, cache, version)%n",
                         field.safePrefixedCamelCaseName(),
                     )
-                    if (tagged){
-                        buffer.printf("val structSize = size.totalSize - sizeBeforeStruct%n",)
+                    if (tagged) {
+                        buffer.printf("val structSize = size.totalSize - sizeBeforeStruct%n")
                         buffer.printf("size.addBytes(ByteUtils.sizeOfUnsignedVarint(structSize))%n")
                     }
                 } else throw RuntimeException("unhandled type " + field.type)
@@ -1477,23 +1498,24 @@ class MessageDataGenerator internal constructor(
     private fun generateFieldEquals(field: FieldSpec) {
         when {
             field.type is BoolFieldType
-            || field.type is Int8FieldType
-            || field.type is Uint8FieldType
-            || field.type is Int16FieldType
-            || field.type is Uint16FieldType
-            || field.type is Int32FieldType
-            || field.type is Uint32FieldType
-            || field.type is Int64FieldType
-            || field.type is Uint64FieldType
-            || field.type is Float32FieldType
-            || field.type is Float64FieldType
-            || field.type is UUIDFieldType
-            || field.type is StringFieldType
+                    || field.type is Int8FieldType
+                    || field.type is Uint8FieldType
+                    || field.type is Int16FieldType
+                    || field.type is Uint16FieldType
+                    || field.type is Int32FieldType
+                    || field.type is Uint32FieldType
+                    || field.type is Int64FieldType
+                    || field.type is Uint64FieldType
+                    || field.type is Float32FieldType
+                    || field.type is Float64FieldType
+                    || field.type is UUIDFieldType
+                    || field.type is StringFieldType
                     || field.type.isStructArray -> buffer.printf(
                 "if (%s != other.%s) return false%n",
                 field.prefixedCamelCaseName(),
                 field.camelCaseName(),
             )
+
             else -> {
                 if (field.type.isBytes && !field.zeroCopy) buffer.printf(
                     // not nullable bytes fields (ByteArray only)
@@ -1568,7 +1590,10 @@ class MessageDataGenerator internal constructor(
             is Float32FieldType,
             is Float64FieldType,
             is UUIDFieldType ->
-                buffer.printf("hashCode = 31 * hashCode + %s.hashCode()%n", field.prefixedCamelCaseName())
+                buffer.printf(
+                    "hashCode = 31 * hashCode + %s.hashCode()%n",
+                    field.prefixedCamelCaseName()
+                )
 
             is Int8FieldType,
             is Int16FieldType,
@@ -1831,7 +1856,11 @@ class MessageDataGenerator internal constructor(
         isOverride: Boolean = false,
     ) {
         // TODO rename e.g. next() to getNext() (see generateFieldMutator or generateSetter)
-        buffer.printf("${if (isOverride) "override " else ""}fun %s(): %s {%n", functionName, kotlinType)
+        buffer.printf(
+            "${if (isOverride) "override " else ""}fun %s(): %s {%n",
+            functionName,
+            kotlinType
+        )
         buffer.incrementIndent()
         buffer.printf("return this.%s%n", memberName)
         buffer.decrementIndent()

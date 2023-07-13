@@ -235,13 +235,15 @@ class FieldSpec @JsonCreator constructor(
         structRegistry: StructRegistry,
     ): String {
         when {
-            (fieldDefault == null) && type.isNullable -> {
+            (fieldDefault == null) && type.isNullable && !type.isArray -> {
                 // No default value provided, use null if all fields are nullable
+                // Arrays / Lists are never null (only empty)
                 isNullDefaultAllowed()
                 return "null"
             }
-            (fieldDefault == "null") && type.isNullable -> {
+            (fieldDefault == "null") && type.isNullable && !type.isArray -> {
                 // Default value "null" provided, verify that all versions are nullable
+                // Arrays / Lists are never null (only empty)
                 validateNullDefault()
                 return "null"
             }
