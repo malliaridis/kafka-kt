@@ -83,9 +83,9 @@ object ConsumerProtocol {
 
         var partition: ConsumerProtocolSubscription.TopicPartition? = null
         for ((topic, partition1) in ownedPartitions) {
-            if (partition == null || partition.topic() != topic) {
+            if (partition == null || partition.topic != topic) {
                 partition = ConsumerProtocolSubscription.TopicPartition().setTopic(topic)
-                data.ownedPartitions().add(partition)
+                data.ownedPartitions.add(partition)
             }
             partition.partitions += partition1
         }
@@ -104,15 +104,15 @@ object ConsumerProtocol {
             val data = ConsumerProtocolSubscription(ByteBufferAccessor(buffer), checkedVersion)
             val ownedPartitions = mutableListOf<TopicPartition>()
 
-            for (tp in data.ownedPartitions())
-                for (partition in tp.partitions())
-                    ownedPartitions.add(TopicPartition(tp.topic(), partition))
+            for (tp in data.ownedPartitions)
+                for (partition in tp.partitions)
+                    ownedPartitions.add(TopicPartition(tp.topic, partition))
 
             ConsumerPartitionAssignor.Subscription(
-                topics = data.topics(),
+                topics = data.topics,
                 userData = data.userData?.duplicate(),
                 ownedPartitions = ownedPartitions,
-                generationId = data.generationId(),
+                generationId = data.generationId,
                 rackId = if (data.rackId.isNullOrEmpty()) null else data.rackId
             )
         } catch (e: BufferUnderflowException) {
@@ -131,9 +131,9 @@ object ConsumerProtocol {
         val data = ConsumerProtocolAssignment()
         data.setUserData(assignment.userData?.duplicate())
         assignment.partitions.forEach { (topic, partition1) ->
-            val partition = data.assignedPartitions().find(topic)
+            val partition = data.assignedPartitions.find(topic)
                 ?: ConsumerProtocolAssignment.TopicPartition().setTopic(topic)
-                    .also { data.assignedPartitions().add(it) }
+                    .also { data.assignedPartitions.add(it) }
 
             partition.partitions += partition1
         }
@@ -150,9 +150,9 @@ object ConsumerProtocol {
             val data = ConsumerProtocolAssignment(ByteBufferAccessor(buffer), checkedVersion)
             val assignedPartitions = mutableListOf<TopicPartition>()
 
-            for (tp in data.assignedPartitions())
-                for (partition in tp.partitions())
-                    assignedPartitions.add(TopicPartition(tp.topic(), partition))
+            for (tp in data.assignedPartitions)
+                for (partition in tp.partitions)
+                    assignedPartitions.add(TopicPartition(tp.topic, partition))
 
             ConsumerPartitionAssignor.Assignment(
                 partitions = assignedPartitions,

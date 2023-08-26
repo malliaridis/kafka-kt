@@ -29,7 +29,7 @@ class UnregisterBrokerResponse(
 
     override fun data(): UnregisterBrokerResponseData = data
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
@@ -38,8 +38,8 @@ class UnregisterBrokerResponse(
     override fun errorCounts(): Map<Errors, Int> {
         val errorCounts = mutableMapOf<Errors, Int>()
 
-        if (data.errorCode().toInt() != 0)
-            errorCounts[Errors.forCode(data.errorCode())] = 1
+        if (data.errorCode.toInt() != 0)
+            errorCounts[Errors.forCode(data.errorCode)] = 1
 
         return errorCounts
     }

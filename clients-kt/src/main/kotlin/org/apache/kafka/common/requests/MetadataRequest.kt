@@ -42,11 +42,11 @@ class MetadataRequest(
         val responseData = MetadataResponseData()
         for (topic in data.topics) {
             // the response does not allow null, so convert to empty string if necessary
-            val topicName = if (topic.name() == null) "" else topic.name()
-            responseData.topics().add(
+            val topicName = if (topic.name == null) "" else topic.name
+            responseData.topics.add(
                 MetadataResponseTopic()
                     .setName(topicName)
-                    .setTopicId(topic.topicId())
+                    .setTopicId(topic.topicId)
                     .setErrorCode(error.code)
                     .setIsInternal(false)
                     .setPartitions(emptyList())
@@ -73,7 +73,7 @@ class MetadataRequest(
         else data.topics.map { it.topicId }
     }
 
-    fun allowAutoTopicCreation(): Boolean = data.allowAutoTopicCreation()
+    fun allowAutoTopicCreation(): Boolean = data.allowAutoTopicCreation
 
     class Builder : AbstractRequest.Builder<MetadataRequest> {
 
@@ -130,20 +130,20 @@ class MetadataRequest(
                 "MetadataRequest versions older than 1 are not supported."
             )
 
-            if (!data.allowAutoTopicCreation() && version < 4) throw UnsupportedVersionException(
+            if (!data.allowAutoTopicCreation && version < 4) throw UnsupportedVersionException(
                 "MetadataRequest versions older than 4 don't support the " +
                         "allowAutoTopicCreation field"
             )
 
-            if (data.topics() != null) {
-                data.topics().forEach { topic ->
-                    if (topic.name() == null && version < 12) throw UnsupportedVersionException(
+            if (data.topics != null) {
+                data.topics.forEach { topic ->
+                    if (topic.name == null && version < 12) throw UnsupportedVersionException(
                         "MetadataRequest version $version does not support null topic names."
                     )
-                    if (Uuid.ZERO_UUID != topic.topicId() && version < 12)
+                    if (Uuid.ZERO_UUID != topic.topicId && version < 12)
                         throw UnsupportedVersionException(
-                        "MetadataRequest version $version does not support non-zero topic IDs."
-                    )
+                            "MetadataRequest version $version does not support non-zero topic IDs."
+                        )
                 }
             }
 

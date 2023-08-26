@@ -40,9 +40,9 @@ class ElectLeadersRequest private constructor(
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse {
         val (error, message) = ApiError.fromThrowable(e)
 
-        val electionResults = data.topicPartitions().map { topic ->
+        val electionResults = data.topicPartitions.map { topic ->
             val electionResult = ReplicaElectionResult()
-            electionResult.setTopic(topic.topic())
+            electionResult.setTopic(topic.topic)
 
             for (partitionId in topic.partitions) {
                 val partitionResult = PartitionResult()

@@ -40,7 +40,7 @@ class AlterReplicaLogDirsResponse(
 
     override fun data(): AlterReplicaLogDirsResponseData = data
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
@@ -48,9 +48,9 @@ class AlterReplicaLogDirsResponse(
 
     override fun errorCounts(): Map<Errors, Int> {
         val errorCounts = mutableMapOf<Errors, Int>()
-        data.results().forEach { topicResult ->
-            topicResult.partitions().forEach { partitionResult ->
-                updateErrorCounts(errorCounts, Errors.forCode(partitionResult.errorCode()))
+        data.results.forEach { topicResult ->
+            topicResult.partitions.forEach { partitionResult ->
+                updateErrorCounts(errorCounts, Errors.forCode(partitionResult.errorCode))
             }
         }
 

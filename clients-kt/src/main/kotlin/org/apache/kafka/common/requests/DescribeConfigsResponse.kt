@@ -37,12 +37,12 @@ class DescribeConfigsResponse(
         version: Short
     ) : this(data = data) {
         if (version.toInt() == 0) {
-            for (result in data.results()) {
-                for (config in result.configs()) {
+            for (result in data.results) {
+                for (config in result.configs) {
                     if (config.isDefault) config.setConfigSource(ConfigSource.DEFAULT_CONFIG.id)
-                    else if (result.resourceType() == ConfigResource.Type.BROKER.id)
+                    else if (result.resourceType == ConfigResource.Type.BROKER.id)
                         config.setConfigSource(ConfigSource.STATIC_BROKER_CONFIG.id)
-                    else if (result.resourceType() == ConfigResource.Type.TOPIC.id)
+                    else if (result.resourceType == ConfigResource.Type.TOPIC.id)
                         config.setConfigSource(ConfigSource.TOPIC_CONFIG.id)
                     else config.setConfigSource(ConfigSource.UNKNOWN.id)
                 }
@@ -51,16 +51,16 @@ class DescribeConfigsResponse(
     }
 
     fun resultMap(): Map<ConfigResource, DescribeConfigsResponseData.DescribeConfigsResult> =
-        data().results().associateBy { configsResult ->
+        data().results.associateBy { configsResult ->
             ConfigResource(
-                ConfigResource.Type.forId(configsResult.resourceType()),
-                configsResult.resourceName()
+                ConfigResource.Type.forId(configsResult.resourceType),
+                configsResult.resourceName
             )
         }
 
     override fun data(): DescribeConfigsResponseData = data
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
@@ -69,8 +69,8 @@ class DescribeConfigsResponse(
     override fun errorCounts(): Map<Errors, Int> {
         val errorCounts = mutableMapOf<Errors, Int>()
 
-        data.results().forEach { response ->
-            updateErrorCounts(errorCounts, Errors.forCode(response.errorCode()))
+        data.results.forEach { response ->
+            updateErrorCounts(errorCounts, Errors.forCode(response.errorCode))
         }
 
         return errorCounts
@@ -190,10 +190,10 @@ class DescribeConfigsResponse(
         fun source(): AdminConfigSource = source
 
         companion object {
-            
+
             fun forId(id: Byte): ConfigSource {
                 require(id >= 0) { "id should be positive, id: $id" }
-                
+
                 return if (id >= values().size) UNKNOWN
                 else values()[id.toInt()]
             }
@@ -219,7 +219,7 @@ class DescribeConfigsResponse(
             message = "User property instead",
             replaceWith = ReplaceWith("id"),
         )
-        fun id(): Byte  = id
+        fun id(): Byte = id
 
         @Deprecated(
             message = "User property instead",

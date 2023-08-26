@@ -39,10 +39,10 @@ class CreateTopicsRequest(
         if (version >= 2) response.setThrottleTimeMs(throttleTimeMs)
         val apiError = ApiError.fromThrowable(e)
 
-        response.topics().addAll(
-            data.topics().map { topic ->
+        response.topics.addAll(
+            data.topics.map { topic ->
                 CreatableTopicResult()
-                    .setName(topic.name())
+                    .setName(topic.name)
                     .setErrorCode(apiError.error.code)
                     .setErrorMessage(apiError.message)
             }
@@ -56,17 +56,17 @@ class CreateTopicsRequest(
     ) : AbstractRequest.Builder<CreateTopicsRequest>(ApiKeys.CREATE_TOPICS) {
 
         override fun build(version: Short): CreateTopicsRequest {
-            if (data.validateOnly() && version.toInt() == 0) throw UnsupportedVersionException(
+            if (data.validateOnly && version.toInt() == 0) throw UnsupportedVersionException(
                 "validateOnly is not supported in version 0 of CreateTopicsRequest"
             )
 
-            val topicsWithDefaults = data.topics()
-                .filter { topic -> topic.assignments().isEmpty() }
+            val topicsWithDefaults = data.topics
+                .filter { topic -> topic.assignments.isEmpty() }
                 .filter { topic ->
-                    topic.numPartitions() == NO_NUM_PARTITIONS
-                            || topic.replicationFactor() == NO_REPLICATION_FACTOR
+                    topic.numPartitions == NO_NUM_PARTITIONS
+                            || topic.replicationFactor == NO_REPLICATION_FACTOR
                 }
-                .map { obj: CreatableTopic -> obj.name() }
+                .map { obj: CreatableTopic -> obj.name }
 
             if (topicsWithDefaults.isNotEmpty() && version < 4) throw UnsupportedVersionException(
                 "Creating topics with default partitions/replication factor are only " +

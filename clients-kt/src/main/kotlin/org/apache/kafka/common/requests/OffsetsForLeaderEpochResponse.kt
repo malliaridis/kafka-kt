@@ -50,15 +50,15 @@ class OffsetsForLeaderEpochResponse(
 
     override fun errorCounts(): Map<Errors, Int> {
         val errorCounts = mutableMapOf<Errors, Int>()
-        data.topics().forEach { topic: OffsetForLeaderTopicResult ->
-            topic.partitions().forEach { partition ->
-                updateErrorCounts(errorCounts, Errors.forCode(partition.errorCode()))
+        data.topics.forEach { topic: OffsetForLeaderTopicResult ->
+            topic.partitions.forEach { partition ->
+                updateErrorCounts(errorCounts, Errors.forCode(partition.errorCode))
             }
         }
         return errorCounts
     }
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)

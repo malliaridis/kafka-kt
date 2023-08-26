@@ -44,10 +44,10 @@ class LeaderAndIsrRequest internal constructor(
     }
 
     private fun normalize() {
-        if (version >= 2) for (topicState in data.topicStates())
-            for (partitionState in topicState.partitionStates())
-                // Set the topic name so that we can always present the ungrouped view to callers
-                partitionState.setTopicName(topicState.topicName())
+        if (version >= 2) for (topicState in data.topicStates)
+            for (partitionState in topicState.partitionStates)
+            // Set the topic name so that we can always present the ungrouped view to callers
+                partitionState.setTopicName(topicState.topicName)
     }
 
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): LeaderAndIsrResponse {
@@ -57,21 +57,21 @@ class LeaderAndIsrRequest internal constructor(
         if (version < 5) {
             val partitions = partitionStates().map { partition ->
                 LeaderAndIsrPartitionError()
-                    .setTopicName(partition.topicName())
-                    .setPartitionIndex(partition.partitionIndex())
+                    .setTopicName(partition.topicName)
+                    .setPartitionIndex(partition.partitionIndex)
                     .setErrorCode(error.code)
             }
             responseData.setPartitionErrors(partitions)
-        } else for (topicState in data.topicStates()) {
-            val partitions = topicState.partitionStates().map { partition ->
+        } else for (topicState in data.topicStates) {
+            val partitions = topicState.partitionStates.map { partition ->
                 LeaderAndIsrPartitionError()
-                    .setPartitionIndex(partition.partitionIndex())
+                    .setPartitionIndex(partition.partitionIndex)
                     .setErrorCode(error.code)
             }
 
-            responseData.topics().add(
+            responseData.topics.add(
                 LeaderAndIsrTopicError()
-                    .setTopicId(topicState.topicId())
+                    .setTopicId(topicState.topicId)
                     .setPartitionErrors(partitions)
             )
         }
@@ -79,29 +79,29 @@ class LeaderAndIsrRequest internal constructor(
         return LeaderAndIsrResponse(responseData, version)
     }
 
-    override fun controllerId(): Int = data.controllerId()
+    override fun controllerId(): Int = data.controllerId
 
     override val isKRaftController: Boolean
         get() = data.isKRaftController
 
-    override fun controllerEpoch(): Int = data.controllerEpoch()
+    override fun controllerEpoch(): Int = data.controllerEpoch
 
-    override fun brokerEpoch(): Long = data.brokerEpoch()
+    override fun brokerEpoch(): Long = data.brokerEpoch
 
     fun partitionStates(): Iterable<LeaderAndIsrPartitionState> {
         return if (version >= 2) Iterable {
-            FlattenedIterator(data.topicStates().iterator()) { topicState ->
-                topicState.partitionStates().iterator()
+            FlattenedIterator(data.topicStates.iterator()) { topicState ->
+                topicState.partitionStates.iterator()
             }
-        } else data.ungroupedPartitionStates()
+        } else data.ungroupedPartitionStates
     }
 
-    fun topicIds(): Map<String, Uuid> = data.topicStates().associateBy(
-        keySelector = { obj: LeaderAndIsrTopicState -> obj.topicName() },
-        valueTransform = { obj: LeaderAndIsrTopicState -> obj.topicId() },
+    fun topicIds(): Map<String, Uuid> = data.topicStates.associateBy(
+        keySelector = { obj: LeaderAndIsrTopicState -> obj.topicName },
+        valueTransform = { obj: LeaderAndIsrTopicState -> obj.topicId },
     )
 
-    fun liveLeaders(): List<LeaderAndIsrLiveLeader> = data.liveLeaders()
+    fun liveLeaders(): List<LeaderAndIsrLiveLeader> = data.liveLeaders
 
     override fun data(): LeaderAndIsrRequestData = data
 
@@ -147,13 +147,13 @@ class LeaderAndIsrRequest internal constructor(
 
         override fun toString(): String {
             return "(type=LeaderAndIsRequest" +
-                ", controllerId=$controllerId" +
-                ", controllerEpoch=$controllerEpoch" +
-                ", brokerEpoch=$brokerEpoch" +
-                ", partitionStates=$partitionStates" +
-                ", topicIds=$topicIds" +
-                ", liveLeaders=(${liveLeaders.joinToString(", ")})" +
-                ")"
+                    ", controllerId=$controllerId" +
+                    ", controllerEpoch=$controllerEpoch" +
+                    ", brokerEpoch=$brokerEpoch" +
+                    ", partitionStates=$partitionStates" +
+                    ", topicIds=$topicIds" +
+                    ", liveLeaders=(${liveLeaders.joinToString(", ")})" +
+                    ")"
         }
 
         companion object {
@@ -166,10 +166,10 @@ class LeaderAndIsrRequest internal constructor(
                 // We don't null out the topic name in LeaderAndIsrRequestPartition since it's ignored by
                 // the generated code if version >= 2
                 for (partition in partitionStates) {
-                    val topicState = topicStates.computeIfAbsent(partition.topicName()) {
+                    val topicState = topicStates.computeIfAbsent(partition.topicName) {
                         LeaderAndIsrTopicState()
-                            .setTopicName(partition.topicName())
-                            .setTopicId(topicIds[partition.topicName()] ?: Uuid.ZERO_UUID)
+                            .setTopicName(partition.topicName)
+                            .setTopicId(topicIds[partition.topicName] ?: Uuid.ZERO_UUID)
                     }
                     topicState.partitionStates += partition
                 }

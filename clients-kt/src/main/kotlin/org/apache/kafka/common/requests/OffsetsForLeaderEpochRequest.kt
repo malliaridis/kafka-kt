@@ -37,23 +37,23 @@ class OffsetsForLeaderEpochRequest(
 
     override fun data(): OffsetForLeaderEpochRequestData = data
 
-    fun replicaId(): Int = data.replicaId()
+    fun replicaId(): Int = data.replicaId
 
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse {
         val error = Errors.forException(e)
         val responseData = OffsetForLeaderEpochResponseData()
 
-        data.topics().forEach { topic: OffsetForLeaderTopic ->
-            val topicData = OffsetForLeaderTopicResult().setTopic(topic.topic())
+        data.topics.forEach { topic: OffsetForLeaderTopic ->
+            val topicData = OffsetForLeaderTopicResult().setTopic(topic.topic)
 
-            topic.partitions().forEach { partition ->
+            topic.partitions.forEach { partition ->
                 topicData.partitions += OffsetForLeaderEpochResponseData.EpochEndOffset()
-                    .setPartition(partition.partition())
+                    .setPartition(partition.partition)
                     .setErrorCode(error.code)
                     .setLeaderEpoch(OffsetsForLeaderEpochResponse.UNDEFINED_EPOCH)
                     .setEndOffset(OffsetsForLeaderEpochResponse.UNDEFINED_EPOCH_OFFSET)
             }
-            responseData.topics().add(topicData)
+            responseData.topics.add(topicData)
         }
         return OffsetsForLeaderEpochResponse(responseData)
     }

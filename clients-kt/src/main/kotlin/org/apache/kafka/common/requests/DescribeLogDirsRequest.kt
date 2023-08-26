@@ -40,7 +40,7 @@ class DescribeLogDirsRequest(
     }
 
     val isAllTopicPartitions: Boolean
-        get() = data.topics() == null
+        get() = data.topics == null
 
     class Builder(
         private val data: DescribeLogDirsRequestData,

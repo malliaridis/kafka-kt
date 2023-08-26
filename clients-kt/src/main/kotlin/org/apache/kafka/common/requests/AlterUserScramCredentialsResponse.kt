@@ -31,14 +31,14 @@ class AlterUserScramCredentialsResponse(
 
     override fun shouldClientThrottle(version: Short): Boolean = true
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
     }
 
     override fun errorCounts(): Map<Errors, Int> =
-        errorCounts(data.results().map { Errors.forCode(it.errorCode()) })
+        errorCounts(data.results.map { Errors.forCode(it.errorCode) })
 
     companion object {
 

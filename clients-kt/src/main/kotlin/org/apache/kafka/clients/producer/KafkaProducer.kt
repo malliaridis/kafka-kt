@@ -1706,12 +1706,6 @@ open class KafkaProducer<K, V> : Producer<K, V> {
             }
         }
 
-        @Deprecated(
-            message = "User property instead",
-            replaceWith = ReplaceWith("partition"),
-        )
-        fun getPartition(): Int = partition
-
         fun topicPartition(): TopicPartition? {
             if (topicPartition == null && topic != null) {
                 topicPartition =

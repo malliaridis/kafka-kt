@@ -51,17 +51,17 @@ class OffsetDeleteResponse(
 
     override fun errorCounts(): Map<Errors, Int> {
         val counts = mutableMapOf<Errors, Int>()
-        updateErrorCounts(counts, Errors.forCode(data.errorCode()))
+        updateErrorCounts(counts, Errors.forCode(data.errorCode))
 
-        data.topics().forEach { topic ->
-            topic.partitions().forEach { partition ->
-                updateErrorCounts(counts, Errors.forCode(partition.errorCode()))
+        data.topics.forEach { topic ->
+            topic.partitions.forEach { partition ->
+                updateErrorCounts(counts, Errors.forCode(partition.errorCode))
             }
         }
         return counts
     }
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)

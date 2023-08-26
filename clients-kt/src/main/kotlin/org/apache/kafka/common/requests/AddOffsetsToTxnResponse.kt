@@ -40,9 +40,9 @@ class AddOffsetsToTxnResponse(
     private val data: AddOffsetsToTxnResponseData,
 ) : AbstractResponse(ApiKeys.ADD_OFFSETS_TO_TXN) {
 
-    override fun errorCounts(): Map<Errors, Int> = errorCounts(Errors.forCode(data.errorCode()))
+    override fun errorCounts(): Map<Errors, Int> = errorCounts(Errors.forCode(data.errorCode))
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)

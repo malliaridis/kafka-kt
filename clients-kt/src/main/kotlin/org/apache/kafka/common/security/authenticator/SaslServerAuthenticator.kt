@@ -499,7 +499,7 @@ open class SaslServerAuthenticator(
                 val saslServer = this.saslServer!!
 
                 val responseToken = saslServer.evaluateResponse(
-                    saslAuthenticateRequest.data().authBytes().copyOf()
+                    saslAuthenticateRequest.data().authBytes.copyOf()
                 )
 
                 if (reauthInfo.reauthenticating() && saslServer.isComplete)
@@ -645,7 +645,7 @@ open class SaslServerAuthenticator(
         context: RequestContext,
         handshakeRequest: SaslHandshakeRequest
     ): String {
-        val clientMechanism = handshakeRequest.data().mechanism()
+        val clientMechanism = handshakeRequest.data().mechanism
         val version = context.header.apiVersion
         if (version >= 1) enableKafkaSaslAuthenticateHeaders(true)
         return if (enabledMechanisms.contains(clientMechanism)) {
@@ -692,8 +692,8 @@ open class SaslServerAuthenticator(
         ) else {
             metadataRegistry.registerClientInformation(
                 ClientInformation(
-                    apiVersionsRequest.data().clientSoftwareName(),
-                    apiVersionsRequest.data().clientSoftwareVersion()
+                    apiVersionsRequest.data().clientSoftwareName,
+                    apiVersionsRequest.data().clientSoftwareVersion
                 )
             )
             sendKafkaResponse(context, apiVersionSupplier.get())

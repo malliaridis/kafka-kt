@@ -36,22 +36,22 @@ class AlterPartitionReassignmentsRequest private constructor(
 
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse {
         val (error, message) = ApiError.fromThrowable(e)
-        val topicResponses = data.topics().map { topic ->
-            val partitionResponses = topic.partitions().map { partition ->
+        val topicResponses = data.topics.map { topic ->
+            val partitionResponses = topic.partitions.map { partition ->
                 ReassignablePartitionResponse()
-                    .setPartitionIndex(partition.partitionIndex())
+                    .setPartitionIndex(partition.partitionIndex)
                     .setErrorCode(error.code)
                     .setErrorMessage(message)
             }
 
             ReassignableTopicResponse()
-                .setName(topic.name())
+                .setName(topic.name)
                 .setPartitions(partitionResponses)
         }
 
         val responseData = AlterPartitionReassignmentsResponseData()
             .setResponses(topicResponses)
-            .setErrorCode(error.code())
+            .setErrorCode(error.code)
             .setErrorMessage(message)
             .setThrottleTimeMs(throttleTimeMs)
 

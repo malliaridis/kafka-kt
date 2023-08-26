@@ -38,15 +38,15 @@ class TxnOffsetCommitRequest(
 ) : AbstractRequest(ApiKeys.TXN_OFFSET_COMMIT, version) {
 
     fun offsets(): Map<TopicPartition, CommittedOffset> {
-        val topics = data.topics()
+        val topics = data.topics
         val offsetMap: MutableMap<TopicPartition, CommittedOffset> = HashMap()
         for (topic: TxnOffsetCommitRequestTopic in topics) {
-            for (partition in topic.partitions()) {
+            for (partition in topic.partitions) {
                 offsetMap[TopicPartition(topic.name, partition.partitionIndex)] =
                     CommittedOffset(
                         offset = partition.committedOffset,
                         metadata = partition.committedMetadata,
-                        leaderEpoch = RequestUtils.getLeaderEpoch(partition.committedLeaderEpoch()),
+                        leaderEpoch = RequestUtils.getLeaderEpoch(partition.committedLeaderEpoch),
                     )
             }
         }
@@ -59,7 +59,7 @@ class TxnOffsetCommitRequest(
 
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): TxnOffsetCommitResponse {
         val responseTopicData = getErrorResponseTopics(
-            data.topics(), Errors.forException(e)
+            data.topics, Errors.forException(e)
         )
         return TxnOffsetCommitResponse(
             TxnOffsetCommitResponseData()
@@ -118,9 +118,9 @@ class TxnOffsetCommitRequest(
         }
 
         private fun groupMetadataSet(): Boolean {
-            return data.memberId() != JoinGroupRequest.UNKNOWN_MEMBER_ID || (
-                    data.generationId() != JoinGroupRequest.UNKNOWN_GENERATION_ID) || (
-                    data.groupInstanceId() != null)
+            return data.memberId != JoinGroupRequest.UNKNOWN_MEMBER_ID || (
+                    data.generationId != JoinGroupRequest.UNKNOWN_GENERATION_ID) || (
+                    data.groupInstanceId != null)
         }
 
         override fun toString(): String = data.toString()
@@ -164,16 +164,16 @@ class TxnOffsetCommitRequest(
             for (entry: TxnOffsetCommitRequestTopic in requestTopics) {
                 val responsePartitions = mutableListOf<TxnOffsetCommitResponsePartition>()
 
-                for (requestPartition: TxnOffsetCommitRequestPartition in entry.partitions())
+                for (requestPartition: TxnOffsetCommitRequestPartition in entry.partitions)
                     responsePartitions.add(
                         TxnOffsetCommitResponsePartition()
-                            .setPartitionIndex(requestPartition.partitionIndex())
+                            .setPartitionIndex(requestPartition.partitionIndex)
                             .setErrorCode(e.code)
                     )
 
                 responseTopicData.add(
                     TxnOffsetCommitResponseTopic()
-                        .setName(entry.name())
+                        .setName(entry.name)
                         .setPartitions(responsePartitions)
                 )
             }

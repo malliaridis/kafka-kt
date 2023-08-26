@@ -48,16 +48,16 @@ class DeleteAclsResponse(
 
     override fun data(): DeleteAclsResponseData = data
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
     }
 
-    fun filterResults(): List<DeleteAclsFilterResult> = data.filterResults()
+    fun filterResults(): List<DeleteAclsFilterResult> = data.filterResults
 
     override fun errorCounts(): Map<Errors, Int> =
-        errorCounts(filterResults().map { Errors.forCode(it.errorCode()) })
+        errorCounts(filterResults().map { Errors.forCode(it.errorCode) })
 
     override fun toString(): String = data.toString()
 
@@ -66,7 +66,7 @@ class DeleteAclsResponse(
     private fun validate(version: Short) {
         if (version.toInt() == 0) {
             val unsupported = filterResults().flatMap { it.matchingAcls }
-                .any { matchingAcl -> matchingAcl.patternType() != PatternType.LITERAL.code }
+                .any { matchingAcl -> matchingAcl.patternType != PatternType.LITERAL.code }
             if (unsupported) throw UnsupportedVersionException(
                 "Version 0 only supports literal resource pattern types"
             )
@@ -75,10 +75,10 @@ class DeleteAclsResponse(
         val unknown = filterResults()
             .flatMap { it.matchingAcls }
             .any { matchingAcl ->
-                matchingAcl.patternType() == PatternType.UNKNOWN.code
-                        || matchingAcl.resourceType() == ResourceType.UNKNOWN.code
-                        || matchingAcl.permissionType() == AclPermissionType.UNKNOWN.code
-                        || matchingAcl.operation() == AclOperation.UNKNOWN.code
+                matchingAcl.patternType == PatternType.UNKNOWN.code
+                        || matchingAcl.resourceType == ResourceType.UNKNOWN.code
+                        || matchingAcl.permissionType == AclPermissionType.UNKNOWN.code
+                        || matchingAcl.operation == AclOperation.UNKNOWN.code
             }
 
         require(!unknown) { "DeleteAclsMatchingAcls contain UNKNOWN elements" }
@@ -130,15 +130,15 @@ class DeleteAclsResponse(
 
         fun aclBinding(matchingAcl: DeleteAclsMatchingAcl): AclBinding {
             val resourcePattern = ResourcePattern(
-                resourceType = ResourceType.fromCode(matchingAcl.resourceType()),
-                name = matchingAcl.resourceName(),
-                patternType = PatternType.fromCode(matchingAcl.patternType()),
+                resourceType = ResourceType.fromCode(matchingAcl.resourceType),
+                name = matchingAcl.resourceName,
+                patternType = PatternType.fromCode(matchingAcl.patternType),
             )
             val accessControlEntry = AccessControlEntry(
-                principal = matchingAcl.principal(),
-                host = matchingAcl.host(),
-                operation = AclOperation.fromCode(matchingAcl.operation()),
-                permissionType = AclPermissionType.fromCode(matchingAcl.permissionType()),
+                principal = matchingAcl.principal,
+                host = matchingAcl.host,
+                operation = AclOperation.fromCode(matchingAcl.operation),
+                permissionType = AclPermissionType.fromCode(matchingAcl.permissionType),
             )
             return AclBinding(resourcePattern, accessControlEntry)
         }

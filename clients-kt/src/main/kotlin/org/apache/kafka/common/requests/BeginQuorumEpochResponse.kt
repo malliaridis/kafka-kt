@@ -42,11 +42,11 @@ class BeginQuorumEpochResponse(
 ) : AbstractResponse(ApiKeys.BEGIN_QUORUM_EPOCH) {
 
     override fun errorCounts(): Map<Errors, Int> {
-        val errors = mutableMapOf(Errors.forCode(data.errorCode()) to 1)
+        val errors = mutableMapOf(Errors.forCode(data.errorCode) to 1)
 
-        for (topicResponse in data.topics())
-            for (partitionResponse in topicResponse.partitions())
-                errors.compute(Errors.forCode(partitionResponse.errorCode())) { _, count ->
+        for (topicResponse in data.topics)
+            for (partitionResponse in topicResponse.partitions)
+                errors.compute(Errors.forCode(partitionResponse.errorCode)) { _, count ->
                     if (count == null) 1 else count + 1
                 }
 

@@ -29,14 +29,14 @@ class BrokerRegistrationResponse(
 
     override fun data(): BrokerRegistrationResponseData = data
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
     }
 
     override fun errorCounts(): Map<Errors, Int> =
-        mutableMapOf(Errors.forCode(data.errorCode()) to 1)
+        mutableMapOf(Errors.forCode(data.errorCode) to 1)
 
     override fun shouldClientThrottle(version: Short): Boolean = true
 

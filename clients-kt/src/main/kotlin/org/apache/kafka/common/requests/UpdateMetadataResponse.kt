@@ -28,7 +28,7 @@ class UpdateMetadataResponse(
     private val data: UpdateMetadataResponseData,
 ) : AbstractResponse(ApiKeys.UPDATE_METADATA) {
 
-    fun error(): Errors = Errors.forCode(data.errorCode())
+    fun error(): Errors = Errors.forCode(data.errorCode)
 
     override fun errorCounts(): Map<Errors, Int> = errorCounts(error())
 

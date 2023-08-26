@@ -91,10 +91,10 @@ class AlterConsumerGroupOffsetsHandler(
         val groupsToUnmap: MutableSet<CoordinatorKey> = HashSet()
         val groupsToRetry: MutableSet<CoordinatorKey> = HashSet()
         val partitionResults: MutableMap<TopicPartition, Errors> = HashMap()
-        for (topic: OffsetCommitResponseTopic in response.data().topics()) {
-            for (partition: OffsetCommitResponsePartition in topic.partitions()) {
-                val topicPartition = TopicPartition(topic.name(), partition.partitionIndex())
-                val error = Errors.forCode(partition.errorCode())
+        for (topic: OffsetCommitResponseTopic in response.data().topics) {
+            for (partition: OffsetCommitResponsePartition in topic.partitions) {
+                val topicPartition = TopicPartition(topic.name, partition.partitionIndex)
+                val error = Errors.forCode(partition.errorCode)
                 if (error !== Errors.NONE) {
                     handleError(
                         groupId = groupId,

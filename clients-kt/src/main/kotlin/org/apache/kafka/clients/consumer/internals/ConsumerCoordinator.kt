@@ -633,12 +633,12 @@ class ConsumerCoordinator(
         val ownedPartitions: MutableMap<String, List<TopicPartition>> = HashMap()
         for (memberSubscription: JoinGroupResponseMember in allMemberMetadata) {
             val subscription = ConsumerProtocol.deserializeSubscription(
-                ByteBuffer.wrap(memberSubscription.metadata())
+                ByteBuffer.wrap(memberSubscription.metadata)
             )
-            subscription.groupInstanceId = memberSubscription.groupInstanceId()
-            subscriptions[memberSubscription.memberId()] = subscription
+            subscription.groupInstanceId = memberSubscription.groupInstanceId
+            subscriptions[memberSubscription.memberId] = subscription
             allSubscribedTopics.addAll(subscription.topics)
-            ownedPartitions[memberSubscription.memberId()] = subscription.ownedPartitions
+            ownedPartitions[memberSubscription.memberId] = subscription.ownedPartitions
         }
 
         // the leader will begin watching for changes to any of the topics the group is interested
@@ -1341,12 +1341,12 @@ class ConsumerCoordinator(
             sensors.commitSensor.record(this.response!!.requestLatencyMs.toDouble())
             val unauthorizedTopics = mutableSetOf<String>()
 
-            for (topic in response.data().topics()) {
-                for (partition in topic.partitions()) {
-                    val tp = TopicPartition(topic.name(), partition.partitionIndex())
+            for (topic in response.data().topics) {
+                for (partition in topic.partitions) {
+                    val tp = TopicPartition(topic.name, partition.partitionIndex)
                     val offsetAndMetadata = offsets[tp]
                     val offset = offsetAndMetadata!!.offset
-                    val error = Errors.forCode(partition.errorCode())
+                    val error = Errors.forCode(partition.errorCode)
                     if (error === Errors.NONE)
                         log.debug("Committed offset {} for partition {}", offset, tp)
                     else {

@@ -26,16 +26,16 @@ import org.apache.kafka.common.protocol.Errors
 class SyncGroupResponse(private val data: SyncGroupResponseData) :
     AbstractResponse(ApiKeys.SYNC_GROUP) {
     override fun throttleTimeMs(): Int {
-        return data.throttleTimeMs()
+        return data.throttleTimeMs
     }
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
     }
 
-    fun error(): Errors = Errors.forCode(data.errorCode())
+    fun error(): Errors = Errors.forCode(data.errorCode)
 
-    override fun errorCounts(): Map<Errors, Int> = errorCounts(Errors.forCode(data.errorCode()))
+    override fun errorCounts(): Map<Errors, Int> = errorCounts(Errors.forCode(data.errorCode))
 
     override fun data(): SyncGroupResponseData = data
 

@@ -30,16 +30,17 @@ class EnvelopeResponse(
     constructor(
         responseData: ByteBuffer? = null,
         error: Errors,
-    ) : this(data = EnvelopeResponseData()
-        .setResponseData(responseData)
-        .setErrorCode(error.code),
+    ) : this(
+        data = EnvelopeResponseData()
+            .setResponseData(responseData)
+            .setErrorCode(error.code),
     )
 
-    fun responseData(): ByteBuffer? = data.responseData()
+    fun responseData(): ByteBuffer? = data.responseData
 
     override fun errorCounts(): Map<Errors, Int> = errorCounts(error())
 
-    fun error(): Errors = Errors.forCode(data.errorCode())
+    fun error(): Errors = Errors.forCode(data.errorCode)
 
     override fun data(): EnvelopeResponseData = data
 

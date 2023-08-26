@@ -74,11 +74,11 @@ data class ResponseHeader(
         replaceWith = ReplaceWith("correlationId"),
     )
     fun correlationId(): Int {
-        return data.correlationId()
+        return data.correlationId
     }
 
     val correlationId: Int
-        get() = data.correlationId()
+        get() = data.correlationId
 
     @Deprecated(
         message = "Use property instead.",
@@ -103,7 +103,7 @@ data class ResponseHeader(
 
     override fun toString(): String {
         return "ResponseHeader(" +
-                "correlationId=${data.correlationId()}" +
+                "correlationId=${data.correlationId}" +
                 ", headerVersion=$headerVersion" +
                 ")"
     }

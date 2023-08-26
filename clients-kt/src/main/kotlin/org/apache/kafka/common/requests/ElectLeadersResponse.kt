@@ -28,7 +28,7 @@ class ElectLeadersResponse(
 
     override fun data(): ElectLeadersResponseData = data
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
@@ -36,11 +36,11 @@ class ElectLeadersResponse(
 
     override fun errorCounts(): Map<Errors, Int> {
         val counts = HashMap<Errors, Int>()
-        updateErrorCounts(counts, Errors.forCode(data.errorCode()))
+        updateErrorCounts(counts, Errors.forCode(data.errorCode))
 
-        data.replicaElectionResults().forEach { result ->
-            result.partitionResult().forEach { partitionResult ->
-                updateErrorCounts(counts, Errors.forCode(partitionResult.errorCode()))
+        data.replicaElectionResults.forEach { result ->
+            result.partitionResult.forEach { partitionResult ->
+                updateErrorCounts(counts, Errors.forCode(partitionResult.errorCode))
             }
         }
 
@@ -57,11 +57,11 @@ class ElectLeadersResponse(
         fun electLeadersResult(data: ElectLeadersResponseData): Map<TopicPartition, Throwable?> {
             val map: MutableMap<TopicPartition, Throwable?> = HashMap()
 
-            data.replicaElectionResults().forEach { topicResult ->
-                topicResult.partitionResult().forEach { partitionResult ->
-                    val error = Errors.forCode(partitionResult.errorCode())
-                    map[TopicPartition(topicResult.topic(), partitionResult.partitionId())] =
-                        if (error != Errors.NONE) error.exception(partitionResult.errorMessage())
+            data.replicaElectionResults.forEach { topicResult ->
+                topicResult.partitionResult.forEach { partitionResult ->
+                    val error = Errors.forCode(partitionResult.errorCode)
+                    map[TopicPartition(topicResult.topic, partitionResult.partitionId)] =
+                        if (error != Errors.NONE) error.exception(partitionResult.errorMessage)
                         else null
                 }
             }

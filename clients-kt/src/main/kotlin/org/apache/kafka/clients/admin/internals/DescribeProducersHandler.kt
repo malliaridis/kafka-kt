@@ -160,37 +160,37 @@ class DescribeProducersHandler(
         val failed: MutableMap<TopicPartition, Throwable> = HashMap()
         val unmapped: MutableList<TopicPartition> = ArrayList()
 
-        response.data().topics().forEach { topicResponse ->
+        response.data().topics.forEach { topicResponse ->
 
-            topicResponse.partitions().forEach innerLoop@{ partitionResponse ->
+            topicResponse.partitions.forEach innerLoop@{ partitionResponse ->
 
                 val topicPartition = TopicPartition(
-                    topic = topicResponse.name(),
-                    partition = partitionResponse.partitionIndex(),
+                    topic = topicResponse.name,
+                    partition = partitionResponse.partitionIndex,
                 )
 
-                val error = Errors.forCode(partitionResponse.errorCode())
+                val error = Errors.forCode(partitionResponse.errorCode)
                 if (error !== Errors.NONE) {
-                    val apiError = ApiError(error, partitionResponse.errorMessage())
+                    val apiError = ApiError(error, partitionResponse.errorMessage)
                     handlePartitionError(topicPartition, apiError, failed, unmapped)
                     return@innerLoop
                 }
 
-                val activeProducers = partitionResponse.activeProducers().map { activeProducer ->
+                val activeProducers = partitionResponse.activeProducers.map { activeProducer ->
 
                     val currentTransactionFirstOffset: Long? =
-                        if (activeProducer.currentTxnStartOffset() < 0) null
-                        else activeProducer.currentTxnStartOffset()
+                        if (activeProducer.currentTxnStartOffset < 0) null
+                        else activeProducer.currentTxnStartOffset
 
                     val coordinatorEpoch: Int? =
-                        if (activeProducer.coordinatorEpoch() < 0) null
-                        else activeProducer.coordinatorEpoch()
+                        if (activeProducer.coordinatorEpoch < 0) null
+                        else activeProducer.coordinatorEpoch
 
                     ProducerState(
-                        producerId = activeProducer.producerId(),
-                        producerEpoch = activeProducer.producerEpoch(),
-                        lastSequence = activeProducer.lastSequence(),
-                        lastTimestamp = activeProducer.lastTimestamp(),
+                        producerId = activeProducer.producerId,
+                        producerEpoch = activeProducer.producerEpoch,
+                        lastSequence = activeProducer.lastSequence,
+                        lastTimestamp = activeProducer.lastTimestamp,
                         coordinatorEpoch = coordinatorEpoch,
                         currentTransactionStartOffset = currentTransactionFirstOffset
                     )

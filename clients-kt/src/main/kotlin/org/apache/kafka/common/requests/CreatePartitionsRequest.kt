@@ -38,7 +38,7 @@ class CreatePartitionsRequest internal constructor(
 
         response.results += data.topics.map { topic ->
             CreatePartitionsTopicResult()
-                .setName(topic.name())
+                .setName(topic.name)
                 .setErrorCode(error.code)
                 .setErrorMessage(message)
         }

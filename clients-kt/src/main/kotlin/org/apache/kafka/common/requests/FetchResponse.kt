@@ -79,7 +79,7 @@ class FetchResponse(private val data: FetchResponseData) : AbstractResponse(ApiK
 
     override fun data(): FetchResponseData = data
 
-    fun error(): Errors = Errors.forCode(data.errorCode())
+    fun error(): Errors = Errors.forCode(data.errorCode)
 
     fun responseData(
         topicNames: Map<Uuid, String>,
@@ -93,12 +93,12 @@ class FetchResponse(private val data: FetchResponseData) : AbstractResponse(ApiK
                     val responseDataTmp =
                         LinkedHashMap<TopicPartition, FetchResponseData.PartitionData>()
 
-                    data.responses().forEach { topicResponse ->
-                        val name: String? = if (version < 13) topicResponse.topic()
-                        else topicNames[topicResponse.topicId()]
+                    data.responses.forEach { topicResponse ->
+                        val name: String? = if (version < 13) topicResponse.topic
+                        else topicNames[topicResponse.topicId]
 
-                        if (name != null) topicResponse.partitions().forEach { partition ->
-                            responseDataTmp[TopicPartition(name, partition.partitionIndex())] =
+                        if (name != null) topicResponse.partitions.forEach { partition ->
+                            responseDataTmp[TopicPartition(name, partition.partitionIndex)] =
                                 partition
                         }
                     }
@@ -109,21 +109,21 @@ class FetchResponse(private val data: FetchResponseData) : AbstractResponse(ApiK
         return responseData!!
     }
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
     }
 
-    fun sessionId(): Int = data.sessionId()
+    fun sessionId(): Int = data.sessionId
 
     override fun errorCounts(): Map<Errors, Int> {
         val errorCounts = mutableMapOf<Errors, Int>()
         updateErrorCounts(errorCounts, error())
 
-        data.responses().forEach { topicResponse ->
-            topicResponse.partitions().forEach { partition ->
-                updateErrorCounts(errorCounts, Errors.forCode(partition.errorCode()))
+        data.responses.forEach { topicResponse ->
+            topicResponse.partitions.forEach { partition ->
+                updateErrorCounts(errorCounts, Errors.forCode(partition.errorCode))
             }
         }
 
@@ -132,7 +132,7 @@ class FetchResponse(private val data: FetchResponseData) : AbstractResponse(ApiK
 
     // Fetch versions 13 and above should have topic IDs for all topics.
     // Fetch versions < 13 should return the empty set.
-    fun topicIds(): Set<Uuid> = data.responses()
+    fun topicIds(): Set<Uuid> = data.responses
         .map { it.topicId }
         .filter { id -> id != Uuid.ZERO_UUID }
         .toSet()
@@ -174,18 +174,18 @@ class FetchResponse(private val data: FetchResponseData) : AbstractResponse(ApiK
         fun divergingEpoch(
             partitionResponse: FetchResponseData.PartitionData,
         ): FetchResponseData.EpochEndOffset? =
-            if (partitionResponse.divergingEpoch().epoch() < 0) null
-            else partitionResponse.divergingEpoch()
+            if (partitionResponse.divergingEpoch.epoch < 0) null
+            else partitionResponse.divergingEpoch
 
         fun isDivergingEpoch(partitionResponse: FetchResponseData.PartitionData): Boolean =
-            partitionResponse.divergingEpoch().epoch() >= 0
+            partitionResponse.divergingEpoch.epoch >= 0
 
         fun preferredReadReplica(partitionResponse: FetchResponseData.PartitionData): Int? =
-            if (partitionResponse.preferredReadReplica() == INVALID_PREFERRED_REPLICA_ID) null
-            else partitionResponse.preferredReadReplica()
+            if (partitionResponse.preferredReadReplica == INVALID_PREFERRED_REPLICA_ID) null
+            else partitionResponse.preferredReadReplica
 
         fun isPreferredReplica(partitionResponse: FetchResponseData.PartitionData): Boolean =
-            partitionResponse.preferredReadReplica() != INVALID_PREFERRED_REPLICA_ID
+            partitionResponse.preferredReadReplica != INVALID_PREFERRED_REPLICA_ID
 
         fun partitionResponse(
             topicIdPartition: TopicIdPartition,
@@ -211,13 +211,11 @@ class FetchResponse(private val data: FetchResponseData) : AbstractResponse(ApiK
          * @return Records or empty record if the records in PartitionData is null.
          */
         fun recordsOrFail(partition: FetchResponseData.PartitionData): Records {
-            if (partition.records() == null) return MemoryRecords.EMPTY
-            if (partition.records() is Records) return partition.records() as Records
-
-            throw ClassCastException(
+            if (partition.records == null) return MemoryRecords.EMPTY
+            return partition.records as? Records ?: throw ClassCastException(
                 "The record type is ${partition.records?.javaClass?.simpleName}, which is not a " +
-                    "subtype of ${Records::class.java.simpleName}. This method is only safe to " +
-                    "call if the `FetchResponse` was deserialized from bytes."
+                        "subtype of ${Records::class.java.simpleName}. This method is only safe to " +
+                        "call if the `FetchResponse` was deserialized from bytes."
             )
         }
 
@@ -251,9 +249,9 @@ class FetchResponse(private val data: FetchResponseData) : AbstractResponse(ApiK
             currentTopic: TopicIdPartition,
         ): Boolean {
             return if (previousTopic == null) false
-            else if (previousTopic.topicId() != Uuid.ZERO_UUID)
-                previousTopic.topicId() == currentTopic.topicId
-            else previousTopic.topic() == currentTopic.topicPartition.topic
+            else if (previousTopic.topicId != Uuid.ZERO_UUID)
+                previousTopic.topicId == currentTopic.topicId
+            else previousTopic.topic == currentTopic.topicPartition.topic
         }
 
         private fun toMessage(

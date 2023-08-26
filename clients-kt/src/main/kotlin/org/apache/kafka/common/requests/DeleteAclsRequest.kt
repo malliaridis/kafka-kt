@@ -45,8 +45,8 @@ class DeleteAclsRequest private constructor(
 
     private fun normalizeAndValidate() {
         if (version.toInt() == 0) {
-            for (filter: DeleteAclsFilter in data.filters()) {
-                val patternType = PatternType.fromCode(filter.patternTypeFilter())
+            for (filter: DeleteAclsFilter in data.filters) {
+                val patternType = PatternType.fromCode(filter.patternTypeFilter)
 
                 // On older brokers, no pattern types existed except LITERAL (effectively). So even
                 // though ANY is not directly supported on those brokers, we can get the same effect
@@ -60,24 +60,24 @@ class DeleteAclsRequest private constructor(
                 )
             }
         }
-        val unknown = data.filters().any { filter: DeleteAclsFilter ->
-            filter.patternTypeFilter() == PatternType.UNKNOWN.code
-                    || filter.resourceTypeFilter() == ResourceType.UNKNOWN.code
-                    || filter.operation() == AclOperation.UNKNOWN.code
-                    || filter.permissionType() == AclPermissionType.UNKNOWN.code
+        val unknown = data.filters.any { filter: DeleteAclsFilter ->
+            filter.patternTypeFilter == PatternType.UNKNOWN.code
+                    || filter.resourceTypeFilter == ResourceType.UNKNOWN.code
+                    || filter.operation == AclOperation.UNKNOWN.code
+                    || filter.permissionType == AclPermissionType.UNKNOWN.code
         }
-        require(!unknown) { "Filters contain UNKNOWN elements, filters: " + data.filters() }
+        require(!unknown) { "Filters contain UNKNOWN elements, filters: " + data.filters }
     }
 
     fun filters(): List<AclBindingFilter> =
-        data.filters().map { filter -> aclBindingFilter(filter) }
+        data.filters.map { filter -> aclBindingFilter(filter) }
 
     override fun data(): DeleteAclsRequestData = data
 
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse {
         val apiError = ApiError.fromThrowable(e)
         val filterResults = Collections.nCopies(
-            data.filters().size,
+            data.filters.size,
             DeleteAclsFilterResult()
                 .setErrorCode(apiError.error.code)
                 .setErrorMessage(apiError.message)
@@ -119,15 +119,15 @@ class DeleteAclsRequest private constructor(
 
         private fun aclBindingFilter(filter: DeleteAclsFilter): AclBindingFilter {
             val patternFilter = ResourcePatternFilter(
-                resourceType = ResourceType.fromCode(filter.resourceTypeFilter()),
-                name = filter.resourceNameFilter(),
-                patternType = PatternType.fromCode(filter.patternTypeFilter()),
+                resourceType = ResourceType.fromCode(filter.resourceTypeFilter),
+                name = filter.resourceNameFilter,
+                patternType = PatternType.fromCode(filter.patternTypeFilter),
             )
             val entryFilter = AccessControlEntryFilter(
-                principal = filter.principalFilter(),
-                host = filter.hostFilter(),
-                operation = AclOperation.fromCode(filter.operation()),
-                permissionType = AclPermissionType.fromCode(filter.permissionType()),
+                principal = filter.principalFilter,
+                host = filter.hostFilter,
+                operation = AclOperation.fromCode(filter.operation),
+                permissionType = AclPermissionType.fromCode(filter.permissionType),
             )
 
             return AclBindingFilter(patternFilter, entryFilter)

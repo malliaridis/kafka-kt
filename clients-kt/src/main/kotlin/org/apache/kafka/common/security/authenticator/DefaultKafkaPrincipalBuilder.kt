@@ -98,7 +98,7 @@ class DefaultKafkaPrincipalBuilder(
                 KafkaPrincipal(KafkaPrincipal.USER_TYPE, principal.name)
             else KafkaPrincipal(
                 KafkaPrincipal.USER_TYPE,
-                sslPrincipalMapper.getName(principal.getName())
+                sslPrincipalMapper.getName(principal.name)
             )
         } catch (e: IOException) {
             throw KafkaException(
@@ -127,6 +127,6 @@ class DefaultKafkaPrincipalBuilder(
             throw SerializationException("Invalid principal data version $version")
 
         val data = DefaultPrincipalData(ByteBufferAccessor(buffer), version)
-        return KafkaPrincipal(data.type(), data.name(), data.tokenAuthenticated())
+        return KafkaPrincipal(data.type, data.name, data.tokenAuthenticated)
     }
 }

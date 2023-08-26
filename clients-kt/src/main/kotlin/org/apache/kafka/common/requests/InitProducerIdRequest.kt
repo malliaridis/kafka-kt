@@ -47,10 +47,10 @@ class InitProducerIdRequest private constructor(
     ) : AbstractRequest.Builder<InitProducerIdRequest>(ApiKeys.INIT_PRODUCER_ID) {
 
         override fun build(version: Short): InitProducerIdRequest {
-            require(data.transactionTimeoutMs() > 0) {
-                "transaction timeout value is not positive: " + data.transactionTimeoutMs()
+            require(data.transactionTimeoutMs > 0) {
+                "transaction timeout value is not positive: " + data.transactionTimeoutMs
             }
-            require(!(data.transactionalId() != null && data.transactionalId.isNullOrEmpty())) {
+            require(!(data.transactionalId != null && data.transactionalId.isNullOrEmpty())) {
                 "Must set either a null or a non-empty transactional id."
             }
 

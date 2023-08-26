@@ -43,10 +43,10 @@ object RequestUtils {
      * @return true if there is any matched flag in the produce request. Otherwise, false
      */
     fun flag(request: ProduceRequest, predicate: Predicate<RecordBatch>): Boolean {
-        for (tp in request.data().topicData()) {
-            for (p in tp.partitionData()) {
-                if (p.records() is Records) {
-                    val iter: Iterator<RecordBatch> = (p.records() as Records).batchIterator()
+        for (tp in request.data().topicData) {
+            for (p in tp.partitionData) {
+                if (p.records is Records) {
+                    val iter: Iterator<RecordBatch> = (p.records as Records).batchIterator()
                     if (iter.hasNext() && predicate.test(iter.next())) return true
                 }
             }

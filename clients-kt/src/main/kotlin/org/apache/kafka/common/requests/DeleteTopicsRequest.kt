@@ -40,11 +40,11 @@ class DeleteTopicsRequest private constructor(
 
         val (error) = ApiError.fromThrowable(e)
 
-        response.responses().addAll(
+        response.responses.addAll(
             topics().map { topic ->
                 DeletableTopicResult()
-                    .setName(topic.name())
-                    .setTopicId(topic.topicId())
+                    .setName(topic.name)
+                    .setTopicId(topic.topicId)
                     .setErrorCode(error.code)
             }
         )
@@ -57,24 +57,24 @@ class DeleteTopicsRequest private constructor(
         else data.topicNames
 
     fun numberOfTopics(): Int =
-        if (version >= 6) data.topics().size
-        else data.topicNames().size
+        if (version >= 6) data.topics.size
+        else data.topicNames.size
 
     fun topicIds(): List<Uuid> =
         if (version >= 6) data.topics.map { it.topicId }
         else emptyList()
 
     fun topics(): List<DeleteTopicState> =
-        if (version >= 6) data.topics()
-        else data.topicNames().map { name -> DeleteTopicState().setName(name)}
+        if (version >= 6) data.topics
+        else data.topicNames.map { name -> DeleteTopicState().setName(name) }
 
     class Builder(
         private val data: DeleteTopicsRequestData,
     ) : AbstractRequest.Builder<DeleteTopicsRequest>(ApiKeys.DELETE_TOPICS) {
 
         override fun build(version: Short): DeleteTopicsRequest {
-            if (version >= 6 && data.topicNames().isNotEmpty())
-                data.setTopics(groupByTopic(data.topicNames()))
+            if (version >= 6 && data.topicNames.isNotEmpty())
+                data.setTopics(groupByTopic(data.topicNames))
 
             return DeleteTopicsRequest(data, version)
         }

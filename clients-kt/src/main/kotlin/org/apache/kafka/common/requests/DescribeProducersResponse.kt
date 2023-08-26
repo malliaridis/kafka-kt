@@ -32,16 +32,16 @@ class DescribeProducersResponse(
     override fun errorCounts(): Map<Errors, Int> {
         val errorCounts = mutableMapOf<Errors, Int>()
 
-        for (topicResponse in data.topics())
-            for (partitionResponse in topicResponse.partitions())
-                updateErrorCounts(errorCounts, Errors.forCode(partitionResponse.errorCode()))
+        for (topicResponse in data.topics)
+            for (partitionResponse in topicResponse.partitions)
+                updateErrorCounts(errorCounts, Errors.forCode(partitionResponse.errorCode))
 
         return errorCounts
     }
 
     override fun toString(): String = data.toString()
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)

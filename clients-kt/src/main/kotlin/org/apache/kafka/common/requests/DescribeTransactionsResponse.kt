@@ -32,8 +32,8 @@ class DescribeTransactionsResponse(
     override fun errorCounts(): Map<Errors, Int> {
         val errorCounts = mutableMapOf<Errors, Int>()
 
-        for (transactionState in data.transactionStates()) {
-            val error = Errors.forCode(transactionState.errorCode())
+        for (transactionState in data.transactionStates) {
+            val error = Errors.forCode(transactionState.errorCode)
             updateErrorCounts(errorCounts, error)
         }
 
@@ -42,7 +42,7 @@ class DescribeTransactionsResponse(
 
     override fun toString(): String = data.toString()
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)

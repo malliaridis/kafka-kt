@@ -57,7 +57,7 @@ class JoinGroupRequest(
         if (version.toInt() == 0)
         // Version 0 has no rebalance timeout, so we use the session timeout
         // to be consistent with the original behavior of the API.
-            data.setRebalanceTimeoutMs(data.sessionTimeoutMs())
+            data.setRebalanceTimeoutMs(data.sessionTimeoutMs)
     }
 
     class Builder(
@@ -65,7 +65,7 @@ class JoinGroupRequest(
     ) : AbstractRequest.Builder<JoinGroupRequest>(ApiKeys.JOIN_GROUP) {
 
         override fun build(version: Short): JoinGroupRequest {
-            if (data.groupInstanceId() != null && version < 5) throw UnsupportedVersionException(
+            if (data.groupInstanceId != null && version < 5) throw UnsupportedVersionException(
                 "The broker join group protocol version $version does not support " +
                     "usage of config group.instance.id."
             )

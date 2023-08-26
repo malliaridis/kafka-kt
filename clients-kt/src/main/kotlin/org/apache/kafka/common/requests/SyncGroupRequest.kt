@@ -42,8 +42,8 @@ class SyncGroupRequest(
     fun groupAssignments(): Map<String, ByteBuffer> {
         val groupAssignments = mutableMapOf<String, ByteBuffer>()
 
-        for (assignment: SyncGroupRequestAssignment in data.assignments())
-            groupAssignments[assignment.memberId()] = ByteBuffer.wrap(assignment.assignment())
+        for (assignment: SyncGroupRequestAssignment in data.assignments)
+            groupAssignments[assignment.memberId] = ByteBuffer.wrap(assignment.assignment)
 
         return groupAssignments
     }
@@ -53,7 +53,7 @@ class SyncGroupRequest(
      * they are defined for version 5 or higher, or returns true otherwise for older versions.
      */
     fun areMandatoryProtocolTypeAndNamePresent(): Boolean {
-        return if (version >= 5) data.protocolType() != null && data.protocolName() != null
+        return if (version >= 5) data.protocolType != null && data.protocolName != null
         else true
     }
 
@@ -64,7 +64,7 @@ class SyncGroupRequest(
     ) : AbstractRequest.Builder<SyncGroupRequest>(ApiKeys.SYNC_GROUP) {
 
         override fun build(version: Short): SyncGroupRequest {
-            if (data.groupInstanceId() != null && version < 3)
+            if (data.groupInstanceId != null && version < 3)
                 throw UnsupportedVersionException(
                     "The broker sync group protocol version $version does not support usage of " +
                             "config group.instance.id."

@@ -41,7 +41,7 @@ class DeleteRecordsResponse(
 
     override fun data(): DeleteRecordsResponseData = data
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
@@ -50,9 +50,9 @@ class DeleteRecordsResponse(
     override fun errorCounts(): Map<Errors, Int> {
         val errorCounts = mutableMapOf<Errors, Int>()
 
-        data.topics().forEach { topicResponses ->
-            topicResponses.partitions().forEach { response ->
-                updateErrorCounts(errorCounts, Errors.forCode(response.errorCode()))
+        data.topics.forEach { topicResponses ->
+            topicResponses.partitions.forEach { response ->
+                updateErrorCounts(errorCounts, Errors.forCode(response.errorCode))
             }
         }
 

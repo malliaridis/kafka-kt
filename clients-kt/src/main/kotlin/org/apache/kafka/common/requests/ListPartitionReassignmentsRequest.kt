@@ -37,9 +37,9 @@ class ListPartitionReassignmentsRequest private constructor(
         val (error, message) = ApiError.fromThrowable(e)
         val ongoingTopicReassignments = data.topics.map { topic ->
             OngoingTopicReassignment()
-                .setName(topic.name())
+                .setName(topic.name)
                 .setPartitions(
-                    topic.partitionIndexes().map { partitionIndex ->
+                    topic.partitionIndexes.map { partitionIndex ->
                         OngoingPartitionReassignment().setPartitionIndex(partitionIndex)
                     }
                 )

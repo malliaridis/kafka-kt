@@ -31,7 +31,7 @@ class DescribeClusterResponse(
     private val data: DescribeClusterResponseData,
 ) : AbstractResponse(ApiKeys.DESCRIBE_CLUSTER) {
 
-    fun nodes(): Map<Int, Node> = data.brokers().associateBy(
+    fun nodes(): Map<Int, Node> = data.brokers.associateBy(
         keySelector = { it.brokerId },
         valueTransform = { broker ->
             Node(
@@ -43,9 +43,9 @@ class DescribeClusterResponse(
         }
     )
 
-    override fun errorCounts(): Map<Errors, Int> = errorCounts(Errors.forCode(data.errorCode()))
+    override fun errorCounts(): Map<Errors, Int> = errorCounts(Errors.forCode(data.errorCode))
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)

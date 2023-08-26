@@ -40,10 +40,10 @@ class IncrementalAlterConfigsRequest(
 
         val response = IncrementalAlterConfigsResponseData()
             .setResponses(
-                data.resources().map { resource ->
+                data.resources.map { resource ->
                     IncrementalAlterConfigsResponseData.AlterConfigsResourceResponse()
-                        .setResourceName(resource.resourceName())
-                        .setResourceType(resource.resourceType())
+                        .setResourceName(resource.resourceName)
+                        .setResourceType(resource.resourceType)
                         .setErrorCode(error.code)
                         .setErrorMessage(message)
                 }
@@ -74,20 +74,20 @@ class IncrementalAlterConfigsRequest(
                     IncrementalAlterConfigsRequestData.AlterableConfigCollection()
 
                 alterableConfigSet.addAll(
-                        configs[resource]!!.map { configEntry ->
-                            IncrementalAlterConfigsRequestData.AlterableConfig()
-                                .setName(configEntry.configEntry.name)
-                                .setValue(configEntry.configEntry.value)
-                                .setConfigOperation(configEntry.opType.id)
-                        }
-                    )
+                    configs[resource]!!.map { configEntry ->
+                        IncrementalAlterConfigsRequestData.AlterableConfig()
+                            .setName(configEntry.configEntry.name)
+                            .setValue(configEntry.configEntry.value)
+                            .setConfigOperation(configEntry.opType.id)
+                    }
+                )
 
                 val alterConfigsResource = IncrementalAlterConfigsRequestData.AlterConfigsResource()
                 alterConfigsResource.setResourceType(resource.type.id)
                     .setResourceName(resource.name)
                     .setConfigs(alterableConfigSet)
 
-                data.resources().add(alterConfigsResource)
+                data.resources.add(alterConfigsResource)
             }
         }
 

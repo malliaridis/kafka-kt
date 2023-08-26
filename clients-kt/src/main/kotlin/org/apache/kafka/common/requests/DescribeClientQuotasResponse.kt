@@ -30,10 +30,10 @@ class DescribeClientQuotasResponse(
 ) : AbstractResponse(ApiKeys.DESCRIBE_CLIENT_QUOTAS) {
 
     fun complete(future: KafkaFutureImpl<Map<ClientQuotaEntity, Map<String, Double>>>) {
-        val error = Errors.forCode(data.errorCode())
+        val error = Errors.forCode(data.errorCode)
 
         if (error !== Errors.NONE) {
-            future.completeExceptionally(error.exception(data.errorMessage()))
+            future.completeExceptionally(error.exception(data.errorMessage))
             return
         }
 
@@ -55,7 +55,7 @@ class DescribeClientQuotasResponse(
         future.complete(result)
     }
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
@@ -63,7 +63,7 @@ class DescribeClientQuotasResponse(
 
     override fun data(): DescribeClientQuotasResponseData = data
 
-    override fun errorCounts(): Map<Errors, Int> = errorCounts(Errors.forCode(data.errorCode()))
+    override fun errorCounts(): Map<Errors, Int> = errorCounts(Errors.forCode(data.errorCode))
 
     companion object {
 

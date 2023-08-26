@@ -353,8 +353,6 @@ class MessageDataGenerator internal constructor(
     }
 
     private fun generateFieldAccessors(struct: StructSpec, isSetElement: Boolean) {
-        for (field in struct.fields) generateFieldAccessor(field)
-
         if (isSetElement) {
             buffer.printf("%n")
             generateAccessor(
@@ -1851,6 +1849,10 @@ class MessageDataGenerator internal constructor(
 
     private fun generateFieldAccessor(field: FieldSpec) {
         buffer.printf("%n")
+        buffer.printf(
+            """@Deprecated("Use property access instead", replaceWith=ReplaceWith("%s"))%n""",
+            field.camelCaseName(),
+        )
         generateAccessor(
             kotlinType = field.fieldAbstractKotlinType(headerGenerator, structRegistry),
             functionName = field.camelCaseName(),

@@ -33,14 +33,14 @@ class AlterClientQuotasRequest(
 ) : AbstractRequest(ApiKeys.ALTER_CLIENT_QUOTAS, version) {
 
     fun entries(): List<ClientQuotaAlteration> {
-        val entries = data.entries().map { entryData ->
-            val entity = entryData.entity().associate { entityData ->
-                entityData.entityType() to entityData.entityName()
+        val entries = data.entries.map { entryData ->
+            val entity = entryData.entity.associate { entityData ->
+                entityData.entityType to entityData.entityName
             }
 
-            val ops = entryData.ops().map { opData ->
-                val value = if (opData.remove()) null else opData.value()
-                ClientQuotaAlteration.Op(opData.key(), value)
+            val ops = entryData.ops.map { opData ->
+                val value = if (opData.remove) null else opData.value
+                ClientQuotaAlteration.Op(opData.key, value)
             }
 
             ClientQuotaAlteration(ClientQuotaEntity(entity), ops)
@@ -48,19 +48,19 @@ class AlterClientQuotasRequest(
         return entries
     }
 
-    fun validateOnly(): Boolean = data.validateOnly()
+    fun validateOnly(): Boolean = data.validateOnly
 
     override fun data(): AlterClientQuotasRequestData = data
 
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AlterClientQuotasResponse {
         val error = Errors.forException(e)
-        val responseEntries = data.entries().map { entryData ->
+        val responseEntries = data.entries.map { entryData ->
 
-            val responseEntities = entryData.entity().map { entityData ->
+            val responseEntities = entryData.entity.map { entityData ->
 
                 AlterClientQuotasResponseData.EntityData()
-                    .setEntityType(entityData.entityType())
-                    .setEntityName(entityData.entityName())
+                    .setEntityType(entityData.entityType)
+                    .setEntityName(entityData.entityName)
             }
 
             AlterClientQuotasResponseData.EntryData()

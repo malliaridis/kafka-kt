@@ -76,35 +76,35 @@ class DescribeTransactionsHandler(
         val failed: MutableMap<CoordinatorKey, Throwable> = HashMap()
         val unmapped: MutableList<CoordinatorKey> = ArrayList()
 
-        response.data().transactionStates().forEach { transactionState ->
+        response.data().transactionStates.forEach { transactionState ->
 
             val transactionalIdKey = CoordinatorKey
-                .byTransactionalId(transactionState.transactionalId())
+                .byTransactionalId(transactionState.transactionalId)
 
             if (!keys.contains(transactionalIdKey)) {
                 log.warn(
                     "Response included transactionalId `{}`, which was not requested",
-                    transactionState.transactionalId()
+                    transactionState.transactionalId
                 )
                 return@forEach
             }
 
-            val error = Errors.forCode(transactionState.errorCode())
+            val error = Errors.forCode(transactionState.errorCode)
             if (error !== Errors.NONE) {
                 handleError(transactionalIdKey, error, failed, unmapped)
                 return@forEach
             }
 
             val transactionStartTimeMs =
-                if (transactionState.transactionStartTimeMs() < 0) null
-                else transactionState.transactionStartTimeMs()
+                if (transactionState.transactionStartTimeMs < 0) null
+                else transactionState.transactionStartTimeMs
 
             completed[transactionalIdKey] = TransactionDescription(
                 coordinatorId = broker.id,
-                state = TransactionState.parse(transactionState.transactionState()),
-                producerId = transactionState.producerId(),
-                producerEpoch = transactionState.producerEpoch().toInt(),
-                transactionTimeoutMs = transactionState.transactionTimeoutMs().toLong(),
+                state = TransactionState.parse(transactionState.transactionState),
+                producerId = transactionState.producerId,
+                producerEpoch = transactionState.producerEpoch.toInt(),
+                transactionTimeoutMs = transactionState.transactionTimeoutMs.toLong(),
                 transactionStartTimeMs = transactionStartTimeMs,
                 topicPartitions = collectTopicPartitions(transactionState)
             )
@@ -117,10 +117,10 @@ class DescribeTransactionsHandler(
     ): Set<TopicPartition> {
         val res: MutableSet<TopicPartition> = HashSet()
 
-        transactionState.topics().forEach { topicData ->
-            val topic = topicData.topic()
+        transactionState.topics.forEach { topicData ->
+            val topic = topicData.topic
 
-            topicData.partitions().forEach { partitionId ->
+            topicData.partitions.forEach { partitionId ->
                 res.add(TopicPartition(topic, partitionId))
             }
         }

@@ -787,14 +787,14 @@ class NetworkClient(
         apiVersionsResponse: ApiVersionsResponse,
     ) {
         val node = req.destination
-        if (apiVersionsResponse.data().errorCode() != Errors.NONE.code) {
+        if (apiVersionsResponse.data().errorCode != Errors.NONE.code) {
             if (req.request.version.toInt() == 0 || apiVersionsResponse.data()
-                    .errorCode() != Errors.UNSUPPORTED_VERSION.code
+                    .errorCode != Errors.UNSUPPORTED_VERSION.code
             ) {
                 log.warn(
                     "Received error {} from node {} when making an ApiVersionsRequest with correlation id {}." +
                             "Disconnecting.",
-                    Errors.forCode(apiVersionsResponse.data().errorCode()),
+                    Errors.forCode(apiVersionsResponse.data().errorCode),
                     node,
                     req.header.correlationId
                 )
@@ -805,11 +805,11 @@ class NetworkClient(
                 // the ApiVersionsRequest when an UNSUPPORTED_VERSION error is returned.
                 // If not provided, the client falls back to version 0.
                 var maxApiVersion: Short = 0
-                if (apiVersionsResponse.data().apiKeys().size > 0) {
+                if (apiVersionsResponse.data().apiKeys.size > 0) {
                     val apiVersion =
-                        apiVersionsResponse.data().apiKeys().find(ApiKeys.API_VERSIONS.id)
+                        apiVersionsResponse.data().apiKeys.find(ApiKeys.API_VERSIONS.id)
                     if (apiVersion != null) {
-                        maxApiVersion = apiVersion.maxVersion()
+                        maxApiVersion = apiVersion.maxVersion
                     }
                 }
                 nodesNeedingApiVersionsFetch[node] = ApiVersionsRequest.Builder(maxApiVersion)
@@ -817,8 +817,8 @@ class NetworkClient(
             return
         }
         val nodeVersionInfo = NodeApiVersions(
-            apiVersionsResponse.data().apiKeys(),
-            apiVersionsResponse.data().supportedFeatures()
+            apiVersionsResponse.data().apiKeys,
+            apiVersionsResponse.data().supportedFeatures
         )
         apiVersions.update(node, nodeVersionInfo)
         connectionStates.ready(node)
@@ -826,9 +826,9 @@ class NetworkClient(
             "Node {} has finalized features epoch: {}, finalized features: {}, supported features: {}," +
                     "API versions: {}.",
             node,
-            apiVersionsResponse.data().finalizedFeaturesEpoch(),
-            apiVersionsResponse.data().finalizedFeatures(),
-            apiVersionsResponse.data().supportedFeatures(),
+            apiVersionsResponse.data().finalizedFeaturesEpoch,
+            apiVersionsResponse.data().finalizedFeatures,
+            apiVersionsResponse.data().supportedFeatures,
             nodeVersionInfo
         )
     }

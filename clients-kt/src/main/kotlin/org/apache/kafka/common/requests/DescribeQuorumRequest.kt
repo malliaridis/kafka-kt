@@ -72,13 +72,13 @@ class DescribeQuorumRequest private constructor(
             error: Errors
         ): DescribeQuorumResponseData {
             val errorCode = error.code
-            val topicResponses = data.topics().map { topic ->
+            val topicResponses = data.topics.map { topic ->
                 DescribeQuorumResponseData.TopicData()
-                    .setTopicName(topic.topicName())
+                    .setTopicName(topic.topicName)
                     .setPartitions(
-                        topic.partitions().map { requestPartition ->
+                        topic.partitions.map { requestPartition ->
                             DescribeQuorumResponseData.PartitionData()
-                                .setPartitionIndex(requestPartition.partitionIndex())
+                                .setPartitionIndex(requestPartition.partitionIndex)
                                 .setErrorCode(errorCode)
                         }
                     )

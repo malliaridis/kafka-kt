@@ -301,7 +301,7 @@ class Fetcher<K, V>(
                             subscriptions.clearPreferredReadReplica(tp)
                         }
                     } finally {
-                        nodesWithPendingFetchRequests.remove(fetchTarget.id())
+                        nodesWithPendingFetchRequests.remove(fetchTarget.id)
                     }
                 }
             })
@@ -762,7 +762,7 @@ class Fetcher<K, V>(
                         resetOffsetIfNeeded(
                             partition = partition,
                             requestedResetStrategy =
-                            timestampToOffsetResetStrategy(requestedReset!!.timestamp())!!,
+                            timestampToOffsetResetStrategy(requestedReset!!.timestamp)!!,
                             offsetData = offsetData
                         )
                     }
@@ -1052,22 +1052,22 @@ class Fetcher<K, V>(
         val unauthorizedTopics = mutableSetOf<String>()
 
         for (topic in listOffsetsResponse.topics) {
-            for (partition in topic.partitions()) {
-                val topicPartition = TopicPartition(topic.name(), partition.partitionIndex())
+            for (partition in topic.partitions) {
+                val topicPartition = TopicPartition(topic.name, partition.partitionIndex)
 
-                when (val error = Errors.forCode(partition.errorCode())) {
-                    Errors.NONE -> if (partition.oldStyleOffsets().isNotEmpty()) {
+                when (val error = Errors.forCode(partition.errorCode)) {
+                    Errors.NONE -> if (partition.oldStyleOffsets.isNotEmpty()) {
                         // Handle v0 response with offsets
                         var offset: Long
-                        if (partition.oldStyleOffsets().size > 1) {
+                        if (partition.oldStyleOffsets.size > 1) {
                             future.raise(
                                 IllegalStateException(
                                     "Unexpected partitionData response of length " +
-                                            partition.oldStyleOffsets().size
+                                            partition.oldStyleOffsets.size
                                 )
                             )
                             return
-                        } else offset = partition.oldStyleOffsets()[0]
+                        } else offset = partition.oldStyleOffsets[0]
 
                         log.debug(
                             "Handling v0 ListOffsetResponse response for {}. Fetched offset {}",
@@ -1087,16 +1087,16 @@ class Fetcher<K, V>(
                         log.debug(
                             "Handling ListOffsetResponse response for {}. Fetched offset {}, timestamp {}",
                             topicPartition,
-                            partition.offset(),
-                            partition.timestamp(),
+                            partition.offset,
+                            partition.timestamp,
                         )
-                        if (partition.offset() != ListOffsetsResponse.UNKNOWN_OFFSET) {
+                        if (partition.offset != ListOffsetsResponse.UNKNOWN_OFFSET) {
                             val leaderEpoch =
-                                if (partition.leaderEpoch() == ListOffsetsResponse.UNKNOWN_EPOCH) null
-                                else partition.leaderEpoch()
+                                if (partition.leaderEpoch == ListOffsetsResponse.UNKNOWN_EPOCH) null
+                                else partition.leaderEpoch
                             val offsetData = ListOffsetData(
-                                offset = partition.offset(),
-                                timestamp = partition.timestamp(),
+                                offset = partition.offset,
+                                timestamp = partition.timestamp,
                                 leaderEpoch = leaderEpoch
                             )
                             fetchedOffsets[topicPartition] = offsetData
@@ -1312,7 +1312,7 @@ class Fetcher<K, V>(
         val partition = nextCompletedFetch.partitionData
         val fetchOffset = nextCompletedFetch.nextFetchOffset
         var completedFetch: CompletedFetch? = null
-        val error = Errors.forCode(partition.errorCode())
+        val error = Errors.forCode(partition.errorCode)
 
         try {
             if (!subscriptions.hasValidPosition(tp)) {
@@ -1367,41 +1367,41 @@ class Fetcher<K, V>(
                         )
                     }
                 }
-                if (partition.highWatermark() >= 0) {
+                if (partition.highWatermark >= 0) {
                     log.trace(
                         "Updating high watermark for partition {} to {}",
                         tp,
-                        partition.highWatermark(),
+                        partition.highWatermark,
                     )
-                    subscriptions.updateHighWatermark(tp, partition.highWatermark())
+                    subscriptions.updateHighWatermark(tp, partition.highWatermark)
                 }
-                if (partition.logStartOffset() >= 0) {
+                if (partition.logStartOffset >= 0) {
                     log.trace(
                         "Updating log start offset for partition {} to {}",
                         tp,
-                        partition.logStartOffset(),
+                        partition.logStartOffset,
                     )
-                    subscriptions.updateLogStartOffset(tp, partition.logStartOffset())
+                    subscriptions.updateLogStartOffset(tp, partition.logStartOffset)
                 }
-                if (partition.lastStableOffset() >= 0) {
+                if (partition.lastStableOffset >= 0) {
                     log.trace(
                         "Updating last stable offset for partition {} to {}",
                         tp,
-                        partition.lastStableOffset(),
+                        partition.lastStableOffset,
                     )
-                    subscriptions.updateLastStableOffset(tp, partition.lastStableOffset())
+                    subscriptions.updateLastStableOffset(tp, partition.lastStableOffset)
                 }
                 if (FetchResponse.isPreferredReplica(partition)) {
                     subscriptions.updatePreferredReadReplica(
                         tp = completedFetch.partition,
-                        preferredReadReplicaId = partition.preferredReadReplica(),
+                        preferredReadReplicaId = partition.preferredReadReplica,
                     ) {
                         val expireTimeMs = time.milliseconds() + metadata.metadataExpireMs()
                         log.debug(
                             "Updating preferred read replica for partition {} to {}, set to " +
                                     "expire at {}",
                             tp,
-                            partition.preferredReadReplica(),
+                            partition.preferredReadReplica,
                             expireTimeMs,
                         )
                         expireTimeMs
@@ -1795,10 +1795,10 @@ class Fetcher<K, V>(
         private fun consumeAbortedTransactionsUpTo(offset: Long) {
             if (abortedTransactions == null) return
             while (!abortedTransactions.isEmpty() && abortedTransactions.peek()
-                    .firstOffset() <= offset
+                    .firstOffset <= offset
             ) {
                 val abortedTransaction = abortedTransactions.poll()
-                abortedProducerIds.add(abortedTransaction.producerId())
+                abortedProducerIds.add(abortedTransaction.producerId)
             }
         }
 
@@ -1861,7 +1861,7 @@ class Fetcher<K, V>(
             fetchMetrics.increment(bytes, records)
 
             // collect and aggregate per-topic metrics
-            val topic = partition.topic()
+            val topic = partition.topic
             var topicFetchMetric = topicFetchMetrics[topic]
             if (topicFetchMetric == null) {
                 topicFetchMetric = FetchMetrics()
@@ -2158,7 +2158,7 @@ class Fetcher<K, V>(
         fun hasUsableOffsetForLeaderEpochVersion(nodeApiVersions: NodeApiVersions): Boolean {
             val apiVersion =
                 nodeApiVersions.apiVersion(ApiKeys.OFFSET_FOR_LEADER_EPOCH) ?: return false
-            return OffsetsForLeaderEpochRequest.supportsTopicPermission(apiVersion.maxVersion())
+            return OffsetsForLeaderEpochRequest.supportsTopicPermission(apiVersion.maxVersion)
         }
 
         fun throttleTimeSensor(metrics: Metrics, metricsRegistry: FetcherMetricsRegistry): Sensor {

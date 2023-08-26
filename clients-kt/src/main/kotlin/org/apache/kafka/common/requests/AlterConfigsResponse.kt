@@ -31,20 +31,20 @@ class AlterConfigsResponse(
 ) : AbstractResponse(ApiKeys.ALTER_CONFIGS) {
 
     fun errors(): Map<ConfigResource?, ApiError> {
-        return data.responses().associate { response ->
+        return data.responses.associate { response ->
             ConfigResource(
-                type = ConfigResource.Type.forId(response.resourceType()),
-                name = response.resourceName()
+                type = ConfigResource.Type.forId(response.resourceType),
+                name = response.resourceName
             ) to ApiError(
-                error = Errors.forCode(response.errorCode()),
-                message = response.errorMessage()
+                error = Errors.forCode(response.errorCode),
+                message = response.errorMessage
             )
         }
     }
 
     override fun errorCounts(): Map<Errors, Int> = apiErrorCounts(errors())
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)

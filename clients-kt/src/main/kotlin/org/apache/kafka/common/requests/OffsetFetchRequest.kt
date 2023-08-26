@@ -35,36 +35,36 @@ class OffsetFetchRequest private constructor(
     version: Short,
 ) : AbstractRequest(ApiKeys.OFFSET_FETCH, version) {
 
-    fun groupId(): String = data.groupId()
+    fun groupId(): String = data.groupId
 
-    fun requireStable(): Boolean = data.requireStable()
+    fun requireStable(): Boolean = data.requireStable
 
     fun groupIdsToPartitions(): Map<String, List<TopicPartition>?> {
         val groupIdsToPartitions = mutableMapOf<String, List<TopicPartition>?>()
 
-        for (group: OffsetFetchRequestGroup in data.groups()) {
+        for (group: OffsetFetchRequestGroup in data.groups) {
             var tpList: MutableList<TopicPartition>? = null
 
-            if (group.topics() !== ALL_TOPIC_PARTITIONS_BATCH) {
+            if (group.topics !== ALL_TOPIC_PARTITIONS_BATCH) {
                 tpList = ArrayList()
 
                 for (topic in group.topics)
-                    for (partitionIndex in topic.partitionIndexes())
+                    for (partitionIndex in topic.partitionIndexes)
                         tpList.add(TopicPartition(topic.name, partitionIndex))
             }
-            groupIdsToPartitions[group.groupId()] = tpList
+            groupIdsToPartitions[group.groupId] = tpList
         }
 
         return groupIdsToPartitions
     }
 
     fun groupIdsToTopics(): Map<String, List<OffsetFetchRequestTopics>> =
-        data.groups().associateBy(
+        data.groups.associateBy(
             keySelector = { it.groupId },
             valueTransform = { it.topics },
         )
 
-    fun groupIds(): List<String> = data.groups().map { it.groupId }
+    fun groupIds(): List<String> = data.groups.map { it.groupId }
 
     fun getErrorResponse(error: Errors): OffsetFetchResponse =
         getErrorResponse(AbstractResponse.DEFAULT_THROTTLE_TIME, error)
@@ -81,8 +81,8 @@ class OffsetFetchRequest private constructor(
             )
 
             for (topic in data.topics) {
-                for (partitionIndex in topic.partitionIndexes())
-                    responsePartitions[TopicPartition(topic.name(), partitionIndex)] =
+                for (partitionIndex in topic.partitionIndexes)
+                    responsePartitions[TopicPartition(topic.name, partitionIndex)] =
                         partitionError
             }
 
@@ -112,11 +112,11 @@ class OffsetFetchRequest private constructor(
         getErrorResponse(throttleTimeMs, Errors.forException(e))
 
     val isAllPartitions: Boolean
-        get() = data.topics() == ALL_TOPIC_PARTITIONS
+        get() = data.topics == ALL_TOPIC_PARTITIONS
 
     fun isAllPartitionsForGroup(groupId: String): Boolean {
-        val group = data.groups().first { group -> (group.groupId() == groupId) }
-        return group.topics() == ALL_TOPIC_PARTITIONS_BATCH
+        val group = data.groups.first { group -> (group.groupId == groupId) }
+        return group.topics == ALL_TOPIC_PARTITIONS_BATCH
     }
 
     override fun data(): OffsetFetchRequestData {
@@ -162,7 +162,7 @@ class OffsetFetchRequest private constructor(
         }
 
         val isAllTopicPartitions: Boolean
-            get() = data.topics() === ALL_TOPIC_PARTITIONS
+            get() = data.topics === ALL_TOPIC_PARTITIONS
 
         constructor(
             groupIdToTopicPartitionMap: Map<String, List<TopicPartition>?>,
@@ -211,13 +211,13 @@ class OffsetFetchRequest private constructor(
                             "v" + version + ", but we need v2 or newer to request all topic partitions."
                 )
             }
-            if (data.groups().size > 1 && version < 8) {
+            if (data.groups.size > 1 && version < 8) {
                 throw NoBatchedOffsetFetchRequestException(
                     ("Broker does not support"
                             + " batching groups for fetch offset request on version " + version)
                 )
             }
-            if (data.requireStable() && version < 7) {
+            if (data.requireStable && version < 7) {
                 if (throwOnFetchStableOffsetsUnsupported) {
                     throw UnsupportedVersionException(
                         ("Broker unexpectedly " +
@@ -235,29 +235,29 @@ class OffsetFetchRequest private constructor(
             // convert data to use the appropriate version since version 8 uses different format
             if (version < 8) {
                 var oldDataFormat: OffsetFetchRequestData? = null
-                if (data.groups().isNotEmpty()) {
-                    val group = data.groups()[0]
-                    val groupName = group.groupId()
-                    val topics = group.topics()
+                if (data.groups.isNotEmpty()) {
+                    val group = data.groups[0]
+                    val groupName = group.groupId
+                    val topics = group.topics
                     val oldFormatTopics = topics.map { topic ->
                         OffsetFetchRequestTopic()
-                            .setName(topic.name())
-                            .setPartitionIndexes(topic.partitionIndexes())
+                            .setName(topic.name)
+                            .setPartitionIndexes(topic.partitionIndexes)
                     }
 
                     oldDataFormat = OffsetFetchRequestData()
                         .setGroupId(groupName)
                         .setTopics(oldFormatTopics)
-                        .setRequireStable(data.requireStable())
+                        .setRequireStable(data.requireStable)
                 }
                 return OffsetFetchRequest(oldDataFormat ?: data, version)
-            } else if (data.groups().isEmpty()) {
-                val groupName = data.groupId()
-                val oldFormatTopics = data.topics()
+            } else if (data.groups.isEmpty()) {
+                val groupName = data.groupId
+                val oldFormatTopics = data.topics
                 val topics = oldFormatTopics.map { topic ->
                     OffsetFetchRequestTopics()
-                        .setName(topic.name())
-                        .setPartitionIndexes(topic.partitionIndexes())
+                        .setName(topic.name)
+                        .setPartitionIndexes(topic.partitionIndexes)
                 }
 
                 val convertedDataFormat = OffsetFetchRequestData().setGroups(
@@ -266,7 +266,7 @@ class OffsetFetchRequest private constructor(
                             .setGroupId(groupName)
                             .setTopics(topics)
                     )
-                ).setRequireStable(data.requireStable())
+                ).setRequireStable(data.requireStable)
 
                 return OffsetFetchRequest(convertedDataFormat, version)
             }
@@ -294,9 +294,9 @@ class OffsetFetchRequest private constructor(
         if (isAllPartitions) return null
 
         val partitions = mutableListOf<TopicPartition>()
-        for (topic: OffsetFetchRequestTopic in data.topics())
-            for (partitionIndex in topic.partitionIndexes())
-                partitions.add(TopicPartition(topic.name(), partitionIndex))
+        for (topic: OffsetFetchRequestTopic in data.topics)
+            for (partitionIndex in topic.partitionIndexes)
+                partitions.add(TopicPartition(topic.name, partitionIndex))
 
         return partitions
     }

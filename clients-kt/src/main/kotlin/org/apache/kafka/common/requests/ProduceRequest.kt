@@ -52,10 +52,10 @@ class ProduceRequest(
      * reset to eliminate the reference to ByteBuffer but those metadata are still useful.
      */
     val acks: Short
-        get() = this.data.acks()
+        get() = this.data.acks
 
     val timeout: Int
-        get() = this.data.timeoutMs()
+        get() = this.data.timeoutMs
 
     val transactionalId: String?
         get() = this.data.transactionalId
@@ -64,10 +64,10 @@ class ProduceRequest(
     private val partitionSizes: MutableMap<TopicPartition, Int> by lazy {
         // this method may be called by different thread (see the comment on data)
         val partitionSizes = mutableMapOf<TopicPartition, Int>()
-        this.data.topicData().forEach { topicData ->
-            topicData.partitionData().forEach { partitionData ->
+        this.data.topicData.forEach { topicData ->
+            topicData.partitionData.forEach { partitionData ->
                 partitionSizes.compute(
-                    TopicPartition(topicData.name(), partitionData.index())
+                    TopicPartition(topicData.name, partitionData.index)
                 ) { _, previousValue ->
                     (partitionData.records?.sizeInBytes() ?: 0) + (previousValue ?: 0)
                 }
@@ -104,14 +104,14 @@ class ProduceRequest(
             .append(timeout)
         if (verbose) bld.append(",partitionSizes=")
             .append(
-            mkString(
-                partitionSizes,
-                "[",
-                "]",
-                "=",
-                ","
-            )
-        ) else bld.append(",numPartitions=")
+                mkString(
+                    partitionSizes,
+                    "[",
+                    "]",
+                    "=",
+                    ","
+                )
+            ) else bld.append(",numPartitions=")
             .append(partitionSizes.size)
         bld.append("}")
         return bld.toString()
@@ -124,14 +124,14 @@ class ProduceRequest(
         val data = ProduceResponseData().setThrottleTimeMs(throttleTimeMs)
 
         partitionSizes.forEach { (tp, _) ->
-            data.responses().find(tp.topic)!!.partitionResponses += PartitionProduceResponse()
-                    .setIndex(tp.partition)
-                    .setRecordErrors(emptyList())
-                    .setBaseOffset(ProduceResponse.INVALID_OFFSET)
-                    .setLogAppendTimeMs(RecordBatch.NO_TIMESTAMP)
-                    .setLogStartOffset(ProduceResponse.INVALID_OFFSET)
-                    .setErrorMessage(apiError.message)
-                    .setErrorCode(apiError.error.code)
+            data.responses.find(tp.topic)!!.partitionResponses += PartitionProduceResponse()
+                .setIndex(tp.partition)
+                .setRecordErrors(emptyList())
+                .setBaseOffset(ProduceResponse.INVALID_OFFSET)
+                .setLogAppendTimeMs(RecordBatch.NO_TIMESTAMP)
+                .setLogStartOffset(ProduceResponse.INVALID_OFFSET)
+                .setErrorMessage(apiError.message)
+                .setErrorCode(apiError.error.code)
         }
         return ProduceResponse(data)
     }
@@ -179,9 +179,9 @@ class ProduceRequest(
         private fun build(version: Short, validate: Boolean): ProduceRequest {
             if (validate) {
                 // Validate the given records first
-                data.topicData().forEach { tpd ->
-                    tpd.partitionData().forEach { partitionProduceData ->
-                        validateRecords(version, partitionProduceData.records())
+                data.topicData.forEach { tpd ->
+                    tpd.partitionData.forEach { partitionProduceData ->
+                        validateRecords(version, partitionProduceData.records)
                     }
                 }
             }
@@ -192,13 +192,13 @@ class ProduceRequest(
             val bld = StringBuilder()
             bld.append("(type=ProduceRequest")
                 .append(", acks=")
-                .append(data.acks().toInt())
+                .append(data.acks.toInt())
                 .append(", timeout=")
-                .append(data.timeoutMs())
+                .append(data.timeoutMs)
                 .append(", partitionRecords=(")
-                .append(data.topicData().flatMap { it.partitionData() })
+                .append(data.topicData.flatMap { it.partitionData })
                 .append("), transactionalId='")
-                .append(if (data.transactionalId() != null) data.transactionalId() else "")
+                .append(if (data.transactionalId != null) data.transactionalId else "")
                 .append("'")
 
             return bld.toString()

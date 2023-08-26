@@ -45,12 +45,12 @@ class ApiVersionsResponse(
 
     override fun data(): ApiVersionsResponseData = data
 
-    fun apiVersion(apiKey: Short): ApiVersionsResponseData.ApiVersion? = data.apiKeys().find(apiKey)
+    fun apiVersion(apiKey: Short): ApiVersionsResponseData.ApiVersion? = data.apiKeys.find(apiKey)
 
     override fun errorCounts(): Map<Errors, Int> =
-        errorCounts(Errors.forCode(data.errorCode()))
+        errorCounts(Errors.forCode(data.errorCode))
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
@@ -58,7 +58,7 @@ class ApiVersionsResponse(
 
     override fun shouldClientThrottle(version: Short): Boolean = version >= 2
 
-    fun zkMigrationReady(): Boolean = data.zkMigrationReady()
+    fun zkMigrationReady(): Boolean = data.zkMigrationReady
 
     @Suppress("TooManyFunctions")
     companion object {
@@ -231,17 +231,17 @@ class ApiVersionsResponse(
         ): ApiVersionsResponseData.ApiVersion? {
             if (thisVersion == null || other == null) return null
 
-            require(thisVersion.apiKey() == other.apiKey()) {
-                "thisVersion.apiKey: ${thisVersion.apiKey()}" +
-                        " must be equal to other.apiKey: ${other.apiKey()}"
+            require(thisVersion.apiKey == other.apiKey) {
+                "thisVersion.apiKey: ${thisVersion.apiKey}" +
+                        " must be equal to other.apiKey: ${other.apiKey}"
             }
 
-            val minVersion = thisVersion.minVersion().coerceAtLeast(other.minVersion())
-            val maxVersion = thisVersion.maxVersion().coerceAtMost(other.maxVersion())
+            val minVersion = thisVersion.minVersion.coerceAtLeast(other.minVersion)
+            val maxVersion = thisVersion.maxVersion.coerceAtMost(other.maxVersion)
 
             return if (minVersion > maxVersion) null
             else ApiVersionsResponseData.ApiVersion()
-                .setApiKey(thisVersion.apiKey())
+                .setApiKey(thisVersion.apiKey)
                 .setMinVersion(minVersion)
                 .setMaxVersion(maxVersion)
         }

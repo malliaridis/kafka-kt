@@ -83,11 +83,11 @@ class AddPartitionsToTxnRequest(
         companion object {
 
             fun getPartitions(data: AddPartitionsToTxnRequestData): List<TopicPartition> =
-                data.topics().flatMap { topicCollection ->
-                    topicCollection.partitions().map { partition ->
-                        TopicPartition(topicCollection.name(), partition)
+                data.topics.flatMap { topicCollection ->
+                    topicCollection.partitions.map { partition ->
+                        TopicPartition(topicCollection.name, partition)
                     }
-            }
+                }
         }
     }
 

@@ -30,16 +30,16 @@ class CreateAclsResponse(
 
     override fun data(): CreateAclsResponseData = data
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
     }
 
-    fun results(): List<AclCreationResult> = data.results()
+    fun results(): List<AclCreationResult> = data.results
 
     override fun errorCounts(): Map<Errors, Int> =
-        errorCounts(results().stream().map { Errors.forCode(it.errorCode()) })
+        errorCounts(results().stream().map { Errors.forCode(it.errorCode) })
 
     override fun shouldClientThrottle(version: Short): Boolean = version >= 1
 

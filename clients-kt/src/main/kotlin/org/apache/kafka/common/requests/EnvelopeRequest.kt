@@ -33,28 +33,28 @@ class EnvelopeRequest(
         message = "User property instead",
         replaceWith = ReplaceWith("requestData"),
     )
-    fun requestData(): ByteBuffer = data.requestData()
+    fun requestData(): ByteBuffer = data.requestData
 
     val requestData: ByteBuffer
-        get() = data.requestData()
+        get() = data.requestData
 
     @Deprecated(
         message = "User property instead",
         replaceWith = ReplaceWith("clientAddress"),
     )
-    fun clientAddress(): ByteArray = data.clientHostAddress()
+    fun clientAddress(): ByteArray = data.clientHostAddress
 
     val clientAddress: ByteArray
-        get() = data.clientHostAddress()
+        get() = data.clientHostAddress
 
     @Deprecated(
         message = "User property instead",
         replaceWith = ReplaceWith("requestPrincipal"),
     )
-    fun requestPrincipal(): ByteArray? = data.requestPrincipal()
+    fun requestPrincipal(): ByteArray? = data.requestPrincipal
 
     val requestPrincipal: ByteArray?
-        get() = data.requestPrincipal()
+        get() = data.requestPrincipal
 
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse =
         EnvelopeResponse(EnvelopeResponseData().setErrorCode(Errors.forException(e).code))

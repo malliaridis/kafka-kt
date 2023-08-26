@@ -31,16 +31,16 @@ class AlterConfigsRequest(
     version: Short,
 ) : AbstractRequest(ApiKeys.ALTER_CONFIGS, version) {
 
-    fun configs(): Map<ConfigResource, Config> = data.resources().associate { resource ->
+    fun configs(): Map<ConfigResource, Config> = data.resources.associate { resource ->
         ConfigResource(
-            ConfigResource.Type.forId(resource.resourceType()),
-            resource.resourceName()
+            ConfigResource.Type.forId(resource.resourceType),
+            resource.resourceName
         ) to Config(
-            resource.configs().map { entry -> ConfigEntry(entry.name(), entry.value()) }
+            resource.configs.map { entry -> ConfigEntry(entry.name, entry.value) }
         )
     }
 
-    fun validateOnly(): Boolean = data.validateOnly()
+    fun validateOnly(): Boolean = data.validateOnly
 
     override fun data(): AlterConfigsRequestData = data
 
@@ -48,10 +48,10 @@ class AlterConfigsRequest(
         val (error1, message) = ApiError.fromThrowable(e)
         val data = AlterConfigsResponseData().setThrottleTimeMs(throttleTimeMs)
 
-        data.responses += this.data.resources().map { resource ->
+        data.responses += this.data.resources.map { resource ->
             AlterConfigsResponseData.AlterConfigsResourceResponse()
-                .setResourceType(resource.resourceType())
-                .setResourceName(resource.resourceName())
+                .setResourceType(resource.resourceType)
+                .setResourceName(resource.resourceName)
                 .setErrorMessage(message)
                 .setErrorCode(error1.code)
         }
@@ -97,13 +97,13 @@ class AlterConfigsRequest(
                     .setResourceType(key.type.id)
 
                 for (x in value.entries) {
-                    resource.configs().add(
+                    resource.configs.add(
                         AlterConfigsRequestData.AlterableConfig()
                             .setName(x.name)
                             .setValue(x.value)
                     )
                 }
-                data.resources().add(resource)
+                data.resources.add(resource)
             }
             data.setValidateOnly(validateOnly)
         }

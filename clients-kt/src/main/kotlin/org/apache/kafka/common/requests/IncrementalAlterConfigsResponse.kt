@@ -57,8 +57,8 @@ class IncrementalAlterConfigsResponse : AbstractResponse {
 
     override fun errorCounts(): Map<Errors, Int> {
         val counts = mutableMapOf<Errors, Int>()
-        data.responses().forEach { response ->
-            updateErrorCounts(counts, Errors.forCode(response.errorCode()))
+        data.responses.forEach { response ->
+            updateErrorCounts(counts, Errors.forCode(response.errorCode))
         }
 
         return counts
@@ -66,7 +66,7 @@ class IncrementalAlterConfigsResponse : AbstractResponse {
 
     override fun shouldClientThrottle(version: Short): Boolean = version >= 0
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
@@ -76,12 +76,12 @@ class IncrementalAlterConfigsResponse : AbstractResponse {
 
         fun fromResponseData(
             data: IncrementalAlterConfigsResponseData,
-        ): Map<ConfigResource, ApiError> = data.responses().associate { response ->
+        ): Map<ConfigResource, ApiError> = data.responses.associate { response ->
             ConfigResource(
-                ConfigResource.Type.forId(response.resourceType()),
-                response.resourceName()
+                ConfigResource.Type.forId(response.resourceType),
+                response.resourceName
             ) to ApiError(
-                Errors.forCode(response.errorCode()), response.errorMessage()
+                Errors.forCode(response.errorCode), response.errorMessage
             )
         }
 

@@ -86,9 +86,9 @@ class RemoveMembersFromConsumerGroupHandler(
             for (memberResponse: MemberResponse in res.memberResponses()) {
                 memberErrors[
                     MemberIdentity()
-                        .setMemberId(memberResponse.memberId())
-                        .setGroupInstanceId(memberResponse.groupInstanceId())
-                ] = Errors.forCode(memberResponse.errorCode())
+                        .setMemberId(memberResponse.memberId)
+                        .setGroupInstanceId(memberResponse.groupInstanceId)
+                ] = Errors.forCode(memberResponse.errorCode)
             }
             ApiResult.completed(groupId, memberErrors)
         }

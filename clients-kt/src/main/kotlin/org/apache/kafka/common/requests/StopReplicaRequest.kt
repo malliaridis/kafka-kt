@@ -45,11 +45,11 @@ class StopReplicaRequest private constructor(
 
         val partitions = mutableListOf<StopReplicaPartitionError>()
         for (topic in topicStates())
-            for (partition in topic.partitionStates())
+            for (partition in topic.partitionStates)
                 partitions.add(
                     StopReplicaPartitionError()
-                        .setTopicName(topic.topicName())
-                        .setPartitionIndex(partition.partitionIndex())
+                        .setTopicName(topic.topicName)
+                        .setPartitionIndex(partition.partitionIndex)
                         .setErrorCode(error.code)
                 )
 
@@ -70,66 +70,64 @@ class StopReplicaRequest private constructor(
         return if (version < 1) {
             val topicStates = mutableMapOf<String, StopReplicaTopicState>()
 
-            for (partition in data.ungroupedPartitions()) {
-                val topicState = topicStates.computeIfAbsent(partition.topicName()) { topic ->
+            for (partition in data.ungroupedPartitions) {
+                val topicState = topicStates.computeIfAbsent(partition.topicName) { topic ->
                     StopReplicaTopicState().setTopicName(topic)
                 }
 
                 topicState.partitionStates += StopReplicaPartitionState()
-                    .setPartitionIndex(partition.partitionIndex())
-                    .setDeletePartition(data.deletePartitions())
+                    .setPartitionIndex(partition.partitionIndex)
+                    .setDeletePartition(data.deletePartitions)
             }
             topicStates.values
 
         } else if (version < 3) Iterable {
-            MappedIterator(data.topics().iterator()) { topic ->
+            MappedIterator(data.topics.iterator()) { topic ->
                 StopReplicaTopicState()
-                    .setTopicName(topic.name())
+                    .setTopicName(topic.name)
                     .setPartitionStates(
-                        topic.partitionIndexes().map { partition ->
+                        topic.partitionIndexes.map { partition ->
                             StopReplicaPartitionState()
                                 .setPartitionIndex(partition)
-                                .setDeletePartition(data.deletePartitions())
+                                .setDeletePartition(data.deletePartitions)
                         }
                     )
             }
-        } else data.topicStates()
+        } else data.topicStates
     }
 
     fun partitionStates(): Map<TopicPartition, StopReplicaPartitionState> {
         val partitionStates = mutableMapOf<TopicPartition, StopReplicaPartitionState>()
 
-        if (version < 1) for (partition in data.ungroupedPartitions())
-            partitionStates[TopicPartition(partition.topicName(), partition.partitionIndex())] =
+        if (version < 1) for (partition in data.ungroupedPartitions)
+            partitionStates[TopicPartition(partition.topicName, partition.partitionIndex)] =
                 StopReplicaPartitionState()
-                    .setPartitionIndex(partition.partitionIndex())
-                    .setDeletePartition(data.deletePartitions())
-
-        else if (version < 3) for (topic in data.topics())
-                for (partitionIndex in topic.partitionIndexes())
-                    partitionStates[TopicPartition(topic.name(), partitionIndex)] =
-                        StopReplicaPartitionState()
-                            .setPartitionIndex(partitionIndex)
-                            .setDeletePartition(data.deletePartitions())
-
-        else for (topicState in data.topicStates())
-            for (partitionState in topicState.partitionStates())
+                    .setPartitionIndex(partition.partitionIndex)
+                    .setDeletePartition(data.deletePartitions)
+        else if (version < 3) for (topic in data.topics)
+            for (partitionIndex in topic.partitionIndexes)
+                partitionStates[TopicPartition(topic.name, partitionIndex)] =
+                    StopReplicaPartitionState()
+                        .setPartitionIndex(partitionIndex)
+                        .setDeletePartition(data.deletePartitions)
+        else for (topicState in data.topicStates)
+            for (partitionState in topicState.partitionStates)
                 partitionStates[TopicPartition(
-                    topicState.topicName(),
-                    partitionState.partitionIndex()
+                    topicState.topicName,
+                    partitionState.partitionIndex
                 )] = partitionState
 
         return partitionStates
     }
 
-    override fun controllerId(): Int = data.controllerId()
+    override fun controllerId(): Int = data.controllerId
 
     override val isKRaftController: Boolean
         get() = data.isKRaftController
 
-    override fun controllerEpoch(): Int = data.controllerEpoch()
+    override fun controllerEpoch(): Int = data.controllerEpoch
 
-    override fun brokerEpoch(): Long = data.brokerEpoch()
+    override fun brokerEpoch(): Long = data.brokerEpoch
 
     override fun data(): StopReplicaRequestData = data
 
@@ -162,9 +160,9 @@ class StopReplicaRequest private constructor(
                 data.setDeletePartitions(deletePartitions)
                 val topics = topicStates.map { topic: StopReplicaTopicState ->
                     StopReplicaTopicV1()
-                        .setName(topic.topicName())
+                        .setName(topic.topicName)
                         .setPartitionIndexes(
-                            topic.partitionStates().map { it.partitionIndex() }.toIntArray()
+                            topic.partitionStates.map { it.partitionIndex }.toIntArray()
                         )
                 }
 
@@ -172,10 +170,10 @@ class StopReplicaRequest private constructor(
             } else {
                 data.setDeletePartitions(deletePartitions)
                 val partitions = topicStates.flatMap { topic ->
-                    topic.partitionStates().map { partition ->
+                    topic.partitionStates.map { partition ->
                         StopReplicaPartitionV0()
-                            .setTopicName(topic.topicName())
-                            .setPartitionIndex(partition.partitionIndex())
+                            .setTopicName(topic.topicName)
+                            .setPartitionIndex(partition.partitionIndex)
                     }
                 }
 
@@ -198,7 +196,8 @@ class StopReplicaRequest private constructor(
     companion object {
 
         fun parse(buffer: ByteBuffer, version: Short): StopReplicaRequest =
-            StopReplicaRequest(StopReplicaRequestData(ByteBufferAccessor(buffer), version),
+            StopReplicaRequest(
+                StopReplicaRequestData(ByteBufferAccessor(buffer), version),
                 version
             )
     }

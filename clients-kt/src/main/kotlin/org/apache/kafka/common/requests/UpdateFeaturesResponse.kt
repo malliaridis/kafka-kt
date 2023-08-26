@@ -37,20 +37,20 @@ class UpdateFeaturesResponse(
     private val data: UpdateFeaturesResponseData,
 ) : AbstractResponse(ApiKeys.UPDATE_FEATURES) {
 
-    fun topLevelError(): ApiError = ApiError(Errors.forCode(data.errorCode()), data.errorMessage())
+    fun topLevelError(): ApiError = ApiError(Errors.forCode(data.errorCode), data.errorMessage)
 
     override fun errorCounts(): Map<Errors, Int> {
         val errorCounts = mutableMapOf<Errors, Int>()
 
-        updateErrorCounts(errorCounts, Errors.forCode(data.errorCode()))
+        updateErrorCounts(errorCounts, Errors.forCode(data.errorCode))
 
-        for (result in data.results())
-            updateErrorCounts(errorCounts, Errors.forCode(result.errorCode()))
+        for (result in data.results)
+            updateErrorCounts(errorCounts, Errors.forCode(result.errorCode))
 
         return errorCounts
     }
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)

@@ -37,14 +37,14 @@ class DeleteRecordsRequest private constructor(
         val result = DeleteRecordsResponseData().setThrottleTimeMs(throttleTimeMs)
         val errorCode = Errors.forException(e).code
 
-        for (topic in data.topics()) {
-            val topicResult = DeleteRecordsTopicResult().setName(topic.name())
-            result.topics().add(topicResult)
+        for (topic in data.topics) {
+            val topicResult = DeleteRecordsTopicResult().setName(topic.name)
+            result.topics.add(topicResult)
 
-            topicResult.partitions().addAll(
-                topic.partitions().map { partition ->
+            topicResult.partitions.addAll(
+                topic.partitions.map { partition ->
                     DeleteRecordsPartitionResult()
-                        .setPartitionIndex(partition.partitionIndex())
+                        .setPartitionIndex(partition.partitionIndex)
                         .setErrorCode(errorCode)
                         .setLowWatermark(DeleteRecordsResponse.INVALID_LOW_WATERMARK)
                 }

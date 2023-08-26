@@ -39,9 +39,9 @@ class FindCoordinatorResponse(
 
     override fun data(): FindCoordinatorResponseData = data
 
-    fun node(): Node = Node(data.nodeId(), data.host(), data.port())
+    fun node(): Node = Node(data.nodeId, data.host, data.port)
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
@@ -49,13 +49,13 @@ class FindCoordinatorResponse(
 
     fun hasError(): Boolean = error() !== Errors.NONE
 
-    fun error(): Errors = Errors.forCode(data.errorCode())
+    fun error(): Errors = Errors.forCode(data.errorCode)
 
     override fun errorCounts(): Map<Errors, Int> {
-        return if (data.coordinators().isNotEmpty()) {
+        return if (data.coordinators.isNotEmpty()) {
             val errorCounts = mutableMapOf<Errors, Int>()
-            for (coordinator in data.coordinators())
-                updateErrorCounts(errorCounts, Errors.forCode(coordinator.errorCode()))
+            for (coordinator in data.coordinators)
+                updateErrorCounts(errorCounts, Errors.forCode(coordinator.errorCode))
             errorCounts
         } else errorCounts(error())
     }
@@ -65,14 +65,14 @@ class FindCoordinatorResponse(
     override fun shouldClientThrottle(version: Short): Boolean = version >= 2
 
     fun coordinators(): List<FindCoordinatorResponseData.Coordinator> =
-        data.coordinators().ifEmpty {
+        data.coordinators.ifEmpty {
             val coordinator = FindCoordinatorResponseData.Coordinator()
-                .setErrorCode(data.errorCode())
-                .setErrorMessage(data.errorMessage())
+                .setErrorCode(data.errorCode)
+                .setErrorMessage(data.errorMessage)
                 .setKey("")
-                .setNodeId(data.nodeId())
-                .setHost(data.host())
-                .setPort(data.port())
+                .setNodeId(data.nodeId)
+                .setHost(data.host)
+                .setPort(data.port)
             listOf(coordinator)
         }
 

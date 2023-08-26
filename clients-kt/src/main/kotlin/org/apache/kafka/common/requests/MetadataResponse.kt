@@ -61,7 +61,7 @@ class MetadataResponse internal constructor(
 
     override fun data(): MetadataResponseData = data
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
@@ -73,12 +73,12 @@ class MetadataResponse internal constructor(
      */
     fun errors(): Map<String, Errors> {
         val errors: MutableMap<String, Errors> = HashMap()
-        for (metadata in data.topics()) {
-            checkNotNull(metadata.name()) {
+        for (metadata in data.topics) {
+            checkNotNull(metadata.name) {
                 "Use errorsByTopicId() when managing topic using topic id"
             }
-            if (metadata.errorCode() != Errors.NONE.code) errors[metadata.name!!] =
-                Errors.forCode(metadata.errorCode())
+            if (metadata.errorCode != Errors.NONE.code) errors[metadata.name!!] =
+                Errors.forCode(metadata.errorCode)
         }
         return errors
     }
@@ -89,23 +89,23 @@ class MetadataResponse internal constructor(
      */
     fun errorsByTopicId(): Map<Uuid, Errors> {
         val errors: MutableMap<Uuid, Errors> = HashMap()
-        for (metadata in data.topics()) {
-            check(metadata.topicId() !== Uuid.ZERO_UUID) {
+        for (metadata in data.topics) {
+            check(metadata.topicId !== Uuid.ZERO_UUID) {
                 "Use errors() when managing topic using topic name"
             }
-            if (metadata.errorCode() != Errors.NONE.code)
-                errors[metadata.topicId()] = Errors.forCode(metadata.errorCode())
+            if (metadata.errorCode != Errors.NONE.code)
+                errors[metadata.topicId] = Errors.forCode(metadata.errorCode)
         }
         return errors
     }
 
     override fun errorCounts(): Map<Errors, Int> {
         val errorCounts = mutableMapOf<Errors, Int>()
-        data.topics().forEach { metadata ->
-            metadata.partitions().forEach { partition ->
-                updateErrorCounts(errorCounts, Errors.forCode(partition.errorCode()))
+        data.topics.forEach { metadata ->
+            metadata.partitions.forEach { partition ->
+                updateErrorCounts(errorCounts, Errors.forCode(partition.errorCode))
             }
-            updateErrorCounts(errorCounts, Errors.forCode(metadata.errorCode()))
+            updateErrorCounts(errorCounts, Errors.forCode(metadata.errorCode))
         }
         return errorCounts
     }
@@ -115,8 +115,8 @@ class MetadataResponse internal constructor(
      */
     fun topicsByError(error: Errors): Set<String> {
         val errorTopics: MutableSet<String> = HashSet()
-        for (metadata in data.topics())
-            if (metadata.errorCode() == error.code) errorTopics.add(metadata.name!!)
+        for (metadata in data.topics)
+            if (metadata.errorCode == error.code) errorTopics.add(metadata.name!!)
 
         return errorTopics
     }
@@ -139,7 +139,7 @@ class MetadataResponse internal constructor(
             }
 
         return Cluster(
-            clusterId = data.clusterId(),
+            clusterId = data.clusterId,
             nodes = brokers(),
             partitions = partitions,
             unauthorizedTopics = topicsByError(Errors.TOPIC_AUTHORIZATION_FAILED),
@@ -154,12 +154,12 @@ class MetadataResponse internal constructor(
      * Returns a 32-bit bitfield to represent authorized operations for this topic.
      */
     fun topicAuthorizedOperations(topicName: String): Int =
-        data.topics().find(topicName)!!.topicAuthorizedOperations()
+        data.topics.find(topicName)!!.topicAuthorizedOperations
 
     /**
      * Returns a 32-bit bitfield to represent authorized operations for this cluster.
      */
-    fun clusterAuthorizedOperations(): Int = data.clusterAuthorizedOperations()
+    fun clusterAuthorizedOperations(): Int = data.clusterAuthorizedOperations
 
     @Deprecated(
         message = "Use property access instead",
@@ -329,11 +329,9 @@ class MetadataResponse internal constructor(
                     ", partition=" + topicPartition +
                     ", leader=" + leaderId +
                     ", leaderEpoch=" + leaderEpoch +
-                    ", replicas=" + Utils.join(replicaIds, ",") +
-                    ", isr=" + Utils.join(inSyncReplicaIds, ",") +
-                    ", offlineReplicas=" + Utils.join(
-                offlineReplicaIds, ","
-            ) + ')'
+                    ", replicas=" + replicaIds.joinToString(",") +
+                    ", isr=" + inSyncReplicaIds.joinToString(",") +
+                    ", offlineReplicas=" + offlineReplicaIds.joinToString(",") + ')'
         }
     }
 
@@ -347,34 +345,34 @@ class MetadataResponse internal constructor(
         init {
             brokers = Collections.unmodifiableMap(createBrokers(data))
             topicMetadata = createTopicMetadata(data)
-            controller = brokers[data.controllerId()]
+            controller = brokers[data.controllerId]
         }
 
         private fun createBrokers(data: MetadataResponseData): Map<Int?, Node> {
-            return data.brokers().valuesList().map { broker: MetadataResponseBroker ->
+            return data.brokers.valuesList().map { broker: MetadataResponseBroker ->
                 Node(
-                    id = broker.nodeId(),
-                    host = broker.host(),
-                    port = broker.port(),
-                    rack = broker.rack()
+                    id = broker.nodeId,
+                    host = broker.host,
+                    port = broker.port,
+                    rack = broker.rack
                 )
             }.associateBy { it.id }
         }
 
         private fun createTopicMetadata(data: MetadataResponseData): Collection<TopicMetadata> {
             val topicMetadataList: MutableList<TopicMetadata> = ArrayList()
-            data.topics().forEach { topicMetadata ->
-                val topicError = Errors.forCode(topicMetadata.errorCode())
+            data.topics.forEach { topicMetadata ->
+                val topicError = Errors.forCode(topicMetadata.errorCode)
                 val topic = topicMetadata.name!!
-                val topicId = topicMetadata.topicId()
+                val topicId = topicMetadata.topicId
                 val isInternal = topicMetadata.isInternal
                 val partitionMetadataList: MutableList<PartitionMetadata> = ArrayList()
-                topicMetadata.partitions().forEach { partitionMetadata ->
-                    val partitionError = Errors.forCode(partitionMetadata.errorCode())
-                    val partitionIndex = partitionMetadata.partitionIndex()
-                    val leaderId = partitionMetadata.leaderId()
+                topicMetadata.partitions.forEach { partitionMetadata ->
+                    val partitionError = Errors.forCode(partitionMetadata.errorCode)
+                    val partitionIndex = partitionMetadata.partitionIndex
+                    val leaderId = partitionMetadata.leaderId
                     val leaderIdOpt = leaderId.takeUnless { leaderId < 0 }
-                    val leaderEpoch = RequestUtils.getLeaderEpoch(partitionMetadata.leaderEpoch())
+                    val leaderEpoch = RequestUtils.getLeaderEpoch(partitionMetadata.leaderEpoch)
                     val topicPartition = TopicPartition(topic, partitionIndex)
                     partitionMetadataList.add(
                         PartitionMetadata(
@@ -391,7 +389,7 @@ class MetadataResponse internal constructor(
                 topicMetadataList.add(
                     TopicMetadata(
                         topicError, topic, topicId, isInternal, partitionMetadataList,
-                        topicMetadata.topicAuthorizedOperations()
+                        topicMetadata.topicAuthorizedOperations
                     )
                 )
             }
@@ -478,7 +476,7 @@ class MetadataResponse internal constructor(
             val responseData = MetadataResponseData()
             responseData.setThrottleTimeMs(throttleTimeMs)
             brokers.forEach { (id, host, port, rack) ->
-                responseData.brokers().add(
+                responseData.brokers.add(
                     MetadataResponseBroker()
                         .setNodeId(id)
                         .setHost(host)
@@ -489,7 +487,7 @@ class MetadataResponse internal constructor(
             responseData.setClusterId(clusterId)
             responseData.setControllerId(controllerId)
             responseData.setClusterAuthorizedOperations(clusterAuthorizedOperations)
-            topics.forEach { topicMetadata -> responseData.topics().add(topicMetadata) }
+            topics.forEach { topicMetadata -> responseData.topics.add(topicMetadata) }
             return MetadataResponse(responseData, hasReliableEpoch)
         }
     }

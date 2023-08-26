@@ -32,21 +32,21 @@ class ExpireDelegationTokenResponse(
         message = "User property instead",
         replaceWith = ReplaceWith("error"),
     )
-    fun error(): Errors = Errors.forCode(data.errorCode())
+    fun error(): Errors = Errors.forCode(data.errorCode)
 
     val error: Errors
-        get() = Errors.forCode(data.errorCode())
+        get() = Errors.forCode(data.errorCode)
 
     @Deprecated(
         message = "User property instead",
         replaceWith = ReplaceWith("expiryTimestamp"),
     )
-    fun expiryTimestamp(): Long = data.expiryTimestampMs()
+    fun expiryTimestamp(): Long = data.expiryTimestampMs
 
     val expiryTimestamp: Long
-        get() = data.expiryTimestampMs()
+        get() = data.expiryTimestampMs
 
-    override fun errorCounts(): Map<Errors, Int> = errorCounts(error())
+    override fun errorCounts(): Map<Errors, Int> = errorCounts(error)
 
     override fun data(): ExpireDelegationTokenResponseData = data
 
@@ -54,7 +54,7 @@ class ExpireDelegationTokenResponse(
         data.setThrottleTimeMs(throttleTimeMs)
     }
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     fun hasError(): Boolean = error !== Errors.NONE
 

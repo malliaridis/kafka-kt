@@ -27,22 +27,23 @@ import java.util.*
 import java.util.function.UnaryOperator
 
 
-class FetchSnapshotResponse(private val data: FetchSnapshotResponseData) : AbstractResponse(ApiKeys.FETCH_SNAPSHOT) {
+class FetchSnapshotResponse(private val data: FetchSnapshotResponseData) :
+    AbstractResponse(ApiKeys.FETCH_SNAPSHOT) {
     override fun errorCounts(): Map<Errors, Int> {
         val errors = mutableMapOf<Errors, Int>()
-        val topLevelError = Errors.forCode(data.errorCode())
+        val topLevelError = Errors.forCode(data.errorCode)
         if (topLevelError !== Errors.NONE) errors[topLevelError] = 1
 
-        for (topicResponse in data.topics())
-            for (partitionResponse in topicResponse.partitions())
-                errors.compute(Errors.forCode(partitionResponse.errorCode())) { _, count ->
+        for (topicResponse in data.topics)
+            for (partitionResponse in topicResponse.partitions)
+                errors.compute(Errors.forCode(partitionResponse.errorCode)) { _, count ->
                     if (count == null) 1 else count + 1
                 }
 
         return errors
     }
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
@@ -101,10 +102,10 @@ class FetchSnapshotResponse(private val data: FetchSnapshotResponseData) : Abstr
             topicPartition: TopicPartition,
         ): FetchSnapshotResponseData.PartitionSnapshot? {
             return data
-                .topics()
-                .filter { topic -> topic.name() == topicPartition.topic }
-                .flatMap { topic -> topic.partitions() }
-                .firstOrNull { partition -> partition.index() == topicPartition.partition }
+                .topics
+                .filter { topic -> topic.name == topicPartition.topic }
+                .flatMap { topic -> topic.partitions }
+                .firstOrNull { partition -> partition.index == topicPartition.partition }
         }
 
         fun parse(buffer: ByteBuffer, version: Short): FetchSnapshotResponse =

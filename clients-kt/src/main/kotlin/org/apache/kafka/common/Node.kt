@@ -36,17 +36,6 @@ data class Node(
         get() = host.isEmpty() || port < 0
 
     /**
-     * Check whether this node is empty, which may be the case if noNode() is used as a placeholder
-     * in a response payload with an error.
-     * @return true if it is, false otherwise
-     */
-    @Deprecated(
-        message = "Use property instead.",
-        replaceWith = ReplaceWith("isEmpty")
-    )
-    fun isEmpty(): Boolean = isEmpty
-
-    /**
      * The node id of this node
      */
     @Deprecated(

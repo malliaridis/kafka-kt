@@ -34,12 +34,12 @@ class EndTxnRequest private constructor(
         replaceWith = ReplaceWith("result"),
     )
     fun result(): TransactionResult {
-        return if (data.committed()) TransactionResult.COMMIT
+        return if (data.committed) TransactionResult.COMMIT
         else TransactionResult.ABORT
     }
 
     val result: TransactionResult
-        get() = if (data.committed()) TransactionResult.COMMIT
+        get() = if (data.committed) TransactionResult.COMMIT
         else TransactionResult.ABORT
 
     override fun data(): EndTxnRequestData = data

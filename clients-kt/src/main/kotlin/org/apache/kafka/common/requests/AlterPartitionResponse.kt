@@ -32,18 +32,18 @@ class AlterPartitionResponse(
 
     override fun errorCounts(): Map<Errors, Int> {
         val counts = mutableMapOf<Errors, Int>()
-        updateErrorCounts(counts, Errors.forCode(data.errorCode()))
+        updateErrorCounts(counts, Errors.forCode(data.errorCode))
 
-        data.topics().forEach { topicResponse ->
-            topicResponse.partitions().forEach { partitionResponse ->
-                updateErrorCounts(counts, Errors.forCode(partitionResponse.errorCode()))
+        data.topics.forEach { topicResponse ->
+            topicResponse.partitions.forEach { partitionResponse ->
+                updateErrorCounts(counts, Errors.forCode(partitionResponse.errorCode))
             }
         }
 
         return counts
     }
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)

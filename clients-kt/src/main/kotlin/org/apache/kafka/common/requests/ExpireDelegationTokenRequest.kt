@@ -42,19 +42,19 @@ class ExpireDelegationTokenRequest private constructor(
         message = "User property instead",
         replaceWith = ReplaceWith("expiryTimePeriod"),
     )
-    fun hmac(): ByteBuffer = ByteBuffer.wrap(data.hmac())
+    fun hmac(): ByteBuffer = ByteBuffer.wrap(data.hmac)
 
     val hmac: ByteBuffer
-        get() = ByteBuffer.wrap(data.hmac())
+        get() = ByteBuffer.wrap(data.hmac)
 
     @Deprecated(
         message = "User property instead",
         replaceWith = ReplaceWith("expiryTimePeriod"),
     )
-    fun expiryTimePeriod(): Long = data.expiryTimePeriodMs()
+    fun expiryTimePeriod(): Long = data.expiryTimePeriodMs
 
     val expiryTimePeriod: Long
-        get() = data.expiryTimePeriodMs()
+        get() = data.expiryTimePeriodMs
 
     class Builder(
         private val data: ExpireDelegationTokenRequestData,

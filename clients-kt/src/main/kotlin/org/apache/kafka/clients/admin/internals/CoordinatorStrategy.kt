@@ -59,7 +59,7 @@ class CoordinatorStrategy(
         return if (batch) {
             ensureSameType(representableKeys)
             val data: FindCoordinatorRequestData = FindCoordinatorRequestData()
-                .setKeyType(type.id())
+                .setKeyType(type.id)
                 .setCoordinatorKeys(representableKeys.map { it.idValue })
             FindCoordinatorRequest.Builder(data)
         } else {
@@ -67,7 +67,7 @@ class CoordinatorStrategy(
             FindCoordinatorRequest.Builder(
                 FindCoordinatorRequestData()
                     .setKey(key.idValue)
-                    .setKeyType(key.type.id())
+                    .setKeyType(key.type.id)
             )
         }
     }
@@ -86,14 +86,15 @@ class CoordinatorStrategy(
         }
 
         (response as FindCoordinatorResponse).coordinators().forEach { coordinator ->
-            val key = if (coordinator.key() == null) requireSingletonAndType(keys)  // old version without batching
-            else if ((type == CoordinatorType.GROUP)) CoordinatorKey.byGroupId(coordinator.key())
-            else CoordinatorKey.byTransactionalId(coordinator.key())
+            val key =
+                if (coordinator.key == null) requireSingletonAndType(keys)  // old version without batching
+                else if ((type == CoordinatorType.GROUP)) CoordinatorKey.byGroupId(coordinator.key)
+                else CoordinatorKey.byTransactionalId(coordinator.key)
 
             handleError(
-                error = Errors.forCode(coordinator.errorCode()),
+                error = Errors.forCode(coordinator.errorCode),
                 key = key,
-                nodeId = coordinator.nodeId(),
+                nodeId = coordinator.nodeId,
                 mappedKeys = mappedKeys,
                 failedKeys = failedKeys
             )

@@ -168,10 +168,10 @@ class OffsetFetchResponse : AbstractResponse {
         // error field if we are between version 2 and 7. if we are in version 8 or greater, then
         // we will populate the map of group id to error codes.
         if (version < 8) {
-            error = if (version >= 2) Errors.forCode(data.errorCode()) else topLevelError(data)
+            error = if (version >= 2) Errors.forCode(data.errorCode) else topLevelError(data)
         } else {
-            data.groups().forEach { group ->
-                groupLevelErrors[group.groupId()] = Errors.forCode(group.errorCode())
+            data.groups.forEach { group ->
+                groupLevelErrors[group.groupId] = Errors.forCode(group.errorCode)
             }
             error = null
         }
@@ -198,7 +198,7 @@ class OffsetFetchResponse : AbstractResponse {
         }
     }
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
@@ -222,10 +222,10 @@ class OffsetFetchResponse : AbstractResponse {
             // built response with v8 or above
             groupLevelErrors.forEach { (_, value) -> updateErrorCounts(counts, value!!) }
 
-            data.groups().forEach { group ->
-                group.topics().forEach { topic ->
-                    topic.partitions().forEach { partition ->
-                        updateErrorCounts(counts, Errors.forCode(partition.errorCode()))
+            data.groups.forEach { group ->
+                group.topics.forEach { topic ->
+                    topic.partitions.forEach { partition ->
+                        updateErrorCounts(counts, Errors.forCode(partition.errorCode))
                     }
                 }
             }
@@ -233,9 +233,9 @@ class OffsetFetchResponse : AbstractResponse {
             // built response with v0-v7
             updateErrorCounts(counts, error!!)
 
-            data.topics().forEach { topic ->
-                topic.partitions().forEach { partition ->
-                    updateErrorCounts(counts, Errors.forCode(partition.errorCode()))
+            data.topics.forEach { topic ->
+                topic.partitions.forEach { partition ->
+                    updateErrorCounts(counts, Errors.forCode(partition.errorCode))
                 }
             }
         }
@@ -246,15 +246,15 @@ class OffsetFetchResponse : AbstractResponse {
     fun responseDataV0ToV7(): Map<TopicPartition, PartitionData> {
         val responseData: MutableMap<TopicPartition, PartitionData> = HashMap()
 
-        data.topics().forEach { topic ->
-            topic.partitions().forEach { partition ->
+        data.topics.forEach { topic ->
+            topic.partitions.forEach { partition ->
 
-                responseData[TopicPartition(topic.name(), partition.partitionIndex())] =
+                responseData[TopicPartition(topic.name, partition.partitionIndex)] =
                     PartitionData(
-                        offset = partition.committedOffset(),
-                        leaderEpoch = RequestUtils.getLeaderEpoch(partition.committedLeaderEpoch()),
-                        metadata = partition.metadata() ?: NO_METADATA,
-                        error = Errors.forCode(partition.errorCode())
+                        offset = partition.committedOffset,
+                        leaderEpoch = RequestUtils.getLeaderEpoch(partition.committedLeaderEpoch),
+                        metadata = partition.metadata ?: NO_METADATA,
+                        error = Errors.forCode(partition.errorCode)
                     )
             }
         }
@@ -264,20 +264,20 @@ class OffsetFetchResponse : AbstractResponse {
     private fun buildResponseData(groupId: String): Map<TopicPartition, PartitionData> {
         val responseData: MutableMap<TopicPartition, PartitionData> = HashMap()
         val group = data
-            .groups()
+            .groups
             .stream()
-            .filter { g: OffsetFetchResponseGroup -> g.groupId() == groupId }
+            .filter { g: OffsetFetchResponseGroup -> g.groupId == groupId }
             .collect(Collectors.toList())[0]
 
-        group.topics().forEach { topic ->
-            topic.partitions().forEach { partition ->
+        group.topics.forEach { topic ->
+            topic.partitions.forEach { partition ->
 
-                responseData[TopicPartition(topic.name(), partition.partitionIndex())] =
+                responseData[TopicPartition(topic.name, partition.partitionIndex)] =
                     PartitionData(
-                        offset = partition.committedOffset(),
-                        leaderEpoch = RequestUtils.getLeaderEpoch(partition.committedLeaderEpoch()),
-                        metadata = partition.metadata() ?: NO_METADATA,
-                        error = Errors.forCode(partition.errorCode())
+                        offset = partition.committedOffset,
+                        leaderEpoch = RequestUtils.getLeaderEpoch(partition.committedLeaderEpoch),
+                        metadata = partition.metadata ?: NO_METADATA,
+                        error = Errors.forCode(partition.errorCode)
                     )
             }
         }
@@ -319,9 +319,9 @@ class OffsetFetchResponse : AbstractResponse {
         )
 
         private fun topLevelError(data: OffsetFetchResponseData): Errors {
-            for (topic in data.topics()) {
-                for (partition in topic.partitions()) {
-                    val partitionError = Errors.forCode(partition.errorCode())
+            for (topic in data.topics) {
+                for (partition in topic.partitions) {
+                    val partitionError = Errors.forCode(partition.errorCode)
                     if (partitionError !== Errors.NONE && !PARTITION_ERRORS.contains(partitionError)) {
                         return partitionError
                     }

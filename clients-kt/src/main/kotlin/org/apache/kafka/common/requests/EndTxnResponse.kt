@@ -37,13 +37,13 @@ import java.nio.ByteBuffer
  */
 class EndTxnResponse(private val data: EndTxnResponseData) : AbstractResponse(ApiKeys.END_TXN) {
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
     }
 
-    fun error(): Errors = Errors.forCode(data.errorCode())
+    fun error(): Errors = Errors.forCode(data.errorCode)
 
     override fun errorCounts(): Map<Errors, Int> = errorCounts(error())
 

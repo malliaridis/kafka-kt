@@ -40,7 +40,7 @@ class DescribeGroupsResponse(
 
     override fun data(): DescribeGroupsResponseData = data
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
@@ -48,8 +48,8 @@ class DescribeGroupsResponse(
 
     override fun errorCounts(): Map<Errors, Int> {
         val errorCounts = mutableMapOf<Errors, Int>()
-        data.groups().forEach { describedGroup: DescribedGroup ->
-            updateErrorCounts(errorCounts, Errors.forCode(describedGroup.errorCode()))
+        data.groups.forEach { describedGroup: DescribedGroup ->
+            updateErrorCounts(errorCounts, Errors.forCode(describedGroup.errorCode))
         }
         return errorCounts
     }
@@ -84,13 +84,13 @@ class DescribeGroupsResponse(
             members: List<DescribedGroupMember>,
             authorizedOperations: Set<Byte>
         ): DescribedGroup = DescribedGroup()
-                .setGroupId(groupId)
-                .setErrorCode(error.code)
-                .setGroupState(state)
-                .setProtocolType(protocolType)
-                .setProtocolData(protocol)
-                .setMembers(members)
-                .setAuthorizedOperations(to32BitField(authorizedOperations))
+            .setGroupId(groupId)
+            .setErrorCode(error.code)
+            .setGroupState(state)
+            .setProtocolType(protocolType)
+            .setProtocolData(protocol)
+            .setMembers(members)
+            .setAuthorizedOperations(to32BitField(authorizedOperations))
 
         fun groupMetadata(
             groupId: String,
@@ -101,13 +101,13 @@ class DescribeGroupsResponse(
             members: List<DescribedGroupMember>,
             authorizedOperations: Int
         ): DescribedGroup = DescribedGroup()
-                .setGroupId(groupId)
-                .setErrorCode(error.code)
-                .setGroupState(state)
-                .setProtocolType(protocolType)
-                .setProtocolData(protocol)
-                .setMembers(members)
-                .setAuthorizedOperations(authorizedOperations)
+            .setGroupId(groupId)
+            .setErrorCode(error.code)
+            .setGroupState(state)
+            .setProtocolType(protocolType)
+            .setProtocolData(protocol)
+            .setMembers(members)
+            .setAuthorizedOperations(authorizedOperations)
 
         const val UNKNOWN_STATE = ""
 

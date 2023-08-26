@@ -44,9 +44,9 @@ class ListOffsetsRequest private constructor(
         val duplicates = mutableSetOf<TopicPartition>()
 
         val partitions: MutableSet<TopicPartition> = HashSet()
-        data.topics().forEach { topic ->
-            topic.partitions().forEach { partition ->
-                val tp = TopicPartition(topic.name(), partition.partitionIndex())
+        data.topics.forEach { topic ->
+            topic.partitions.forEach { partition ->
+                val tp = TopicPartition(topic.name, partition.partitionIndex)
                 if (!partitions.add(tp)) duplicates.add(tp)
             }
         }
@@ -57,13 +57,13 @@ class ListOffsetsRequest private constructor(
         val versionId = version
         val errorCode = Errors.forException(e).code
         val responses: MutableList<ListOffsetsTopicResponse> = ArrayList()
-        for (topic in data.topics()) {
-            val topicResponse = ListOffsetsTopicResponse().setName(topic.name())
+        for (topic in data.topics) {
+            val topicResponse = ListOffsetsTopicResponse().setName(topic.name)
             val partitions: MutableList<ListOffsetsPartitionResponse> = ArrayList()
-            for (partition in topic.partitions()) {
+            for (partition in topic.partitions) {
                 val partitionResponse = ListOffsetsPartitionResponse()
                     .setErrorCode(errorCode)
-                    .setPartitionIndex(partition.partitionIndex())
+                    .setPartitionIndex(partition.partitionIndex)
                 if (versionId.toInt() == 0) {
                     partitionResponse.setOldStyleOffsets(longArrayOf())
                 } else {
@@ -87,30 +87,30 @@ class ListOffsetsRequest private constructor(
         message = "User property instead",
         replaceWith = ReplaceWith("replicaId"),
     )
-    fun replicaId(): Int = data.replicaId()
+    fun replicaId(): Int = data.replicaId
 
     val replicaId: Int
-        get() = data.replicaId()
+        get() = data.replicaId
 
     @Deprecated(
         message = "User property instead",
         replaceWith = ReplaceWith("isolationLevel"),
     )
     fun isolationLevel(): IsolationLevel {
-        return IsolationLevel.forId(data.isolationLevel())
+        return IsolationLevel.forId(data.isolationLevel)
     }
 
     val isolationLevel: IsolationLevel
-        get() = IsolationLevel.forId(data.isolationLevel())
+        get() = IsolationLevel.forId(data.isolationLevel)
 
     @Deprecated(
         message = "User property instead",
         replaceWith = ReplaceWith("topics"),
     )
-    fun topics(): List<ListOffsetsTopic> = data.topics()
+    fun topics(): List<ListOffsetsTopic> = data.topics
 
     val topics: List<ListOffsetsTopic>
-        get() = data.topics()
+        get() = data.topics
 
     @Deprecated(
         message = "User property instead",
@@ -196,7 +196,8 @@ class ListOffsetsRequest private constructor(
             val topics: MutableMap<String, ListOffsetsTopic> = HashMap()
 
             for ((tp, value) in timestampsToSearch) {
-                val topic = topics.computeIfAbsent(tp.topic) { ListOffsetsTopic().setName(tp.topic) }
+                val topic =
+                    topics.computeIfAbsent(tp.topic) { ListOffsetsTopic().setName(tp.topic) }
                 topic.partitions += value
             }
             return ArrayList(topics.values)

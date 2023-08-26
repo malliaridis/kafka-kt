@@ -46,7 +46,7 @@ class HeartbeatRequest private constructor(
     ) {
 
         override fun build(version: Short): HeartbeatRequest {
-            if (data.groupInstanceId() != null && version < 3) throw UnsupportedVersionException(
+            if (data.groupInstanceId != null && version < 3) throw UnsupportedVersionException(
                 "The broker heartbeat protocol version $version does not support usage " +
                     "of config group.instance.id."
             )

@@ -39,7 +39,7 @@ class DeleteTopicsResponse(
     private val data: DeleteTopicsResponseData
 ) : AbstractResponse(ApiKeys.DELETE_TOPICS) {
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
@@ -50,8 +50,8 @@ class DeleteTopicsResponse(
     override fun errorCounts(): Map<Errors, Int> {
         val counts = mutableMapOf<Errors, Int>()
 
-        data.responses().forEach { result ->
-            updateErrorCounts(counts, Errors.forCode(result.errorCode()))
+        data.responses.forEach { result ->
+            updateErrorCounts(counts, Errors.forCode(result.errorCode))
         }
 
         return counts

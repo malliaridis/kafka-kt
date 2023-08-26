@@ -40,14 +40,14 @@ class LeaveGroupRequest private constructor(
     fun normalizedData(): LeaveGroupRequestData {
         return if (version >= 3) data
         else LeaveGroupRequestData()
-            .setGroupId(data.groupId())
-            .setMembers(listOf(MemberIdentity().setMemberId(data.memberId())))
+            .setGroupId(data.groupId)
+            .setMembers(listOf(MemberIdentity().setMemberId(data.memberId)))
     }
 
     fun members(): List<MemberIdentity> {
         // Before version 3, leave group request is still in single mode
-        return if (version <= 2) listOf(MemberIdentity().setMemberId(data.memberId()))
-        else data.members()
+        return if (version <= 2) listOf(MemberIdentity().setMemberId(data.memberId))
+        else data.members
     }
 
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse {
@@ -99,7 +99,7 @@ class LeaveGroupRequest private constructor(
 
                 LeaveGroupRequestData()
                     .setGroupId(groupId)
-                    .setMemberId(members[0].memberId())
+                    .setMemberId(members[0].memberId)
             }
             return LeaveGroupRequest(data, version)
         }
