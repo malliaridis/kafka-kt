@@ -41,16 +41,18 @@ import java.security.Principal
  */
 data class KafkaPrincipal(
     val principalType: String,
-    private val name: String,
+    @get:JvmName("getPrincipalName") // workaround due to naming conflict
+    val name: String,
 ) : Principal {
 
-    @field:Volatile var tokenAuthenticated: Boolean = false
+    @field:Volatile
+    var tokenAuthenticated: Boolean = false
 
     constructor(
         principalType: String,
         name: String,
         tokenAuthenticated: Boolean = false
-    ) : this (
+    ) : this(
         principalType = principalType,
         name = name,
     ) {
