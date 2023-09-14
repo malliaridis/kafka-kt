@@ -109,7 +109,7 @@ class RoundRobinAssignor : AbstractPartitionAssignor() {
         subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>,
     ): List<TopicPartition> {
         val topics: SortedSet<String> = TreeSet()
-        for (subscription in subscriptions.values) topics.addAll(subscription.topics())
+        for (subscription in subscriptions.values) topics.addAll(subscription.topics)
         val allPartitions: MutableList<TopicPartition> = ArrayList()
 
         for (topic in topics) {

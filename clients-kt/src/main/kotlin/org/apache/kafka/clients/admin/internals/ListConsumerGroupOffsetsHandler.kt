@@ -63,7 +63,7 @@ class ListConsumerGroupOffsetsHandler(
             val spec = groupSpecs[g.idValue]
 
             val partitions: List<TopicPartition>? =
-                if (spec!!.topicPartitions() != null) ArrayList(spec.topicPartitions())
+                if (spec!!.topicPartitions != null) ArrayList(spec.topicPartitions)
                 else null
 
             coordinatorGroupIdToTopicPartitions[g.idValue] = partitions!!

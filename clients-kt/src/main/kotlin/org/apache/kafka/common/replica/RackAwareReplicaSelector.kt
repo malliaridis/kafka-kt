@@ -32,7 +32,7 @@ class RackAwareReplicaSelector : ReplicaSelector {
     ): ReplicaView {
         return if (clientMetadata.rackId().isNotEmpty()) {
             val sameRackReplicas = partitionView.replicas()
-                .filter { replicaInfo -> clientMetadata.rackId() == replicaInfo.endpoint().rack() }
+                .filter { replicaInfo -> clientMetadata.rackId() == replicaInfo.endpoint().rack }
                 .toSet()
 
             if (sameRackReplicas.isEmpty()) partitionView.leader()

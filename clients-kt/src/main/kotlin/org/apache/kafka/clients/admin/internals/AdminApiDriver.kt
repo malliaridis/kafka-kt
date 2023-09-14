@@ -274,7 +274,7 @@ class AdminApiDriver<K, V>(
             // and we don't want to issue more than one fulfillment request per broker at a time
             val newRequest = newRequests.iterator().next()
             val spec = RequestSpec(
-                handler.apiName() + "(api=${newRequest.request.apiKey()})",
+                handler.apiName() + "(api=${newRequest.request.apiKey})",
                 scope,
                 newRequest.keys,
                 newRequest.request,

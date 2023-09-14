@@ -14,32 +14,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.clients.producer.internals;
 
-import java.util.function.Supplier;
+package org.apache.kafka.clients.producer.internals
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import kotlin.test.assertTrue
 
-public class ProducerTestUtils {
-    private static final int MAX_TRIES = 10;
+object ProducerTestUtils {
 
-    static void runUntil(
-        Sender sender,
-        Supplier<Boolean> condition
+    private const val MAX_TRIES = 10
+
+    fun runUntil(
+        sender: Sender,
+        condition: () -> Boolean,
+        maxTries: Int = MAX_TRIES,
     ) {
-        runUntil(sender, condition, MAX_TRIES);
-    }
-
-    static void runUntil(
-        Sender sender,
-        Supplier<Boolean> condition,
-        int maxTries
-    ) {
-        int tries = 0;
-        while (!condition.get() && tries < maxTries) {
-            tries++;
-            sender.runOnce();
+        var tries = 0
+        while (!condition.invoke() && tries < maxTries) {
+            tries++
+            sender.runOnce()
         }
-        assertTrue(condition.get(), "Condition not satisfied after " + maxTries + " tries");
+        assertTrue(
+            condition.invoke(),
+            "Condition not satisfied after $maxTries tries"
+        )
     }
 }

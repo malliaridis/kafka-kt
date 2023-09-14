@@ -234,7 +234,7 @@ abstract class AbstractCoordinator(
      * @param timer Timer bounding how long this method can block
      * @return `true` If coordinator discovery and initial connection succeeded, `false` otherwise
      */
-    protected fun ensureCoordinatorReady(timer: Timer): Boolean = synchronized(obj) {
+    fun ensureCoordinatorReady(timer: Timer): Boolean = synchronized(obj) {
         ensureCoordinatorReady(timer, false)
     }
 
@@ -245,7 +245,7 @@ abstract class AbstractCoordinator(
      *
      * @return `true` if coordinator discovery and initial connection succeeded, `false` otherwise
      */
-    protected fun ensureCoordinatorReadyAsync(): Boolean = synchronized(obj) {
+    fun ensureCoordinatorReadyAsync(): Boolean = synchronized(obj) {
         ensureCoordinatorReady(time.timer(0), true)
     }
 
@@ -288,7 +288,7 @@ abstract class AbstractCoordinator(
             return !coordinatorUnknown()
         }
 
-    protected fun lookupCoordinator(): RequestFuture<Unit> = synchronized(obj) {
+    fun lookupCoordinator(): RequestFuture<Unit> = synchronized(obj) {
         if (findCoordinatorFuture == null) {
             // find a node to ask about the coordinator
             val node = client.leastLoadedNode()
@@ -310,7 +310,7 @@ abstract class AbstractCoordinator(
      *
      * @return `true` if it should, `false` otherwise
      */
-    protected open fun rejoinNeededOrPending(): Boolean = synchronized(obj) {
+    open fun rejoinNeededOrPending(): Boolean = synchronized(obj) {
         // if there's a pending joinFuture, we should try to complete handling it.
         return rejoinNeeded || joinFuture != null
     }
@@ -325,7 +325,7 @@ abstract class AbstractCoordinator(
      * @param now current time in milliseconds
      * @throws RuntimeException for unexpected errors raised from the heartbeat thread
      */
-    protected fun pollHeartbeat(now: Long) = synchronized(obj) {
+    fun pollHeartbeat(now: Long) = synchronized(obj) {
         heartbeatThread?.let { thread ->
             if (thread.hasFailed()) {
                 // set the heartbeat thread to null and raise an exception. If the user catches it,
@@ -988,7 +988,7 @@ abstract class AbstractCoordinator(
      *
      * @return the current coordinator or `null` if it is unknown
      */
-    protected fun checkAndGetCoordinator(): Node? = synchronized(obj) {
+    fun checkAndGetCoordinator(): Node? = synchronized(obj) {
         coordinator?.let {
             if (client.isUnavailable(it)) markCoordinatorUnknown(
                 isDisconnected = true,
@@ -1007,7 +1007,7 @@ abstract class AbstractCoordinator(
         )
     }
 
-    protected fun markCoordinatorUnknown(cause: String?) = synchronized(obj) {
+    fun markCoordinatorUnknown(cause: String?) = synchronized(obj) {
         markCoordinatorUnknown(
             isDisconnected = false,
             cause = cause,
@@ -1054,7 +1054,7 @@ abstract class AbstractCoordinator(
      *
      * @return the current generation
      */
-    protected fun generation(): Generation = synchronized(obj) { generation }
+    fun generation(): Generation = synchronized(obj) { generation }
 
     /**
      * Get the current generation state if the group is stable, otherwise return `null`.
@@ -1065,14 +1065,14 @@ abstract class AbstractCoordinator(
         message = "User property instead",
         replaceWith = ReplaceWith("generationIfStable"),
     )
-    protected fun generationIfStable(): Generation? = synchronized(obj) {
+    fun generationIfStable(): Generation? = synchronized(obj) {
         if (state != MemberState.STABLE) null else generation
     }
 
     /**
      * The current generation state if the group is stable, otherwise `null`.
      */
-    protected val generationIfStable: Generation?
+    internal val generationIfStable: Generation?
         get() = synchronized(obj) { if (state != MemberState.STABLE) null else generation }
 
     @Deprecated(
@@ -1083,7 +1083,7 @@ abstract class AbstractCoordinator(
         state == MemberState.PREPARING_REBALANCE || state == MemberState.COMPLETING_REBALANCE
     }
 
-    protected val rebalanceInProgress: Boolean
+    internal val rebalanceInProgress: Boolean
         get() = synchronized(obj) {
             state == MemberState.PREPARING_REBALANCE || state == MemberState.COMPLETING_REBALANCE
         }
@@ -1095,7 +1095,7 @@ abstract class AbstractCoordinator(
     )
     protected fun memberId(): String = synchronized(obj) { generation.memberId }
 
-    protected val memberId: String
+    internal val memberId: String
         get() = synchronized(obj) { generation.memberId }
 
     private fun resetStateAndGeneration(reason: String, shouldResetMemberId: Boolean) =
@@ -1252,7 +1252,7 @@ abstract class AbstractCoordinator(
         return future
     }
 
-    protected val isDynamicMember: Boolean
+    val isDynamicMember: Boolean
         get() = rebalanceConfig.groupInstanceId != null
 
     private inner class LeaveGroupResponseHandler(

@@ -212,7 +212,7 @@ class ConsumerCoordinator(
     }
 
     fun updatePatternSubscription(cluster: Cluster) {
-        val topicsToSubscribe = cluster.topics()
+        val topicsToSubscribe = cluster.topics
             .filter { topic -> subscriptions.matchesSubscribedPattern(topic) }
             .toSet()
         if (subscriptions.subscribeFromPattern(topicsToSubscribe))
@@ -342,7 +342,7 @@ class ConsumerCoordinator(
         return null
     }
 
-    override fun onJoinComplete(
+    public override fun onJoinComplete(
         generation: Int,
         memberId: String,
         protocol: String?,
@@ -617,7 +617,7 @@ class ConsumerCoordinator(
         }
     }
 
-    override fun onLeaderElected(
+    public override fun onLeaderElected(
         leaderId: String,
         protocol: String,
         allMemberMetadata: List<JoinGroupResponseMember>,
@@ -725,7 +725,7 @@ class ConsumerCoordinator(
         }
     }
 
-    override fun onJoinPrepare(timer: Timer, generation: Int, memberId: String): Boolean {
+    public override fun onJoinPrepare(timer: Timer, generation: Int, memberId: String): Boolean {
         log.debug(
             "Executing onJoinPrepare with generation {} and memberId {}",
             generation,

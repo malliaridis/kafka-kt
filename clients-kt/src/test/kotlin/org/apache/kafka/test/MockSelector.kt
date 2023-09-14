@@ -32,25 +32,25 @@ import java.util.function.Predicate
  * A fake selector to use for testing
  */
 class MockSelector @JvmOverloads constructor(
-    private val time: Time,
-    private val canConnect: Predicate<InetSocketAddress>? = null,
+    internal val time: Time,
+    internal val canConnect: Predicate<InetSocketAddress>? = null,
 ) : Selectable {
 
-    private val initiatedSends: MutableList<NetworkSend> = ArrayList()
+    internal val initiatedSends: MutableList<NetworkSend> = ArrayList()
 
-    private val completedSends: MutableList<NetworkSend> = ArrayList()
+    internal val completedSends: MutableList<NetworkSend> = ArrayList()
 
-    private val completedSendBuffers: MutableList<ByteBufferChannel> = ArrayList()
+    internal val completedSendBuffers: MutableList<ByteBufferChannel> = ArrayList()
 
-    private val completedReceives: MutableList<NetworkReceive> = ArrayList()
+    internal val completedReceives: MutableList<NetworkReceive> = ArrayList()
 
-    private val disconnected: MutableMap<String, ChannelState> = HashMap()
+    internal val disconnected: MutableMap<String, ChannelState> = HashMap()
 
-    private val connected: MutableList<String> = ArrayList()
+    internal val connected: MutableList<String> = ArrayList()
 
-    private val delayedReceives: MutableList<DelayedReceive> = ArrayList()
+    internal val delayedReceives: MutableList<DelayedReceive> = ArrayList()
 
-    private val ready: MutableSet<String> = HashSet()
+    internal val ready: MutableSet<String> = HashSet()
 
     @Throws(IOException::class)
     override fun connect(

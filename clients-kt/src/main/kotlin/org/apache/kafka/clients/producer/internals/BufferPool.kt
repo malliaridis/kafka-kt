@@ -47,7 +47,7 @@ import kotlin.math.min
  * @param time time instance
  * @param metricGrpName logical group name for metrics
  */
-class BufferPool(
+open class BufferPool(
     val totalMemory: Long,
     val poolableSize: Int,
     private val metrics: Metrics,
@@ -136,7 +136,7 @@ class BufferPool(
      * pool (and hence we would block forever)
      */
     @Throws(InterruptedException::class)
-    fun allocate(size: Int, maxTimeToBlockMs: Long): ByteBuffer {
+    open fun allocate(size: Int, maxTimeToBlockMs: Long): ByteBuffer {
         require(size <= totalMemory) {
             "Attempt to allocate $size bytes, but there is a hard limit of $totalMemory on " +
                     "memory allocations."
@@ -284,7 +284,7 @@ class BufferPool(
      * @param size The size of the buffer to mark as deallocated, note that this may be smaller than
      * `buffer.capacity` since the buffer may re-allocate itself during in-place compression
      */
-    fun deallocate(buffer: ByteBuffer, size: Int) {
+    open fun deallocate(buffer: ByteBuffer, size: Int) {
         lock.lock()
         try {
             if (size == poolableSize && size == buffer.capacity()) {

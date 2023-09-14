@@ -53,7 +53,7 @@ class ConsumerMetadata(
     @Synchronized
     fun addTransientTopics(topics: Set<String>) {
         transientTopics.addAll(topics)
-        if (!fetch().topics().containsAll(topics)) requestUpdateForNewTopics()
+        if (!fetch().topics.containsAll(topics)) requestUpdateForNewTopics()
     }
 
     fun clearTransientTopics() = transientTopics.clear()

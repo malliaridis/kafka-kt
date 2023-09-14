@@ -290,7 +290,7 @@ class FieldSpec @JsonCreator constructor(
                             e,
                         )
                     }
-                    "${fieldDefault}u"
+                    "${fieldDefault}u.toUByte()"
                 }
             }
             type is Int16FieldType -> {
@@ -326,7 +326,7 @@ class FieldSpec @JsonCreator constructor(
                             e,
                         )
                     }
-                    "${fieldDefault}u"
+                    "${fieldDefault}u.toUShort()"
                 }
             }
             type is Int32FieldType -> {

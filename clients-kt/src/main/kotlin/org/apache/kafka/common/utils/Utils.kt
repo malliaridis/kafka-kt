@@ -802,12 +802,13 @@ object Utils {
     /**
      * Creates a map entry (for use with [Utils.mkMap])
      *
-     * @param k   The key
-     * @param v   The value
-     * @param <K> The key type
-     * @param <V> The value type
+     * @param k The key
+     * @param v The value
+     * @param K The key type
+     * @param V The value type
      * @return An entry
-    </V></K> */
+     */
+    @Deprecated("Use Kotlin map functions instead")
     fun <K, V> mkEntry(k: K, v: V): Map.Entry<K, V> {
         return AbstractMap.SimpleEntry(k, v)
     }
@@ -816,10 +817,11 @@ object Utils {
      * Creates a map from a sequence of entries
      *
      * @param entries The entries to map
-     * @param <K>     The key type
-     * @param <V>     The value type
+     * @param K The key type
+     * @param V The value type
      * @return A map
-    </V></K> */
+     */
+    @Deprecated("Use Kotlin map functions instead")
     @SafeVarargs
     fun <K, V> mkMap(vararg entries: Map.Entry<K, V>): Map<K, V> {
         val result = LinkedHashMap<K, V>()

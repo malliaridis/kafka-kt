@@ -55,7 +55,7 @@ class DescribeLogDirsResult internal constructor(
                 error = logDir.error()?.let { Errors.forException(it) } ?: Errors.NONE,
                 replicaInfos = logDir.replicaInfos().mapValues { (_, value) ->
                     DescribeLogDirsResponse.ReplicaInfo(
-                        size = value.size(),
+                        size = value.size,
                         offsetLag = value.offsetLag,
                         isFuture = value.isFuture,
                     )

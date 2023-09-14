@@ -427,8 +427,8 @@ open class MockClient(
      * @param disconnected Whether the request was disconnected. Defaults to `false`.
      */
     fun prepareResponse(
-        matcher: RequestMatcher = ALWAYS_TRUE,
         response: AbstractResponse?,
+        matcher: RequestMatcher = ALWAYS_TRUE,
         disconnected: Boolean = false,
     ) = prepareResponseFrom(
         matcher = matcher,

@@ -915,17 +915,17 @@ class MessageDataGenerator internal constructor(
                             } else if (field.type.isBytes) {
                                 headerGenerator.addImport(MessageGenerator.BYTE_UTILS_CLASS)
                                 buffer.printf(
-                                    "writable.writeUnsignedVarint(%s.length + ByteUtils.sizeOfUnsignedVarint(%s.length + 1))%n",
-                                    field.prefixedCamelCaseName(),
-                                    field.prefixedCamelCaseName(),
+                                    "writable.writeUnsignedVarint(%s.size + ByteUtils.sizeOfUnsignedVarint(%s.size + 1))%n",
+                                    field.camelCaseName(),
+                                    field.camelCaseName(),
                                 )
                                 buffer.printf(
-                                    "writable.writeUnsignedVarint(%s.length + 1)%n",
-                                    field.prefixedCamelCaseName(),
+                                    "writable.writeUnsignedVarint(%s.size + 1)%n",
+                                    field.camelCaseName(),
                                 )
                                 buffer.printf(
                                     "writable.writeByteArray(%s)%n",
-                                    field.prefixedCamelCaseName(),
+                                    field.camelCaseName(),
                                 )
                             } else if (field.type.isArray) {
                                 headerGenerator.addImport(MessageGenerator.BYTE_UTILS_CLASS)

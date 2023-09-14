@@ -899,7 +899,7 @@ class NetworkClient(
             log.debug("Initiating connection to node {} using address {}", node, address)
             selector.connect(
                 nodeConnectionId,
-                InetSocketAddress(address, node.port()),
+                InetSocketAddress(address, node.port),
                 socketSendBuffer,
                 socketReceiveBuffer
             )

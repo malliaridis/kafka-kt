@@ -34,7 +34,7 @@ class ConsumerGroupDescription(
     val partitionAssignor: String = "",
     private val state: ConsumerGroupState,
     private val coordinator: Node,
-    private val authorizedOperations: Set<AclOperation> = emptySet()
+    val authorizedOperations: Set<AclOperation> = emptySet()
 ) {
 
     /**

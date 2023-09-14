@@ -366,7 +366,7 @@ class Fetcher<K, V>(
                 }
                 if (!shouldRetry) {
                     val topicsPartitionInfos = HashMap<String, List<PartitionInfo>>()
-                    for (topic: String in cluster.topics())
+                    for (topic: String in cluster.topics)
                         topicsPartitionInfos[topic] = cluster.partitionsForTopic(topic)
 
                     return topicsPartitionInfos

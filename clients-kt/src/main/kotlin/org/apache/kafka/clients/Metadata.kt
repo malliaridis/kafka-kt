@@ -624,7 +624,7 @@ open class Metadata(
      *
      * @return the constructed metadata builder, or null if not supported
      */
-    private fun newMetadataRequestBuilderForNewTopics(): MetadataRequest.Builder? {
+    internal open fun newMetadataRequestBuilderForNewTopics(): MetadataRequest.Builder? {
         return null
     }
 

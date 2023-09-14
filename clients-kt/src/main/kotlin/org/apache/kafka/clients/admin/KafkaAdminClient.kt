@@ -260,9 +260,9 @@ import kotlin.time.Duration.Companion.hours
  * @property timeoutProcessorFactory A factory which creates TimeoutProcessors for the RPC thread.
  */
 @Evolving
-class KafkaAdminClient private constructor(
+class KafkaAdminClient internal constructor(
     config: AdminClientConfig,
-    private val clientId: String,
+    internal val clientId: String,
     private val time: Time,
     private val metadataManager: AdminMetadataManager,
     val metrics: Metrics,
@@ -581,7 +581,7 @@ class KafkaAdminClient private constructor(
         }
     }
 
-    internal open class TimeoutProcessorFactory {
+    open class TimeoutProcessorFactory {
         open fun create(now: Long): TimeoutProcessor {
             return TimeoutProcessor(now)
         }
@@ -592,7 +592,7 @@ class KafkaAdminClient private constructor(
      *
      * @property now The current time in milliseconds since the epoch.
      */
-    internal open class TimeoutProcessor(
+    open class TimeoutProcessor(
         private val now: Long
     ) {
         /**
@@ -609,7 +609,7 @@ class KafkaAdminClient private constructor(
          *
          * @return              The number of calls which were timed out.
          */
-        fun handleTimeouts(calls: MutableCollection<Call>, msg: String): Int {
+        internal fun handleTimeouts(calls: MutableCollection<Call>, msg: String): Int {
             var numTimedOut = 0
             val iter = calls.iterator()
             while (iter.hasNext()) {
@@ -634,7 +634,7 @@ class KafkaAdminClient private constructor(
          *
          * @return True if the call should be timed out.
          */
-        fun callHasExpired(call: Call): Boolean {
+        internal open fun callHasExpired(call: Call): Boolean {
             val remainingMs = calcTimeoutMsRemainingAsInt(now, call.deadlineMs)
             if (remainingMs < 0) return true
             nextTimeoutMs = Math.min(nextTimeoutMs, remainingMs)
@@ -1756,7 +1756,7 @@ class KafkaAdminClient private constructor(
                         future.completeExceptionally(topicError.exception!!)
                         continue
                     }
-                    if (!cluster.topics().contains(topicName)) {
+                    if (!cluster.topics.contains(topicName)) {
                         future.completeExceptionally(UnknownTopicOrPartitionException("Topic $topicName not found."))
                         continue
                     }
@@ -3944,7 +3944,7 @@ class KafkaAdminClient private constructor(
     }
 
     override fun describeUserScramCredentials(
-        users: List<String>?,
+        users: List<String?>?,
         options: DescribeUserScramCredentialsOptions
     ): DescribeUserScramCredentialsResult {
         val dataFuture = KafkaFutureImpl<DescribeUserScramCredentialsResponseData>()
@@ -4550,7 +4550,8 @@ class KafkaAdminClient private constructor(
          */
         @Deprecated("Use computeIfAbsent instead")
         fun <K, V> getOrCreateListValue(
-            map: MutableMap<K, MutableList<V>>, key: K
+            map: MutableMap<K, MutableList<V>>,
+            key: K
         ): MutableList<V> {
             return map.computeIfAbsent(key) { LinkedList() }
         }

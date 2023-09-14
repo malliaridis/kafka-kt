@@ -64,9 +64,9 @@ data class ListOffsetsResult(
     }
 
     data class ListOffsetsResultInfo(
-        private val offset: Long,
-        private val timestamp: Long,
-        private val leaderEpoch: Int?
+        val offset: Long,
+        val timestamp: Long,
+        val leaderEpoch: Int?
     ) {
         override fun toString(): String {
             return ("ListOffsetsResultInfo(offset=" + offset + ", timestamp=" + timestamp + ", leaderEpoch="

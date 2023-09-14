@@ -223,7 +223,7 @@ object MessageGenerator {
         packageName: String,
         outputDir: String,
         inputDir: String,
-        typeClassGeneratorTypes: List<String>,
+        typeClassGeneratorTypes: List<String>?,
         messageClassGeneratorTypes: List<String>?,
     ) {
         Files.createDirectories(Paths.get(outputDir))

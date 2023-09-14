@@ -10,7 +10,7 @@ import org.apache.kafka.common.protocol.Errors
 import org.apache.kafka.common.protocol.MessageUtil
 import org.apache.kafka.common.protocol.SendBuilder
 
-abstract class AbstractResponse protected constructor(
+abstract class AbstractResponse(
     val apiKey: ApiKeys,
 ) : AbstractRequestResponse {
 
