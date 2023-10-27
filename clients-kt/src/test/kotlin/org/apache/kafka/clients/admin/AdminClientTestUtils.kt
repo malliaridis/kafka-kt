@@ -104,7 +104,9 @@ object AdminClientTestUtils {
         )
     }
 
-    fun listConsumerGroupOffsetsResult(offsets: Map<String, Map<TopicPartition, OffsetAndMetadata?>>): ListConsumerGroupOffsetsResult {
+    fun listConsumerGroupOffsetsResult(
+        offsets: Map<String, Map<TopicPartition, OffsetAndMetadata?>>,
+    ): ListConsumerGroupOffsetsResult {
         val resultMap = offsets.entries.associate { (key, value) ->
             CoordinatorKey.byGroupId(key) to KafkaFuture.completedFuture(value)
         }.toMap()

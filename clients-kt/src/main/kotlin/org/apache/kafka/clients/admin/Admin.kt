@@ -175,7 +175,7 @@ interface Admin : AutoCloseable {
      * @return The DeleteTopicsResult.
      */
     fun deleteTopics(topics: Collection<String>): DeleteTopicsResult {
-        return deleteTopics(TopicCollection.ofTopicNames(topics), DeleteTopicsOptions())
+        return deleteTopics(topics, DeleteTopicsOptions())
     }
 
     /**
@@ -189,7 +189,7 @@ interface Admin : AutoCloseable {
      * @return The DeleteTopicsResult.
      */
     fun deleteTopics(topics: Collection<String>, options: DeleteTopicsOptions): DeleteTopicsResult {
-        return deleteTopics(TopicCollection.ofTopicNames(topics), options)
+        return deleteTopics(topics, options)
     }
 
     /**
@@ -262,7 +262,7 @@ interface Admin : AutoCloseable {
         topicNames: Collection<String>,
         options: DescribeTopicsOptions = DescribeTopicsOptions(),
     ): DescribeTopicsResult {
-        return describeTopics(TopicCollection.ofTopicNames(topicNames), options)
+        return describeTopics(topicNames, options)
     }
 
     /**

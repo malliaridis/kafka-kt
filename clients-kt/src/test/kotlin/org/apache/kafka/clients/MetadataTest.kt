@@ -47,7 +47,7 @@ import org.apache.kafka.test.TestUtils.assertNullable
 import java.net.InetSocketAddress
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.max
-import kotlin.test.Test
+import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse

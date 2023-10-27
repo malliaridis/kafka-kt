@@ -63,7 +63,7 @@ class ConfigTransformer(private val configProviders: Map<String, ConfigProvider>
         val lookupsByProvider = mutableMapOf<String, MutableMap<String, Map<String, String>>>()
 
         // Collect the variables from the given configs that need transformation
-        configs.forEach { (_, value) ->
+        configs.values.forEach { value ->
             getVars(value, DEFAULT_PATTERN).forEach { configVar ->
                 val keysByPath = keysByProvider.computeIfAbsent(configVar.providerName) { HashMap() }
                 val keys = keysByPath.computeIfAbsent(configVar.path) { HashSet() }

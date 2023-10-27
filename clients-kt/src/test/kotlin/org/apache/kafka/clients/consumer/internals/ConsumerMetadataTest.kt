@@ -31,7 +31,7 @@ import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.MockTime
 import org.apache.kafka.common.utils.Time
 import java.util.regex.Pattern
-import kotlin.test.Test
+import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue

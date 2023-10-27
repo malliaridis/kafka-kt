@@ -1,0 +1,22 @@
+config:
+  # when writing own rules with new properties, exclude the property path e.g.: 'my_rule_set,.*>.*>[my_property]'
+  excludes: ''
+
+exceptions:
+  # List of rules to be excluded
+  TooGenericExceptionThrown:
+    active: false
+  TooGenericExceptionCaught:
+    active: false
+  ThrowingExceptionsWithoutMessageOrCause:
+    active: false
+  SwallowedException:
+    active: false
+
+complexity:
+  active: false
+
+style:
+  active: false
+  ThrowsCount:
+    active: false

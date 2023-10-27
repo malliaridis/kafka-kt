@@ -395,7 +395,6 @@ class Metrics(
     )
     fun reporters(): List<MetricsReporter> = reporters
 
-    @Deprecated("Use property metrics directly instead")
     fun metric(metricName: MetricName): KafkaMetric? = metrics[metricName]
 
     /**
@@ -423,7 +422,7 @@ class Metrics(
     }
 
     /* For testing use only. */
-    fun childrenSensors(): Map<Sensor, MutableList<Sensor>> = childrenSensors.toMap()
+    fun childrenSensors(): Map<Sensor, List<Sensor>> = childrenSensors.toMap()
 
     fun metricInstance(template: MetricNameTemplate, vararg keyValue: String): MetricName =
         metricInstance(template, MetricsUtils.getTags(*keyValue))

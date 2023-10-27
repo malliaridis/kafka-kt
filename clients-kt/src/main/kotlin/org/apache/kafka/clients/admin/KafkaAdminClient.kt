@@ -1885,7 +1885,7 @@ class KafkaAdminClient internal constructor(
             )
             partitions.add(topicPartitionInfo)
         }
-        partitions.sortBy { obj: TopicPartitionInfo -> obj.partition() }
+        partitions.sortBy { obj: TopicPartitionInfo -> obj.partition }
         return TopicDescription(
             name = topicName,
             internal = isInternal,

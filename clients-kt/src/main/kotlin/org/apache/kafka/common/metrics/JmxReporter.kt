@@ -53,6 +53,22 @@ open class JmxReporter : MetricsReporter {
 
     private var mbeanPredicate = Predicate { _: String -> true }
 
+    constructor()
+
+    /**
+     * Create a JMX reporter that prefixes all metrics with the given string.
+     * @deprecated Since 2.6.0. Use {@link JmxReporter#JmxReporter()}
+     * Initialize JmxReporter with {@link JmxReporter#contextChange(MetricsContext)}
+     * Populate prefix by adding _namespace/prefix key value pair to {@link MetricsContext}
+     */
+    @Deprecated("Since 2.6.0. Use {@link JmxReporter#JmxReporter()}.\n" +
+            "- Initialize JmxReporter with {@link JmxReporter#contextChange(MetricsContext)}\n" +
+            "- Populate prefix by adding _namespace/prefix key value pair to {@link MetricsContext}"
+    )
+    constructor(prefix: String) {
+        this.prefix = prefix
+    }
+
     override fun configure(configs: Map<String, *>) = reconfigure(configs)
 
     override fun reconfigurableConfigs(): Set<String> = RECONFIGURABLE_CONFIGS

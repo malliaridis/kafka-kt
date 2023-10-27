@@ -19,11 +19,25 @@ package org.apache.kafka.common.config
 
 data class ConfigValue(
     val name: String,
-    var value: Any? = null,
+    var value: Any?,
     var recommendedValues: List<Any> = emptyList(),
     private val errorMessages: MutableList<String?> = mutableListOf(),
-    var visible: Boolean = true,
+    var visible: Boolean,
 ) {
+
+    constructor(
+        name: String,
+        value: Any? = null,
+        recommendedValues: List<Any> = emptyList(),
+        errorMessages: List<String?> = emptyList(),
+        visible: Boolean = true,
+    ) : this(
+        name = name,
+        value = value,
+        recommendedValues = recommendedValues,
+        errorMessages = errorMessages.toMutableList(),
+        visible = visible,
+    )
 
     @Deprecated(
         message = "Use property instead",

@@ -3985,11 +3985,17 @@ class SenderTest {
             // Now begin the commit and assert that the Produce request is sent immediately
             // without waiting for the linger.
             val commitResult: TransactionalRequestResult = txnManager.beginCommit()
-            ProducerTestUtils.runUntil(sender) { client.hasInFlightRequests() }
+            ProducerTestUtils.runUntil(
+                sender = sender,
+                condition = { client.hasInFlightRequests() },
+            )
 
             // Respond to the produce request and wait for the EndTxn request to be sent.
             respondToProduce(tp0, Errors.NONE, 1L)
-            ProducerTestUtils.runUntil(sender) { txnManager.hasInFlightRequest }
+            ProducerTestUtils.runUntil(
+                sender = sender,
+                condition = { txnManager.hasInFlightRequest },
+            )
 
             // Respond to the expected EndTxn request.
             respondToEndTxn(Errors.NONE)
@@ -4008,7 +4014,10 @@ class SenderTest {
             assertFalse(client.hasInFlightRequests())
             assertTrue(accumulator.hasUndrained())
             time.sleep(1)
-            ProducerTestUtils.runUntil(sender) { client.hasInFlightRequests() }
+            ProducerTestUtils.runUntil(
+                sender = sender,
+                condition = { client.hasInFlightRequests() },
+            )
             assertFalse(accumulator.hasUndrained())
         }
     }
@@ -4051,7 +4060,10 @@ class SenderTest {
 
             // Send one Produce request.
             appendToAccumulator(tp0)
-            ProducerTestUtils.runUntil(sender) { client.requests().size == 1 }
+            ProducerTestUtils.runUntil(
+                sender = sender,
+                condition = { client.requests().size == 1 },
+            )
             assertFalse(accumulator.hasUndrained())
             assertTrue(client.hasInFlightRequests())
             assertTrue(txnManager.hasInflightBatches(tp0))
@@ -4060,7 +4072,10 @@ class SenderTest {
             // get sent before the transaction can be completed.
             appendToAccumulator(tp0)
             txnManager.beginCommit()
-            ProducerTestUtils.runUntil(sender) { client.requests().size == 2 }
+            ProducerTestUtils.runUntil(
+                sender = sender,
+                condition = { client.requests().size == 2 },
+            )
             assertTrue(txnManager.isCompleting)
             assertFalse(txnManager.hasInFlightRequest)
             assertTrue(txnManager.hasInflightBatches(tp0))
@@ -4068,7 +4083,10 @@ class SenderTest {
             // Now respond to the pending Produce requests.
             respondToProduce(tp0, Errors.NONE, 0L)
             respondToProduce(tp0, Errors.NONE, 1L)
-            ProducerTestUtils.runUntil(sender) { txnManager.hasInFlightRequest }
+            ProducerTestUtils.runUntil(
+                sender = sender,
+                condition = { txnManager.hasInFlightRequest },
+            )
 
             // Finally, respond to the expected EndTxn request.
             respondToEndTxn(Errors.NONE)
@@ -4085,7 +4103,10 @@ class SenderTest {
         client.prepareResponse(
             response = AddPartitionsToTxnResponse(0, mapOf(tp to Errors.NONE)),
         )
-        ProducerTestUtils.runUntil(sender) { txnManager.isPartitionAdded(tp) }
+        ProducerTestUtils.runUntil(
+            sender = sender,
+            condition = { txnManager.isPartitionAdded(tp) },
+        )
         assertFalse(txnManager.hasInFlightRequest)
     }
 

@@ -24,7 +24,7 @@ import org.apache.kafka.common.config.ConfigException
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.UnknownHostException
-import kotlin.test.Test
+import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse

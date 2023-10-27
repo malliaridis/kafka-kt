@@ -370,6 +370,7 @@ object TestUtils {
         }
     }
 
+    @Deprecated("Use Iterable.toList() instead.")
     fun <T> toList(iterable: Iterable<T>): List<T> {
         val list: MutableList<T> = ArrayList()
         for (item: T in iterable) list.add(item)

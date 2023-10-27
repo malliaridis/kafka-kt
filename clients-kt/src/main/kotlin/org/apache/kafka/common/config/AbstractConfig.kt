@@ -75,7 +75,7 @@ import org.slf4j.LoggerFactory
 open class AbstractConfig(
     private val definition: ConfigDef,
     originals: Map<String, Any?>,
-    configProviderProps: Map<String, Any> = emptyMap(),
+    configProviderProps: Map<String, Any?> = emptyMap(),
     doLog: Boolean = true,
 ) {
 
@@ -456,15 +456,17 @@ open class AbstractConfig(
     }
 
     /**
-     * Instantiates given list of config providers and fetches the actual values of config variables from the config providers.
+     * Instantiates given list of config providers and fetches the actual values of config variables
+     * from the config providers.
+     *
      * returns a map of config key and resolved values.
      *
      * @param configProviderProps The map of config provider configs
-     * @param originals           The map of raw configs.
+     * @param originals The map of raw configs.
      * @return map of resolved config variable.
      */
     private fun resolveConfigVariables(
-        configProviderProps: Map<String, Any>?,
+        configProviderProps: Map<String, Any?>?,
         originals: Map<String, Any?>,
     ): Map<String, Any> {
 

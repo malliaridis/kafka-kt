@@ -1,6 +1,7 @@
 object Deps {
     val kotlinVersion = "1.9.0"
     val jvmTarget = "11"
+    val jvmToolchain = 11
     val availableScalaVersions = listOf("2.12", "2.13")
 
     // Add Scala version

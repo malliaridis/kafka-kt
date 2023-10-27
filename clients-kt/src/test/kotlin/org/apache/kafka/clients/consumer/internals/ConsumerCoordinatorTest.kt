@@ -53,10 +53,8 @@ import org.apache.kafka.common.errors.WakeupException
 import org.apache.kafka.common.internals.ClusterResourceListeners
 import org.apache.kafka.common.internals.Topic
 import org.apache.kafka.common.message.HeartbeatResponseData
-import org.apache.kafka.common.message.JoinGroupRequestData.JoinGroupRequestProtocol
 import org.apache.kafka.common.message.JoinGroupResponseData
 import org.apache.kafka.common.message.JoinGroupResponseData.JoinGroupResponseMember
-import org.apache.kafka.common.message.LeaveGroupRequestData.MemberIdentity
 import org.apache.kafka.common.message.LeaveGroupResponseData
 import org.apache.kafka.common.message.OffsetCommitRequestData
 import org.apache.kafka.common.message.OffsetCommitRequestData.OffsetCommitRequestPartition
@@ -73,7 +71,6 @@ import org.apache.kafka.common.protocol.types.Struct
 import org.apache.kafka.common.protocol.types.Type
 import org.apache.kafka.common.record.RecordBatch
 import org.apache.kafka.common.requests.AbstractRequest
-import org.apache.kafka.common.requests.AbstractResponse
 import org.apache.kafka.common.requests.FindCoordinatorResponse
 import org.apache.kafka.common.requests.HeartbeatResponse
 import org.apache.kafka.common.requests.JoinGroupRequest
@@ -94,16 +91,8 @@ import org.apache.kafka.common.utils.MockTime
 import org.apache.kafka.common.utils.SystemTime
 import org.apache.kafka.common.utils.Timer
 import org.apache.kafka.common.utils.Utils
-import org.apache.kafka.common.utils.Utils.mkEntry
-import org.apache.kafka.common.utils.Utils.mkMap
 import org.apache.kafka.common.utils.Utils.mkSet
 import org.apache.kafka.test.TestUtils
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.function.Executable
-import org.mockito.ArgumentCaptor
 import org.mockito.Mockito
 import org.mockito.kotlin.argumentCaptor
 import java.nio.ByteBuffer
@@ -115,21 +104,29 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import java.util.regex.Pattern
+import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
+import kotlin.collections.HashSet
 import kotlin.math.min
+import kotlin.test.AfterEach
+import kotlin.test.BeforeEach
+import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
+@Suppress("Deprecation")
 abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) {
     private val topic1 = "test1"
     private val topic2 = "test2"
     private val t1p = TopicPartition(topic1, 0)
     private val t2p = TopicPartition(topic2, 0)
     private val groupId = "test-group"
-    private val groupInstanceId = Optional.of("test-instance")
+    private val groupInstanceId: String = "test-instance"
     private val rebalanceTimeoutMs = 60000
     private val sessionTimeoutMs = 10000
     private val heartbeatIntervalMs = 5000
@@ -139,7 +136,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
     private val throttleMs = 10
     private val time = MockTime()
     private var rebalanceConfig: GroupRebalanceConfig? = null
-    
+
     private val partitionAssignor: MockPartitionAssignor = MockPartitionAssignor(listOf(protocol))
     private val throwOnAssignmentAssignor = ThrowOnAssignmentAssignor(
         supportedProtocols = listOf(protocol),
@@ -172,7 +169,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         ),
     )
     private val node = metadataResponse.brokers().iterator().next()
-    
+
     private lateinit var subscriptions: SubscriptionState
     private lateinit var metadata: ConsumerMetadata
     private lateinit var metrics: Metrics
@@ -221,13 +218,13 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
     private fun buildRebalanceConfig(groupInstanceId: String?): GroupRebalanceConfig {
         return GroupRebalanceConfig(
-            sessionTimeoutMs,
-            rebalanceTimeoutMs,
-            heartbeatIntervalMs,
-            groupId,
-            groupInstanceId,
-            retryBackoffMs,
-            groupInstanceId == null,
+            sessionTimeoutMs = sessionTimeoutMs,
+            rebalanceTimeoutMs = rebalanceTimeoutMs,
+            heartbeatIntervalMs = heartbeatIntervalMs,
+            groupId = groupId,
+            groupInstanceId = groupInstanceId,
+            retryBackoffMs = retryBackoffMs,
+            leaveGroupOnClose = groupInstanceId == null,
         )
     }
 
@@ -239,35 +236,35 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
     @Test
     fun testMetrics() {
-        Assertions.assertNotNull(getMetric("commit-latency-avg"))
-        Assertions.assertNotNull(getMetric("commit-latency-max"))
-        Assertions.assertNotNull(getMetric("commit-rate"))
-        Assertions.assertNotNull(getMetric("commit-total"))
-        
-        Assertions.assertNotNull(getMetric("partition-revoked-latency-avg"))
-        Assertions.assertNotNull(getMetric("partition-revoked-latency-max"))
-        Assertions.assertNotNull(getMetric("partition-assigned-latency-avg"))
-        Assertions.assertNotNull(getMetric("partition-assigned-latency-max"))
-        Assertions.assertNotNull(getMetric("partition-lost-latency-avg"))
-        Assertions.assertNotNull(getMetric("partition-lost-latency-max"))
-        Assertions.assertNotNull(getMetric("assigned-partitions"))
-        
+        assertNotNull(getMetric("commit-latency-avg"))
+        assertNotNull(getMetric("commit-latency-max"))
+        assertNotNull(getMetric("commit-rate"))
+        assertNotNull(getMetric("commit-total"))
+
+        assertNotNull(getMetric("partition-revoked-latency-avg"))
+        assertNotNull(getMetric("partition-revoked-latency-max"))
+        assertNotNull(getMetric("partition-assigned-latency-avg"))
+        assertNotNull(getMetric("partition-assigned-latency-max"))
+        assertNotNull(getMetric("partition-lost-latency-avg"))
+        assertNotNull(getMetric("partition-lost-latency-max"))
+        assertNotNull(getMetric("assigned-partitions"))
+
         metrics.sensor("commit-latency").record(1.0)
         metrics.sensor("commit-latency").record(6.0)
         metrics.sensor("commit-latency").record(2.0)
-        
+
         assertEquals(3.0, getMetric("commit-latency-avg")!!.metricValue())
         assertEquals(6.0, getMetric("commit-latency-max")!!.metricValue())
         assertEquals(0.1, getMetric("commit-rate")!!.metricValue())
         assertEquals(3.0, getMetric("commit-total")!!.metricValue())
-        
+
         metrics.sensor("partition-revoked-latency").record(1.0)
         metrics.sensor("partition-revoked-latency").record(2.0)
         metrics.sensor("partition-assigned-latency").record(1.0)
         metrics.sensor("partition-assigned-latency").record(2.0)
         metrics.sensor("partition-lost-latency").record(1.0)
         metrics.sensor("partition-lost-latency").record(2.0)
-        
+
         assertEquals(1.5, getMetric("partition-revoked-latency-avg")!!.metricValue())
         assertEquals(2.0, getMetric("partition-revoked-latency-max")!!.metricValue())
         assertEquals(1.5, getMetric("partition-assigned-latency-avg")!!.metricValue())
@@ -275,10 +272,10 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         assertEquals(1.5, getMetric("partition-lost-latency-avg")!!.metricValue())
         assertEquals(2.0, getMetric("partition-lost-latency-max")!!.metricValue())
         assertEquals(0.0, getMetric("assigned-partitions")!!.metricValue())
-        
+
         subscriptions.assignFromUser(setOf(t1p))
         assertEquals(1.0, getMetric("assigned-partitions")!!.metricValue())
-        
+
         subscriptions.assignFromUser(mkSet(t1p, t2p))
         assertEquals(2.0, getMetric("assigned-partitions")!!.metricValue())
     }
@@ -307,7 +304,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         }
 
         // normal case: the assignment result will have partitions for only the subscribed topic: "topic1"
-        partitionAssignor.prepare(Collections.singletonMap(consumerId, listOf(t1p)))
+        partitionAssignor.prepare(mapOf(consumerId to listOf(t1p)))
         buildCoordinator(
             rebalanceConfig = rebalanceConfig,
             metrics = Metrics(),
@@ -341,11 +338,14 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             subscriptionState = mockSubscriptionState,
         ).use { coordinator ->
             coordinator.onLeaderElected("1", partitionAssignor.name(), metadata, false)
+
             val topicsCaptor = argumentCaptor<Collection<String>>()
+            // val topicsCaptor = ArgumentCaptor.forClass<Collection<String>, Collection<String>>(MutableCollection::class.java)
             // groupSubscribe should be called 2 times, once before assignment, once after assignment
             // (because the assigned topics are not the same as the subscribed topics)
             Mockito.verify(mockSubscriptionState, Mockito.times(2))
                 .groupSubscribe(topicsCaptor.capture())
+
             val capturedTopics: List<Collection<String>> = topicsCaptor.allValues
 
             // expected the final group subscribed topics to be updated to "topic1" and "topic2"
@@ -384,12 +384,9 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         )
         val metadata: MutableList<JoinGroupResponseMember> = ArrayList()
         for (subscriptionEntry: Map.Entry<String, List<String>> in memberSubscriptions.entries) {
-            var buf: ByteBuffer? = null
-            if (subscriptionEntry.key == consumerId) {
-                buf = serializeSubscription(subscriptionConsumer1)
-            } else {
-                buf = serializeSubscription(subscriptionConsumer2)
-            }
+            val buf = serializeSubscription(
+                if (subscriptionEntry.key == consumerId) subscriptionConsumer1 else subscriptionConsumer2
+            )
             metadata.add(
                 JoinGroupResponseMember()
                     .setMemberId(subscriptionEntry.key)
@@ -420,18 +417,17 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         ).use { coordinator ->
             if (protocol === RebalanceProtocol.COOPERATIVE) {
                 // in cooperative protocol, we should throw exception when validating cooperative assignment
-                val e: Exception =
-                    Assertions.assertThrows(
-                        IllegalStateException::class.java,
-                        Executable {
-                            coordinator.onLeaderElected(
-                                "1",
-                                partitionAssignor.name(),
-                                metadata,
-                                false
-                            )
-                        })
-                assertTrue(e.message!!.contains("Assignor supporting the COOPERATIVE protocol violates its requirements"))
+                val e: Exception = assertFailsWith<IllegalStateException> {
+                    coordinator.onLeaderElected(
+                        leaderId = "1",
+                        protocol = partitionAssignor.name(),
+                        allMemberMetadata = metadata,
+                        skipAssignment = false,
+                    )
+                }
+                assertTrue(
+                    e.message!!.contains("Assignor supporting the COOPERATIVE protocol violates its requirements"),
+                )
             } else {
                 // in eager protocol, we should not validate assignment
                 coordinator.onLeaderElected("1", partitionAssignor.name(), metadata, false)
@@ -454,7 +450,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
                 protocol
             )
         )
-        val memberSubscriptions = Collections.singletonMap(consumerId, listOf(topic1))
+        val memberSubscriptions = mapOf(consumerId to listOf(topic1))
         val metadata: MutableList<JoinGroupResponseMember> = ArrayList()
         for (subscriptionEntry: Map.Entry<String, List<String>> in memberSubscriptions.entries) {
             val subscription = ConsumerPartitionAssignor.Subscription(subscriptionEntry.value)
@@ -883,7 +879,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         val throwOnRevokeListener = object : MockRebalanceListener() {
             override fun onPartitionsRevoked(partitions: Collection<TopicPartition>) {
                 super.onPartitionsRevoked(partitions)
-                throw IllegalStateException("Illegal state on partition revoke!")
+                error("Illegal state on partition revoke!")
             }
         }
         if (protocol === RebalanceProtocol.COOPERATIVE) {
@@ -925,7 +921,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         val throwOnAssignListener = object : MockRebalanceListener() {
             override fun onPartitionsAssigned(partitions: Collection<TopicPartition>) {
                 super.onPartitionsAssigned(partitions)
-                throw IllegalStateException("Illegal state on partition assign!")
+                error("Illegal state on partition assign!")
             }
         }
         verifyOnCallbackExceptions(
@@ -1069,8 +1065,8 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
 
         // normal join group
-        val memberSubscriptions = Collections.singletonMap(consumerId, listOf(topic1))
-        partitionAssignor.prepare(Collections.singletonMap(consumerId, assigned))
+        val memberSubscriptions = mapOf(consumerId to listOf(topic1))
+        partitionAssignor.prepare(mapOf(consumerId to assigned))
         client.prepareResponse(
             joinGroupLeaderResponse(
                 generationId = 1,
@@ -1205,15 +1201,15 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         client.updateMetadata(
             metadataUpdateWith(
                 numNodes = 1,
-                topicPartitionCounts = Collections.singletonMap(topic1, 1)
+                topicPartitionCounts = mapOf(topic1 to 1)
             ),
         )
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
 
         // normal join group
-        val memberSubscriptions = Collections.singletonMap(consumerId, listOf(topic1))
-        partitionAssignor.prepare(Collections.singletonMap(consumerId, assigned))
+        val memberSubscriptions = mapOf(consumerId to listOf(topic1))
+        partitionAssignor.prepare(mapOf(consumerId to assigned))
         client.prepareResponse(
             joinGroupLeaderResponse(
                 generationId = 1,
@@ -1254,15 +1250,15 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         client.updateMetadata(
             metadataUpdateWith(
                 numNodes = 1,
-                topicPartitionCounts = Collections.singletonMap(topic1, 1),
+                topicPartitionCounts = mapOf(topic1 to 1),
             ),
         )
         coordinator.maybeUpdateSubscriptionMetadata()
         assertEquals(setOf(topic1), subscriptions.subscription())
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
-        val initialSubscription = Collections.singletonMap(consumerId, listOf(topic1))
-        partitionAssignor.prepare(Collections.singletonMap(consumerId, oldAssigned))
+        val initialSubscription = mapOf(consumerId to listOf(topic1))
+        partitionAssignor.prepare(mapOf(consumerId to oldAssigned))
 
         // the metadata will be updated in flight with a new topic added
         val updatedSubscription = listOf(topic1, topic2)
@@ -1301,8 +1297,8 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         assertEquals(getAdded(owned, oldAssigned), rebalanceListener.assigned)
         val newAssigned = listOf(t1p, t2p)
         val updatedSubscriptions =
-            Collections.singletonMap(consumerId, listOf(topic1, topic2))
-        partitionAssignor.prepare(Collections.singletonMap(consumerId, newAssigned))
+            mapOf(consumerId to listOf(topic1, topic2))
+        partitionAssignor.prepare(mapOf(consumerId to newAssigned))
 
         // we expect to see a second rebalance with the new-found topics
         client.prepareResponse(
@@ -1346,7 +1342,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         assertEquals(getAdded(oldAssigned, newAssigned), rebalanceListener.assigned)
 
         // we expect to see a third rebalance with the new-found topics
-        partitionAssignor.prepare(Collections.singletonMap(consumerId, oldAssigned))
+        partitionAssignor.prepare(mapOf(consumerId to oldAssigned))
         client.prepareResponse(
             matcher = { body ->
                 val join = body as JoinGroupRequest
@@ -1389,7 +1385,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         // Set up a non-leader consumer with pattern subscription and a cluster containing one topic matching the
         // pattern.
         subscriptions.subscribe(Pattern.compile(".*"), rebalanceListener)
-        client.updateMetadata(metadataUpdateWith(1, Collections.singletonMap(topic1, 1)))
+        client.updateMetadata(metadataUpdateWith(1, mapOf(topic1 to 1)))
         coordinator.maybeUpdateSubscriptionMetadata()
         assertEquals(setOf(topic1), subscriptions.subscription())
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
@@ -1414,7 +1410,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             },
             response = syncGroupResponse(listOf(t1p), Errors.NONE),
         )
-        partitionAssignor.prepare(Collections.singletonMap(consumerId, listOf(t1p)))
+        partitionAssignor.prepare(mapOf(consumerId to listOf(t1p)))
 
         // This will trigger rebalance.
         coordinator.poll(time.timer(Long.MAX_VALUE))
@@ -1474,8 +1470,8 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
                             && sync.data().generationId == 1
                             && sync.groupAssignments().isEmpty()
                 },
-                response = syncGroupResponse(listOf(t1p), Errors.NONE)
-,            )
+                response = syncGroupResponse(listOf(t1p), Errors.NONE),
+            )
             partitionAssignor.prepare(mapOf(consumerId to listOf(t1p)))
 
             // This will trigger rebalance.
@@ -1665,8 +1661,8 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         coordinator.maybeUpdateSubscriptionMetadata()
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
-        val initialSubscription = Collections.singletonMap(consumerId, topics)
-        partitionAssignor.prepare(Collections.singletonMap(consumerId, partitions))
+        val initialSubscription = mapOf(consumerId to topics)
+        partitionAssignor.prepare(mapOf(consumerId to partitions))
         client.prepareResponse(
             joinGroupLeaderResponse(
                 generationId = 1,
@@ -1755,8 +1751,8 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         client.updateMetadata(metadataResponse)
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
-        val memberSubscriptions = Collections.singletonMap(consumerId, listOf(topic1))
-        partitionAssignor.prepare(Collections.singletonMap(consumerId, assigned))
+        val memberSubscriptions = mapOf(consumerId to listOf(topic1))
+        partitionAssignor.prepare(mapOf(consumerId to assigned))
 
         // prepare only the first half of the join and then trigger the wakeup
         client.prepareResponse(
@@ -1770,7 +1766,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         consumerClient.wakeup()
         try {
             coordinator.poll(time.timer(Long.MAX_VALUE))
-        } catch (e: WakeupException) {
+        } catch (_: WakeupException) {
             // ignore
         }
 
@@ -1866,7 +1862,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
         // partially update the metadata with one topic first,
         // let the leader to refresh metadata during assignment
-        client.updateMetadata(metadataUpdateWith(1, Collections.singletonMap(topic1, 1)))
+        client.updateMetadata(metadataUpdateWith(1, mapOf(topic1 to 1)))
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
 
@@ -2111,8 +2107,8 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         client.updateMetadata(metadataResponse)
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
-        val memberSubscriptions = Collections.singletonMap(consumerId, listOf(topic1))
-        partitionAssignor.prepare(Collections.singletonMap(consumerId, listOf(t1p)))
+        val memberSubscriptions = mapOf(consumerId to listOf(topic1))
+        partitionAssignor.prepare(mapOf(consumerId to listOf(t1p)))
 
         // the leader is responsible for picking up metadata changes and forcing a group rebalance
         client.prepareResponse(
@@ -2150,7 +2146,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         // the leader is responsible for picking up metadata changes and forcing a group rebalance.
         // note that `MockPartitionAssignor.prepare` is not called therefore calling `MockPartitionAssignor.assign`
         // will throw a IllegalStateException. this indirectly verifies that `assign` is correctly skipped.
-        val memberSubscriptions = Collections.singletonMap(consumerId, listOf(topic1))
+        val memberSubscriptions = mapOf(consumerId to listOf(topic1))
         client.prepareResponse(
             joinGroupLeaderResponse(
                 generationId = 1,
@@ -2241,15 +2237,15 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         client.updateMetadata(
             metadataUpdateWith(
                 numNodes = 1,
-                topicPartitionCounts = Collections.singletonMap(topic1, 1),
+                topicPartitionCounts = mapOf(topic1 to 1),
             )
         )
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
 
         // prepare initial rebalance
-        val memberSubscriptions = Collections.singletonMap(consumerId, topics)
-        partitionAssignor.prepare(Collections.singletonMap(consumerId, listOf(tp1)))
+        val memberSubscriptions = mapOf(consumerId to topics)
+        partitionAssignor.prepare(mapOf(consumerId to listOf(tp1)))
         client.prepareResponse(
             joinGroupLeaderResponse(
                 generationId = 1,
@@ -2262,8 +2258,8 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             matcher = { body ->
                 val sync = body as SyncGroupRequest
                 if (sync.data().memberId == consumerId
-                            && sync.data().generationId == 1
-                            && sync.groupAssignments().containsKey(consumerId)
+                    && sync.data().generationId == 1
+                    && sync.groupAssignments().containsKey(consumerId)
                 ) {
                     // trigger the metadata update including both topics after the sync group request has been sent
                     val topicPartitionCounts = mapOf(
@@ -2381,14 +2377,14 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         client.updateMetadata(
             metadataUpdateWith(
                 numNodes = 1,
-                topicPartitionCounts = Collections.singletonMap(topic1, 1)
+                topicPartitionCounts = mapOf(topic1 to 1)
             )
         )
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
 
         // prepare initial rebalance
-        partitionAssignor.prepare(Collections.singletonMap(consumerId, listOf(partition)))
+        partitionAssignor.prepare(mapOf(consumerId to listOf(partition)))
         client.prepareResponse(
             joinGroupFollowerResponse(
                 generationId = 1,
@@ -2403,7 +2399,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         try {
             coordinator.poll(time.timer(Long.MAX_VALUE))
             fail("Expected exception thrown from assignment callback")
-        } catch (e: WakeupException) {}
+        } catch (_: WakeupException) {}
 
         // The second call should retry the assignment callback and succeed
         coordinator.poll(time.timer(Long.MAX_VALUE))
@@ -2429,7 +2425,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
     private fun unavailableTopicTest(
         patternSubscribe: Boolean,
-        unavailableTopicsInLastMetadata: Set<String>
+        unavailableTopicsInLastMetadata: Set<String>,
     ) {
         if (patternSubscribe) subscriptions.subscribe(
             pattern = Pattern.compile("test.*"),
@@ -2445,7 +2441,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         )
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
-        val memberSubscriptions = Collections.singletonMap(consumerId, listOf(topic1))
+        val memberSubscriptions = mapOf(consumerId to listOf(topic1))
         partitionAssignor.prepare(emptyMap())
         client.prepareResponse(
             joinGroupLeaderResponse(
@@ -2472,7 +2468,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
                 clusterId = "kafka-cluster",
                 numNodes = 1,
                 topicErrors = topicErrors,
-                topicPartitionCounts = Collections.singletonMap(topic1, 1),
+                topicPartitionCounts = mapOf(topic1 to 1),
             )
         )
         consumerClient.poll(time.timer(0))
@@ -2642,7 +2638,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         subscriptions.assignFromUser(setOf(t1p))
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
-        prepareOffsetCommitRequest(Collections.singletonMap(t1p, 100L), Errors.NONE)
+        prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.NONE)
         val success = AtomicBoolean(false)
         coordinator.commitOffsetsAsync(
             offsets = mapOf(t1p to OffsetAndMetadata(100L)),
@@ -2671,14 +2667,14 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         val firstCommitCallback = MockCommitCallback()
         val secondCommitCallback = MockCommitCallback()
         coordinator.commitOffsetsAsync(
-            Collections.singletonMap(t1p, OffsetAndMetadata(100L)),
+            mapOf(t1p to OffsetAndMetadata(100L)),
             firstCommitCallback
         )
         coordinator.commitOffsetsAsync(
-            Collections.singletonMap(t1p, OffsetAndMetadata(100L)),
+            mapOf(t1p to OffsetAndMetadata(100L)),
             secondCommitCallback
         )
-        respondToOffsetCommitRequest(Collections.singletonMap(t1p, 100L), error)
+        respondToOffsetCommitRequest(mapOf(t1p to 100L), error)
         consumerClient.pollNoWakeup()
         consumerClient.pollNoWakeup() // second poll since coordinator disconnect is async
         coordinator.invokeCompletedOffsetCommitCallbacks()
@@ -2706,10 +2702,8 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             )
             subscriptions.seek(t1p, 100)
             prepareOffsetCommitRequest(
-                Collections.singletonMap(
-                    t1p,
-                    100L
-                ), Errors.NONE
+                mapOf(t1p to 100L),
+                Errors.NONE
             )
             time.sleep(autoCommitIntervalMs.toLong())
             coordinator.poll(time.timer(Long.MAX_VALUE))
@@ -2738,22 +2732,12 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             time.sleep(autoCommitIntervalMs.toLong())
 
             // Send an offset commit, but let it fail with a retriable error
-            prepareOffsetCommitRequest(
-                Collections.singletonMap(
-                    t1p,
-                    100L
-                ), Errors.NOT_COORDINATOR
-            )
+            prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.NOT_COORDINATOR)
             coordinator.poll(time.timer(Long.MAX_VALUE))
             assertTrue(coordinator.coordinatorUnknown())
 
             // After the disconnect, we should rediscover the coordinator
-            client.prepareResponse(
-                groupCoordinatorResponse(
-                    node,
-                    Errors.NONE
-                )
-            )
+            client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
             coordinator.poll(time.timer(Long.MAX_VALUE))
             subscriptions.seek(t1p, 200)
 
@@ -2766,12 +2750,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             time.sleep(retryBackoffMs / 2)
             coordinator.poll(time.timer(Long.MAX_VALUE))
             assertEquals(1, client.inFlightRequestCount())
-            respondToOffsetCommitRequest(
-                Collections.singletonMap(
-                    t1p,
-                    200L
-                ), Errors.NONE
-            )
+            respondToOffsetCommitRequest(mapOf(t1p to 200L), Errors.NONE)
         }
     }
 
@@ -2803,12 +2782,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             // Ensure that no additional offset commit is sent
             coordinator.poll(time.timer(Long.MAX_VALUE))
             assertEquals(1, client.inFlightRequestCount())
-            respondToOffsetCommitRequest(
-                Collections.singletonMap(
-                    t1p,
-                    100L
-                ), Errors.NONE
-            )
+            respondToOffsetCommitRequest(mapOf(t1p to 100L), Errors.NONE)
             coordinator.poll(time.timer(Long.MAX_VALUE))
             assertEquals(0, client.inFlightRequestCount())
             subscriptions.seek(t1p, 200)
@@ -2821,34 +2795,21 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             time.sleep((autoCommitIntervalMs / 2).toLong())
             coordinator.poll(time.timer(Long.MAX_VALUE))
             assertEquals(1, client.inFlightRequestCount())
-            respondToOffsetCommitRequest(
-                Collections.singletonMap(
-                    t1p,
-                    200L
-                ), Errors.NONE
-            )
+            respondToOffsetCommitRequest(mapOf(t1p to 200L), Errors.NONE)
         }
     }
 
     @Test
     fun testAutoCommitDynamicAssignmentRebalance() {
         buildCoordinator(
-            rebalanceConfig,
-            Metrics(),
-            assignors,
-            true,
-            subscriptions
+            rebalanceConfig = rebalanceConfig,
+            metrics = Metrics(),
+            assignors = assignors,
+            autoCommitEnabled = true,
+            subscriptionState = subscriptions,
         ).use { coordinator ->
-            subscriptions.subscribe(
-                setOf(topic1),
-                rebalanceListener
-            )
-            client.prepareResponse(
-                groupCoordinatorResponse(
-                    node,
-                    Errors.NONE
-                )
-            )
+            subscriptions.subscribe(setOf(topic1), rebalanceListener)
+            client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
             coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
 
             // haven't joined, so should not cause a commit
@@ -2856,10 +2817,10 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             consumerClient.poll(time.timer(0))
             client.prepareResponse(
                 joinGroupFollowerResponse(
-                    1,
-                    consumerId,
-                    "leader",
-                    Errors.NONE
+                    generationId = 1,
+                    memberId = consumerId,
+                    leaderId = "leader",
+                    error = Errors.NONE,
                 )
             )
             client.prepareResponse(
@@ -2871,12 +2832,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             )
             coordinator.joinGroupIfNeeded(time.timer(Long.MAX_VALUE))
             subscriptions.seek(t1p, 100)
-            prepareOffsetCommitRequest(
-                Collections.singletonMap(
-                    t1p,
-                    100L
-                ), Errors.NONE
-            )
+            prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.NONE)
             time.sleep(autoCommitIntervalMs.toLong())
             coordinator.poll(time.timer(Long.MAX_VALUE))
             assertFalse(client.hasPendingResponses())
@@ -2898,19 +2854,9 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
                 )
             )
             subscriptions.seek(t1p, 100)
-            client.prepareResponse(
-                groupCoordinatorResponse(
-                    node,
-                    Errors.NONE
-                )
-            )
+            client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
             coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
-            prepareOffsetCommitRequest(
-                Collections.singletonMap(
-                    t1p,
-                    100L
-                ), Errors.NONE
-            )
+            prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.NONE)
             time.sleep(autoCommitIntervalMs.toLong())
             coordinator.poll(time.timer(Long.MAX_VALUE))
             assertFalse(client.hasPendingResponses())
@@ -2926,11 +2872,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             true,
             subscriptions
         ).use { coordinator ->
-            subscriptions.assignFromUser(
-                setOf(
-                    t1p
-                )
-            )
+            subscriptions.assignFromUser(setOf(t1p))
             subscriptions.seek(t1p, 100)
 
             // no commit initially since coordinator is unknown
@@ -2949,12 +2891,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
             // sleep only for the retry backoff
             time.sleep(retryBackoffMs)
-            prepareOffsetCommitRequest(
-                Collections.singletonMap(
-                    t1p,
-                    100L
-                ), Errors.NONE
-            )
+            prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.NONE)
             coordinator.poll(time.timer(Long.MAX_VALUE))
             assertFalse(client.hasPendingResponses())
         }
@@ -2965,9 +2902,9 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         subscriptions.assignFromUser(setOf(t1p))
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
-        prepareOffsetCommitRequest(Collections.singletonMap(t1p, 100L), Errors.NONE)
+        prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.NONE)
         val success = AtomicBoolean(false)
-        val offsets = Collections.singletonMap(t1p, OffsetAndMetadata(100L, "hello"))
+        val offsets = mapOf(t1p to OffsetAndMetadata(offset = 100L, metadata = "hello"))
         coordinator.commitOffsetsAsync(offsets, callback(offsets, success))
         coordinator.invokeCompletedOffsetCommitCallbacks()
         assertTrue(success.get())
@@ -2975,17 +2912,17 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
     @Test
     fun testCommitOffsetAsyncWithDefaultCallback() {
-        val invokedBeforeTest = mockOffsetCommitCallback!!.invoked
+        val invokedBeforeTest = mockOffsetCommitCallback.invoked
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
-        prepareOffsetCommitRequest(Collections.singletonMap(t1p, 100L), Errors.NONE)
+        prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.NONE)
         coordinator.commitOffsetsAsync(
-            Collections.singletonMap(t1p, OffsetAndMetadata(100L)),
+            mapOf(t1p to OffsetAndMetadata(100L)),
             mockOffsetCommitCallback
         )
         coordinator.invokeCompletedOffsetCommitCallbacks()
-        assertEquals(invokedBeforeTest + 1, mockOffsetCommitCallback!!.invoked)
-        assertNull(mockOffsetCommitCallback!!.exception)
+        assertEquals(invokedBeforeTest + 1, mockOffsetCommitCallback.invoked)
+        assertNull(mockOffsetCommitCallback.exception)
     }
 
     @Test
@@ -2996,25 +2933,24 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
         // now switch to manual assignment
         client.prepareResponse(
-            LeaveGroupResponse(
-                LeaveGroupResponseData()
-                    .setErrorCode(Errors.NONE.code)
-            )
+            response = LeaveGroupResponse(LeaveGroupResponseData().setErrorCode(Errors.NONE.code)),
         )
         subscriptions.unsubscribe()
         coordinator.maybeLeaveGroup("test commit after leave")
         subscriptions.assignFromUser(setOf(t1p))
 
         // the client should not reuse generation/memberId from auto-subscribed generation
-        client.prepareResponse(AbstractResponse({ body ->
-            val commitRequest = body as OffsetCommitRequest
-            commitRequest.data().memberId().equals(OffsetCommitRequest.DEFAULT_MEMBER_ID) &&
-                    commitRequest.data()
-                        .generationId() === OffsetCommitRequest.DEFAULT_GENERATION_ID
-        }), offsetCommitResponse(Collections.singletonMap(t1p, Errors.NONE)))
+        client.prepareResponse(
+            matcher = { body ->
+                val commitRequest = body as OffsetCommitRequest
+                commitRequest.data().memberId == OffsetCommitRequest.DEFAULT_MEMBER_ID
+                        && commitRequest.data().generationId == OffsetCommitRequest.DEFAULT_GENERATION_ID
+            },
+            response = offsetCommitResponse(mapOf(t1p to Errors.NONE)),
+        )
         val success = AtomicBoolean(false)
         coordinator.commitOffsetsAsync(
-            Collections.singletonMap(t1p, OffsetAndMetadata(100L)),
+            mapOf(t1p to OffsetAndMetadata(100L)),
             callback(success)
         )
         coordinator.invokeCompletedOffsetCommitCallbacks()
@@ -3023,20 +2959,20 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
     @Test
     fun testCommitOffsetAsyncFailedWithDefaultCallback() {
-        val invokedBeforeTest = mockOffsetCommitCallback!!.invoked
+        val invokedBeforeTest = mockOffsetCommitCallback.invoked
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
         prepareOffsetCommitRequest(
-            Collections.singletonMap(t1p, 100L),
-            Errors.COORDINATOR_NOT_AVAILABLE
+            expectedOffsets = mapOf(t1p to 100L),
+            error = Errors.COORDINATOR_NOT_AVAILABLE,
         )
         coordinator.commitOffsetsAsync(
-            Collections.singletonMap(t1p, OffsetAndMetadata(100L)),
-            mockOffsetCommitCallback
+            offsets = mapOf(t1p to OffsetAndMetadata(100L)),
+            callback = mockOffsetCommitCallback,
         )
         coordinator.invokeCompletedOffsetCommitCallbacks()
-        assertEquals(invokedBeforeTest + 1, mockOffsetCommitCallback!!.invoked)
-        assertTrue(mockOffsetCommitCallback!!.exception is RetriableCommitFailedException)
+        assertEquals(invokedBeforeTest + 1, mockOffsetCommitCallback.invoked)
+        assertTrue(mockOffsetCommitCallback.exception is RetriableCommitFailedException)
     }
 
     @Test
@@ -3047,10 +2983,10 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         // async commit with coordinator not available
         val cb = MockCommitCallback()
         prepareOffsetCommitRequest(
-            Collections.singletonMap(t1p, 100L),
+            mapOf(t1p to 100L),
             Errors.COORDINATOR_NOT_AVAILABLE
         )
-        coordinator.commitOffsetsAsync(Collections.singletonMap(t1p, OffsetAndMetadata(100L)), cb)
+        coordinator.commitOffsetsAsync(mapOf(t1p to OffsetAndMetadata(100L)), cb)
         coordinator.invokeCompletedOffsetCommitCallbacks()
         assertTrue(coordinator.coordinatorUnknown())
         assertEquals(1, cb.invoked)
@@ -3064,8 +3000,8 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
         // async commit with not coordinator
         val cb = MockCommitCallback()
-        prepareOffsetCommitRequest(Collections.singletonMap(t1p, 100L), Errors.NOT_COORDINATOR)
-        coordinator.commitOffsetsAsync(Collections.singletonMap(t1p, OffsetAndMetadata(100L)), cb)
+        prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.NOT_COORDINATOR)
+        coordinator.commitOffsetsAsync(mapOf(t1p to OffsetAndMetadata(100L)), cb)
         coordinator.invokeCompletedOffsetCommitCallbacks()
         assertTrue(coordinator.coordinatorUnknown())
         assertEquals(1, cb.invoked)
@@ -3079,8 +3015,8 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
         // async commit with coordinator disconnected
         val cb = MockCommitCallback()
-        prepareOffsetCommitRequestDisconnect(Collections.singletonMap(t1p, 100L))
-        coordinator.commitOffsetsAsync(Collections.singletonMap(t1p, OffsetAndMetadata(100L)), cb)
+        prepareOffsetCommitRequestDisconnect(mapOf(t1p to 100L))
+        coordinator.commitOffsetsAsync(mapOf(t1p to OffsetAndMetadata(100L)), cb)
         coordinator.invokeCompletedOffsetCommitCallbacks()
         assertTrue(coordinator.coordinatorUnknown())
         assertEquals(1, cb.invoked)
@@ -3093,13 +3029,12 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
 
         // sync commit with coordinator disconnected (should connect, get metadata, and then submit the commit request)
-        prepareOffsetCommitRequest(Collections.singletonMap(t1p, 100L), Errors.NOT_COORDINATOR)
+        prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.NOT_COORDINATOR)
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
-        prepareOffsetCommitRequest(Collections.singletonMap(t1p, 100L), Errors.NONE)
+        prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.NONE)
         coordinator.commitOffsetsSync(
-            Collections.singletonMap(t1p, OffsetAndMetadata(100L)), time.timer(
-                Long.MAX_VALUE
-            )
+            offsets = mapOf(t1p to OffsetAndMetadata(100L)),
+            timer = time.timer(Long.MAX_VALUE),
         )
     }
 
@@ -3110,15 +3045,13 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
         // sync commit with coordinator disconnected (should connect, get metadata, and then submit the commit request)
         prepareOffsetCommitRequest(
-            Collections.singletonMap(t1p, 100L),
+            mapOf(t1p to 100L),
             Errors.COORDINATOR_NOT_AVAILABLE
         )
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
-        prepareOffsetCommitRequest(Collections.singletonMap(t1p, 100L), Errors.NONE)
+        prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.NONE)
         coordinator.commitOffsetsSync(
-            Collections.singletonMap(t1p, OffsetAndMetadata(100L)), time.timer(
-                Long.MAX_VALUE
-            )
+            mapOf(t1p to OffsetAndMetadata(100L)), time.timer(Long.MAX_VALUE)
         )
     }
 
@@ -3128,13 +3061,12 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
 
         // sync commit with coordinator disconnected (should connect, get metadata, and then submit the commit request)
-        prepareOffsetCommitRequestDisconnect(Collections.singletonMap(t1p, 100L))
+        prepareOffsetCommitRequestDisconnect(mapOf(t1p to 100L))
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
-        prepareOffsetCommitRequest(Collections.singletonMap(t1p, 100L), Errors.NONE)
+        prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.NONE)
         coordinator.commitOffsetsSync(
-            Collections.singletonMap(t1p, OffsetAndMetadata(100L)), time.timer(
-                Long.MAX_VALUE
-            )
+            offsets = mapOf(t1p to OffsetAndMetadata(100L)),
+            timer = time.timer(Long.MAX_VALUE)
         )
     }
 
@@ -3147,14 +3079,14 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         val firstOffset = OffsetAndMetadata(0L)
         val secondOffset = OffsetAndMetadata(1L)
         coordinator.commitOffsetsAsync(
-            Collections.singletonMap(t1p, firstOffset)
-        ) { offsets, exception -> committedOffsets.add(firstOffset) }
+            mapOf(t1p to firstOffset)
+        ) { _, _ -> committedOffsets.add(firstOffset) }
 
         // Do a synchronous commit in the background so that we can send both responses at the same time
         val thread: Thread = object : Thread() {
             override fun run() {
                 coordinator.commitOffsetsSync(
-                    Collections.singletonMap(t1p, secondOffset),
+                    mapOf(t1p to secondOffset),
                     time.timer(10000)
                 )
                 committedOffsets.add(secondOffset)
@@ -3162,14 +3094,8 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         }
         thread.start()
         client.waitForRequests(2, 5000)
-        respondToOffsetCommitRequest(
-            Collections.singletonMap(t1p, firstOffset.offset()),
-            Errors.NONE
-        )
-        respondToOffsetCommitRequest(
-            Collections.singletonMap(t1p, secondOffset.offset()),
-            Errors.NONE
-        )
+        respondToOffsetCommitRequest(mapOf(t1p to firstOffset.offset), Errors.NONE)
+        respondToOffsetCommitRequest(mapOf(t1p to secondOffset.offset), Errors.NONE)
         thread.join()
         assertEquals(listOf(firstOffset, secondOffset), committedOffsets)
     }
@@ -3179,20 +3105,13 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
         client.prepareResponse(
-            offsetCommitResponse(
-                Collections.singletonMap(
-                    t1p,
-                    Errors.UNKNOWN_TOPIC_OR_PARTITION
-                )
-            )
+            offsetCommitResponse(mapOf(t1p to Errors.UNKNOWN_TOPIC_OR_PARTITION))
         )
-        client.prepareResponse(offsetCommitResponse(Collections.singletonMap(t1p, Errors.NONE)))
+        client.prepareResponse(offsetCommitResponse(mapOf(t1p to Errors.NONE)))
         assertTrue(
             coordinator.commitOffsetsSync(
-                Collections.singletonMap(
-                    t1p,
-                    OffsetAndMetadata(100L, "metadata")
-                ), time.timer(10000)
+                offsets = mapOf(t1p to OffsetAndMetadata(offset = 100L, metadata = "metadata")),
+                timer = time.timer(10000),
             )
         )
     }
@@ -3203,19 +3122,15 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
         prepareOffsetCommitRequest(
-            Collections.singletonMap(t1p, 100L),
+            mapOf(t1p to 100L),
             Errors.OFFSET_METADATA_TOO_LARGE
         )
-        Assertions.assertThrows(
-            OffsetMetadataTooLarge::class.java,
-            {
-                coordinator.commitOffsetsSync(
-                    Collections.singletonMap(
-                        t1p,
-                        OffsetAndMetadata(100L, "metadata")
-                    ), time.timer(Long.MAX_VALUE)
-                )
-            })
+        assertFailsWith<OffsetMetadataTooLarge> {
+            coordinator.commitOffsetsSync(
+                offsets = mapOf(t1p to OffsetAndMetadata(offset = 100L, metadata = "metadata")),
+                timer = time.timer(Long.MAX_VALUE),
+            )
+        }
     }
 
     @Test
@@ -3223,17 +3138,14 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         // we cannot retry if a rebalance occurs before the commit completed
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
-        prepareOffsetCommitRequest(Collections.singletonMap(t1p, 100L), Errors.ILLEGAL_GENERATION)
-        Assertions.assertThrows(
-            CommitFailedException::class.java,
-            {
-                coordinator.commitOffsetsSync(
-                    Collections.singletonMap(
-                        t1p,
-                        OffsetAndMetadata(100L, "metadata")
-                    ), time.timer(Long.MAX_VALUE)
-                )
-            })
+        prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.ILLEGAL_GENERATION)
+
+        assertFailsWith<CommitFailedException> {
+            coordinator.commitOffsetsSync(
+                offsets = mapOf(t1p to OffsetAndMetadata(offset = 100L, metadata = "metadata")),
+                timer = time.timer(Long.MAX_VALUE),
+            )
+        }
     }
 
     @Test
@@ -3241,17 +3153,14 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         // we cannot retry if a rebalance occurs before the commit completed
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
-        prepareOffsetCommitRequest(Collections.singletonMap(t1p, 100L), Errors.UNKNOWN_MEMBER_ID)
-        Assertions.assertThrows(
-            CommitFailedException::class.java,
-            {
-                coordinator.commitOffsetsSync(
-                    Collections.singletonMap(
-                        t1p,
-                        OffsetAndMetadata(100L, "metadata")
-                    ), time.timer(Long.MAX_VALUE)
-                )
-            })
+        prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.UNKNOWN_MEMBER_ID)
+
+        assertFailsWith<CommitFailedException> {
+            coordinator.commitOffsetsSync(
+                offsets = mapOf(t1p to OffsetAndMetadata(offset = 100L, metadata = "metadata")),
+                timer = time.timer(Long.MAX_VALUE),
+            )
+        }
     }
 
     @Test
@@ -3259,29 +3168,26 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
         val currGen = AbstractCoordinator.Generation(
-            1,
-            "memberId",
-            null
+            generationId = 1,
+            memberId = "memberId",
+            protocolName = null,
         )
         coordinator.setNewGeneration(currGen)
-        prepareOffsetCommitRequest(Collections.singletonMap(t1p, 100L), Errors.ILLEGAL_GENERATION)
-        val future: RequestFuture<Void?> = coordinator.sendOffsetCommitRequest(
-            Collections.singletonMap(
-                t1p,
-                OffsetAndMetadata(100L, "metadata")
-            )
+        prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.ILLEGAL_GENERATION)
+        val future = coordinator.sendOffsetCommitRequest(
+            mapOf(t1p to OffsetAndMetadata(offset = 100L, metadata = "metadata")),
         )
 
         // change the generation
         val newGen = AbstractCoordinator.Generation(
-            2,
-            "memberId-new",
-            null
+            generationId = 2,
+            memberId = "memberId-new",
+            protocolName = null
         )
         coordinator.setNewGeneration(newGen)
         coordinator.setNewState(AbstractCoordinator.MemberState.PREPARING_REBALANCE)
         assertTrue(consumerClient.poll(future, time.timer(30000)))
-        assertTrue(future.exception().javaClass.isInstance(Errors.REBALANCE_IN_PROGRESS.exception()))
+        assertTrue(future.exception().javaClass.isInstance(Errors.REBALANCE_IN_PROGRESS.exception))
 
         // the generation should not be reset
         assertEquals(newGen, coordinator.generation())
@@ -3295,12 +3201,9 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         client.prepareResponse(joinGroupFollowerResponse(1, consumerId, "leader", Errors.NONE))
         client.prepareResponse(syncGroupResponse(emptyList(), Errors.NONE))
         coordinator.joinGroupIfNeeded(time.timer(Long.MAX_VALUE))
-        prepareOffsetCommitRequest(Collections.singletonMap(t1p, 100L), Errors.ILLEGAL_GENERATION)
-        val future: RequestFuture<Void?> = coordinator.sendOffsetCommitRequest(
-            Collections.singletonMap(
-                t1p,
-                OffsetAndMetadata(100L, "metadata")
-            )
+        prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.ILLEGAL_GENERATION)
+        val future = coordinator.sendOffsetCommitRequest(
+            mapOf(t1p to OffsetAndMetadata(offset = 100L, metadata = "metadata"))
         )
         assertTrue(consumerClient.poll(future, time.timer(30000)))
         assertEquals(
@@ -3320,17 +3223,14 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
         val currGen = AbstractCoordinator.Generation(
-            1,
-            "memberId",
-            null
+            generationId = 1,
+            memberId = "memberId",
+            protocolName = null,
         )
         coordinator.setNewGeneration(currGen)
-        prepareOffsetCommitRequest(Collections.singletonMap(t1p, 100L), Errors.ILLEGAL_GENERATION)
-        val future: RequestFuture<Void?> = coordinator.sendOffsetCommitRequest(
-            Collections.singletonMap(
-                t1p,
-                OffsetAndMetadata(100L, "metadata")
-            )
+        prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.ILLEGAL_GENERATION)
+        val future = coordinator.sendOffsetCommitRequest(
+            mapOf(t1p to OffsetAndMetadata(offset = 100L, metadata = "metadata"))
         )
 
         // reset the generation
@@ -3340,8 +3240,8 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
         // the generation should not be reset
         assertEquals(
-            AbstractCoordinator.Generation.NO_GENERATION,
-            coordinator.generation()
+            expected = AbstractCoordinator.Generation.NO_GENERATION,
+            actual = coordinator.generation(),
         )
     }
 
@@ -3350,29 +3250,26 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
         val currGen = AbstractCoordinator.Generation(
-            1,
-            "memberId",
-            null
+            generationId = 1,
+            memberId = "memberId",
+            protocolName = null,
         )
         coordinator.setNewGeneration(currGen)
-        prepareOffsetCommitRequest(Collections.singletonMap(t1p, 100L), Errors.UNKNOWN_MEMBER_ID)
-        val future: RequestFuture<Void?> = coordinator.sendOffsetCommitRequest(
-            Collections.singletonMap(
-                t1p,
-                OffsetAndMetadata(100L, "metadata")
-            )
+        prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.UNKNOWN_MEMBER_ID)
+        val future = coordinator.sendOffsetCommitRequest(
+            mapOf(t1p to OffsetAndMetadata(offset = 100L, metadata = "metadata"))
         )
 
         // change the generation
         val newGen = AbstractCoordinator.Generation(
-            2,
-            "memberId-new",
-            null
+            generationId = 2,
+            memberId = "memberId-new",
+            protocolName = null,
         )
         coordinator.setNewGeneration(newGen)
         coordinator.setNewState(AbstractCoordinator.MemberState.PREPARING_REBALANCE)
         assertTrue(consumerClient.poll(future, time.timer(30000)))
-        assertTrue(future.exception().javaClass.isInstance(Errors.REBALANCE_IN_PROGRESS.exception()))
+        assertTrue(future.exception().javaClass.isInstance(Errors.REBALANCE_IN_PROGRESS.exception))
 
         // the generation should not be reset
         assertEquals(newGen, coordinator.generation())
@@ -3383,17 +3280,14 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
         val currGen = AbstractCoordinator.Generation(
-            1,
-            "memberId",
-            null
+            generationId = 1,
+            memberId = "memberId",
+            protocolName = null,
         )
         coordinator.setNewGeneration(currGen)
-        prepareOffsetCommitRequest(Collections.singletonMap(t1p, 100L), Errors.UNKNOWN_MEMBER_ID)
-        val future: RequestFuture<Void?> = coordinator.sendOffsetCommitRequest(
-            Collections.singletonMap(
-                t1p,
-                OffsetAndMetadata(100L, "metadata")
-            )
+        prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.UNKNOWN_MEMBER_ID)
+        val future = coordinator.sendOffsetCommitRequest(
+            mapOf(t1p to OffsetAndMetadata(offset = 100L, metadata = "metadata"))
         )
 
         // reset the generation
@@ -3403,8 +3297,8 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
         // the generation should be reset
         assertEquals(
-            AbstractCoordinator.Generation.NO_GENERATION,
-            coordinator.generation()
+            expected = AbstractCoordinator.Generation.NO_GENERATION,
+            actual = coordinator.generation(),
         )
     }
 
@@ -3416,12 +3310,9 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         client.prepareResponse(joinGroupFollowerResponse(1, consumerId, "leader", Errors.NONE))
         client.prepareResponse(syncGroupResponse(emptyList(), Errors.NONE))
         coordinator.joinGroupIfNeeded(time.timer(Long.MAX_VALUE))
-        prepareOffsetCommitRequest(Collections.singletonMap(t1p, 100L), Errors.UNKNOWN_MEMBER_ID)
-        val future: RequestFuture<Void?> = coordinator.sendOffsetCommitRequest(
-            Collections.singletonMap(
-                t1p,
-                OffsetAndMetadata(100L, "metadata")
-            )
+        prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.UNKNOWN_MEMBER_ID)
+        val future = coordinator.sendOffsetCommitRequest(
+            mapOf(t1p to OffsetAndMetadata(offset = 100L, metadata = "metadata"))
         )
         assertTrue(consumerClient.poll(future, time.timer(30000)))
         assertEquals(
@@ -3435,29 +3326,26 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
         val currGen = AbstractCoordinator.Generation(
-            1,
-            "memberId",
-            null
+            generationId = 1,
+            memberId = "memberId",
+            protocolName = null,
         )
         coordinator.setNewGeneration(currGen)
         coordinator.setNewState(AbstractCoordinator.MemberState.PREPARING_REBALANCE)
-        prepareOffsetCommitRequest(Collections.singletonMap(t1p, 100L), Errors.FENCED_INSTANCE_ID)
-        val future: RequestFuture<Void?> = coordinator.sendOffsetCommitRequest(
-            Collections.singletonMap(
-                t1p,
-                OffsetAndMetadata(100L, "metadata")
-            )
+        prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.FENCED_INSTANCE_ID)
+        val future = coordinator.sendOffsetCommitRequest(
+            mapOf(t1p to OffsetAndMetadata(offset = 100L, metadata = "metadata"))
         )
 
         // change the generation
         val newGen = AbstractCoordinator.Generation(
-            2,
-            "memberId-new",
-            null
+            generationId = 2,
+            memberId = "memberId-new",
+            protocolName = null,
         )
         coordinator.setNewGeneration(newGen)
         assertTrue(consumerClient.poll(future, time.timer(30000)))
-        assertTrue(future.exception().javaClass.isInstance(Errors.REBALANCE_IN_PROGRESS.exception()))
+        assertTrue(future.exception().javaClass.isInstance(Errors.REBALANCE_IN_PROGRESS.exception))
 
         // the generation should not be reset
         assertEquals(newGen, coordinator.generation())
@@ -3473,12 +3361,9 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             null
         )
         coordinator.setNewGeneration(currGen)
-        prepareOffsetCommitRequest(Collections.singletonMap(t1p, 100L), Errors.FENCED_INSTANCE_ID)
-        val future: RequestFuture<Void?> = coordinator.sendOffsetCommitRequest(
-            Collections.singletonMap(
-                t1p,
-                OffsetAndMetadata(100L, "metadata")
-            )
+        prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.FENCED_INSTANCE_ID)
+        val future = coordinator.sendOffsetCommitRequest(
+            mapOf(t1p to OffsetAndMetadata(offset = 100L, metadata = "metadata"))
         )
 
         // change the generation
@@ -3505,18 +3390,22 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             false,
             subscriptions
         )
+
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(5000))
-        client.prepareResponse(AbstractResponse({ body ->
-            val data = (body as OffsetCommitRequest).data()
-            data.groupInstanceId() == null && data.memberId().isEmpty()
-        }), offsetCommitResponse(emptyMap()))
-        val future: RequestFuture<Void?> = coordinator.sendOffsetCommitRequest(
-            Collections.singletonMap(
-                t1p,
-                OffsetAndMetadata(100L, "metadata")
-            )
+
+        client.prepareResponse(
+            matcher = { body ->
+                val data = (body as OffsetCommitRequest).data()
+                data.groupInstanceId == null && data.memberId.isEmpty()
+            },
+            response = offsetCommitResponse(emptyMap()),
         )
+
+        val future = coordinator.sendOffsetCommitRequest(
+            mapOf(t1p to OffsetAndMetadata(offset = 100L, metadata = "metadata"))
+        )
+
         assertTrue(consumerClient.poll(future, time.timer(5000)))
         assertFalse(future.failed())
     }
@@ -3533,23 +3422,19 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
 
         // normal join group
-        val memberSubscriptions = Collections.singletonMap(consumerId, listOf(topic1))
-        partitionAssignor.prepare(Collections.singletonMap(consumerId, listOf(t1p)))
+        val memberSubscriptions = mapOf(consumerId to listOf(topic1))
+        partitionAssignor.prepare(mapOf(consumerId to listOf(t1p)))
         coordinator.ensureActiveGroup(time.timer(0L))
         assertTrue(coordinator.rejoinNeededOrPending())
         assertNull(coordinator.generationIfStable)
 
         // when the state is REBALANCING, we would not even send out the request but fail immediately
-        Assertions.assertThrows(
-            RebalanceInProgressException::class.java,
-            {
-                coordinator.commitOffsetsSync(
-                    Collections.singletonMap(
-                        t1p,
-                        OffsetAndMetadata(100L, "metadata")
-                    ), time.timer(Long.MAX_VALUE)
-                )
-            })
+        assertFailsWith<RebalanceInProgressException> {
+            coordinator.commitOffsetsSync(
+                offsets = mapOf(t1p to OffsetAndMetadata(offset = 100L, metadata = "metadata")),
+                timer = time.timer(Long.MAX_VALUE),
+            )
+        }
         val coordinatorNode = Node(Int.MAX_VALUE - node.id, node.host(), node.port())
         client.respondFrom(
             joinGroupLeaderResponse(
@@ -3559,31 +3444,31 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
                 Errors.NONE
             ), coordinatorNode
         )
-        client.prepareResponse(AbstractResponse({ body ->
-            val sync = body as SyncGroupRequest
-            (sync.data().memberId().equals(consumerId) && (
-                    sync.data().generationId() === 1) &&
-                    sync.groupAssignments().containsKey(consumerId))
-        }), syncGroupResponse(listOf(t1p), Errors.NONE))
+        client.prepareResponse(
+            matcher = { body ->
+                val sync = body as SyncGroupRequest
+                sync.data().memberId.equals(consumerId)
+                        && sync.data().generationId == 1
+                        && sync.groupAssignments().containsKey(consumerId)
+            },
+            response = syncGroupResponse(listOf(t1p), Errors.NONE),
+        )
         coordinator.poll(time.timer(Long.MAX_VALUE))
-        val expectedGeneration =
-            AbstractCoordinator.Generation(1, consumerId, partitionAssignor.name())
+        val expectedGeneration = AbstractCoordinator.Generation(
+            generationId = 1,
+            memberId = consumerId,
+            protocolName = partitionAssignor.name(),
+        )
         assertFalse(coordinator.rejoinNeededOrPending())
         assertEquals(expectedGeneration, coordinator.generationIfStable)
-        prepareOffsetCommitRequest(
-            Collections.singletonMap(t1p, 100L),
-            Errors.REBALANCE_IN_PROGRESS
-        )
-        Assertions.assertThrows(
-            RebalanceInProgressException::class.java,
-            {
-                coordinator.commitOffsetsSync(
-                    Collections.singletonMap(
-                        t1p,
-                        OffsetAndMetadata(100L, "metadata")
-                    ), time.timer(Long.MAX_VALUE)
-                )
-            })
+        prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.REBALANCE_IN_PROGRESS)
+
+        assertFailsWith<RebalanceInProgressException> {
+            coordinator.commitOffsetsSync(
+                offsets = mapOf(t1p to OffsetAndMetadata(offset = 100L, metadata = "metadata")),
+                timer = time.timer(Long.MAX_VALUE),
+            )
+        }
         assertTrue(coordinator.rejoinNeededOrPending())
         assertEquals(expectedGeneration, coordinator.generationIfStable)
     }
@@ -3594,17 +3479,14 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
 
         // sync commit with invalid partitions should throw if we have no callback
-        prepareOffsetCommitRequest(Collections.singletonMap(t1p, 100L), Errors.UNKNOWN_SERVER_ERROR)
-        Assertions.assertThrows(
-            KafkaException::class.java,
-            {
-                coordinator.commitOffsetsSync(
-                    Collections.singletonMap(
-                        t1p,
-                        OffsetAndMetadata(100L)
-                    ), time.timer(Long.MAX_VALUE)
-                )
-            })
+        prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.UNKNOWN_SERVER_ERROR)
+
+        assertFailsWith<KafkaException> {
+            coordinator.commitOffsetsSync(
+                offsets = mapOf(t1p to OffsetAndMetadata(100L)),
+                timer = time.timer(Long.MAX_VALUE),
+            )
+        }
     }
 
     @Test
@@ -3613,10 +3495,8 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
         assertFalse(
             coordinator.commitOffsetsSync(
-                Collections.singletonMap(
-                    t1p,
-                    OffsetAndMetadata(100L)
-                ), time.timer(0)
+                offsets = mapOf(t1p to OffsetAndMetadata(100L)),
+                timer = time.timer(0),
             )
         )
     }
@@ -3640,13 +3520,25 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         subscriptions.assignFromUser(setOf(t1p))
 
         // Initial leader epoch of 4
-        val metadataResponse =
-            metadataUpdateWith("kafka-cluster", 1, emptyMap(), Collections.singletonMap(topic1, 1),
-                { tp: TopicPartition? -> 4 })
+        val metadataResponse = metadataUpdateWith(
+            clusterId = "kafka-cluster",
+            numNodes = 1,
+            topicErrors = emptyMap(),
+            topicPartitionCounts = mapOf(topic1 to 1),
+            epochSupplier = { 4 },
+        )
         client.updateMetadata(metadataResponse)
 
         // Load offsets from previous epoch
-        client.prepareResponse(offsetFetchResponse(t1p, Errors.NONE, "", 100L, Optional.of(3)))
+        client.prepareResponse(
+            response = offsetFetchResponse(
+                tp = t1p,
+                partitionLevelError = Errors.NONE,
+                metadata = "",
+                offset = 100L,
+                epoch = 3,
+            ),
+        )
         coordinator.refreshCommittedOffsetsIfNeeded(time.timer(Long.MAX_VALUE))
 
         // Offset gets loaded, but requires validation
@@ -3663,25 +3555,27 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
         val offset = 500L
         val metadata = "blahblah"
-        val leaderEpoch = Optional.of(15)
+        val leaderEpoch = 15
         val data = OffsetFetchResponse.PartitionData(
-            offset, leaderEpoch,
-            metadata, Errors.NONE
+            offset = offset,
+            leaderEpoch = leaderEpoch,
+            metadata = metadata,
+            error = Errors.NONE,
         )
         client.prepareResponse(
             offsetFetchResponse(
                 Errors.NONE,
-                Collections.singletonMap(t1p, data)
+                mapOf(t1p to data)
             )
         )
         val fetchedOffsets = coordinator.fetchCommittedOffsets(
             setOf(t1p),
             time.timer(Long.MAX_VALUE)
         )
-        Assertions.assertNotNull(fetchedOffsets)
+        assertNotNull(fetchedOffsets)
         assertEquals(
             OffsetAndMetadata(offset, leaderEpoch, metadata),
-            fetchedOffsets!![t1p]
+            fetchedOffsets[t1p]
         )
     }
 
@@ -3690,25 +3584,22 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
         val data = OffsetFetchResponse.PartitionData(
-            -1, Optional.empty<Any>(),
-            "", Errors.TOPIC_AUTHORIZATION_FAILED
+            offset = -1,
+            leaderEpoch = null,
+            metadata = "",
+            error = Errors.TOPIC_AUTHORIZATION_FAILED,
         )
         client.prepareResponse(
-            offsetFetchResponse(
-                Errors.NONE,
-                Collections.singletonMap(t1p, data)
-            )
+            offsetFetchResponse(Errors.NONE, mapOf(t1p to data))
         )
-        val exception = Assertions.assertThrows(
-            TopicAuthorizationException::class.java,
-            {
-                coordinator.fetchCommittedOffsets(
-                    setOf(
-                        t1p
-                    ), time.timer(Long.MAX_VALUE)
-                )
-            })
-        assertEquals(setOf(topic1), exception.unauthorizedTopics())
+
+        val exception = assertFailsWith<TopicAuthorizationException> {
+            coordinator.fetchCommittedOffsets(
+                partitions = setOf(t1p),
+                timer = time.timer(Long.MAX_VALUE)
+            )
+        }
+        assertEquals(setOf(topic1), exception.unauthorizedTopics)
     }
 
     @Test
@@ -3739,7 +3630,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             coordinator.refreshCommittedOffsetsIfNeeded(time.timer(Long.MAX_VALUE))
             fail("Expected group authorization error")
         } catch (e: GroupAuthorizationException) {
-            assertEquals(groupId, e.groupId())
+            assertEquals(groupId, e.groupId)
         }
     }
 
@@ -3772,13 +3663,12 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
                 100L
             )
         )
-        Assertions.assertThrows(
-            KafkaException::class.java,
-            {
-                coordinator.refreshCommittedOffsetsIfNeeded(
-                    time.timer(Long.MAX_VALUE)
-                )
-            })
+
+        assertFailsWith<KafkaException> {
+            coordinator.refreshCommittedOffsetsIfNeeded(
+                time.timer(Long.MAX_VALUE)
+            )
+        }
     }
 
     @Test
@@ -3896,10 +3786,8 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
         // Wait for the metric poller to observe the final assignment change or raise an error
         TestUtils.waitForCondition(
-            {
-                observedSize.get() == totalPartitions ||
-                        exceptionHolder.get() != null
-            }, "Failed to observe expected assignment change"
+            testCondition = { observedSize.get() == totalPartitions || exceptionHolder.get() != null },
+            conditionDetails = "Failed to observe expected assignment change",
         )
         doStop.set(true)
         poller.join()
@@ -3908,101 +3796,138 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
     @Test
     fun testCloseDynamicAssignment() {
-        prepareCoordinatorForCloseTest(true, true, null, true).use { coordinator ->
-            gracefulCloseTest(
-                coordinator,
-                true
-            )
-        }
+        prepareCoordinatorForCloseTest(
+            useGroupManagement = true,
+            autoCommit = true,
+            groupInstanceId = null,
+            shouldPoll = true,
+        ).use { coordinator -> gracefulCloseTest(coordinator, true) }
     }
 
     @Test
     fun testCloseManualAssignment() {
-        prepareCoordinatorForCloseTest(false, true, null, true).use { coordinator ->
-            gracefulCloseTest(
-                coordinator,
-                false
-            )
-        }
+        prepareCoordinatorForCloseTest(
+            useGroupManagement = false,
+            autoCommit = true,
+            groupInstanceId = null,
+            shouldPoll = true
+        ).use { coordinator -> gracefulCloseTest(coordinator, false) }
     }
 
     @Test
     @Throws(Exception::class)
     fun testCloseCoordinatorNotKnownManualAssignment() {
-        prepareCoordinatorForCloseTest(false, true, null, true).use { coordinator ->
-            makeCoordinatorUnknown(
-                coordinator,
-                Errors.NOT_COORDINATOR
-            )
+        prepareCoordinatorForCloseTest(
+            useGroupManagement = false,
+            autoCommit = true,
+            groupInstanceId = null,
+            shouldPoll = true
+        ).use { coordinator ->
+            makeCoordinatorUnknown(coordinator, Errors.NOT_COORDINATOR)
             time.sleep(autoCommitIntervalMs.toLong())
-            closeVerifyTimeout(coordinator, 1000, 1000, 1000)
+            closeVerifyTimeout(
+                coordinator = coordinator,
+                closeTimeoutMs = 1000,
+                expectedMinTimeMs = 1000,
+                expectedMaxTimeMs = 1000,
+            )
         }
     }
 
     @Test
     @Throws(Exception::class)
     fun testCloseCoordinatorNotKnownNoCommits() {
-        prepareCoordinatorForCloseTest(true, false, null, true).use { coordinator ->
-            makeCoordinatorUnknown(
-                coordinator,
-                Errors.NOT_COORDINATOR
+        prepareCoordinatorForCloseTest(
+            useGroupManagement = true,
+            autoCommit = false,
+            groupInstanceId = null,
+            shouldPoll = true
+        ).use { coordinator ->
+            makeCoordinatorUnknown(coordinator, Errors.NOT_COORDINATOR)
+            closeVerifyTimeout(
+                coordinator = coordinator,
+                closeTimeoutMs = 1000,
+                expectedMinTimeMs = 0,
+                expectedMaxTimeMs = 0,
             )
-            closeVerifyTimeout(coordinator, 1000, 0, 0)
         }
     }
 
     @Test
     @Throws(Exception::class)
     fun testCloseCoordinatorNotKnownWithCommits() {
-        prepareCoordinatorForCloseTest(true, true, null, true).use { coordinator ->
-            makeCoordinatorUnknown(
-                coordinator,
-                Errors.NOT_COORDINATOR
-            )
+        prepareCoordinatorForCloseTest(
+            useGroupManagement = true,
+            autoCommit = true,
+            groupInstanceId = null,
+            shouldPoll = true,
+        ).use { coordinator ->
+            makeCoordinatorUnknown(coordinator, Errors.NOT_COORDINATOR)
             time.sleep(autoCommitIntervalMs.toLong())
-            closeVerifyTimeout(coordinator, 1000, 1000, 1000)
+            closeVerifyTimeout(
+                coordinator = coordinator,
+                closeTimeoutMs = 1000,
+                expectedMinTimeMs = 1000,
+                expectedMaxTimeMs = 1000,
+            )
         }
     }
 
     @Test
     @Throws(Exception::class)
     fun testCloseCoordinatorUnavailableNoCommits() {
-        prepareCoordinatorForCloseTest(true, false, null, true).use { coordinator ->
-            makeCoordinatorUnknown(
-                coordinator,
-                Errors.COORDINATOR_NOT_AVAILABLE
+        prepareCoordinatorForCloseTest(
+            useGroupManagement = true,
+            autoCommit = false,
+            groupInstanceId = null,
+            shouldPoll = true,
+        ).use { coordinator ->
+            makeCoordinatorUnknown(coordinator, Errors.COORDINATOR_NOT_AVAILABLE)
+            closeVerifyTimeout(
+                coordinator = coordinator,
+                closeTimeoutMs = 1000,
+                expectedMinTimeMs = 0,
+                expectedMaxTimeMs = 0,
             )
-            closeVerifyTimeout(coordinator, 1000, 0, 0)
         }
     }
 
     @Test
     @Throws(Exception::class)
     fun testCloseTimeoutCoordinatorUnavailableForCommit() {
-        prepareCoordinatorForCloseTest(true, true, groupInstanceId, true).use { coordinator ->
-            makeCoordinatorUnknown(
-                coordinator,
-                Errors.COORDINATOR_NOT_AVAILABLE
-            )
+        prepareCoordinatorForCloseTest(
+            useGroupManagement = true,
+            autoCommit = true,
+            groupInstanceId = groupInstanceId,
+            shouldPoll = true,
+        ).use { coordinator ->
+            makeCoordinatorUnknown(coordinator, Errors.COORDINATOR_NOT_AVAILABLE)
             time.sleep(autoCommitIntervalMs.toLong())
-            closeVerifyTimeout(coordinator, 1000, 1000, 1000)
+            closeVerifyTimeout(
+                coordinator = coordinator,
+                closeTimeoutMs = 1000,
+                expectedMinTimeMs = 1000,
+                expectedMaxTimeMs = 1000,
+            )
         }
     }
 
     @Test
     @Throws(Exception::class)
     fun testCloseMaxWaitCoordinatorUnavailableForCommit() {
-        prepareCoordinatorForCloseTest(true, true, groupInstanceId, true).use { coordinator ->
-            makeCoordinatorUnknown(
-                coordinator,
-                Errors.COORDINATOR_NOT_AVAILABLE
-            )
+        prepareCoordinatorForCloseTest(
+            useGroupManagement = true,
+            autoCommit = true,
+            groupInstanceId = groupInstanceId,
+            shouldPoll = true,
+        ).use { coordinator ->
+            makeCoordinatorUnknown(coordinator, Errors.COORDINATOR_NOT_AVAILABLE)
             time.sleep(autoCommitIntervalMs.toLong())
             closeVerifyTimeout(
-                coordinator,
-                Long.MAX_VALUE,
-                requestTimeoutMs.toLong(),
-                requestTimeoutMs.toLong()
+                coordinator = coordinator,
+                closeTimeoutMs = Long.MAX_VALUE,
+                expectedMinTimeMs = requestTimeoutMs.toLong(),
+                expectedMaxTimeMs = requestTimeoutMs.toLong()
             )
         }
     }
@@ -4010,13 +3935,18 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
     @Test
     @Throws(Exception::class)
     fun testCloseNoResponseForCommit() {
-        prepareCoordinatorForCloseTest(true, true, groupInstanceId, true).use { coordinator ->
+        prepareCoordinatorForCloseTest(
+            useGroupManagement = true,
+            autoCommit = true,
+            groupInstanceId = groupInstanceId,
+            shouldPoll = true,
+        ).use { coordinator ->
             time.sleep(autoCommitIntervalMs.toLong())
             closeVerifyTimeout(
-                coordinator,
-                Long.MAX_VALUE,
-                requestTimeoutMs.toLong(),
-                requestTimeoutMs.toLong()
+                coordinator = coordinator,
+                closeTimeoutMs = Long.MAX_VALUE,
+                expectedMinTimeMs = requestTimeoutMs.toLong(),
+                expectedMaxTimeMs = requestTimeoutMs.toLong(),
             )
         }
     }
@@ -4024,12 +3954,17 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
     @Test
     @Throws(Exception::class)
     fun testCloseNoResponseForLeaveGroup() {
-        prepareCoordinatorForCloseTest(true, false, null, true).use { coordinator ->
+        prepareCoordinatorForCloseTest(
+            useGroupManagement = true,
+            autoCommit = false,
+            groupInstanceId = null,
+            shouldPoll = true,
+        ).use { coordinator ->
             closeVerifyTimeout(
-                coordinator,
-                Long.MAX_VALUE,
-                requestTimeoutMs.toLong(),
-                requestTimeoutMs.toLong()
+                coordinator = coordinator,
+                closeTimeoutMs = Long.MAX_VALUE,
+                expectedMinTimeMs = requestTimeoutMs.toLong(),
+                expectedMaxTimeMs = requestTimeoutMs.toLong(),
             )
         }
     }
@@ -4037,34 +3972,45 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
     @Test
     @Throws(Exception::class)
     fun testCloseNoWait() {
-        prepareCoordinatorForCloseTest(true, true, groupInstanceId, true).use { coordinator ->
+        prepareCoordinatorForCloseTest(
+            useGroupManagement = true,
+            autoCommit = true,
+            groupInstanceId = groupInstanceId,
+            shouldPoll = true,
+        ).use { coordinator ->
             time.sleep(autoCommitIntervalMs.toLong())
-            closeVerifyTimeout(coordinator, 0, 0, 0)
+            closeVerifyTimeout(
+                coordinator = coordinator,
+                closeTimeoutMs = 0,
+                expectedMinTimeMs = 0,
+                expectedMaxTimeMs = 0,
+            )
         }
     }
 
     @Test
     @Throws(Exception::class)
     fun testHeartbeatThreadClose() {
-        prepareCoordinatorForCloseTest(true, true, groupInstanceId, true).use { coordinator ->
+        prepareCoordinatorForCloseTest(
+            useGroupManagement = true,
+            autoCommit = true,
+            groupInstanceId = groupInstanceId,
+            shouldPoll = true,
+        ).use { coordinator ->
             coordinator.ensureActiveGroup()
             time.sleep((heartbeatIntervalMs + 100).toLong())
             Thread.yield() // Give heartbeat thread a chance to attempt heartbeat
             closeVerifyTimeout(
-                coordinator,
-                Long.MAX_VALUE,
-                requestTimeoutMs.toLong(),
-                requestTimeoutMs.toLong()
+                coordinator = coordinator,
+                closeTimeoutMs = Long.MAX_VALUE,
+                expectedMinTimeMs = requestTimeoutMs.toLong(),
+                expectedMaxTimeMs = requestTimeoutMs.toLong(),
             )
             val threads: Array<Thread?> =
                 arrayOfNulls(Thread.activeCount())
             val threadCount: Int = Thread.enumerate(threads)
             for (i in 0 until threadCount) {
-                assertFalse(
-                    threads.get(i)!!
-                        .getName()
-                        .contains(groupId), "Heartbeat thread active after close"
-                )
+                assertFalse(threads[i]!!.name.contains(groupId), "Heartbeat thread active after close")
             }
         }
     }
@@ -4072,41 +4018,24 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
     @Test
     fun testAutoCommitAfterCoordinatorBackToService() {
         buildCoordinator(
-            rebalanceConfig,
-            Metrics(),
-            assignors,
-            true,
-            subscriptions
+            rebalanceConfig = rebalanceConfig,
+            metrics = Metrics(),
+            assignors = assignors,
+            autoCommitEnabled = true,
+            subscriptionState = subscriptions
         ).use { coordinator ->
-            subscriptions.assignFromUser(
-                setOf(
-                    t1p
-                )
-            )
+            subscriptions.assignFromUser(setOf(t1p))
             subscriptions.seek(t1p, 100L)
             coordinator.markCoordinatorUnknown("test cause")
             assertTrue(coordinator.coordinatorUnknown())
-            client.prepareResponse(
-                groupCoordinatorResponse(
-                    node,
-                    Errors.NONE
-                )
-            )
-            prepareOffsetCommitRequest(
-                Collections.singletonMap(
-                    t1p,
-                    100L
-                ), Errors.NONE
-            )
+            client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
+            prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.NONE)
 
             // async commit offset should find coordinator
             time.sleep(autoCommitIntervalMs.toLong()) // sleep for a while to ensure auto commit does happen
             coordinator.maybeAutoCommitOffsetsAsync(time.milliseconds())
             assertFalse(coordinator.coordinatorUnknown())
-            assertEquals(
-                100L,
-                subscriptions.position(t1p)!!.offset
-            )
+            assertEquals(expected = 100L, actual = subscriptions.position(t1p)!!.offset)
         }
     }
 
@@ -4116,69 +4045,58 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
 
         // sync commit with invalid partitions should throw if we have no callback
-        prepareOffsetCommitRequest(Collections.singletonMap(t1p, 100L), Errors.FENCED_INSTANCE_ID)
-        Assertions.assertThrows(
-            FencedInstanceIdException::class.java,
-            {
-                coordinator.commitOffsetsSync(
-                    Collections.singletonMap(
-                        t1p,
-                        OffsetAndMetadata(100L)
-                    ), time.timer(Long.MAX_VALUE)
-                )
-            })
+        prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.FENCED_INSTANCE_ID)
+        assertFailsWith<FencedInstanceIdException> {
+            coordinator.commitOffsetsSync(
+                offsets = mapOf(t1p to OffsetAndMetadata(100L)),
+                timer = time.timer(Long.MAX_VALUE),
+            )
+        }
     }
 
     @Test
     fun testCommitOffsetRequestAsyncWithFencedInstanceIdException() {
-        Assertions.assertThrows(
-            FencedInstanceIdException::class.java,
-            { receiveFencedInstanceIdException() })
+        assertFailsWith<FencedInstanceIdException> { receiveFencedInstanceIdException() }
     }
 
     @Test
     fun testCommitOffsetRequestAsyncAlwaysReceiveFencedException() {
         // Once we get fenced exception once, we should always hit fencing case.
-        Assertions.assertThrows(
-            FencedInstanceIdException::class.java,
-            { receiveFencedInstanceIdException() })
-        Assertions.assertThrows(
-            FencedInstanceIdException::class.java,
-            {
-                coordinator.commitOffsetsAsync(
-                    Collections.singletonMap(
-                        t1p,
-                        OffsetAndMetadata(100L)
-                    ), MockCommitCallback()
-                )
-            })
-        Assertions.assertThrows(
-            FencedInstanceIdException::class.java,
-            {
-                coordinator.commitOffsetsSync(
-                    Collections.singletonMap(
-                        t1p,
-                        OffsetAndMetadata(100L)
-                    ), time.timer(Long.MAX_VALUE)
-                )
-            })
+        assertFailsWith<FencedInstanceIdException> { receiveFencedInstanceIdException() }
+        assertFailsWith<FencedInstanceIdException> {
+            coordinator.commitOffsetsAsync(
+                offsets = mapOf(t1p to OffsetAndMetadata(100L)),
+                callback = MockCommitCallback(),
+            )
+        }
+        assertFailsWith<FencedInstanceIdException> {
+            coordinator.commitOffsetsSync(
+                offsets = mapOf(t1p to OffsetAndMetadata(100L)),
+                timer = time.timer(Long.MAX_VALUE),
+            )
+        }
     }
 
     @Test
     fun testGetGroupMetadata() {
         val groupMetadata = coordinator.groupMetadata()
-        Assertions.assertNotNull(groupMetadata)
+        assertNotNull(groupMetadata)
         assertEquals(groupId, groupMetadata.groupId())
         assertEquals(
             JoinGroupRequest.UNKNOWN_GENERATION_ID,
             groupMetadata.generationId()
         )
         assertEquals(JoinGroupRequest.UNKNOWN_MEMBER_ID, groupMetadata.memberId())
-        assertFalse(groupMetadata.groupInstanceId().isPresent())
-        prepareCoordinatorForCloseTest(true, true, groupInstanceId, true).use { coordinator ->
+        assertNull(groupMetadata.groupInstanceId)
+        prepareCoordinatorForCloseTest(
+            useGroupManagement = true,
+            autoCommit = true,
+            groupInstanceId = groupInstanceId,
+            shouldPoll = true,
+        ).use { coordinator ->
             coordinator.ensureActiveGroup()
             val joinedGroupMetadata: ConsumerGroupMetadata = coordinator.groupMetadata()
-            Assertions.assertNotNull(joinedGroupMetadata)
+            assertNotNull(joinedGroupMetadata)
             assertEquals(groupId, joinedGroupMetadata.groupId())
             assertEquals(1, joinedGroupMetadata.generationId())
             assertEquals(
@@ -4220,33 +4138,23 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
     fun testPrepareJoinAndRejoinAfterFailedRebalance() {
         val partitions = listOf(t1p)
         prepareCoordinatorForCloseTest(
-            true,
-            false,
-            Optional.of("group-id"),
-            true
+            useGroupManagement = true,
+            autoCommit = false,
+            groupInstanceId = "group-id",
+            shouldPoll = true,
         ).use { coordinator ->
             coordinator.ensureActiveGroup()
-            prepareOffsetCommitRequest(
-                Collections.singletonMap(
-                    t1p,
-                    100L
-                ), Errors.REBALANCE_IN_PROGRESS
-            )
-            Assertions.assertThrows(
-                RebalanceInProgressException::class.java,
-                Executable {
-                    coordinator.commitOffsetsSync(
-                        Collections.singletonMap(
-                            t1p,
-                            OffsetAndMetadata(100L)
-                        ),
-                        time.timer(Long.MAX_VALUE)
-                    )
-                })
+            prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.REBALANCE_IN_PROGRESS)
+            assertFailsWith<RebalanceInProgressException> {
+                coordinator.commitOffsetsSync(
+                    offsets = mapOf(t1p to OffsetAndMetadata(100L)),
+                    timer = time.timer(Long.MAX_VALUE)
+                )
+            }
             assertFalse(client.hasPendingResponses())
             assertFalse(client.hasInFlightRequests())
-            val generationId: Int = 42
-            val memberId: String = "consumer-42"
+            val generationId = 42
+            val memberId = "consumer-42"
             client.prepareResponse(
                 joinGroupFollowerResponse(
                     generationId,
@@ -4255,7 +4163,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
                     Errors.NONE
                 )
             )
-            val time: MockTime = MockTime(1)
+            val time = MockTime(1)
 
             // onJoinPrepare will be executed and onJoinComplete will not.
             var res: Boolean = coordinator.joinGroupIfNeeded(time.timer(100))
@@ -4264,12 +4172,12 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             // SynGroupRequest not responded.
             assertEquals(1, client.inFlightRequestCount())
             assertEquals(
-                generationId,
-                coordinator.generation().generationId
+                expected = generationId,
+                actual = coordinator.generation().generationId
             )
             assertEquals(
-                memberId,
-                coordinator.generation().memberId
+                expected = memberId,
+                actual = coordinator.generation().memberId
             )
 
             // Imitating heartbeat thread that clears generation data.
@@ -4323,46 +4231,36 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
     fun shouldLoseAllOwnedPartitionsBeforeRejoiningAfterDroppingOutOfTheGroup() {
         val partitions = listOf(t1p)
         prepareCoordinatorForCloseTest(
-            true,
-            false,
-            Optional.of("group-id"),
-            true
+            useGroupManagement = true,
+            autoCommit = false,
+            groupInstanceId = "group-id",
+            shouldPoll = true,
         ).use { coordinator ->
-            val realTime: SystemTime = SystemTime()
+            val realTime = SystemTime()
             coordinator.ensureActiveGroup()
             prepareOffsetCommitRequest(
-                Collections.singletonMap(
-                    t1p,
-                    100L
-                ), Errors.REBALANCE_IN_PROGRESS
+                expectedOffsets = mapOf(t1p to 100L),
+                error = Errors.REBALANCE_IN_PROGRESS,
             )
-            Assertions.assertThrows(
-                RebalanceInProgressException::class.java,
-                Executable {
-                    coordinator.commitOffsetsSync(
-                        Collections.singletonMap(
-                            t1p,
-                            OffsetAndMetadata(100L)
-                        ),
-                        time.timer(Long.MAX_VALUE)
-                    )
-                })
-            val generationId: Int = 42
-            val memberId: String = "consumer-42"
+
+            assertFailsWith<RebalanceInProgressException> {
+                coordinator.commitOffsetsSync(
+                    offsets = mapOf(t1p to OffsetAndMetadata(100L)),
+                    timer = time.timer(Long.MAX_VALUE),
+                )
+            }
+
+            val generationId = 42
+            val memberId = "consumer-42"
             client.prepareResponse(
                 joinGroupFollowerResponse(
-                    generationId,
-                    memberId,
-                    "leader",
-                    Errors.NONE
+                    generationId = generationId,
+                    memberId = memberId,
+                    leaderId = "leader",
+                    error = Errors.NONE,
                 )
             )
-            client.prepareResponse(
-                syncGroupResponse(
-                    emptyList(),
-                    Errors.UNKNOWN_MEMBER_ID
-                )
-            )
+            client.prepareResponse(syncGroupResponse(emptyList(), Errors.UNKNOWN_MEMBER_ID))
             var res: Boolean = coordinator.joinGroupIfNeeded(realTime.timer(1000))
             assertFalse(res)
             assertEquals(
@@ -4375,74 +4273,62 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         }
         val lost = getLost(partitions)
         assertEquals(if (lost.isEmpty()) 0 else 1, rebalanceListener.lostCount)
-        assertEquals(if (lost.isEmpty()) null else lost, rebalanceListener.lost)
+        assertEquals(lost.ifEmpty { null }, rebalanceListener.lost)
     }
 
     @Test
     fun shouldLoseAllOwnedPartitionsBeforeRejoiningAfterResettingGenerationId() {
         val partitions = listOf(t1p)
         prepareCoordinatorForCloseTest(
-            true,
-            false,
-            Optional.of("group-id"),
-            true
+            useGroupManagement = true,
+            autoCommit = false,
+            groupInstanceId = "group-id",
+            shouldPoll = true
         ).use { coordinator ->
             val realTime: SystemTime = SystemTime()
             coordinator.ensureActiveGroup()
             prepareOffsetCommitRequest(
-                Collections.singletonMap(
-                    t1p,
-                    100L
-                ), Errors.REBALANCE_IN_PROGRESS
+                expectedOffsets = mapOf(t1p to 100L),
+                error = Errors.REBALANCE_IN_PROGRESS,
             )
-            Assertions.assertThrows(
-                RebalanceInProgressException::class.java,
-                Executable {
-                    coordinator.commitOffsetsSync(
-                        Collections.singletonMap(
-                            t1p,
-                            OffsetAndMetadata(100L)
-                        ),
-                        time.timer(Long.MAX_VALUE)
-                    )
-                })
-            val generationId: Int = 42
-            val memberId: String = "consumer-42"
+            assertFailsWith<RebalanceInProgressException> {
+                coordinator.commitOffsetsSync(
+                    offsets = mapOf(t1p to OffsetAndMetadata(100L)),
+                    timer = time.timer(Long.MAX_VALUE),
+                )
+            }
+            val generationId = 42
+            val memberId = "consumer-42"
             client.prepareResponse(
                 joinGroupFollowerResponse(
-                    generationId,
-                    memberId,
-                    "leader",
-                    Errors.NONE
+                    generationId = generationId,
+                    memberId = memberId,
+                    leaderId = "leader",
+                    error = Errors.NONE,
                 )
             )
-            client.prepareResponse(
-                syncGroupResponse(
-                    emptyList(),
-                    Errors.ILLEGAL_GENERATION
-                )
-            )
-            var res: Boolean = coordinator.joinGroupIfNeeded(realTime.timer(1000))
+            client.prepareResponse(syncGroupResponse(emptyList(), Errors.ILLEGAL_GENERATION))
+            var res = coordinator.joinGroupIfNeeded(realTime.timer(1000))
             assertFalse(res)
             assertEquals(
-                AbstractCoordinator.Generation.NO_GENERATION.generationId,
-                coordinator.generation().generationId
+                expected = AbstractCoordinator.Generation.NO_GENERATION.generationId,
+                actual = coordinator.generation().generationId,
             )
             assertEquals(
-                AbstractCoordinator.Generation.NO_GENERATION.protocolName,
-                coordinator.generation().protocolName
+                expected = AbstractCoordinator.Generation.NO_GENERATION.protocolName,
+                actual = coordinator.generation().protocolName,
             )
             // member ID should not be reset
             assertEquals(
-                memberId,
-                coordinator.generation().memberId
+                expected = memberId,
+                actual = coordinator.generation().memberId,
             )
             res = coordinator.joinGroupIfNeeded(realTime.timer(1000))
             assertFalse(res)
         }
         val lost = getLost(partitions)
         assertEquals(if (lost.isEmpty()) 0 else 1, rebalanceListener.lostCount)
-        assertEquals(if (lost.isEmpty()) null else lost, rebalanceListener.lost)
+        assertEquals(lost.ifEmpty { null }, rebalanceListener.lost)
     }
 
     @Test
@@ -4453,24 +4339,35 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         metrics = Metrics(time = time)
         val assignor = RackAwareAssignor()
         coordinator = ConsumerCoordinator(
-            (rebalanceConfig)!!, LogContext(), consumerClient, listOf(assignor),
-            (metadata)!!, (subscriptions)!!,
-            metrics, consumerId + groupId, time, false, autoCommitIntervalMs, null, false, rackId
+            rebalanceConfig = rebalanceConfig!!,
+            logContext = LogContext(),
+            client = consumerClient,
+            assignors = listOf(assignor),
+            metadata = metadata,
+            subscriptions = subscriptions,
+            metrics = metrics,
+            metricGrpPrefix = consumerId + groupId,
+            time = time,
+            autoCommitEnabled = false,
+            autoCommitIntervalMs = autoCommitIntervalMs,
+            interceptors = null,
+            throwOnFetchStableOffsetsUnsupported = false,
+            rackId = rackId,
         )
         subscriptions.subscribe(setOf(topic1), rebalanceListener)
         client.updateMetadata(metadataResponse)
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
-        val memberSubscriptions = Collections.singletonMap(consumerId, listOf(topic1))
-        assignor.prepare(Collections.singletonMap(consumerId, listOf(t1p)))
+        val memberSubscriptions = mapOf(consumerId to listOf(topic1))
+        assignor.prepare(mapOf(consumerId to listOf(t1p)))
         client.prepareResponse(
             joinGroupLeaderResponse(
-                1,
-                consumerId,
-                memberSubscriptions,
-                false,
-                Errors.NONE,
-                Optional.of(rackId)
+                generationId = 1,
+                memberId = consumerId,
+                subscriptions = memberSubscriptions,
+                skipAssignment = false,
+                error = Errors.NONE,
+                rackId = rackId,
             )
         )
         client.prepareResponse(syncGroupResponse(listOf(t1p), Errors.NONE))
@@ -4491,70 +4388,55 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
     private fun supportStableFlag(upperVersion: Short, expectThrows: Boolean) {
         val coordinator = ConsumerCoordinator(
-            (rebalanceConfig)!!,
-            LogContext(),
-            consumerClient,
-            assignors,
-            (metadata)!!,
-            (subscriptions)!!,
-            Metrics(time = time),
-            consumerId + groupId,
-            time,
-            false,
-            autoCommitIntervalMs,
-            null,
-            true,
-            null
+            rebalanceConfig = rebalanceConfig!!,
+            logContext = LogContext(),
+            client = consumerClient,
+            assignors = assignors,
+            metadata = metadata,
+            subscriptions = subscriptions,
+            metrics = Metrics(time = time),
+            metricGrpPrefix = consumerId + groupId,
+            time = time,
+            autoCommitEnabled = false,
+            autoCommitIntervalMs = autoCommitIntervalMs,
+            interceptors = null,
+            throwOnFetchStableOffsetsUnsupported = true,
+            rackId = null
         )
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         client.setNodeApiVersions(
             NodeApiVersions.create(
-                ApiKeys.OFFSET_FETCH.id,
-                0.toShort(),
-                upperVersion
+                apiKey = ApiKeys.OFFSET_FETCH.id,
+                minVersion = 0.toShort(),
+                maxVersion = upperVersion,
             )
         )
         val offset = 500L
         val metadata = "blahblah"
-        val leaderEpoch = Optional.of(15)
+        val leaderEpoch = 15
         val data = OffsetFetchResponse.PartitionData(
-            offset, leaderEpoch,
-            metadata, Errors.NONE
+            offset = offset,
+            leaderEpoch = leaderEpoch,
+            metadata = metadata,
+            error = Errors.NONE,
         )
-        if (upperVersion < 8) {
-            client.prepareResponse(
-                OffsetFetchResponse(
-                    Errors.NONE,
-                    Collections.singletonMap(t1p, data)
-                )
+        if (upperVersion < 8) client.prepareResponse(OffsetFetchResponse(Errors.NONE, mapOf(t1p to data)))
+        else client.prepareResponse(offsetFetchResponse(Errors.NONE, mapOf(t1p to data)))
+
+        if (expectThrows) assertFailsWith<UnsupportedVersionException> {
+            coordinator.fetchCommittedOffsets(
+                partitions = setOf(t1p),
+                timer = time.timer(Long.MAX_VALUE),
             )
-        } else {
-            client.prepareResponse(
-                offsetFetchResponse(
-                    Errors.NONE,
-                    Collections.singletonMap(t1p, data)
-                )
-            )
-        }
-        if (expectThrows) {
-            Assertions.assertThrows(
-                UnsupportedVersionException::class.java,
-                {
-                    coordinator.fetchCommittedOffsets(
-                        setOf(
-                            t1p
-                        ), time.timer(Long.MAX_VALUE)
-                    )
-                })
         } else {
             val fetchedOffsets = coordinator.fetchCommittedOffsets(
-                setOf(t1p),
-                time.timer(Long.MAX_VALUE)
+                partitions = setOf(t1p),
+                timer = time.timer(Long.MAX_VALUE),
             )
-            Assertions.assertNotNull(fetchedOffsets)
+            assertNotNull(fetchedOffsets)
             assertEquals(
-                OffsetAndMetadata(offset, leaderEpoch, metadata),
-                fetchedOffsets!![t1p]
+                expected = OffsetAndMetadata(offset, leaderEpoch, metadata),
+                actual = fetchedOffsets[t1p],
             )
         }
     }
@@ -4563,10 +4445,10 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         subscriptions.assignFromUser(setOf(t1p))
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
-        prepareOffsetCommitRequest(Collections.singletonMap(t1p, 100L), Errors.FENCED_INSTANCE_ID)
+        prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.FENCED_INSTANCE_ID)
         coordinator.commitOffsetsAsync(
-            Collections.singletonMap(t1p, OffsetAndMetadata(100L)),
-            MockCommitCallback()
+            offsets = mapOf(t1p to OffsetAndMetadata(100L)),
+            callback = MockCommitCallback(),
         )
         coordinator.invokeCompletedOffsetCommitCallbacks()
     }
@@ -4575,7 +4457,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         useGroupManagement: Boolean,
         autoCommit: Boolean,
         groupInstanceId: String?,
-        shouldPoll: Boolean
+        shouldPoll: Boolean,
     ): ConsumerCoordinator {
         rebalanceConfig = buildRebalanceConfig(groupInstanceId)
         val coordinator = buildCoordinator(
@@ -4588,23 +4470,19 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
         if (useGroupManagement) {
-            subscriptions.subscribe(
-                setOf(topic1),
-                rebalanceListener
-            )
+            subscriptions.subscribe(topics = setOf(topic1), listener = rebalanceListener)
             client.prepareResponse(
                 joinGroupFollowerResponse(
-                    1,
-                    consumerId,
-                    "leader",
-                    Errors.NONE
+                    generationId = 1,
+                    memberId = consumerId,
+                    leaderId = "leader",
+                    error = Errors.NONE
                 )
             )
             client.prepareResponse(syncGroupResponse(listOf(t1p), Errors.NONE))
             coordinator.joinGroupIfNeeded(time.timer(Long.MAX_VALUE))
-        } else {
-            subscriptions.assignFromUser(setOf(t1p))
-        }
+        } else subscriptions.assignFromUser(setOf(t1p))
+
         subscriptions.seek(t1p, 100)
         if (shouldPoll) {
             coordinator.poll(time.timer(Long.MAX_VALUE))
@@ -4626,24 +4504,17 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         coordinator: ConsumerCoordinator,
         closeTimeoutMs: Long,
         expectedMinTimeMs: Long,
-        expectedMaxTimeMs: Long
+        expectedMaxTimeMs: Long,
     ) {
         val executor = Executors.newSingleThreadExecutor()
         try {
             val coordinatorUnknown = coordinator.coordinatorUnknown()
             // Run close on a different thread. Coordinator is locked by this thread, so it is
             // not safe to use the coordinator from the main thread until the task completes.
-            val future = executor.submit(
-                {
-                    coordinator.close(
-                        time.timer(
-                            min(
-                                closeTimeoutMs.toDouble(),
-                                requestTimeoutMs.toDouble()
-                            )
-                        )
-                    )
-                })
+            val future = executor.submit {
+                val timeoutMs = min(closeTimeoutMs.toDouble(), requestTimeoutMs.toDouble()).toLong()
+                coordinator.close(time.timer(timeoutMs))
+            }
             // Wait for close to start. If coordinator is known, wait for close to queue
             // at least one request. Otherwise, sleep for a short time.
             if (!coordinatorUnknown) client.waitForRequests(1, 1000) else Thread.sleep(200)
@@ -4666,26 +4537,30 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
     private fun gracefulCloseTest(coordinator: ConsumerCoordinator, shouldLeaveGroup: Boolean) {
         val commitRequested = AtomicBoolean()
         val leaveGroupRequested = AtomicBoolean()
-        client.prepareResponse(AbstractResponse({ body ->
-            commitRequested.set(true)
-            val commitRequest = body as OffsetCommitRequest
-            commitRequest.data().groupId().equals(groupId)
-        }), OffsetCommitResponse(OffsetCommitResponseData()))
+        client.prepareResponse(
+            matcher = { body ->
+                commitRequested.set(true)
+                val commitRequest = body as OffsetCommitRequest
+                commitRequest.data().groupId == groupId
+            },
+            response = OffsetCommitResponse(OffsetCommitResponseData()),
+        )
         if (shouldLeaveGroup) client.prepareResponse(
-            AbstractResponse({ body ->
+            matcher = { body ->
                 leaveGroupRequested.set(true)
                 val leaveRequest = body as LeaveGroupRequest
-                leaveRequest.data().groupId().equals(groupId)
-            }), LeaveGroupResponse(
-                LeaveGroupResponseData()
-                    .setErrorCode(Errors.NONE.code)
-            )
+                leaveRequest.data().groupId.equals(groupId)
+            },
+            response = LeaveGroupResponse(LeaveGroupResponseData().setErrorCode(Errors.NONE.code)),
         )
-        client.prepareResponse(AbstractResponse({ body ->
-            commitRequested.set(true)
-            val commitRequest = body as OffsetCommitRequest
-            commitRequest.data().groupId().equals(groupId)
-        }), OffsetCommitResponse(OffsetCommitResponseData()))
+        client.prepareResponse(
+            matcher = { body ->
+                commitRequested.set(true)
+                val commitRequest = body as OffsetCommitRequest
+                commitRequest.data().groupId.equals(groupId)
+            },
+            response = OffsetCommitResponse(OffsetCommitResponseData()),
+        )
         coordinator.close()
         assertTrue(commitRequested.get(), "Commit not requested")
         assertEquals(
@@ -4703,63 +4578,63 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         metrics: Metrics,
         assignors: List<ConsumerPartitionAssignor>,
         autoCommitEnabled: Boolean,
-        subscriptionState: SubscriptionState?
+        subscriptionState: SubscriptionState?,
     ): ConsumerCoordinator {
         return ConsumerCoordinator(
-            (rebalanceConfig)!!,
-            LogContext(),
-            consumerClient,
-            assignors,
-            (metadata)!!,
-            (subscriptionState)!!,
-            metrics,
-            consumerId + groupId,
-            time,
-            autoCommitEnabled,
-            autoCommitIntervalMs,
-            null,
-            false,
-            null
+            rebalanceConfig = rebalanceConfig!!,
+            logContext = LogContext(),
+            client = consumerClient,
+            assignors = assignors,
+            metadata = metadata,
+            subscriptions = (subscriptionState)!!,
+            metrics = metrics,
+            metricGrpPrefix = consumerId + groupId,
+            time = time,
+            autoCommitEnabled = autoCommitEnabled,
+            autoCommitIntervalMs = autoCommitIntervalMs,
+            interceptors = null,
+            throwOnFetchStableOffsetsUnsupported = false,
+            rackId = null,
         )
     }
 
     private fun getRevoked(
         owned: List<TopicPartition>,
-        assigned: List<TopicPartition>
+        assigned: List<TopicPartition>,
     ): Collection<TopicPartition?> {
-        when (protocol) {
-            RebalanceProtocol.EAGER -> return toSet(owned)
+        return when (protocol) {
+            RebalanceProtocol.EAGER -> owned.toSet()
             RebalanceProtocol.COOPERATIVE -> {
                 val revoked: MutableList<TopicPartition> = ArrayList(owned)
                 revoked.removeAll(assigned)
-                return toSet(revoked)
+                revoked.toSet()
             }
 
-            else -> throw IllegalStateException("This should not happen")
+            else -> error("This should not happen")
         }
     }
 
     private fun getLost(owned: List<TopicPartition>): Collection<TopicPartition> {
-        when (protocol) {
-            RebalanceProtocol.EAGER -> return emptySet()
-            RebalanceProtocol.COOPERATIVE -> return toSet(owned)
-            else -> throw IllegalStateException("This should not happen")
+        return when (protocol) {
+            RebalanceProtocol.EAGER -> emptySet()
+            RebalanceProtocol.COOPERATIVE -> owned.toSet()
+            else -> error("This should not happen")
         }
     }
 
     private fun getAdded(
         owned: List<TopicPartition>,
-        assigned: List<TopicPartition>
+        assigned: List<TopicPartition>,
     ): Collection<TopicPartition> {
-        when (protocol) {
-            RebalanceProtocol.EAGER -> return toSet(assigned)
+        return when (protocol) {
+            RebalanceProtocol.EAGER -> assigned.toSet()
             RebalanceProtocol.COOPERATIVE -> {
                 val added: MutableList<TopicPartition> = ArrayList(assigned)
                 added.removeAll(owned)
-                return toSet(added)
+                added.toSet()
             }
 
-            else -> throw IllegalStateException("This should not happen")
+            else -> error("This should not happen")
         }
     }
 
@@ -4775,7 +4650,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         generationId: Int,
         memberId: String,
         subscriptions: Map<String, List<String>>,
-        error: Errors
+        error: Errors,
     ): JoinGroupResponse {
         return joinGroupLeaderResponse(
             generationId,
@@ -4825,7 +4700,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         generationId: Int,
         memberId: String,
         leaderId: String,
-        error: Errors
+        error: Errors,
     ): JoinGroupResponse {
         return JoinGroupResponse(
             JoinGroupResponseData()
@@ -4841,7 +4716,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
     private fun syncGroupResponse(
         partitions: List<TopicPartition>,
-        error: Errors
+        error: Errors,
     ): SyncGroupResponse {
         val buf = serializeAssignment(ConsumerPartitionAssignor.Assignment(partitions))
         return SyncGroupResponse(
@@ -4857,12 +4732,12 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
     private fun offsetFetchResponse(
         error: Errors,
-        responseData: Map<TopicPartition, OffsetFetchResponse.PartitionData>
+        responseData: Map<TopicPartition, OffsetFetchResponse.PartitionData>,
     ): OffsetFetchResponse {
         return OffsetFetchResponse(
-            throttleMs,
-            Collections.singletonMap(groupId, error),
-            Collections.singletonMap(groupId, responseData)
+            throttleTimeMs = throttleMs,
+            errors = mapOf(groupId to error),
+            responseData = mapOf(groupId to responseData),
         )
     }
 
@@ -4871,26 +4746,26 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         partitionLevelError: Errors,
         metadata: String,
         offset: Long,
-        epoch: Optional<Int> = null
+        epoch: Int? = null,
     ): OffsetFetchResponse {
         val data = OffsetFetchResponse.PartitionData(
-            offset,
-            epoch, metadata, partitionLevelError
+            offset = offset,
+            leaderEpoch = epoch,
+            metadata = metadata,
+            error = partitionLevelError,
         )
         return offsetFetchResponse(Errors.NONE, mapOf(tp to data))
     }
 
     private fun callback(success: AtomicBoolean): OffsetCommitCallback {
-        return OffsetCommitCallback { offsets: Map<TopicPartition?, OffsetAndMetadata?>?, exception: Exception? ->
-            if (exception == null) success.set(
-                true
-            )
+        return OffsetCommitCallback { _, exception ->
+            if (exception == null) success.set(true)
         }
     }
 
     private fun joinAsFollowerAndReceiveAssignment(
-        coordinator: ConsumerCoordinator?,
-        assignment: List<TopicPartition>
+        coordinator: ConsumerCoordinator,
+        assignment: List<TopicPartition>,
     ) {
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
@@ -4906,13 +4781,13 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
     private fun prepareOffsetCommitRequest(
         expectedOffsets: Map<TopicPartition, Long>,
         error: Errors,
-        disconnected: Boolean = false
+        disconnected: Boolean = false,
     ) {
         val errors = partitionErrors(expectedOffsets.keys, error)
         client.prepareResponse(
-            offsetCommitRequestMatcher(expectedOffsets),
-            offsetCommitResponse(errors),
-            disconnected
+            matcher = offsetCommitRequestMatcher(expectedOffsets),
+            response = offsetCommitResponse(errors),
+            disconnected = disconnected,
         )
     }
 
@@ -4920,28 +4795,31 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         consumerId: String,
         generation: Int,
         subscription: List<String>,
-        assignment: List<TopicPartition>
+        assignment: List<TopicPartition>,
     ) {
-        partitionAssignor.prepare(Collections.singletonMap(consumerId, assignment))
+        partitionAssignor.prepare(mapOf(consumerId to assignment))
         client.prepareResponse(
             joinGroupLeaderResponse(
-                generation,
-                consumerId,
-                Collections.singletonMap(consumerId, subscription),
-                Errors.NONE
+                generationId = generation,
+                memberId = consumerId,
+                subscriptions = mapOf(consumerId to subscription),
+                error = Errors.NONE,
             )
         )
-        client.prepareResponse(AbstractResponse({ body ->
-            val sync = body as SyncGroupRequest
-            (sync.data().memberId().equals(consumerId) && (
-                    sync.data().generationId() === generation) &&
-                    sync.groupAssignments().containsKey(consumerId))
-        }), syncGroupResponse(assignment, Errors.NONE))
+        client.prepareResponse(
+            matcher = { body ->
+                val sync = body as SyncGroupRequest
+                sync.data().memberId == consumerId
+                        && sync.data().generationId == generation
+                        && sync.groupAssignments().containsKey(consumerId)
+            },
+            response = syncGroupResponse(assignment, Errors.NONE),
+        )
     }
 
     private fun partitionErrors(
         partitions: Collection<TopicPartition>,
-        error: Errors
+        error: Errors,
     ): Map<TopicPartition, Errors> {
         val errors: MutableMap<TopicPartition, Errors> = HashMap()
         for (partition: TopicPartition in partitions) {
@@ -4952,24 +4830,23 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
     private fun respondToOffsetCommitRequest(
         expectedOffsets: Map<TopicPartition, Long>,
-        error: Errors
+        error: Errors,
     ) {
         val errors = partitionErrors(expectedOffsets.keys, error)
         client.respond(offsetCommitRequestMatcher(expectedOffsets), offsetCommitResponse(errors))
     }
 
     private fun offsetCommitRequestMatcher(expectedOffsets: Map<TopicPartition, Long>): RequestMatcher {
-        return RequestMatcher { body: AbstractRequest? ->
-            val req: OffsetCommitRequest? = body as OffsetCommitRequest?
-            val offsets: Map<TopicPartition, Long> =
-                req!!.offsets()
+        return RequestMatcher { body ->
+            val req = body as OffsetCommitRequest?
+            val offsets: Map<TopicPartition, Long> = req!!.offsets()
             if (offsets.size != expectedOffsets.size) return@RequestMatcher false
             for (expectedOffset: Map.Entry<TopicPartition, Long> in expectedOffsets.entries) {
                 if (!offsets.containsKey(expectedOffset.key)) {
                     return@RequestMatcher false
                 } else {
-                    val actualOffset: Long? = offsets.get(expectedOffset.key)
-                    if (!(actualOffset == expectedOffset.value)) {
+                    val actualOffset: Long? = offsets[expectedOffset.key]
+                    if (actualOffset != expectedOffset.value) {
                         return@RequestMatcher false
                     }
                 }
@@ -4980,40 +4857,37 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
     private fun callback(
         expectedOffsets: Map<TopicPartition, OffsetAndMetadata>,
-        success: AtomicBoolean
+        success: AtomicBoolean,
     ): OffsetCommitCallback {
-        return OffsetCommitCallback { offsets: Map<TopicPartition?, OffsetAndMetadata?>?, exception: Exception? ->
-            if ((expectedOffsets == offsets) && exception == null) success.set(
-                true
-            )
+        return OffsetCommitCallback { offsets, exception ->
+            if ((expectedOffsets == offsets) && exception == null) success.set(true)
         }
     }
 
-    private class MockCommitCallback() : OffsetCommitCallback {
+    private class MockCommitCallback : OffsetCommitCallback {
         var invoked = 0
         var exception: Exception? = null
         override fun onComplete(
             offsets: Map<TopicPartition, OffsetAndMetadata>?,
-            exception: Exception?
+            exception: Exception?,
         ) {
             invoked++
             this.exception = exception
         }
     }
 
-    private class RackAwareAssignor internal constructor() :
-        MockPartitionAssignor(Arrays.asList<RebalanceProtocol>(RebalanceProtocol.EAGER)) {
+    private class RackAwareAssignor : MockPartitionAssignor(listOf(RebalanceProtocol.EAGER)) {
         val rackIds: MutableSet<String> = HashSet()
         override fun assign(
             partitionsPerTopic: Map<String, Int>,
-            subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>
+            subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>,
         ): Map<String, List<TopicPartition>> {
-            subscriptions.forEach({ consumer: String, subscription: ConsumerPartitionAssignor.Subscription ->
-                if (!subscription.rackId()
-                        .isPresent()
-                ) throw IllegalStateException("Rack id not provided in subscription for " + consumer)
-                rackIds.add(subscription.rackId()!!.get())
-            })
+            subscriptions.forEach { (consumer: String, subscription: ConsumerPartitionAssignor.Subscription) ->
+                check(subscription.rackId != null) {
+                    "Rack id not provided in subscription for $consumer"
+                }
+                rackIds.add(subscription.rackId!!)
+            }
             return super.assign(partitionsPerTopic, subscriptions)
         }
     }

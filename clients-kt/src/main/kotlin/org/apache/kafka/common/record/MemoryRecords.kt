@@ -679,7 +679,7 @@ class MemoryRecords private constructor(private val buffer: ByteBuffer) : Abstra
             producerId: Long = RecordBatch.NO_PRODUCER_ID,
             producerEpoch: Short = RecordBatch.NO_PRODUCER_EPOCH,
             baseSequence: Int = RecordBatch.NO_SEQUENCE,
-            partitionLeaderEpoch: Int,
+            partitionLeaderEpoch: Int = RecordBatch.NO_PARTITION_LEADER_EPOCH,
             isTransactional: Boolean = false,
             vararg records: SimpleRecord
         ): MemoryRecords {

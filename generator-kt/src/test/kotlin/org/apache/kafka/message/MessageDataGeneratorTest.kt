@@ -1,11 +1,11 @@
 package org.apache.kafka.message
 
-import org.junit.Assert.assertThrows
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.Timeout
 import java.util.concurrent.TimeUnit
-import kotlin.test.Ignore
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
@@ -67,7 +67,7 @@ class MessageDataGeneratorTest {
         )
         assertStringContains(
             "Invalid default for int32",
-            assertThrows(RuntimeException::class.java) {
+            assertFailsWith<RuntimeException> {
                 MessageDataGenerator("org.apache.kafka.common.message")
                     .generate(testMessageSpec)
             }.message!!,
@@ -114,8 +114,9 @@ class MessageDataGeneratorTest {
             """.trimIndent(),
             MessageSpec::class.java,
         )
-        assertStringContains("not all versions of this field are nullable",
-            assertThrows(RuntimeException::class.java) {
+        assertStringContains(
+            "not all versions of this field are nullable",
+            assertFailsWith<RuntimeException> {
                 MessageDataGenerator("org.apache.kafka.common.message")
                     .generate(testMessageSpec)
             }.message!!
@@ -140,8 +141,9 @@ class MessageDataGeneratorTest {
             """.trimIndent(),
             MessageSpec::class.java,
         )
-        assertStringContains("not all versions of this field are nullable",
-            assertThrows(RuntimeException::class.java) {
+        assertStringContains(
+            "not all versions of this field are nullable",
+            assertFailsWith<RuntimeException> {
                 MessageDataGenerator("org.apache.kafka.common.message")
                     .generate(testMessageSpec)
             }.message!!
@@ -283,8 +285,9 @@ class MessageDataGeneratorTest {
      */
     @Test
     fun testInvalidFieldName() {
-        assertStringContains("Invalid field name",
-            assertThrows(Throwable::class.java){
+        assertStringContains(
+            "Invalid field name",
+            assertFailsWith<Throwable> {
                 MessageGenerator.JSON_SERDE.readValue(
                     """
                     {
@@ -307,8 +310,9 @@ class MessageDataGeneratorTest {
 
     @Test
     fun testInvalidTagWithoutTaggedVersions() {
-        assertStringContains("If a tag is specified, taggedVersions must be specified as well.",
-            assertThrows(Throwable::class.java){
+        assertStringContains(
+            "If a tag is specified, taggedVersions must be specified as well.",
+            assertFailsWith<Throwable> {
                 MessageGenerator.JSON_SERDE.readValue(
                     """
                     {
@@ -330,8 +334,9 @@ class MessageDataGeneratorTest {
 
     @Test
     fun testInvalidNegativeTag() {
-        assertStringContains("Tags cannot be negative",
-            assertThrows(Throwable::class.java) {
+        assertStringContains(
+            "Tags cannot be negative",
+            assertFailsWith<Throwable> {
                 MessageGenerator.JSON_SERDE.readValue(
                     """
                     {
@@ -353,8 +358,9 @@ class MessageDataGeneratorTest {
 
     @Test
     fun testInvalidFlexibleVersionsRange() {
-        assertStringContains("flexibleVersions must be either none, or an open-ended range",
-            assertThrows(Throwable::class.java) {
+        assertStringContains(
+            "flexibleVersions must be either none, or an open-ended range",
+            assertFailsWith<Throwable> {
                 MessageGenerator.JSON_SERDE.readValue(
                     """
                     {
@@ -375,8 +381,9 @@ class MessageDataGeneratorTest {
 
     @Test
     fun testInvalidSometimesNullableTaggedField() {
-        assertStringContains("Either all tagged versions must be nullable, or none must be",
-            assertThrows(Throwable::class.java) {
+        assertStringContains(
+            "Either all tagged versions must be nullable, or none must be",
+            assertFailsWith<Throwable> {
                 MessageGenerator.JSON_SERDE.readValue(
                     """
                     {
@@ -398,8 +405,9 @@ class MessageDataGeneratorTest {
 
     @Test
     fun testInvalidTaggedVersionsNotASubetOfVersions() {
-        assertStringContains("taggedVersions must be a subset of versions",
-            assertThrows(Throwable::class.java) {
+        assertStringContains(
+            "taggedVersions must be a subset of versions",
+            assertFailsWith<Throwable> {
                 MessageGenerator.JSON_SERDE.readValue(
                     """
                     {
@@ -421,8 +429,9 @@ class MessageDataGeneratorTest {
 
     @Test
     fun testInvalidTaggedVersionsWithoutTag() {
-        assertStringContains("Please specify a tag, or remove the taggedVersions",
-            assertThrows(Throwable::class.java) {
+        assertStringContains(
+            "Please specify a tag, or remove the taggedVersions",
+            assertFailsWith<Throwable> {
                 MessageGenerator.JSON_SERDE.readValue(
                     """
                     {
@@ -444,8 +453,9 @@ class MessageDataGeneratorTest {
 
     @Test
     fun testInvalidTaggedVersionsRange() {
-        assertStringContains("taggedVersions must be either none, or an open-ended range",
-            assertThrows(Throwable::class.java){
+        assertStringContains(
+            "taggedVersions must be either none, or an open-ended range",
+            assertFailsWith<Throwable> {
                 MessageGenerator.JSON_SERDE.readValue(
                     """
                     {
@@ -467,8 +477,9 @@ class MessageDataGeneratorTest {
 
     @Test
     fun testDuplicateTags() {
-        assertStringContains("duplicate tag",
-            assertThrows(Throwable::class.java) {
+        assertStringContains(
+            "duplicate tag",
+            assertFailsWith<Throwable> {
                 MessageGenerator.JSON_SERDE.readValue(
                     """
                     {

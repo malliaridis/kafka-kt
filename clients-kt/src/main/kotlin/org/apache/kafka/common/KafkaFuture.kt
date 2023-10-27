@@ -121,7 +121,7 @@ abstract class KafkaFuture<T> : Future<T> {
      * If not already completed, sets the value returned by get() and related methods to the given
      * value.
      */
-    protected abstract fun complete(newValue: T): Boolean
+    abstract fun complete(newValue: T): Boolean
 
     /**
      * If not already completed, causes invocations of get() and related methods to throw the given

@@ -187,7 +187,7 @@ class NetworkClient(
     private fun cancelInFlightRequests(
         nodeId: String,
         now: Long,
-        responses: MutableCollection<ClientResponse>?
+        responses: MutableCollection<ClientResponse>?,
     ) {
         val inFlightRequests = inFlightRequests.clearAll(nodeId)
         for (request: InFlightRequest in inFlightRequests) {
@@ -624,7 +624,7 @@ class NetworkClient(
         responses: MutableList<ClientResponse>,
         nodeId: String,
         now: Long,
-        disconnectState: ChannelState
+        disconnectState: ChannelState,
     ) {
         connectionStates.disconnected(nodeId, now)
         apiVersions.remove(nodeId)
@@ -735,7 +735,7 @@ class NetworkClient(
         response: AbstractResponse,
         apiVersion: Short,
         nodeId: String,
-        now: Long
+        now: Long,
     ) {
         val throttleTimeMs = response.throttleTimeMs()
         if (throttleTimeMs > 0 && response.shouldClientThrottle(apiVersion)) {
@@ -788,8 +788,9 @@ class NetworkClient(
     ) {
         val node = req.destination
         if (apiVersionsResponse.data().errorCode != Errors.NONE.code) {
-            if (req.request.version.toInt() == 0 || apiVersionsResponse.data()
-                    .errorCode != Errors.UNSUPPORTED_VERSION.code
+            if (
+                req.request?.version?.toInt() == 0
+                || apiVersionsResponse.data().errorCode != Errors.UNSUPPORTED_VERSION.code
             ) {
                 log.warn(
                     "Received error {} from node {} when making an ApiVersionsRequest with correlation id {}." +
@@ -949,7 +950,7 @@ class NetworkClient(
         override fun handleServerDisconnect(
             now: Long,
             nodeId: String?,
-            maybeAuthException: AuthenticationException?
+            maybeAuthException: AuthenticationException?,
         ) {
             val cluster = metadata.fetch()
             // 'processDisconnection' generates warnings for misconfigured bootstrap server configuration
@@ -980,7 +981,7 @@ class NetworkClient(
         override fun handleSuccessfulResponse(
             requestHeader: RequestHeader?,
             now: Long,
-            response: MetadataResponse
+            response: MetadataResponse,
         ) {
             // If any partition has leader with missing listeners, log up to ten of these partitions
             // for diagnosing broker configuration issues.
@@ -1125,7 +1126,7 @@ class NetworkClient(
         createdTimeMs: Long,
         expectResponse: Boolean,
         requestTimeoutMs: Int,
-        callback: RequestCompletionHandler?
+        callback: RequestCompletionHandler?,
     ): ClientRequest {
         return ClientRequest(
             destination = nodeId,
@@ -1145,7 +1146,7 @@ class NetworkClient(
     )
     fun discoverBrokerVersions(): Boolean = discoverBrokerVersions
 
-    internal class InFlightRequest(
+    internal data class InFlightRequest(
         val header: RequestHeader,
         val requestTimeoutMs: Long,
         val createdTimeMs: Long,
@@ -1154,8 +1155,8 @@ class NetworkClient(
         val expectResponse: Boolean,
         // used to flag requests which are initiated internally by NetworkClient
         val isInternalRequest: Boolean,
-        val request: AbstractRequest,
-        val send: Send,
+        val request: AbstractRequest?,
+        val send: Send?,
         val sendTimeMs: Long,
     ) {
 
@@ -1165,7 +1166,7 @@ class NetworkClient(
             isInternalRequest: Boolean,
             request: AbstractRequest,
             send: Send,
-            sendTimeMs: Long
+            sendTimeMs: Long,
         ) : this(
             header = header,
             requestTimeoutMs = clientRequest.requestTimeoutMs.toLong(),

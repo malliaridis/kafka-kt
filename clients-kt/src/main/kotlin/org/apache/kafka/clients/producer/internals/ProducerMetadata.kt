@@ -57,7 +57,7 @@ class ProducerMetadata(
     }
 
     @Synchronized
-    fun newMetadataRequestBuilderForNewTopics(): MetadataRequest.Builder {
+    override fun newMetadataRequestBuilderForNewTopics(): MetadataRequest.Builder {
         return MetadataRequest.Builder(ArrayList(newTopics), true)
     }
 
