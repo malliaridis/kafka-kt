@@ -561,7 +561,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
     }
 
     // visible for testing
-    private fun newSender(
+    internal open fun newSender(
         logContext: LogContext,
         kafkaClient: KafkaClient?,
         metadata: ProducerMetadata,

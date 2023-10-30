@@ -263,7 +263,7 @@ open class BufferPool(
     }
 
     // Protected for testing.
-    internal fun allocateByteBuffer(size: Int): ByteBuffer {
+    internal open fun allocateByteBuffer(size: Int): ByteBuffer {
         return ByteBuffer.allocate(size)
     }
 
@@ -321,9 +321,9 @@ open class BufferPool(
         replaceWith = ReplaceWith("freeSize"),
     )
     // Protected for testing.
-    protected fun freeSize(): Int = free.size
+    protected open fun freeSize(): Int = free.size
 
-    internal val freeSize: Int
+    internal open val freeSize: Int
         get() =  free.size
 
     /**

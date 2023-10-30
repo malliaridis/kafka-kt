@@ -67,9 +67,7 @@ class RecordMetadata private constructor(
      * Indicates whether the record metadata includes the offset.
      * @return true if the offset is included in the metadata, false otherwise.
      */
-    fun hasOffset(): Boolean {
-        return offset != ProduceResponse.INVALID_OFFSET
-    }
+    fun hasOffset(): Boolean = offset != ProduceResponse.INVALID_OFFSET
 
     /**
      * The offset of the record in the topic/partition.
@@ -79,17 +77,13 @@ class RecordMetadata private constructor(
         message = "Use property instead.",
         replaceWith = ReplaceWith("offset")
     )
-    fun offset(): Long {
-        return offset
-    }
+    fun offset(): Long = offset
 
     /**
      * Indicates whether the record metadata includes the timestamp.
      * @return true if a valid timestamp exists, false otherwise.
      */
-    fun hasTimestamp(): Boolean {
-        return timestamp != RecordBatch.NO_TIMESTAMP
-    }
+    fun hasTimestamp(): Boolean =  timestamp != RecordBatch.NO_TIMESTAMP
 
     /**
      * The timestamp of the record in the topic/partition.
@@ -100,9 +94,7 @@ class RecordMetadata private constructor(
         message = "Use property instead.",
         replaceWith = ReplaceWith("timestamp")
     )
-    fun timestamp(): Long {
-        return timestamp
-    }
+    fun timestamp(): Long = timestamp
 
     /**
      * The size of the serialized, uncompressed key in bytes. If key is null, the returned size
@@ -112,9 +104,7 @@ class RecordMetadata private constructor(
         message = "Use property instead.",
         replaceWith = ReplaceWith("serializedKeySize")
     )
-    fun serializedKeySize(): Int {
-        return serializedKeySize
-    }
+    fun serializedKeySize(): Int = serializedKeySize
 
     /**
      * The size of the serialized, uncompressed value in bytes. If value is null, the returned
@@ -124,9 +114,7 @@ class RecordMetadata private constructor(
         message = "Use property instead.",
         replaceWith = ReplaceWith("serializedValueSize")
     )
-    fun serializedValueSize(): Int {
-        return serializedValueSize
-    }
+    fun serializedValueSize(): Int = serializedValueSize
 
     /**
      * The topic the record was appended to
@@ -135,14 +123,12 @@ class RecordMetadata private constructor(
         message = "Use property access instead.",
         replaceWith = ReplaceWith("topic")
     )
-    fun topic(): String? {
-        return topicPartition.topic
-    }
+    fun topic(): String = topicPartition.topic
 
     /**
      * The topic the record was appended to
      */
-    val topic: String?
+    val topic: String
         get() = topicPartition.topic
 
     /**
@@ -152,9 +138,7 @@ class RecordMetadata private constructor(
         message = "Use property access instead.",
         replaceWith = ReplaceWith("partition")
     )
-    fun partition(): Int {
-        return topicPartition.partition
-    }
+    fun partition(): Int = topicPartition.partition
 
     /**
      * The partition the record was sent to
@@ -162,9 +146,7 @@ class RecordMetadata private constructor(
     val partition: Int
         get() = topicPartition.partition
 
-    override fun toString(): String {
-        return "$topicPartition@$offset"
-    }
+    override fun toString(): String = "$topicPartition@$offset"
 
     companion object {
 

@@ -411,9 +411,9 @@ object TestUtils {
      *
      * @param future The future to await
      * @param exceptionCauseClass Class of the expected exception cause
-     * @param <T> Exception cause type parameter
+     * @param T Exception cause type parameter
      * @return The caught exception cause
-    </T> */
+     */
     fun <T : Throwable?> assertFutureThrows(future: Future<*>, exceptionCauseClass: Class<T>): T {
         val exception = assertFailsWith<ExecutionException> { future.get() }
         assertTrue(

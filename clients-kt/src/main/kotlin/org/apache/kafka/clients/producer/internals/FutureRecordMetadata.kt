@@ -100,5 +100,5 @@ class FutureRecordMetadata(
 
     override fun isDone(): Boolean =
         if (nextRecordMetadata != null) nextRecordMetadata!!.isDone
-        else result.completed()
+        else result.completed
 }
