@@ -36,10 +36,10 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
 
     // Keep track of the partitions being migrated from one consumer to another during assignment
     // so the cooperative assignor can adjust the assignment
-    protected var partitionsTransferringOwnership: MutableMap<TopicPartition, String>? =
+    var partitionsTransferringOwnership: MutableMap<TopicPartition, String>? =
         mutableMapOf()
 
-    protected abstract fun memberData(
+    abstract fun memberData(
         subscription: ConsumerPartitionAssignor.Subscription,
     ): MemberData
 

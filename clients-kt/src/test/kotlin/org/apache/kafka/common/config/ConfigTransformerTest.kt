@@ -18,8 +18,8 @@
 package org.apache.kafka.common.config
 
 import org.apache.kafka.common.config.provider.ConfigProvider
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import kotlin.test.BeforeEach
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue

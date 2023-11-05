@@ -39,7 +39,6 @@ import org.apache.kafka.common.requests.MetadataResponse
 import org.apache.kafka.common.requests.MetadataResponse.PartitionMetadata
 import org.apache.kafka.common.requests.RequestTestUtils.metadataResponse
 import org.apache.kafka.common.requests.RequestTestUtils.metadataUpdateWith
-import org.apache.kafka.common.requests.RequestTestUtils.metadataUpdateWithIds
 import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.MockTime
 import org.apache.kafka.test.MockClusterResourceListener
@@ -407,7 +406,7 @@ class MetadataTest {
 
         // Start with a Topic topic-1 with a random topic ID
         val topicIds = mapOf("topic-1" to Uuid.randomUuid())
-        metadataResponse = metadataUpdateWithIds(
+        metadataResponse = metadataUpdateWith(
             clusterId = "dummy",
             numNodes = 1,
             topicErrors = emptyMap(),
@@ -430,7 +429,7 @@ class MetadataTest {
 
         // Create topic-1 again but this time with a different topic ID. LeaderEpoch should be updated to new even if lower.
         val newTopicIds = mapOf("topic-1" to Uuid.randomUuid())
-        metadataResponse = metadataUpdateWithIds(
+        metadataResponse = metadataUpdateWith(
             clusterId = "dummy",
             numNodes = 1,
             topicErrors = emptyMap(),
@@ -469,7 +468,7 @@ class MetadataTest {
         assertEquals(expected = 100, actual = metadata.lastSeenLeaderEpochs[tp])
 
         // If the older topic ID is null, we should go with the new topic ID as the leader epoch
-        metadataResponse = metadataUpdateWithIds(
+        metadataResponse = metadataUpdateWith(
             clusterId = "dummy",
             numNodes = 1,
             topicErrors = emptyMap(),
@@ -485,7 +484,7 @@ class MetadataTest {
         assertEquals(expected = 10, actual = metadata.lastSeenLeaderEpochs[tp])
 
         // Don't cause update if it's the same one
-        metadataResponse = metadataUpdateWithIds(
+        metadataResponse = metadataUpdateWith(
             clusterId = "dummy",
             numNodes = 1,
             topicErrors = emptyMap(),
@@ -501,7 +500,7 @@ class MetadataTest {
         assertEquals(expected = 10, actual = metadata.lastSeenLeaderEpochs[tp])
 
         // Update if we see newer epoch
-        metadataResponse = metadataUpdateWithIds(
+        metadataResponse = metadataUpdateWith(
             clusterId = "dummy",
             numNodes = 1,
             topicErrors = emptyMap(),
@@ -518,7 +517,7 @@ class MetadataTest {
 
         // We should also update if we see a new topicId even if the epoch is lower
         val newTopicIds = mapOf("topic-1" to Uuid.randomUuid())
-        metadataResponse = metadataUpdateWithIds(
+        metadataResponse = metadataUpdateWith(
             clusterId = "dummy",
             numNodes = 1,
             topicErrors = emptyMap(),
@@ -535,7 +534,7 @@ class MetadataTest {
 
         // Finally, update when the topic ID is new and the epoch is higher
         val newTopicIds2 = mapOf("topic-1" to Uuid.randomUuid())
-        metadataResponse = metadataUpdateWithIds(
+        metadataResponse = metadataUpdateWith(
             clusterId = "dummy",
             numNodes = 1,
             topicErrors = emptyMap(),
@@ -1213,7 +1212,8 @@ class MetadataTest {
 
     @Test
     fun testNodeIfOnlineNonExistentTopicPartition() {
-        val metadataResponse = metadataUpdateWith(numNodes = 2, topicPartitionCounts = emptyMap())
+        val metadataResponse =
+            metadataUpdateWith(numNodes = 2, topicPartitionCounts = emptyMap())
         metadata.updateWithCurrentRequestVersion(
             response = metadataResponse,
             isPartialUpdate = false,
@@ -1349,7 +1349,7 @@ class MetadataTest {
         )
         topicIds["oldValidTopic"] =  Uuid.randomUuid()
         topicIds["keepValidTopic"] =  Uuid.randomUuid()
-        var metadataResponse = metadataUpdateWithIds(
+        var metadataResponse = metadataUpdateWith(
             clusterId = oldClusterId,
             numNodes = oldNodes,
             topicErrors = oldTopicErrors,
@@ -1408,7 +1408,7 @@ class MetadataTest {
             )
         )
         topicIds["newValidTopic"] = Uuid.randomUuid()
-        metadataResponse = metadataUpdateWithIds(
+        metadataResponse = metadataUpdateWith(
             clusterId = newClusterId,
             numNodes = newNodes,
             topicErrors = newTopicErrors,
@@ -1448,7 +1448,7 @@ class MetadataTest {
 
         // Perform another metadata update, but this time all topic metadata should be cleared.
         retainTopics.set(emptySet())
-        metadataResponse = metadataUpdateWithIds(
+        metadataResponse = metadataUpdateWith(
             clusterId = newClusterId,
             numNodes = newNodes,
             topicErrors = newTopicErrors,
@@ -1503,7 +1503,7 @@ class MetadataTest {
         )
         topicIds["validTopic1"] = Uuid.randomUuid()
         topicIds["validTopic2"] = Uuid.randomUuid()
-        var metadataResponse = metadataUpdateWithIds(
+        var metadataResponse = metadataUpdateWith(
             clusterId = clusterId,
             numNodes = nodes,
             topicErrors = emptyMap(),
@@ -1523,7 +1523,7 @@ class MetadataTest {
 
         // Try removing the topic ID from keepValidTopic (simulating receiving a request from a controller with an older IBP)
         topicIds.remove("validTopic1")
-        metadataResponse = metadataUpdateWithIds(
+        metadataResponse = metadataUpdateWith(
             clusterId = clusterId,
             numNodes = nodes,
             topicErrors = emptyMap(),

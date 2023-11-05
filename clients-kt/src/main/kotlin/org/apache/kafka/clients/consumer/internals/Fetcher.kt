@@ -110,7 +110,7 @@ import java.util.stream.Collectors
  *   updated while processing responses on one thread are visible while creating the subsequent
  *   request on a different thread.
  */
-class Fetcher<K, V>(
+open class Fetcher<K, V>(
     private val logContext: LogContext,
     private val client: ConsumerNetworkClient,
     private val minBytes: Int,
@@ -463,9 +463,9 @@ class Fetcher<K, V>(
 
             offsetsByTimes.putAll(fetchedOffsets.mapValues { (_, offsetData) ->
                 OffsetAndTimestamp(
-                    timestamp = offsetData.offset!!,
-                    offset = offsetData.timestamp!!,
-                    leaderEpoch = offsetData.leaderEpoch
+                    offset = offsetData.offset!!,
+                    timestamp = offsetData.timestamp!!,
+                    leaderEpoch = offsetData.leaderEpoch,
                 )
             })
 
@@ -585,8 +585,8 @@ class Fetcher<K, V>(
      * the defaultResetPolicy is NONE
      * @throws TopicAuthorizationException If there is TopicAuthorization error in fetchResponse.
      */
-    fun collectFetch(): Fetch<K?, V?> {
-        val fetch: Fetch<K?, V?> = Fetch.empty()
+    fun collectFetch(): Fetch<K, V> {
+        val fetch: Fetch<K, V> = Fetch.empty()
         val pausedCompletedFetches: Queue<CompletedFetch> = ArrayDeque()
         var recordsRemaining = maxPollRecords
         try {
@@ -639,7 +639,7 @@ class Fetcher<K, V>(
         return fetch
     }
 
-    private fun fetchRecords(completedFetch: CompletedFetch, maxRecords: Int): Fetch<K?, V?> {
+    private fun fetchRecords(completedFetch: CompletedFetch, maxRecords: Int): Fetch<K, V> {
         if (!subscriptions.isAssigned(completedFetch.partition)) {
             // this can happen when a rebalance happened before fetched records are returned to the
             // consumer's poll call
@@ -1511,7 +1511,7 @@ class Fetcher<K, V>(
         partition: TopicPartition,
         batch: RecordBatch,
         record: Record,
-    ): ConsumerRecord<K?, V?> {
+    ): ConsumerRecord<*, *> {
         try {
             val offset = record.offset()
             val timestamp = record.timestamp()
@@ -1598,7 +1598,7 @@ class Fetcher<K, V>(
     }
 
     // Visible for testing
-    internal fun sessionHandler(node: Int): FetchSessionHandler? = sessionHandlers[node]
+    internal open fun sessionHandler(node: Int): FetchSessionHandler? = sessionHandlers[node]
 
     private inner class CompletedFetch(
         val partition: TopicPartition,
@@ -1744,7 +1744,7 @@ class Fetcher<K, V>(
             }
         }
 
-        fun fetchRecords(maxRecords: Int): List<ConsumerRecord<K?, V?>> {
+        fun fetchRecords(maxRecords: Int): List<ConsumerRecord<K, V>> {
             // Error when fetching the next record before deserialization.
             if (corruptLastRecord) throw KafkaException(
                 "Received exception when fetching the next record from $partition. If needed, " +
@@ -1752,7 +1752,7 @@ class Fetcher<K, V>(
                 cachedRecordException,
             )
             if (isConsumed) return emptyList()
-            val records = mutableListOf<ConsumerRecord<K?, V?>>()
+            val records = mutableListOf<ConsumerRecord<K, V>>()
 
             try {
                 for (i in 0 until maxRecords) {
@@ -1769,7 +1769,7 @@ class Fetcher<K, V>(
                             partition = partition,
                             batch = currentBatch!!,
                             record = lastRecord!!,
-                        )
+                        ) as ConsumerRecord<K, V>
                     )
                     recordsRead++
                     bytesRead += lastRecord!!.sizeInBytes()

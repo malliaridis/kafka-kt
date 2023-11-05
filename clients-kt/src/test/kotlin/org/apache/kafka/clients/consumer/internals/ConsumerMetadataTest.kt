@@ -180,7 +180,9 @@ class ConsumerMetadataTest {
                 numNodes = 1,
                 topicPartitionCounts = topicPartitionCounts,
                 topicIds = topicIds,
-            ), isPartialUpdate = false, nowMs = time.milliseconds()
+            ),
+            isPartialUpdate = false,
+            nowMs = time.milliseconds()
         )
         assertEquals(setOf("foo"), HashSet(metadata.fetch().topics))
         assertEquals(topicIds["foo"], metadata.topicIds()["foo"])

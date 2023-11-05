@@ -138,7 +138,7 @@ class FetchRequest(
     // For versions < 13, builds the forgotten topics list using only the FetchRequestData.
     // For versions 13+, builds the forgotten topics list using both the FetchRequestData and a
     // mapping of topic IDs to names.
-    fun forgottenTopics(topicNames: Map<Uuid?, String?>): List<TopicIdPartition>? {
+    fun forgottenTopics(topicNames: Map<Uuid, String>): List<TopicIdPartition>? {
         if (toForget == null) {
             synchronized(this) {
                 if (toForget == null) {

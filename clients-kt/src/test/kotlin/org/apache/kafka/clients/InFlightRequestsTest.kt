@@ -22,7 +22,7 @@ import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.requests.RequestHeader
 import org.apache.kafka.common.utils.MockTime
 import org.apache.kafka.common.utils.Time
-import kotlin.test.BeforeEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

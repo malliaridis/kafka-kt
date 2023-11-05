@@ -93,6 +93,8 @@ import org.apache.kafka.common.utils.Timer
 import org.apache.kafka.common.utils.Utils
 import org.apache.kafka.common.utils.Utils.mkSet
 import org.apache.kafka.test.TestUtils
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.mockito.Mockito
 import org.mockito.kotlin.argumentCaptor
 import java.nio.ByteBuffer
@@ -108,8 +110,6 @@ import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 import kotlin.collections.HashSet
 import kotlin.math.min
-import kotlin.test.AfterEach
-import kotlin.test.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -121,20 +121,35 @@ import kotlin.test.fail
 
 @Suppress("Deprecation")
 abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) {
+
     private val topic1 = "test1"
+
     private val topic2 = "test2"
+
     private val t1p = TopicPartition(topic1, 0)
+
     private val t2p = TopicPartition(topic2, 0)
+
     private val groupId = "test-group"
+
     private val groupInstanceId: String = "test-instance"
+
     private val rebalanceTimeoutMs = 60000
+
     private val sessionTimeoutMs = 10000
+
     private val heartbeatIntervalMs = 5000
+
     private val retryBackoffMs: Long = 100
+
     private val autoCommitIntervalMs = 2000
+
     private val requestTimeoutMs = 30000
+
     private val throttleMs = 10
+
     private val time = MockTime()
+
     private var rebalanceConfig: GroupRebalanceConfig? = null
 
     private val partitionAssignor: MockPartitionAssignor = MockPartitionAssignor(listOf(protocol))
@@ -1322,7 +1337,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         // update the metadata again back to topic1
         client.prepareResponse(
             matcher = { body ->
-                client.updateMetadata(metadataUpdateWith(1, mapOf(topic1 to 1)))
+                client.updateMetadata(metadataUpdateWith(numNodes = 1, topicPartitionCounts = mapOf(topic1 to 1)))
                 true
             },
             response = syncGroupResponse(newAssigned, Errors.NONE),
@@ -1385,7 +1400,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         // Set up a non-leader consumer with pattern subscription and a cluster containing one topic matching the
         // pattern.
         subscriptions.subscribe(Pattern.compile(".*"), rebalanceListener)
-        client.updateMetadata(metadataUpdateWith(1, mapOf(topic1 to 1)))
+        client.updateMetadata(metadataUpdateWith(numNodes = 1, topicPartitionCounts = mapOf(topic1 to 1)))
         coordinator.maybeUpdateSubscriptionMetadata()
         assertEquals(setOf(topic1), subscriptions.subscription())
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
@@ -1862,7 +1877,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
         // partially update the metadata with one topic first,
         // let the leader to refresh metadata during assignment
-        client.updateMetadata(metadataUpdateWith(1, mapOf(topic1 to 1)))
+        client.updateMetadata(metadataUpdateWith(numNodes = 1, topicPartitionCounts = mapOf(topic1 to 1)))
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
 

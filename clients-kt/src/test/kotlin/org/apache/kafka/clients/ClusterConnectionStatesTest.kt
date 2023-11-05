@@ -23,11 +23,11 @@ import org.apache.kafka.clients.ClientUtils.resolve
 import org.apache.kafka.common.errors.AuthenticationException
 import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.MockTime
+import org.junit.jupiter.api.BeforeEach
 import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
-import kotlin.test.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

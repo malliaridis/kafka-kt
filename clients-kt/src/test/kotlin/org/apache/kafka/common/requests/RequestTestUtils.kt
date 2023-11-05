@@ -32,10 +32,7 @@ import org.apache.kafka.common.requests.MetadataResponse.PartitionMetadata
 import org.apache.kafka.common.requests.RequestTestUtils.PartitionMetadataSupplier
 import org.apache.kafka.common.requests.RequestUtils.flag
 import java.nio.ByteBuffer
-import java.util.*
-import java.util.function.Consumer
 import java.util.function.Function
-import java.util.stream.Collectors
 
 object RequestTestUtils {
 
@@ -54,7 +51,7 @@ object RequestTestUtils {
     fun serializeResponseWithHeader(
         response: AbstractResponse,
         version: Short,
-        correlationId: Int
+        correlationId: Int,
     ): ByteBuffer {
         return response.serializeWithHeader(
             header = ResponseHeader(
@@ -65,34 +62,16 @@ object RequestTestUtils {
         )
     }
 
-    @JvmOverloads
-    @Deprecated("This function overload will be removed")
-    fun metadataResponse(
-        brokers: Collection<Node>?,
-        clusterId: String?,
-        controllerId: Int,
-        topicMetadataList: List<MetadataResponse.TopicMetadata>,
-        responseVersion: Short = ApiKeys.METADATA.latestVersion()
-    ): MetadataResponse = metadataResponse(
-        throttleTimeMs = AbstractResponse.DEFAULT_THROTTLE_TIME,
-        brokers = brokers,
-        clusterId = clusterId,
-        controllerId = controllerId,
-        topicMetadatas = topicMetadataList,
-        clusterAuthorizedOperations = MetadataResponse.AUTHORIZED_OPERATIONS_OMITTED,
-        responseVersion = responseVersion
-    )
-
     fun metadataResponse(
         throttleTimeMs: Int = AbstractResponse.DEFAULT_THROTTLE_TIME,
         brokers: Collection<Node>?,
         clusterId: String?, controllerId: Int,
-        topicMetadatas: List<MetadataResponse.TopicMetadata>,
+        topicMetadataList: List<MetadataResponse.TopicMetadata>,
         clusterAuthorizedOperations: Int = MetadataResponse.AUTHORIZED_OPERATIONS_OMITTED,
         responseVersion: Short = ApiKeys.METADATA.latestVersion(),
     ): MetadataResponse {
         val topics: MutableList<MetadataResponseTopic> = ArrayList()
-        topicMetadatas.forEach { (error, topic, topicId, isInternal, partitionMetadata1, authorizedOperations): MetadataResponse.TopicMetadata ->
+        topicMetadataList.forEach { (error, topic, topicId, isInternal, partitionMetadata1, authorizedOperations)->
             val metadataResponseTopic = MetadataResponseTopic()
             metadataResponseTopic
                 .setErrorCode(error.code)
@@ -122,81 +101,11 @@ object RequestTestUtils {
     }
 
     @Deprecated("This overload will be removed")
-    fun metadataUpdateWith(
-        numNodes: Int,
-        topicPartitionCounts: Map<String, Int>
-    ): MetadataResponse {
-        return metadataUpdateWith(
-            clusterId = "kafka-cluster",
-            numNodes = numNodes,
-            topicPartitionCounts = topicPartitionCounts,
-        )
-    }
-/*
-TODO Remove deprecated overloads
-
-    @Deprecated("This overload will be removed")
-    fun metadataUpdateWith(
-        numNodes: Int,
-        topicPartitionCounts: Map<String, Int>,
-        epochSupplier: Function<TopicPartition?, Int?>
-    ): MetadataResponse {
-        return metadataUpdateWith(
-            clusterId = "kafka-cluster",
-            numNodes = numNodes,
-            topicErrors = emptyMap(),
-            topicPartitionCounts = topicPartitionCounts,
-            epochSupplier = epochSupplier,
-            partitionSupplier = SimplePartitionMetadataSupplier,
-            responseVersion = ApiKeys.METADATA.latestVersion(),
-            topicIds = emptyMap()
-        )
-    }
-
-    @Deprecated("This overload will be removed")
-    fun metadataUpdateWith(
-        clusterId: String = "kafka-cluster",
-        numNodes: Int,
-        topicPartitionCounts: Map<String, Int>
-    ): MetadataResponse {
-        return metadataUpdateWith(
-            clusterId = clusterId,
-            numNodes = numNodes,
-            topicErrors = emptyMap(),
-            topicPartitionCounts = topicPartitionCounts,
-            epochSupplier = { null },
-            partitionSupplier = SimplePartitionMetadataSupplier,
-            responseVersion = ApiKeys.METADATA.latestVersion(),
-            topicIds = emptyMap(),
-        )
-    }
-
-    @Deprecated("This overload will be removed")
-    fun metadataUpdateWith(
-        clusterId: String,
-        numNodes: Int,
-        topicErrors: Map<String, Errors>,
-        topicPartitionCounts: Map<String, Int>,
-        responseVersion: Short,
-    ): MetadataResponse {
-        return metadataUpdateWith(
-            clusterId = clusterId,
-            numNodes = numNodes,
-            topicErrors = topicErrors,
-            topicPartitionCounts = topicPartitionCounts,
-            epochSupplier = { null },
-            partitionSupplier = SimplePartitionMetadataSupplier,
-            responseVersion = responseVersion,
-            topicIds = emptyMap(),
-        )
-    }
-*/
-    @Deprecated("This overload will be removed")
     fun metadataUpdateWithIds(
-        numNodes: Int,
-        topicPartitionCounts: Map<String, Int>,
-        topicIds: Map<String, Uuid>
-    ): MetadataResponse {
+    numNodes: Int,
+    topicPartitionCounts: Map<String, Int>,
+    topicIds: Map<String, Uuid>,
+): MetadataResponse {
         return metadataUpdateWith(
             clusterId = "kafka-cluster",
             numNodes = numNodes,
@@ -209,11 +118,10 @@ TODO Remove deprecated overloads
         )
     }
 
-    @Deprecated("This overload will be removed")
     fun metadataUpdateWithIds(
         numNodes: Int,
         partitions: Set<TopicIdPartition>,
-        epochSupplier: Function<TopicPartition?, Int?>
+        epochSupplier: Function<TopicPartition?, Int?>,
     ): MetadataResponse {
         val topicPartitionCounts: MutableMap<String, Int> = HashMap()
         val topicIds: MutableMap<String, Uuid> = HashMap()
@@ -234,7 +142,7 @@ TODO Remove deprecated overloads
         numNodes: Int,
         topicPartitionCounts: Map<String, Int>,
         epochSupplier: Function<TopicPartition?, Int?>,
-        topicIds: Map<String, Uuid>
+        topicIds: Map<String, Uuid>,
     ): MetadataResponse {
         return metadataUpdateWith(
             clusterId = "kafka-cluster",
@@ -250,46 +158,35 @@ TODO Remove deprecated overloads
 
     @Deprecated("This overload will be removed")
     fun metadataUpdateWithIds(
-        clusterId: String?,
         numNodes: Int,
-        topicErrors: Map<String, Errors>,
         topicPartitionCounts: Map<String, Int>,
         epochSupplier: Function<TopicPartition?, Int?>,
-        topicIds: Map<String, Uuid>
+        topicIds: Map<String, Uuid>,
+        leaderOnly: Boolean,
     ): MetadataResponse {
         return metadataUpdateWith(
-            clusterId = clusterId,
+            clusterId = "kafka-cluster",
             numNodes = numNodes,
-            topicErrors = topicErrors,
+            topicErrors = emptyMap(),
             topicPartitionCounts = topicPartitionCounts,
             epochSupplier = epochSupplier,
             partitionSupplier = SimplePartitionMetadataSupplier,
             responseVersion = ApiKeys.METADATA.latestVersion(),
             topicIds = topicIds,
+            leaderOnly = leaderOnly,
         )
     }
 
-    @JvmOverloads
     fun metadataUpdateWith(
-        clusterId: String?,
+        clusterId: String? = "kafka-cluster",
         numNodes: Int,
         topicErrors: Map<String, Errors> = emptyMap(),
         topicPartitionCounts: Map<String, Int>,
         epochSupplier: Function<TopicPartition?, Int?> = Function { null },
-        partitionSupplier: PartitionMetadataSupplier = PartitionMetadataSupplier { error, topicPartition, leaderId, leaderEpoch, replicaIds, inSyncReplicaIds, offlineReplicaIds ->
-            PartitionMetadata(
-                error = error,
-                topicPartition = topicPartition,
-                leaderId = leaderId,
-                leaderEpoch = leaderEpoch,
-                replicaIds = replicaIds,
-                inSyncReplicaIds = inSyncReplicaIds,
-                offlineReplicaIds = offlineReplicaIds
-            )
-        },
+        partitionSupplier: PartitionMetadataSupplier = SimplePartitionMetadataSupplier,
         responseVersion: Short = ApiKeys.METADATA.latestVersion(),
         topicIds: Map<String, Uuid> = emptyMap(),
-        leaderOnly: Boolean = true
+        leaderOnly: Boolean = true,
     ): MetadataResponse {
         val nodes: MutableList<Node> = ArrayList(numNodes)
         for (i in 0 until numNodes) nodes.add(Node(i, "localhost", 1969 + i))
@@ -326,8 +223,8 @@ TODO Remove deprecated overloads
         for ((topic, value) in topicErrors) {
             topicMetadata.add(
                 MetadataResponse.TopicMetadata(
-                    error = value!!,
-                    topic = topic!!,
+                    error = value,
+                    topic = topic,
                     isInternal = isInternal(topic),
                     partitionMetadata = emptyList()
                 )
@@ -355,16 +252,17 @@ TODO Remove deprecated overloads
     }
 
     // TODO Remove once no longer in use
-    private val SimplePartitionMetadataSupplier = PartitionMetadataSupplier { error, topicPartition, leaderId, leaderEpoch, replicaIds, inSyncReplicaIds, offlineReplicaIds ->
-        PartitionMetadata(
-            error = error,
-            topicPartition = topicPartition,
-            leaderId = leaderId,
-            leaderEpoch = leaderEpoch,
-            replicaIds = replicaIds,
-            inSyncReplicaIds = inSyncReplicaIds,
-            offlineReplicaIds = offlineReplicaIds
-        )
-    }
+    private val SimplePartitionMetadataSupplier =
+        PartitionMetadataSupplier { error, topicPartition, leaderId, leaderEpoch, replicaIds, inSyncReplicaIds, offlineReplicaIds ->
+            PartitionMetadata(
+                error = error,
+                topicPartition = topicPartition,
+                leaderId = leaderId,
+                leaderEpoch = leaderEpoch,
+                replicaIds = replicaIds,
+                inSyncReplicaIds = inSyncReplicaIds,
+                offlineReplicaIds = offlineReplicaIds
+            )
+        }
 }
 

@@ -217,7 +217,7 @@ class FetchSessionHandlerTest {
                 expected = FetchMetadata.INITIAL_EPOCH,
                 actual = data.metadata.epoch,
             )
-            val resp: FetchResponse = FetchResponse.of(
+            val resp = FetchResponse.of(
                 error = Errors.NONE,
                 throttleTimeMs = 0,
                 sessionId = FetchMetadata.INVALID_SESSION_ID,
@@ -343,7 +343,7 @@ class FetchSessionHandlerTest {
                 FetchMetadata.INITIAL_EPOCH,
                 data.metadata.epoch,
             )
-            val resp: FetchResponse = FetchResponse.of(
+            val resp = FetchResponse.of(
                 error = Errors.NONE,
                 throttleTimeMs = 0,
                 sessionId = 123,
@@ -667,7 +667,7 @@ class FetchSessionHandlerTest {
                 data.sessionPartitions,
             )
             assertTrue(data.metadata.isFull)
-            val resp: FetchResponse = FetchResponse.of(
+            val resp = FetchResponse.of(
                 error = Errors.NONE,
                 throttleTimeMs = 0,
                 sessionId = 123,
@@ -906,7 +906,7 @@ class FetchSessionHandlerTest {
             )
             assertTrue(data.metadata.isFull)
             assertTrue(data.canUseTopicIds)
-            val resp: FetchResponse = FetchResponse.of(
+            val resp = FetchResponse.of(
                 error = Errors.NONE,
                 throttleTimeMs = 0,
                 sessionId = 123,
@@ -1447,7 +1447,7 @@ class FetchSessionHandlerTest {
                 ),
             )
             builder.build()
-            val resp2: FetchResponse = FetchResponse.of(
+            val resp2 = FetchResponse.of(
                 error = Errors.NONE,
                 throttleTimeMs = 0,
                 sessionId = FetchMetadata.INVALID_SESSION_ID,

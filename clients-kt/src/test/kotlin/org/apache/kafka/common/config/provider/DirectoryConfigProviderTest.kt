@@ -19,14 +19,14 @@ package org.apache.kafka.common.config.provider
 
 import org.apache.kafka.common.utils.Utils.delete
 import org.apache.kafka.test.TestUtils.tempDirectory
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import java.io.File
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.util.*
 import java.util.stream.StreamSupport
-import kotlin.test.AfterEach
-import kotlin.test.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull

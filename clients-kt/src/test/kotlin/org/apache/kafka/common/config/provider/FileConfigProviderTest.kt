@@ -17,12 +17,12 @@
 
 package org.apache.kafka.common.config.provider
 
+import org.junit.jupiter.api.BeforeEach
 import java.io.IOException
 import java.io.Reader
 import java.io.StringReader
 import java.util.*
 import java.util.stream.StreamSupport
-import kotlin.test.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull

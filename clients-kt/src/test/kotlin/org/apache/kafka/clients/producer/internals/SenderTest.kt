@@ -569,7 +569,10 @@ class SenderTest {
                 apiVersions = apiVersions,
             )
             // Create a two broker cluster, with partition 0 on broker 0 and partition 1 on broker 1
-            val metadataUpdate1 = RequestTestUtils.metadataUpdateWith(2, mapOf("test" to 2))
+            val metadataUpdate1 = RequestTestUtils.metadataUpdateWith(
+                numNodes = 2,
+                topicPartitionCounts = mapOf("test" to 2),
+            )
             client.prepareMetadataUpdate(metadataUpdate1)
 
             // Send the first message.
@@ -595,8 +598,10 @@ class SenderTest {
             appendToAccumulator(tp2, 0L, "key2", "value2")
 
             // Update metadata before sender receives response from broker 0. Now partition 2 moves to broker 0
-            val metadataUpdate2 =
-                RequestTestUtils.metadataUpdateWith(1, mapOf("test" to 2))
+            val metadataUpdate2 = RequestTestUtils.metadataUpdateWith(
+                numNodes = 1,
+                topicPartitionCounts = mapOf("test" to 2),
+            )
             client.prepareMetadataUpdate(metadataUpdate2)
             // Sender should not send the second message to node 0.
             assertEquals(1, sender.inFlightBatches(tp2).size)
@@ -698,11 +703,21 @@ class SenderTest {
     @Throws(Exception::class)
     fun testMetadataTopicExpiry() {
         val offset: Long = 0
-        client.updateMetadata(RequestTestUtils.metadataUpdateWith(1, mapOf("test" to 2)))
+        client.updateMetadata(
+            RequestTestUtils.metadataUpdateWith(
+                numNodes = 1,
+                topicPartitionCounts = mapOf("test" to 2),
+            ),
+        )
         var future: Future<RecordMetadata>? = appendToAccumulator(tp0)
         sender.runOnce()
         assertTrue(metadata.containsTopic(tp0.topic), "Topic not added to metadata")
-        client.updateMetadata(RequestTestUtils.metadataUpdateWith(1, mapOf("test" to 2)))
+        client.updateMetadata(
+            RequestTestUtils.metadataUpdateWith(
+                numNodes = 1,
+                topicPartitionCounts = mapOf("test" to 2),
+            )
+        )
         sender.runOnce() // send produce request
         client.respond(
             produceResponse(
@@ -727,7 +742,12 @@ class SenderTest {
             message = "Topic not retained in metadata list",
         )
         time.sleep(TOPIC_IDLE_MS)
-        client.updateMetadata(RequestTestUtils.metadataUpdateWith(1, mapOf("test" to 2)))
+        client.updateMetadata(
+            RequestTestUtils.metadataUpdateWith(
+                numNodes = 1,
+                topicPartitionCounts = mapOf("test" to 2),
+            ),
+        )
         assertFalse(
             metadata.containsTopic(tp0.topic),
             "Unused topic has not been expired"
@@ -735,7 +755,12 @@ class SenderTest {
         future = appendToAccumulator(tp0)
         sender.runOnce()
         assertTrue(metadata.containsTopic(tp0.topic), "Topic not added to metadata")
-        client.updateMetadata(RequestTestUtils.metadataUpdateWith(1, mapOf("test" to 2)))
+        client.updateMetadata(
+            RequestTestUtils.metadataUpdateWith(
+                numNodes = 1,
+                topicPartitionCounts = mapOf("test" to 2),
+            ),
+        )
         sender.runOnce() // send produce request
         client.respond(
             produceResponse(
@@ -966,7 +991,10 @@ class SenderTest {
 
         // Process metadata and InitProducerId responses.
         // Verify producerId after the sender is run to process responses.
-        val metadataUpdate = RequestTestUtils.metadataUpdateWith(1, emptyMap())
+        val metadataUpdate = RequestTestUtils.metadataUpdateWith(
+            numNodes = 1,
+            topicPartitionCounts = emptyMap(),
+        )
         client.respond(metadataUpdate)
         sender.runOnce()
         sender.runOnce()
@@ -3390,7 +3418,7 @@ class SenderTest {
             )
             // Create a two broker cluster, with partition 0 on broker 0 and partition 1 on broker 1
             val metadataUpdate1: MetadataResponse =
-                RequestTestUtils.metadataUpdateWith(2, mapOf(topic to 2))
+                RequestTestUtils.metadataUpdateWith(numNodes = 2, topicPartitionCounts = mapOf(topic to 2))
             client.prepareMetadataUpdate(metadataUpdate1)
             // Send the first message.
             val nowMs: Long = time.milliseconds()
@@ -4624,7 +4652,10 @@ class SenderTest {
         )
         metadata.add("test", time.milliseconds())
         if (updateMetadata) client.updateMetadata(
-            RequestTestUtils.metadataUpdateWith(1, mapOf("test" to 2))
+            RequestTestUtils.metadataUpdateWith(
+                numNodes = 1,
+                topicPartitionCounts = mapOf("test" to 2),
+            ),
         )
     }
 

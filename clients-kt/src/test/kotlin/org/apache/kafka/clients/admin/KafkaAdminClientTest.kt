@@ -2991,7 +2991,7 @@ class KafkaAdminClientTest {
                     brokers = env.cluster.nodes,
                     clusterId = env.cluster.clusterResource.clusterId,
                     controllerId = 2,
-                    topicMetadatas = emptyList(),
+                    topicMetadataList = emptyList(),
                     clusterAuthorizedOperations = MetadataResponse.AUTHORIZED_OPERATIONS_OMITTED,
                     responseVersion = ApiKeys.METADATA.latestVersion(),
                 )
