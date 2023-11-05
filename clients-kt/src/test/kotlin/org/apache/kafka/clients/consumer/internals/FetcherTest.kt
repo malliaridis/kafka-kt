@@ -4229,7 +4229,7 @@ class FetcherTest {
                             tp0NoError,
                             ListOffsetsPartitionResponse()
                                 .setPartitionIndex(tp1.partition)
-                                .setErrorCode(retriableError.code())
+                                .setErrorCode(retriableError.code)
                                 .setTimestamp(ListOffsetsRequest.LATEST_TIMESTAMP)
                                 .setOffset(-1L),
                         )

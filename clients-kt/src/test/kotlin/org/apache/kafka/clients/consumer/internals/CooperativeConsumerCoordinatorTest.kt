@@ -14,12 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.kafka.clients.consumer.internals;
 
-import org.apache.kafka.clients.consumer.ConsumerPartitionAssignor;
+package org.apache.kafka.clients.consumer.internals
 
-public class CooperativeConsumerCoordinatorTest extends ConsumerCoordinatorTest {
-    public CooperativeConsumerCoordinatorTest() {
-        super(ConsumerPartitionAssignor.RebalanceProtocol.COOPERATIVE);
-    }
-}
+import org.apache.kafka.clients.consumer.ConsumerPartitionAssignor
+
+class CooperativeConsumerCoordinatorTest : ConsumerCoordinatorTest(
+    protocol = ConsumerPartitionAssignor.RebalanceProtocol.COOPERATIVE,
+)
