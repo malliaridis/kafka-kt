@@ -24,7 +24,6 @@ import org.apache.kafka.clients.consumer.ConsumerRebalanceListener
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
 import org.apache.kafka.clients.consumer.internals.SubscriptionState.FetchPosition
-import org.apache.kafka.clients.consumer.internals.SubscriptionState.LogTruncation
 import org.apache.kafka.common.IsolationLevel
 import org.apache.kafka.common.Node
 import org.apache.kafka.common.TopicPartition
@@ -33,9 +32,7 @@ import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.requests.OffsetsForLeaderEpochResponse
 import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.test.TestUtils.assertNullable
-import org.apache.kafka.test.TestUtils.assertOptional
 import org.junit.jupiter.api.Test
-import java.util.function.Consumer
 import java.util.regex.Pattern
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

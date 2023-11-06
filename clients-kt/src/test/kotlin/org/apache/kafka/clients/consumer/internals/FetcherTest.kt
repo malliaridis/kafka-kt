@@ -5001,7 +5001,7 @@ class FetcherTest {
         val fetchedRecords = allFetchedRecords[tp0]!!
 
         assertEquals(3, fetchedRecords.size)
-        for (i in 0..2) assertEquals(i.toString(), String(fetchedRecords[i].key()))
+        for (i in 0..2) assertEquals(i.toString(), String(fetchedRecords[i].key))
 
         // The next offset should point to the next batch
         assertEquals(4L, subscriptions.position(tp0)!!.offset)

@@ -3450,7 +3450,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
                 timer = time.timer(Long.MAX_VALUE),
             )
         }
-        val coordinatorNode = Node(Int.MAX_VALUE - node.id, node.host(), node.port())
+        val coordinatorNode = Node(Int.MAX_VALUE - node.id, node.host, node.port)
         client.respondFrom(
             joinGroupLeaderResponse(
                 1,

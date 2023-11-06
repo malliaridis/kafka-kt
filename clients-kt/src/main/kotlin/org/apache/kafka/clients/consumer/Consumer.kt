@@ -77,12 +77,12 @@ interface Consumer<K, V> : Closeable {
      * @see KafkaConsumer.poll
      */
     @Deprecated("")
-    fun poll(timeout: Long): ConsumerRecords<K?, V?>
+    fun poll(timeout: Long): ConsumerRecords<K, V>
 
     /**
      * @see KafkaConsumer.poll
      */
-    fun poll(timeout: Duration): ConsumerRecords<K?, V?>
+    fun poll(timeout: Duration): ConsumerRecords<K, V>
 
     /**
      * @see KafkaConsumer.commitSync

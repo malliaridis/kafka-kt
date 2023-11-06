@@ -46,7 +46,7 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
     override fun assign(
         partitionsPerTopic: Map<String, Int>,
         subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>,
-    ): Map<String, MutableList<TopicPartition>> {
+    ): Map<String, List<TopicPartition>> {
         val consumerToOwnedPartitions = mutableMapOf<String, MutableList<TopicPartition>>()
         val partitionsWithMultiplePreviousOwners = mutableSetOf<TopicPartition>()
 

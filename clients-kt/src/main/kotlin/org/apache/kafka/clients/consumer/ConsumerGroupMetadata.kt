@@ -32,10 +32,6 @@ data class ConsumerGroupMetadata(
     val groupInstanceId: String? = null,
 ) {
 
-    init {
-        requireNotNull(groupInstanceId) { "group.instance.id can't be null" }
-    }
-
     @Deprecated(
         message = "User property instead",
         replaceWith = ReplaceWith("groupId"),

@@ -578,7 +578,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
 
     private val clientId: String?
 
-    private val groupId: String
+    private val groupId: String?
 
     private val coordinator: ConsumerCoordinator
 
@@ -920,7 +920,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
         requestTimeoutMs: Long,
         defaultApiTimeoutMs: Int,
         assignors: List<ConsumerPartitionAssignor>?,
-        groupId: String,
+        groupId: String?,
     ) {
         log = logContext.logger(javaClass)
         this.clientId = clientId
@@ -1220,7 +1220,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
      * gets fenced by broker.
      */
     @Deprecated("")
-    override fun poll(timeout: Long): ConsumerRecords<K?, V?> = poll(
+    override fun poll(timeout: Long): ConsumerRecords<K, V> = poll(
         timer = time.timer(timeout),
         includeMetadataInTimeout = false,
     )
@@ -1268,7 +1268,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
      * @throws org.apache.kafka.common.errors.FencedInstanceIdException if this consumer instance
      * gets fenced by broker.
      */
-    override fun poll(timeout: Duration): ConsumerRecords<K?, V?> = poll(
+    override fun poll(timeout: Duration): ConsumerRecords<K, V> = poll(
         timer = time.timer(timeout),
         includeMetadataInTimeout = true,
     )
@@ -1276,7 +1276,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
     /**
      * @throws KafkaException if the rebalance callback throws exception
      */
-    private fun poll(timer: Timer, includeMetadataInTimeout: Boolean): ConsumerRecords<K?, V?> {
+    private fun poll(timer: Timer, includeMetadataInTimeout: Boolean): ConsumerRecords<K, V> {
         acquireAndEnsureOpen()
         try {
             kafkaConsumerMetrics.recordPollStart(timer.currentTimeMs)
@@ -1299,7 +1299,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
                     )
                 ) log.warn("Still waiting for metadata")
 
-                val fetch: Fetch<K?, V?> = pollForFetches(timer)
+                val fetch: Fetch<K, V> = pollForFetches(timer)
                 if (!fetch.isEmpty) {
                     // before returning the fetched records, we can send off the next round of
                     // fetches and avoid block waiting for their responses to enable pipelining
@@ -1334,11 +1334,11 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
     /**
      * @throws KafkaException if the rebalance callback throws exception
      */
-    private fun pollForFetches(timer: Timer): Fetch<K?, V?> {
+    private fun pollForFetches(timer: Timer): Fetch<K, V> {
         var pollTimeout = min(coordinator.timeToNextPoll(timer.currentTimeMs), timer.remainingMs)
 
         // if data is available already, return it immediately
-        val fetch: Fetch<K?, V?> = fetcher.collectFetch()
+        val fetch: Fetch<K, V> = fetcher.collectFetch()
         if (!fetch.isEmpty) return fetch
 
         // send any new fetches (won't resend pending fetches)

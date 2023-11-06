@@ -69,28 +69,28 @@ abstract class AbstractStickyAssignorTest {
 
     // simulate ConsumerProtocolSubscription V0 protocol
     protected abstract fun buildSubscriptionV0(
-        topics: List<String>?,
-        partitions: List<TopicPartition?>?,
+        topics: List<String>,
+        partitions: List<TopicPartition>,
         generationId: Int,
     ): Subscription
 
     // simulate ConsumerProtocolSubscription V1 protocol
     protected abstract fun buildSubscriptionV1(
-        topics: List<String>?,
-        partitions: List<TopicPartition?>?,
+        topics: List<String>,
+        partitions: List<TopicPartition>,
         generationId: Int,
     ): Subscription
 
     // simulate ConsumerProtocolSubscription V2 or above protocol
     protected abstract fun buildSubscriptionV2Above(
-        topics: List<String>?,
-        partitions: List<TopicPartition?>?,
+        topics: List<String>,
+        partitions: List<TopicPartition>,
         generation: Int,
     ): Subscription
 
     protected abstract fun generateUserData(
-        topics: List<String?>?,
-        partitions: List<TopicPartition?>?,
+        topics: List<String>,
+        partitions: List<TopicPartition>,
         generation: Int,
     ): ByteBuffer?
 
@@ -104,7 +104,7 @@ abstract class AbstractStickyAssignorTest {
     @Test
     fun testMemberData() {
         val topics = topics(topic)
-        val ownedPartitions = partitions(tp(topic1, 0), tp(topic2, 1))
+        val ownedPartitions = listOf(tp(topic1, 0), tp(topic2, 1))
         val subscriptions = mutableListOf<Subscription>()
         // add subscription in all ConsumerProtocolSubscription versions
         subscriptions.add(buildSubscriptionV0(topics, ownedPartitions, generationId))
@@ -160,7 +160,7 @@ abstract class AbstractStickyAssignorTest {
         val assignment = assignor.assign(partitionsPerTopic, subscriptions)
 
         assertEquals(
-            expected = partitions(tp(topic, 0), tp(topic, 1), tp(topic, 2)),
+            expected = listOf(tp(topic, 0), tp(topic, 1), tp(topic, 2)),
             actual = assignment[consumerId]!!,
         )
         assertTrue(assignor.partitionsTransferringOwnership!!.isEmpty())
@@ -188,7 +188,7 @@ abstract class AbstractStickyAssignorTest {
         val assignment = assignor.assign(partitionsPerTopic, subscriptions)
 
         assertEquals(
-            expected = partitions(tp(topic, 0), tp(topic, 1)),
+            expected = listOf(tp(topic, 0), tp(topic, 1)),
             actual = assignment[consumerId]!!
         )
         assertTrue(assignor.partitionsTransferringOwnership!!.isEmpty())
@@ -207,7 +207,7 @@ abstract class AbstractStickyAssignorTest {
         val assignment = assignor.assign(partitionsPerTopic, subscriptions)
 
         assertEquals(
-            expected = partitions(tp(topic1, 0), tp(topic2, 0), tp(topic2, 1)),
+            expected = listOf(tp(topic1, 0), tp(topic2, 0), tp(topic2, 1)),
             actual = assignment[consumerId]!!,
         )
         assertTrue(assignor.partitionsTransferringOwnership!!.isEmpty())
@@ -236,8 +236,8 @@ abstract class AbstractStickyAssignorTest {
         subscriptions[consumer2] = Subscription(topics(topic))
         val assignment = assignor.assign(partitionsPerTopic, subscriptions)
 
-        assertEquals(partitions(tp(topic, 0)), assignment[consumer1]!!)
-        assertEquals(partitions(tp(topic, 1)), assignment[consumer2]!!)
+        assertEquals(listOf(tp(topic, 0)), assignment[consumer1]!!)
+        assertEquals(listOf(tp(topic, 1)), assignment[consumer2]!!)
         assertTrue(assignor.partitionsTransferringOwnership!!.isEmpty())
         verifyValidityAndBalance(subscriptions, assignment, partitionsPerTopic)
         assertTrue(isFullyBalanced(assignment))
@@ -253,9 +253,9 @@ abstract class AbstractStickyAssignorTest {
         subscriptions[consumer3] = Subscription(topics(topic1))
         val assignment = assignor.assign(partitionsPerTopic, subscriptions)
 
-        assertEquals(partitions(tp(topic1, 0), tp(topic1, 2)), assignment[consumer1]!!)
-        assertEquals(partitions(tp(topic2, 0), tp(topic2, 1)), assignment[consumer2]!!)
-        assertEquals(partitions(tp(topic1, 1)), assignment[consumer3]!!)
+        assertEquals(listOf(tp(topic1, 0), tp(topic1, 2)), assignment[consumer1]!!)
+        assertEquals(listOf(tp(topic2, 0), tp(topic2, 1)), assignment[consumer2]!!)
+        assertEquals(listOf(tp(topic1, 1)), assignment[consumer3]!!)
         assertNull(assignor.partitionsTransferringOwnership)
         verifyValidityAndBalance(subscriptions, assignment, partitionsPerTopic)
         assertTrue(isFullyBalanced(assignment))
@@ -271,11 +271,11 @@ abstract class AbstractStickyAssignorTest {
         val assignment = assignor.assign(partitionsPerTopic, subscriptions)
 
         assertEquals(
-            expected = partitions(tp(topic1, 0), tp(topic1, 2), tp(topic2, 1)),
+            expected = listOf(tp(topic1, 0), tp(topic1, 2), tp(topic2, 1)),
             actual = assignment[consumer1]!!,
         )
         assertEquals(
-            expected = partitions(tp(topic1, 1), tp(topic2, 0), tp(topic2, 2)),
+            expected = listOf(tp(topic1, 1), tp(topic2, 0), tp(topic2, 2)),
             actual = assignment[consumer2]!!,
         )
         assertTrue(assignor.partitionsTransferringOwnership!!.isEmpty())
@@ -294,22 +294,22 @@ abstract class AbstractStickyAssignorTest {
         val subscribedTopics = topics(topic1, topic2)
         subscriptions[consumer1] = buildSubscriptionV2Above(
             topics = subscribedTopics,
-            partitions = partitions(tp(topic1, 0), tp(topic2, 1)),
+            partitions = listOf(tp(topic1, 0), tp(topic2, 1)),
             generation = generationId,
         )
         subscriptions[consumer2] = buildSubscriptionV2Above(
             topics = subscribedTopics,
-            partitions = partitions(tp(topic1, 1), tp(topic2, 2)),
+            partitions = listOf(tp(topic1, 1), tp(topic2, 2)),
             generation = generationId,
         )
         val assignment = assignor.assign(partitionsPerTopic, subscriptions)
 
         assertEquals(
-            expected = partitions(tp(topic1, 0), tp(topic2, 1), tp(topic2, 0)),
+            expected = listOf(tp(topic1, 0), tp(topic2, 1), tp(topic2, 0)),
             actual = assignment[consumer1]!!,
         )
         assertEquals(
-            expected = partitions(tp(topic1, 1), tp(topic2, 2)),
+            expected = listOf(tp(topic1, 1), tp(topic2, 2)),
             actual = assignment[consumer2]!!,
         )
         assertTrue(assignor.partitionsTransferringOwnership!!.isEmpty())
@@ -328,12 +328,12 @@ abstract class AbstractStickyAssignorTest {
         val subscribedTopics = topics(topic1, topic2)
         subscriptions[consumer1] = buildSubscriptionV2Above(
             topics = subscribedTopics,
-            partitions = partitions(tp(topic1, 0), tp(topic2, 0)),
+            partitions = listOf(tp(topic1, 0), tp(topic2, 0)),
             generation = generationId,
         )
         subscriptions[consumer2] = buildSubscriptionV2Above(
             topics = subscribedTopics,
-            partitions = partitions(tp(topic1, 1), tp(topic2, 1)),
+            partitions = listOf(tp(topic1, 1), tp(topic2, 1)),
             generation = generationId,
         )
         subscriptions[consumer3] = buildSubscriptionV2Above(
@@ -349,15 +349,15 @@ abstract class AbstractStickyAssignorTest {
         )
         verifyValidityAndBalance(subscriptions, assignment, partitionsPerTopic)
         assertEquals(
-            expected = partitions(tp(topic1, 0)),
+            expected = listOf(tp(topic1, 0)),
             actual = assignment[consumer1]!!,
         )
         assertEquals(
-            expected = partitions(tp(topic1, 1), tp(topic2, 1)),
+            expected = listOf(tp(topic1, 1), tp(topic2, 1)),
             actual = assignment[consumer2]!!,
         )
         assertEquals(
-            expected = partitions(tp(topic2, 0)),
+            expected = listOf(tp(topic2, 0)),
             actual = assignment[consumer3]!!,
         )
         assertTrue(isFullyBalanced(assignment))
@@ -374,12 +374,12 @@ abstract class AbstractStickyAssignorTest {
         val subscribedTopics = topics(topic1, topic2)
         subscriptions[consumer1] = buildSubscriptionV2Above(
             topics = subscribedTopics,
-            partitions = partitions(tp(topic1, 0)),
+            partitions = listOf(tp(topic1, 0)),
             generation = generationId,
         )
         subscriptions[consumer2] = buildSubscriptionV2Above(
             topics = subscribedTopics,
-            partitions = partitions(tp(topic1, 1)),
+            partitions = listOf(tp(topic1, 1)),
             generation = generationId,
         )
         subscriptions[consumer3] = buildSubscriptionV2Above(
@@ -392,15 +392,15 @@ abstract class AbstractStickyAssignorTest {
         assertTrue(assignor.partitionsTransferringOwnership!!.isEmpty())
         verifyValidityAndBalance(subscriptions, assignment, partitionsPerTopic)
         assertEquals(
-            expected = partitions(tp(topic1, 0), tp(topic2, 1)),
+            expected = listOf(tp(topic1, 0), tp(topic2, 1)),
             actual = assignment[consumer1]!!,
         )
         assertEquals(
-            expected = partitions(tp(topic1, 1), tp(topic2, 2)),
+            expected = listOf(tp(topic1, 1), tp(topic2, 2)),
             actual = assignment[consumer2]!!,
         )
         assertEquals(
-            expected = partitions(tp(topic2, 0)),
+            expected = listOf(tp(topic2, 0)),
             actual = assignment[consumer3]!!,
         )
         assertTrue(isFullyBalanced(assignment))
@@ -413,14 +413,14 @@ abstract class AbstractStickyAssignorTest {
         subscriptions[consumer1] = Subscription(topics(topic))
         var assignment = assignor.assign(partitionsPerTopic, subscriptions)
         assertEquals(
-            expected = partitions(tp(topic, 0), tp(topic, 1), tp(topic, 2)),
+            expected = listOf(tp(topic, 0), tp(topic, 1), tp(topic, 2)),
             actual = assignment[consumer1]!!,
         )
         verifyValidityAndBalance(subscriptions, assignment, partitionsPerTopic)
         assertTrue(isFullyBalanced(assignment))
         subscriptions[consumer1] = buildSubscriptionV2Above(
             topics = topics(topic),
-            partitions = assignment[consumer1],
+            partitions = assignment[consumer1]!!,
             generation = generationId,
         )
         subscriptions[consumer2] = buildSubscriptionV2Above(
@@ -436,11 +436,11 @@ abstract class AbstractStickyAssignorTest {
         )
         verifyValidityAndBalance(subscriptions, assignment, partitionsPerTopic)
         assertEquals(
-            expected = partitions(tp(topic, 0), tp(topic, 1)),
+            expected = listOf(tp(topic, 0), tp(topic, 1)),
             actual = assignment[consumer1]!!,
         )
         assertEquals(
-            expected = partitions(tp(topic, 2)),
+            expected = listOf(tp(topic, 2)),
             actual = assignment[consumer2]!!,
         )
         assertTrue(isFullyBalanced(assignment))
@@ -448,13 +448,13 @@ abstract class AbstractStickyAssignorTest {
         subscriptions.remove(consumer1)
         subscriptions[consumer2] = buildSubscriptionV2Above(
             topics = topics(topic),
-            partitions = assignment[consumer2],
+            partitions = assignment[consumer2]!!,
             generation = generationId,
         )
         assignment = assignor.assign(partitionsPerTopic, subscriptions)
 
         assertEquals(
-            expected = partitions(tp(topic, 2), tp(topic, 1), tp(topic, 0)).toSet(),
+            expected = setOf(tp(topic, 2), tp(topic, 1), tp(topic, 0)),
             actual = assignment[consumer2]!!.toSet(),
         )
         assertTrue(assignor.partitionsTransferringOwnership!!.isEmpty())
@@ -473,7 +473,7 @@ abstract class AbstractStickyAssignorTest {
         var assignment = assignor.assign(partitionsPerTopic, subscriptions)
 
         assertEquals(
-            expected = partitions(
+            expected = listOf(
                 tp(topic1, 0),
                 tp(topic1, 2),
                 tp(topic2, 1),
@@ -482,7 +482,7 @@ abstract class AbstractStickyAssignorTest {
             actual = assignment[consumer1]!!,
         )
         assertEquals(
-            expected = partitions(tp(topic1, 1), tp(topic2, 0), tp(topic2, 2)),
+            expected = listOf(tp(topic1, 1), tp(topic2, 0), tp(topic2, 2)),
             actual = assignment[consumer2]!!,
         )
         assertTrue(assignor.partitionsTransferringOwnership!!.isEmpty())
@@ -492,12 +492,12 @@ abstract class AbstractStickyAssignorTest {
         // add 2 consumers
         subscriptions[consumer1] = buildSubscriptionV2Above(
             topics = allTopics,
-            partitions = assignment[consumer1],
+            partitions = assignment[consumer1]!!,
             generation = generationId,
         )
         subscriptions[consumer2] = buildSubscriptionV2Above(
             topics = allTopics,
-            partitions = assignment[consumer2],
+            partitions = assignment[consumer2]!!,
             generation = generationId,
         )
         subscriptions[consumer3] = buildSubscriptionV2Above(
@@ -519,19 +519,19 @@ abstract class AbstractStickyAssignorTest {
         assertEquals(expectedPartitionsTransferringOwnership, assignor.partitionsTransferringOwnership)
         verifyValidityAndBalance(subscriptions, assignment, partitionsPerTopic)
         assertEquals(
-            partitions(tp(topic1, 0), tp(topic1, 2)),
+            listOf(tp(topic1, 0), tp(topic1, 2)),
             assignment[consumer1]!!
         )
         assertEquals(
-            partitions(tp(topic1, 1), tp(topic2, 0)),
+            listOf(tp(topic1, 1), tp(topic2, 0)),
             assignment[consumer2]!!
         )
         assertEquals(
-            partitions(tp(topic2, 1), tp(topic2, 3)),
+            listOf(tp(topic2, 1), tp(topic2, 3)),
             assignment[consumer3]!!
         )
         assertEquals(
-            partitions(tp(topic2, 2)),
+            listOf(tp(topic2, 2)),
             assignment[consumer4]!!
         )
         assertTrue(isFullyBalanced(assignment))
@@ -541,18 +541,18 @@ abstract class AbstractStickyAssignorTest {
         subscriptions.remove(consumer2)
         subscriptions[consumer3] = buildSubscriptionV2Above(
             topics = allTopics,
-            partitions = assignment[consumer3],
+            partitions = assignment[consumer3]!!,
             generation = generationId,
         )
         subscriptions[consumer4] = buildSubscriptionV2Above(
             topics = allTopics,
-            partitions = assignment[consumer4],
+            partitions = assignment[consumer4]!!,
             generation = generationId,
         )
         assignment = assignor.assign(partitionsPerTopic, subscriptions)
 
         assertEquals(
-            expected = partitions(
+            expected = listOf(
                 tp(topic2, 1),
                 tp(topic2, 3),
                 tp(topic1, 0),
@@ -561,7 +561,7 @@ abstract class AbstractStickyAssignorTest {
             actual = assignment[consumer3]!!,
         )
         assertEquals(
-            expected = partitions(
+            expected = listOf(
                 tp(topic2, 2),
                 tp(topic1, 1),
                 tp(topic1, 2),
@@ -633,12 +633,12 @@ abstract class AbstractStickyAssignorTest {
         partitionsPerTopic[topic2] = 3
         subscriptions[consumer1] = buildSubscriptionV2Above(
             topics = topics(topic, topic2),
-            partitions = assignment[consumer1],
+            partitions = assignment[consumer1]!!,
             generation = generationId,
         )
         subscriptions[consumer2] = buildSubscriptionV2Above(
             topics = topics(topic, topic2),
-            partitions = assignment[consumer2],
+            partitions = assignment[consumer2]!!,
             generation = generationId,
         )
         assignment = assignor.assign(partitionsPerTopic, subscriptions)
@@ -660,12 +660,12 @@ abstract class AbstractStickyAssignorTest {
 
         subscriptions[consumer1] = buildSubscriptionV2Above(
             topics = topics(topic2),
-            partitions = assignment[consumer1],
+            partitions = assignment[consumer1]!!,
             generation = generationId,
         )
         subscriptions[consumer2] = buildSubscriptionV2Above(
             topics = topics(topic2),
-            partitions = assignment[consumer2],
+            partitions = assignment[consumer2]!!,
             generation = generationId,
         )
         assignment = assignor.assign(partitionsPerTopic, subscriptions)
@@ -704,7 +704,7 @@ abstract class AbstractStickyAssignorTest {
             val consumer = getConsumerName(i, 20)
             subscriptions[consumer] = buildSubscriptionV2Above(
                 topics = subscriptions[consumer]!!.topics,
-                partitions = assignment[consumer],
+                partitions = assignment[consumer]!!,
                 generation = generationId,
             )
         }
@@ -753,7 +753,7 @@ abstract class AbstractStickyAssignorTest {
             val consumer = getConsumerName(i, 9)
             subscriptions[consumer] = buildSubscriptionV2Above(
                 topics = subscriptions[consumer]!!.topics,
-                partitions = assignment[consumer],
+                partitions = assignment[consumer]!!,
                 generation = generationId,
             )
         }
@@ -787,7 +787,7 @@ abstract class AbstractStickyAssignorTest {
             val consumer = getConsumerName(i, consumerCount)
             subscriptions[consumer] = buildSubscriptionV2Above(
                 topics = topics,
-                partitions = assignment[consumer],
+                partitions = assignment[consumer]!!,
                 generation = generationId,
             )
         }
@@ -819,12 +819,12 @@ abstract class AbstractStickyAssignorTest {
             val consumer = getConsumerName(i, consumerCount)
             if (i == consumerCount - 1) subscriptions[consumer] = buildSubscriptionV2Above(
                 topics = topics.subList(0, 1),
-                partitions = assignment[consumer],
+                partitions = assignment[consumer]!!,
                 generation = generationId,
             )
             else subscriptions[consumer] = buildSubscriptionV2Above(
                 topics = topics,
-                partitions = assignment.get(consumer),
+                partitions = assignment[consumer]!!,
                 generation = generationId,
             )
         }
@@ -852,7 +852,7 @@ abstract class AbstractStickyAssignorTest {
             val consumer = getConsumerName(i, consumerCount)
             subscriptions[consumer] = buildSubscriptionV2Above(
                 topics = subscriptions[consumer]!!.topics,
-                partitions = assignment[consumer],
+                partitions = assignment[consumer]!!,
                 generation = generationId,
             )
         }
@@ -896,17 +896,17 @@ abstract class AbstractStickyAssignorTest {
 
         subscriptions[consumer1] = buildSubscriptionV2Above(
             topics = topics(topic1, topic2),
-            partitions = partitions(tp(topic1, 0)),
+            partitions = listOf(tp(topic1, 0)),
             generation = generationId,
         )
         subscriptions[consumer2] = buildSubscriptionV2Above(
             topics = topics(topic1, topic2, topic3, topic4),
-            partitions = partitions(tp(topic2, 0), tp(topic3, 0)),
+            partitions = listOf(tp(topic2, 0), tp(topic3, 0)),
             generation = generationId,
         )
         subscriptions[consumer3] = buildSubscriptionV2Above(
             topics = topics(topic2, topic3, topic4, topic5, topic6),
-            partitions = partitions(
+            partitions = listOf(
                 tp(topic4, 0),
                 tp(topic5, 0),
                 tp(topic6, 0),
@@ -945,9 +945,9 @@ abstract class AbstractStickyAssignorTest {
 
         // removing the potential group leader
         subscriptions.remove(consumer1)
-        subscriptions[consumer2] = buildSubscriptionV2Above(topics(topic1), assignment.get(consumer2), generationId)
-        subscriptions[consumer3] = buildSubscriptionV2Above(topics(topic1), assignment.get(consumer3), generationId)
-        subscriptions[consumer4] = buildSubscriptionV2Above(topics(topic1), assignment.get(consumer4), generationId)
+        subscriptions[consumer2] = buildSubscriptionV2Above(topics(topic1), assignment[consumer2]!!, generationId)
+        subscriptions[consumer3] = buildSubscriptionV2Above(topics(topic1), assignment[consumer3]!!, generationId)
+        subscriptions[consumer4] = buildSubscriptionV2Above(topics(topic1), assignment[consumer4]!!, generationId)
         assignment = assignor.assign(partitionsPerTopic, subscriptions)
 
         assertTrue(assignor.partitionsTransferringOwnership!!.isEmpty())
@@ -997,7 +997,7 @@ abstract class AbstractStickyAssignorTest {
 
         subscriptions[consumerId] = buildSubscriptionV2Above(
             topics = topics(topic),
-            partitions = assignment.get(consumerId),
+            partitions = assignment[consumerId]!!,
             generation = generationId,
         )
         assignment = assignor.assign(emptyMap(), subscriptions)
@@ -1038,7 +1038,7 @@ abstract class AbstractStickyAssignorTest {
                 val consumer = getConsumerName(i, maxNumConsumers)
                 subscriptions[consumer] = buildSubscriptionV2Above(
                     topics = sub,
-                    partitions = assignment[consumer],
+                    partitions = assignment[consumer]!!,
                     generation = generationId,
                 )
             }
@@ -1055,12 +1055,12 @@ abstract class AbstractStickyAssignorTest {
         partitionsPerTopic[topic] = 4
         subscriptions[consumer1] = buildSubscriptionV2Above(
             topics = topics(topic),
-            partitions = partitions(tp(topic, 0), tp(topic, 1)),
+            partitions = listOf(tp(topic, 0), tp(topic, 1)),
             generation = generationId,
         )
         subscriptions[consumer2] = buildSubscriptionV2Above(
             topics = topics(topic),
-            partitions = partitions(tp(topic, 2)),
+            partitions = listOf(tp(topic, 2)),
             generation = generationId,
         )
         subscriptions[consumer3] = buildSubscriptionV2Above(
@@ -1070,9 +1070,9 @@ abstract class AbstractStickyAssignorTest {
         )
         val assignment = assignor.assign(partitionsPerTopic, subscriptions)
 
-        assertEquals(partitions(tp(topic, 0), tp(topic, 1)), actual = assignment[consumer1]!!)
-        assertEquals(partitions(tp(topic, 2)), assignment[consumer2]!!)
-        assertEquals(partitions(tp(topic, 3)), assignment[consumer3]!!)
+        assertEquals(listOf(tp(topic, 0), tp(topic, 1)), actual = assignment[consumer1]!!)
+        assertEquals(listOf(tp(topic, 2)), assignment[consumer2]!!)
+        assertEquals(listOf(tp(topic, 3)), assignment[consumer3]!!)
         assertTrue(assignor.partitionsTransferringOwnership!!.isEmpty())
         verifyValidityAndBalance(subscriptions, assignment, partitionsPerTopic)
         assertTrue(isFullyBalanced(assignment))
@@ -1086,7 +1086,7 @@ abstract class AbstractStickyAssignorTest {
         val currentGeneration = 10
         subscriptions[consumer1] = buildSubscriptionV2Above(
             topics = topics(topic, topic2),
-            partitions = partitions(
+            partitions = listOf(
                 tp(topic, 0),
                 tp(topic, 2),
                 tp(topic2, 1),
@@ -1095,7 +1095,7 @@ abstract class AbstractStickyAssignorTest {
         )
         subscriptions[consumer2] = buildSubscriptionV2Above(
             topics = topics(topic, topic2),
-            partitions = partitions(
+            partitions = listOf(
                 tp(topic, 0),
                 tp(topic, 2),
                 tp(topic2, 1),
@@ -1105,19 +1105,19 @@ abstract class AbstractStickyAssignorTest {
         val assignment = assignor.assign(partitionsPerTopic, subscriptions)
 
         assertEquals(
-            expected = partitions(
+            expected = setOf(
                 tp(topic, 0),
                 tp(topic, 2),
                 tp(topic2, 1),
-            ).toSet(),
+            ),
             actual = assignment[consumer1]!!.toSet(),
         )
         assertEquals(
-            expected = partitions(
+            expected = setOf(
                 tp(topic, 1),
                 tp(topic2, 0),
                 tp(topic2, 2),
-            ).toSet(),
+            ),
             actual = assignment[consumer2]!!.toSet(),
         )
         assertTrue(assignor.partitionsTransferringOwnership!!.isEmpty())
@@ -1133,7 +1133,7 @@ abstract class AbstractStickyAssignorTest {
         val currentGeneration = 10
         subscriptions[consumer1] = buildSubscriptionV2Above(
             topics = topics(topic, topic2),
-            partitions = partitions(
+            partitions = listOf(
                 tp(topic, 0),
                 tp(topic, 2),
                 tp(topic2, 1),
@@ -1142,7 +1142,7 @@ abstract class AbstractStickyAssignorTest {
         )
         subscriptions[consumer2] = buildSubscriptionV2Above(
             topics = topics(topic, topic2),
-            partitions = partitions(
+            partitions = listOf(
                 tp(topic, 0),
                 tp(topic, 2),
                 tp(topic2, 1),
@@ -1151,7 +1151,7 @@ abstract class AbstractStickyAssignorTest {
         )
         val assignment = assignor.assign(partitionsPerTopic, subscriptions)
         assertEquals(
-            expected = partitions(
+            expected = listOf(
                 tp(topic, 0),
                 tp(topic, 2),
                 tp(topic2, 1),
@@ -1159,11 +1159,11 @@ abstract class AbstractStickyAssignorTest {
             actual = assignment[consumer1]!!,
         )
         assertEquals(
-            expected = partitions(
+            expected = setOf(
                 tp(topic, 1),
                 tp(topic2, 0),
                 tp(topic2, 2),
-            ).toSet(),
+            ),
             actual = assignment[consumer2]!!.toSet(),
         )
         assertTrue(assignor.partitionsTransferringOwnership!!.isEmpty())
@@ -1179,12 +1179,12 @@ abstract class AbstractStickyAssignorTest {
         // partition topic-0 is owned by multiple consumer
         subscriptions[consumer1] = buildSubscriptionV2Above(
             topics = topics(topic),
-            partitions = partitions(tp(topic, 0), tp(topic, 1)),
+            partitions = listOf(tp(topic, 0), tp(topic, 1)),
             generation = generationId,
         )
         subscriptions[consumer2] = buildSubscriptionV2Above(
             topics = topics(topic),
-            partitions = partitions(tp(topic, 0), tp(topic, 2)),
+            partitions = listOf(tp(topic, 0), tp(topic, 2)),
             generation = generationId,
         )
         subscriptions[consumer3] = buildSubscriptionV2Above(
@@ -1200,15 +1200,15 @@ abstract class AbstractStickyAssignorTest {
         )
         verifyValidityAndBalance(subscriptions, assignment, partitionsPerTopic)
         assertEquals(
-            expected = partitions(tp(topic, 1)),
+            expected = listOf(tp(topic, 1)),
             actual = assignment[consumer1]!!,
         )
         assertEquals(
-            expected = partitions(tp(topic, 2)),
+            expected = listOf(tp(topic, 2)),
             actual = assignment[consumer2]!!,
         )
         assertEquals(
-            expected = partitions(tp(topic, 0)),
+            expected = listOf(tp(topic, 0)),
             actual = assignment[consumer3]!!,
         )
         assertTrue(isFullyBalanced(assignment))
@@ -1224,7 +1224,7 @@ abstract class AbstractStickyAssignorTest {
         // ensure partitions are always assigned to the member with the highest generation
         subscriptions[consumer1] = buildSubscriptionV2Above(
             topics = topics(topic, topic2, topic3),
-            partitions = partitions(
+            partitions = listOf(
                 tp(topic, 0),
                 tp(topic2, 0),
                 tp(topic3, 0),
@@ -1233,7 +1233,7 @@ abstract class AbstractStickyAssignorTest {
         )
         subscriptions[consumer2] = buildSubscriptionV2Above(
             topics = topics(topic, topic2, topic3),
-            partitions = partitions(
+            partitions = listOf(
                 tp(topic, 1),
                 tp(topic2, 1),
                 tp(topic3, 1),
@@ -1242,7 +1242,7 @@ abstract class AbstractStickyAssignorTest {
         )
         subscriptions[consumer3] = buildSubscriptionV2Above(
             topics = topics(topic, topic2, topic3),
-            partitions = partitions(
+            partitions = listOf(
                 tp(topic2, 1),
                 tp(topic3, 0),
                 tp(topic3, 2),
@@ -1252,15 +1252,15 @@ abstract class AbstractStickyAssignorTest {
         val assignment = assignor.assign(partitionsPerTopic, subscriptions)
 
         assertEquals(
-            expected = partitions(tp(topic, 0), tp(topic2, 0), tp(topic3, 0)).toSet(),
+            expected = setOf(tp(topic, 0), tp(topic2, 0), tp(topic3, 0)),
             actual = assignment[consumer1]!!.toSet(),
         )
         assertEquals(
-            expected = partitions(tp(topic, 1), tp(topic2, 1), tp(topic3, 1)).toSet(),
+            expected = setOf(tp(topic, 1), tp(topic2, 1), tp(topic3, 1)),
             actual = assignment[consumer2]!!.toSet()
         )
         assertEquals(
-            expected = partitions(tp(topic, 2), tp(topic2, 2), tp(topic3, 2)).toSet(),
+            expected = setOf(tp(topic, 2), tp(topic2, 2), tp(topic3, 2)),
             actual = assignment[consumer3]!!.toSet(),
         )
         assertTrue(assignor.partitionsTransferringOwnership!!.isEmpty())
@@ -1277,12 +1277,12 @@ abstract class AbstractStickyAssignorTest {
         val currentGeneration = 10
         subscriptions[consumer1] = buildSubscriptionV2Above(
             topics = topics(topic, topic2, topic3, topic1),
-            partitions = partitions(),
+            partitions = listOf(),
             generation = AbstractStickyAssignor.DEFAULT_GENERATION,
         )
         subscriptions[consumer2] = buildSubscriptionV2Above(
             topics = topics(topic, topic2, topic3, topic1),
-            partitions = partitions(
+            partitions = listOf(
                 tp(topic, 0),
                 tp(topic2, 0),
                 tp(topic1, 0),
@@ -1291,7 +1291,7 @@ abstract class AbstractStickyAssignorTest {
         )
         subscriptions[consumer3] = buildSubscriptionV2Above(
             topics = topics(topic, topic2, topic3, topic1),
-            partitions = partitions(
+            partitions = listOf(
                 tp(topic3, 2),
                 tp(topic2, 2),
                 tp(topic1, 1),
@@ -1300,7 +1300,7 @@ abstract class AbstractStickyAssignorTest {
         )
         subscriptions[consumer4] = buildSubscriptionV2Above(
             topics = topics(topic, topic2, topic3, topic1),
-            partitions = partitions(
+            partitions = listOf(
                 tp(topic3, 1),
                 tp(topic, 1),
                 tp(topic, 2),
@@ -1311,7 +1311,7 @@ abstract class AbstractStickyAssignorTest {
 
         // ensure assigned partitions don't get reassigned
         assertEquals(
-            expected = partitions(tp(topic1, 2), tp(topic2, 1), tp(topic3, 0)).toSet(),
+            expected = listOf(tp(topic1, 2), tp(topic2, 1), tp(topic3, 0)).toSet(),
             actual = assignment[consumer1]!!.toSet()
         )
         assertTrue(assignor.partitionsTransferringOwnership!!.isEmpty())
@@ -1327,7 +1327,7 @@ abstract class AbstractStickyAssignorTest {
         val currentGeneration = 10
         subscriptions[consumer1] = buildSubscriptionV2Above(
             topics = topics(topic, topic2),
-            partitions = partitions(
+            partitions = listOf(
                 tp(topic, 0),
                 tp(topic2, 1),
                 tp(topic, 1),
@@ -1336,7 +1336,7 @@ abstract class AbstractStickyAssignorTest {
         )
         subscriptions[consumer2] = buildSubscriptionV2Above(
             topics = topics(topic, topic2),
-            partitions = partitions(
+            partitions = listOf(
                 tp(topic, 0),
                 tp(topic2, 1),
                 tp(topic2, 2),
@@ -1345,7 +1345,7 @@ abstract class AbstractStickyAssignorTest {
         )
         val assignment = assignor.assign(partitionsPerTopic, subscriptions)
         assertEquals(
-            expected = partitions(
+            expected = listOf(
                 tp(topic, 0),
                 tp(topic2, 1),
                 tp(topic, 1),
@@ -1353,7 +1353,7 @@ abstract class AbstractStickyAssignorTest {
             actual = assignment[consumer1]!!.toSet(),
         )
         assertEquals(
-            expected = partitions(
+            expected = listOf(
                 tp(topic, 2),
                 tp(topic2, 2),
                 tp(topic2, 0),
@@ -1450,13 +1450,14 @@ abstract class AbstractStickyAssignorTest {
 
     companion object {
 
-        protected fun topics(vararg topics: String): List<String> = topics.toList()
+        internal fun topics(vararg topics: String): List<String> = topics.toList()
 
-        protected fun partitions(vararg partitions: TopicPartition?): List<TopicPartition?>  = partitions.toList()
+        @Deprecated("Use listOf() instead")
+        internal fun partitions(vararg partitions: TopicPartition): List<TopicPartition>  = partitions.toList()
 
-        protected fun tp(topic: String, partition: Int): TopicPartition = TopicPartition(topic, partition)
+        internal fun tp(topic: String, partition: Int): TopicPartition = TopicPartition(topic, partition)
 
-        protected fun isFullyBalanced(assignment: Map<String, List<TopicPartition?>>): Boolean {
+        internal fun isFullyBalanced(assignment: Map<String, List<TopicPartition?>>): Boolean {
             var min = Int.MAX_VALUE
             var max = Int.MIN_VALUE
             for (topicPartitions in assignment.values) {
@@ -1467,7 +1468,7 @@ abstract class AbstractStickyAssignorTest {
             return max - min <= 1
         }
 
-        protected fun getRandomSublist(list: List<String>): List<String> {
+        internal fun getRandomSublist(list: List<String>): List<String> {
             val selectedItems = list.toMutableList()
             val len = list.size
             val howManyToRemove = Random.nextInt(len)
