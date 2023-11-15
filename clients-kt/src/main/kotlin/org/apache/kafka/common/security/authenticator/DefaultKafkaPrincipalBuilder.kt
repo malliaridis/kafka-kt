@@ -51,8 +51,8 @@ import org.apache.kafka.common.security.ssl.SslPrincipalMapper
  * @property sslPrincipalMapper SSL Principal mapper or null if none have been configured
  */
 class DefaultKafkaPrincipalBuilder(
-    private val kerberosShortNamer: KerberosShortNamer,
-    private val sslPrincipalMapper: SslPrincipalMapper,
+    private val kerberosShortNamer: KerberosShortNamer?,
+    private val sslPrincipalMapper: SslPrincipalMapper?,
 ) : KafkaPrincipalBuilder, KafkaPrincipalSerde {
 
     override fun build(context: AuthenticationContext): KafkaPrincipal {
@@ -82,7 +82,7 @@ class DefaultKafkaPrincipalBuilder(
     private fun applyKerberosShortNamer(authorizationId: String): KafkaPrincipal {
         val kerberosName = KerberosName.parse(authorizationId)
         try {
-            val shortName = kerberosShortNamer.shortName(kerberosName)
+            val shortName = kerberosShortNamer!!.shortName(kerberosName)
             return KafkaPrincipal(KafkaPrincipal.USER_TYPE, shortName)
         } catch (e: IOException) {
             throw KafkaException(
@@ -97,8 +97,8 @@ class DefaultKafkaPrincipalBuilder(
             return if (principal !is X500Principal)
                 KafkaPrincipal(KafkaPrincipal.USER_TYPE, principal.name)
             else KafkaPrincipal(
-                KafkaPrincipal.USER_TYPE,
-                sslPrincipalMapper.getName(principal.name)
+                principalType = KafkaPrincipal.USER_TYPE,
+                name = sslPrincipalMapper!!.getName(principal.name),
             )
         } catch (e: IOException) {
             throw KafkaException(

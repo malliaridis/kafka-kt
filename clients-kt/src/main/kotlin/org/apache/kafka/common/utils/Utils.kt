@@ -778,6 +778,7 @@ object Utils {
      * @param T the type of element
      * @return Set
      */
+    @Deprecated("Use Kotlin built-in function setOf() instead")
     @SafeVarargs
     fun <T> mkSet(vararg elems: T): Set<T> {
         val result: MutableSet<T> = HashSet((elems.size / 0.75).toInt() + 1)

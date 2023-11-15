@@ -416,7 +416,7 @@ open class SaslChannelBuilder(
     }
 
     // Visibility for testing
-    protected fun subject(saslMechanism: String): Subject? {
+    fun subject(saslMechanism: String): Subject? {
         return subjects[saslMechanism]
     }
 

@@ -62,7 +62,7 @@ import kotlin.collections.HashSet
  *
  * This class is not thread safe!
  */
-class Selector private constructor(
+open class Selector private constructor(
     private val maxReceiveSize: Int = NetworkReceive.UNLIMITED,
     private val failedAuthenticationDelayMs: Int = NO_FAILED_AUTHENTICATION_DELAY,
     private val time: Time,
@@ -213,7 +213,7 @@ class Selector private constructor(
     // Visible to allow test cases to override. In particular, we use this to implement a blocking
     // connect in order to simulate "immediately connected" sockets.
     @Throws(IOException::class)
-    internal fun doConnect(channel: SocketChannel, address: InetSocketAddress?): Boolean {
+    internal open fun doConnect(channel: SocketChannel, address: InetSocketAddress?): Boolean {
         return try {
             channel.connect(address)
         } catch (e: UnresolvedAddressException) {
@@ -275,7 +275,7 @@ class Selector private constructor(
     }
 
     @Throws(IOException::class)
-    internal fun registerChannel(
+    internal open fun registerChannel(
         id: String,
         socketChannel: SocketChannel,
         interestedOps: Int,
@@ -482,8 +482,8 @@ class Selector private constructor(
      * @param currentTimeNanos time at which set of keys was determined
      */
     // package-private for testing
-    fun pollSelectionKeys(
-        selectionKeys: MutableSet<SelectionKey?>,
+    internal open fun pollSelectionKeys(
+        selectionKeys: Set<SelectionKey?>,
         isImmediatelyConnected: Boolean,
         currentTimeNanos: Long
     ) {
@@ -651,7 +651,7 @@ class Selector private constructor(
         }
     }
 
-    private fun determineHandlingOrder(selectionKeys: MutableSet<SelectionKey?>): MutableCollection<SelectionKey?> {
+    private fun determineHandlingOrder(selectionKeys: Set<SelectionKey?>): Collection<SelectionKey?> {
         //it is possible that the iteration order over selectionKeys is the same every invocation.
         //this may cause starvation of reads when memory is low. to address this we shuffle the keys
         // if memory is low.

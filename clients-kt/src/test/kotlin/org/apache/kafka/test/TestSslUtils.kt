@@ -228,7 +228,7 @@ object TestSslUtils {
 
     @Throws(Exception::class)
     fun convertToPem(
-        sslProps: MutableMap<String?, Any?>,
+        sslProps: MutableMap<String, Any?>,
         writeToFile: Boolean,
         encryptPrivateKey: Boolean,
     ) {
