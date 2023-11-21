@@ -180,7 +180,7 @@ class LazyDownConversionRecords(
                 // which were introduced in V2, so they get dropped during conversion. We return
                 // converted records only when we have at least one valid batch of messages after
                 // conversion.
-                if (convertedRecords.records().sizeInBytes() > 0) return convertedRecords
+                if (convertedRecords.records.sizeInBytes() > 0) return convertedRecords
             }
             return allDone()
         }

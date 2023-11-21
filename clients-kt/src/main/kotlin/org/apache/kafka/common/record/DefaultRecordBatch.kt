@@ -722,11 +722,11 @@ class DefaultRecordBatch internal constructor(
 
             while (iterator.hasNext()) {
                 val record = iterator.next()
-                if (baseTimestamp == null) baseTimestamp = record.timestamp()
-                val timestampDelta = record.timestamp() - baseTimestamp
+                if (baseTimestamp == null) baseTimestamp = record.timestamp
+                val timestampDelta = record.timestamp - baseTimestamp
                 size += DefaultRecord.sizeInBytes(
-                    offsetDelta++, timestampDelta, record.key(), record.value(),
-                    record.headers()
+                    offsetDelta++, timestampDelta, record.key, record.value,
+                    record.headers
                 )
             }
 

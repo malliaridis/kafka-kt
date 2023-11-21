@@ -95,8 +95,8 @@ abstract class AbstractRecords : Records {
                 records.forEach { record ->
                     size += Records.LOG_OVERHEAD + LegacyRecord.recordSize(
                         magic,
-                        record.key(),
-                        record.value()
+                        record.key,
+                        record.value
                     )
                 }
             } else size = DefaultRecordBatch.sizeInBytes(records)

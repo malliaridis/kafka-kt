@@ -438,7 +438,7 @@ class MemoryRecords private constructor(private val buffer: ByteBuffer) : Abstra
 
                 // If we had to allocate a new buffer to fit the filtered buffer (see KAFKA-5316), return early to
                 // avoid the need for additional allocations.
-                val outputBuffer = bufferOutputStream.buffer()
+                val outputBuffer = bufferOutputStream.buffer
                 if (outputBuffer !== destinationBuffer) {
                     filterResult.outputBuffer = outputBuffer
                     return filterResult
