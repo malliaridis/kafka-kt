@@ -28,67 +28,74 @@ import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 
 class TxnOffsetCommitRequestTest : OffsetCommitRequestTest() {
+
+    private lateinit var offsets: Map<TopicPartition, CommittedOffset>
+
+    private lateinit var builder: TxnOffsetCommitRequest.Builder
+
+    private lateinit var builderWithGroupMetadata: TxnOffsetCommitRequest.Builder
     
     @BeforeEach
     override fun setUp() {
         super.setUp()
-        offsets.clear()
-        offsets[TopicPartition(topicOne, partitionOne)] = CommittedOffset(
-            offset = offset,
-            metadata = metadata,
-            leaderEpoch = leaderEpoch.toInt(),
-        )
-        offsets[TopicPartition(topicTwo, partitionTwo)] = CommittedOffset(
-            offset = offset,
-            metadata = metadata,
-            leaderEpoch = leaderEpoch.toInt(),
+        offsets = mapOf(
+            TopicPartition(TOPIC_ONE, PARTITION_ONE) to CommittedOffset(
+                offset = OFFSET,
+                metadata = METADATA,
+                leaderEpoch = LEADER_EPOCH.toInt(),
+            ),
+            TopicPartition(TOPIC_TWO, PARTITION_TWO) to CommittedOffset(
+                offset = OFFSET,
+                metadata = METADATA,
+                leaderEpoch = LEADER_EPOCH.toInt(),
+            ),
         )
         builder = TxnOffsetCommitRequest.Builder(
             transactionalId = TRANSACTIONAL_ID,
-            consumerGroupId = groupId,
+            consumerGroupId = GROUP_ID,
             producerId = PRODUCER_ID.toLong(),
             producerEpoch = PRODUCER_EPOCH,
             pendingTxnOffsetCommits = offsets,
         )
         builderWithGroupMetadata = TxnOffsetCommitRequest.Builder(
             transactionalId = TRANSACTIONAL_ID,
-            consumerGroupId = groupId,
+            consumerGroupId = GROUP_ID,
             producerId = PRODUCER_ID.toLong(),
             producerEpoch = PRODUCER_EPOCH,
             pendingTxnOffsetCommits = offsets,
-            memberId = memberId,
+            memberId = MEMBER_ID,
             generationId = GENERATION_ID,
-            groupInstanceId = groupInstanceId,
+            groupInstanceId = GROUP_INSTANCE_ID,
         )
     }
 
     @Test
     override fun testConstructor() {
         val errorsMap = mapOf(
-            TopicPartition(topicOne, partitionOne) to Errors.NOT_COORDINATOR,
-            TopicPartition(topicTwo, partitionTwo) to Errors.NOT_COORDINATOR,
+            TopicPartition(TOPIC_ONE, PARTITION_ONE) to Errors.NOT_COORDINATOR,
+            TopicPartition(TOPIC_TWO, PARTITION_TWO) to Errors.NOT_COORDINATOR,
         )
         val expectedTopics = listOf(
             TxnOffsetCommitRequestTopic()
-                .setName(topicOne)
+                .setName(TOPIC_ONE)
                 .setPartitions(
                     listOf(
                         TxnOffsetCommitRequestPartition()
-                            .setPartitionIndex(partitionOne)
-                            .setCommittedOffset(offset)
-                            .setCommittedLeaderEpoch(leaderEpoch.toInt())
-                            .setCommittedMetadata(metadata)
+                            .setPartitionIndex(PARTITION_ONE)
+                            .setCommittedOffset(OFFSET)
+                            .setCommittedLeaderEpoch(LEADER_EPOCH.toInt())
+                            .setCommittedMetadata(METADATA)
                     )
                 ),
             TxnOffsetCommitRequestTopic()
-                .setName(topicTwo)
+                .setName(TOPIC_TWO)
                 .setPartitions(
                     listOf(
                         TxnOffsetCommitRequestPartition()
-                            .setPartitionIndex(partitionTwo)
-                            .setCommittedOffset(offset)
-                            .setCommittedLeaderEpoch(leaderEpoch.toInt())
-                            .setCommittedMetadata(metadata),
+                            .setPartitionIndex(PARTITION_TWO)
+                            .setCommittedOffset(OFFSET)
+                            .setCommittedLeaderEpoch(LEADER_EPOCH.toInt())
+                            .setCommittedMetadata(METADATA),
                     )
                 )
         )
@@ -99,12 +106,12 @@ class TxnOffsetCommitRequestTest : OffsetCommitRequestTest() {
             assertEquals(expectedTopics, TxnOffsetCommitRequest.getTopics(request.offsets()))
 
             val response = request.getErrorResponse(
-                throttleTimeMs = throttleTimeMs,
+                throttleTimeMs = THROTTLE_TIME_MS,
                 e = Errors.NOT_COORDINATOR.exception!!,
             )
             assertEquals(errorsMap, response.errors())
             assertEquals(mapOf(Errors.NOT_COORDINATOR to 2), response.errorCounts())
-            assertEquals(throttleTimeMs, response.throttleTimeMs())
+            assertEquals(THROTTLE_TIME_MS, response.throttleTimeMs())
         }
     }
 
@@ -117,11 +124,5 @@ class TxnOffsetCommitRequestTest : OffsetCommitRequestTest() {
         private const val PRODUCER_EPOCH: Short = 1
         
         private const val GENERATION_ID = 5
-        
-        private val offsets = mutableMapOf<TopicPartition, CommittedOffset>()
-        
-        private lateinit var builder: TxnOffsetCommitRequest.Builder
-        
-        private lateinit var builderWithGroupMetadata: TxnOffsetCommitRequest.Builder
     }
 }

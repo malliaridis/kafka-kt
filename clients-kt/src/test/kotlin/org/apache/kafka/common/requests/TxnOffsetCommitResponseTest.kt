@@ -29,30 +29,30 @@ class TxnOffsetCommitResponseTest : OffsetCommitResponseTest() {
 
     @Test
     override fun testConstructorWithErrorResponse() {
-        val response = TxnOffsetCommitResponse(throttleTimeMs, errorsMap)
+        val response = TxnOffsetCommitResponse(THROTTLE_TIME_MS, errorsMap)
         assertEquals(errorsMap, response.errors())
         assertEquals(expectedErrorCounts, response.errorCounts())
-        assertEquals(throttleTimeMs, response.throttleTimeMs())
+        assertEquals(THROTTLE_TIME_MS, response.throttleTimeMs())
     }
 
     @Test
     override fun testParse() {
         val data = TxnOffsetCommitResponseData()
-            .setThrottleTimeMs(throttleTimeMs)
+            .setThrottleTimeMs(THROTTLE_TIME_MS)
             .setTopics(
                 listOf(
                     TxnOffsetCommitResponseTopic().setPartitions(
                         listOf(
                             TxnOffsetCommitResponsePartition()
-                                .setPartitionIndex(partitionOne)
-                                .setErrorCode(errorOne.code)
+                                .setPartitionIndex(PARTITION_ONE)
+                                .setErrorCode(ERROR_ONE.code)
                         )
                     ),
                     TxnOffsetCommitResponseTopic().setPartitions(
                         listOf(
                             TxnOffsetCommitResponsePartition()
-                                .setPartitionIndex(partitionTwo)
-                                .setErrorCode(errorTwo.code),
+                                .setPartitionIndex(PARTITION_TWO)
+                                .setErrorCode(ERROR_TWO.code),
                         )
                     )
                 )
@@ -63,7 +63,7 @@ class TxnOffsetCommitResponseTest : OffsetCommitResponseTest() {
                 version = version
             )
             assertEquals(expectedErrorCounts, response.errorCounts())
-            assertEquals(throttleTimeMs, response.throttleTimeMs())
+            assertEquals(THROTTLE_TIME_MS, response.throttleTimeMs())
             assertEquals(version >= 1, response.shouldClientThrottle(version))
         }
     }

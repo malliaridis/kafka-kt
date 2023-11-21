@@ -40,7 +40,7 @@ class ConfigResourceTest {
         ConfigResource.Type.values().forEach { type ->
             assertEquals(
                 expected = type,
-                actual = ConfigResource.Type.forId(type.id()),
+                actual = ConfigResource.Type.forId(type.id),
                 message = type.toString()
             )
         }

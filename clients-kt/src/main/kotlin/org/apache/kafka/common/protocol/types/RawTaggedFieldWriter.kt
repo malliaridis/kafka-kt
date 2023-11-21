@@ -60,9 +60,9 @@ class RawTaggedFieldWriter private constructor(private val fields: List<RawTagge
                             "higher than it."
                 )
 
-            writable.writeUnsignedVarint(field.tag())
-            writable.writeUnsignedVarint(field.data().size)
-            writable.writeByteArray(field.data())
+            writable.writeUnsignedVarint(field.tag)
+            writable.writeUnsignedVarint(field.data.size)
+            writable.writeByteArray(field.data)
             prevTag = tag
         }
     }

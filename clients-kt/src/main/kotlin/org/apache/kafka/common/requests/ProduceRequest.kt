@@ -61,7 +61,7 @@ class ProduceRequest(
         get() = this.data.transactionalId
 
     // the partitionSizes is lazily initialized since it is used by server-side in production.
-    private val partitionSizes: MutableMap<TopicPartition, Int> by lazy {
+    val partitionSizes: MutableMap<TopicPartition, Int> by lazy {
         // this method may be called by different thread (see the comment on data)
         val partitionSizes = mutableMapOf<TopicPartition, Int>()
         this.data.topicData.forEach { topicData ->
