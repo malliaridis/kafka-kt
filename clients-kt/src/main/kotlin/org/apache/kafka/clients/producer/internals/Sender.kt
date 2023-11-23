@@ -533,7 +533,7 @@ class Sender(
         now: Long,
     ) {
         val requestHeader = response.requestHeader
-        val correlationId = requestHeader.correlationId()
+        val correlationId = requestHeader.correlationId
         if (response.disconnected) {
             log.trace(
                 "Cancelled request with header {} due to node {} being disconnected",
@@ -571,21 +571,21 @@ class Sender(
                 // ProduceResponse.PartitionResponse
                 // https://issues.apache.org/jira/browse/KAFKA-10696
                 val produceResponse = response.responseBody as ProduceResponse
-                produceResponse.data().responses().forEach { r ->
-                    r.partitionResponses().forEach { p ->
-                        val tp = TopicPartition(r.name(), p.index())
+                produceResponse.data().responses.forEach { r ->
+                    r.partitionResponses.forEach { p ->
+                        val tp = TopicPartition(r.name, p.index)
                         val partResp = ProduceResponse.PartitionResponse(
-                            Errors.forCode(p.errorCode()),
-                            p.baseOffset(),
-                            p.logAppendTimeMs(),
-                            p.logStartOffset(),
-                            p.recordErrors().map { e ->
+                            Errors.forCode(p.errorCode),
+                            p.baseOffset,
+                            p.logAppendTimeMs,
+                            p.logStartOffset,
+                            p.recordErrors.map { e ->
                                 RecordError(
-                                    batchIndex = e.batchIndex(),
-                                    message = e.batchIndexErrorMessage(),
+                                    batchIndex = e.batchIndex,
+                                    message = e.batchIndexErrorMessage,
                                 )
                             },
-                            p.errorMessage(),
+                            p.errorMessage,
                         )
                         val batch = batches[tp]!!
                         completeBatch(
@@ -854,11 +854,10 @@ class Sender(
                 tpData = TopicProduceData().setName(tp.topic)
                 tpd.add(tpData)
             }
-            tpData.partitionData().add(
-                PartitionProduceData()
-                    .setIndex(tp.partition)
-                    .setRecords(records)
-            )
+            tpData.partitionData += PartitionProduceData()
+                .setIndex(tp.partition)
+                .setRecords(records)
+
             recordsByPartition[tp] = batch
         }
         var transactionalId: String? = null

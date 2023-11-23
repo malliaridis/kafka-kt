@@ -30,13 +30,13 @@ class BrokerHeartbeatResponse(
 
     override fun data(): BrokerHeartbeatResponseData = data
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
     }
 
-    override fun errorCounts(): Map<Errors, Int> = mapOf(Errors.forCode(data.errorCode()) to 1)
+    override fun errorCounts(): Map<Errors, Int> = mapOf(Errors.forCode(data.errorCode) to 1)
 
     override fun shouldClientThrottle(version: Short): Boolean = true
 
@@ -44,7 +44,7 @@ class BrokerHeartbeatResponse(
 
         fun parse(buffer: ByteBuffer, version: Short): BrokerHeartbeatResponse =
             BrokerHeartbeatResponse(
-                BrokerHeartbeatResponseData(ByteBufferAccessor(buffer),version)
+                BrokerHeartbeatResponseData(ByteBufferAccessor(buffer), version)
             )
     }
 }

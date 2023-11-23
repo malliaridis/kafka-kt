@@ -68,13 +68,11 @@ class AlterConsumerGroupOffsetsHandler(
         offsets.forEach { (topicPartition, offsetAndMetadata) ->
             offsetData.computeIfAbsent(topicPartition.topic) {
                 OffsetCommitRequestTopic().setName(topicPartition.topic)
-            }.partitions().add(
-                OffsetCommitRequestPartition()
-                    .setCommittedOffset(offsetAndMetadata.offset)
-                    .setCommittedLeaderEpoch(offsetAndMetadata.leaderEpoch() ?: -1)
-                    .setCommittedMetadata(offsetAndMetadata.metadata)
-                    .setPartitionIndex(topicPartition.partition)
-            )
+            }.partitions += OffsetCommitRequestPartition()
+                .setCommittedOffset(offsetAndMetadata.offset)
+                .setCommittedLeaderEpoch(offsetAndMetadata.leaderEpoch() ?: -1)
+                .setCommittedMetadata(offsetAndMetadata.metadata)
+                .setPartitionIndex(topicPartition.partition)
         }
         val data = OffsetCommitRequestData()
             .setGroupId(groupId.idValue)
@@ -93,10 +91,10 @@ class AlterConsumerGroupOffsetsHandler(
         val groupsToUnmap: MutableSet<CoordinatorKey> = HashSet()
         val groupsToRetry: MutableSet<CoordinatorKey> = HashSet()
         val partitionResults: MutableMap<TopicPartition, Errors> = HashMap()
-        for (topic: OffsetCommitResponseTopic in response.data().topics()) {
-            for (partition: OffsetCommitResponsePartition in topic.partitions()) {
-                val topicPartition = TopicPartition(topic.name(), partition.partitionIndex())
-                val error = Errors.forCode(partition.errorCode())
+        for (topic: OffsetCommitResponseTopic in response.data().topics) {
+            for (partition: OffsetCommitResponsePartition in topic.partitions) {
+                val topicPartition = TopicPartition(topic.name, partition.partitionIndex)
+                val error = Errors.forCode(partition.errorCode)
                 if (error !== Errors.NONE) {
                     handleError(
                         groupId = groupId,

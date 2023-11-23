@@ -366,7 +366,7 @@ open class AbstractConfig(
         key: String,
         t: Class<T>,
         configOverrides: Map<String, Any?> = emptyMap<String, Any>(),
-    ): T {
+    ): T? {
         val c = getClass(key)
         return getConfiguredInstance(c, t, originals(configOverrides))
     }
@@ -398,7 +398,7 @@ open class AbstractConfig(
     fun <T> getConfiguredInstances(
         key: String,
         t: Class<T>,
-        configOverrides: Map<String, Any>
+        configOverrides: Map<String, Any?>
     ): List<T> {
         return getConfiguredInstances(getList(key), t, configOverrides)
     }
@@ -417,7 +417,7 @@ open class AbstractConfig(
     fun <T> getConfiguredInstances(
         classNames: List<String>?,
         t: Class<T>,
-        configOverrides: Map<String, Any>?
+        configOverrides: Map<String, Any?>?
     ): List<T> {
         val objects: MutableList<T> = ArrayList()
 
@@ -429,7 +429,7 @@ open class AbstractConfig(
 
         try {
             classNames.forEach { klass ->
-                val o: T = getConfiguredInstance(klass, t, configPairs)
+                val o: T? = getConfiguredInstance(klass, t, configPairs)
                 objects.add(t.cast(o))
             }
         } catch (e: Exception) {
@@ -644,10 +644,6 @@ open class AbstractConfig(
         const val CONFIG_PROVIDERS_CONFIG = "config.providers"
 
         private const val CONFIG_PROVIDERS_PARAM = ".param."
-
-        private fun maybeClose(obj: Any, name: String) {
-            if (obj is AutoCloseable) Utils.closeQuietly(obj, name)
-        }
 
         private fun <T> maybeClose(obj: T, name: String) {
             if (obj is AutoCloseable) Utils.closeQuietly(obj, name)

@@ -286,7 +286,7 @@ open class JmxReporter : MetricsReporter {
             mBeanName.append(":type=")
             mBeanName.append(metricName.group)
             for ((key, value) in metricName.tags) {
-                if (key.length <= 0 || value.length <= 0) continue
+                if (key.isEmpty() || value.isNullOrEmpty()) continue
                 mBeanName.append(",")
                 mBeanName.append(key)
                 mBeanName.append("=")

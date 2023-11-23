@@ -35,7 +35,7 @@ class DescribeGroupsRequest private constructor(
             throttleTimeMs = if (version.toInt() == 0) AbstractResponse.DEFAULT_THROTTLE_TIME
             else throttleTimeMs,
             error = Errors.forException(e),
-            groupIds = data.groups()
+            groupIds = data.groups
         )
 
     class Builder(

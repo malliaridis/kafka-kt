@@ -36,14 +36,12 @@ class CreatePartitionsRequest internal constructor(
         response.setThrottleTimeMs(throttleTimeMs)
         val (error, message) = ApiError.fromThrowable(e)
 
-        response.results().addAll(
-            data.topics().map { topic ->
-                CreatePartitionsTopicResult()
-                    .setName(topic.name())
-                    .setErrorCode(error.code)
-                    .setErrorMessage(message)
-            }
-        )
+        response.results += data.topics.map { topic ->
+            CreatePartitionsTopicResult()
+                .setName(topic.name)
+                .setErrorCode(error.code)
+                .setErrorMessage(message)
+        }
 
         return CreatePartitionsResponse(response)
     }

@@ -178,7 +178,7 @@ open class ForwardingAdmin(configs: Map<String, Any?>) : Admin {
         delegate.alterPartitionReassignments(reassignments, options)
 
     override fun listPartitionReassignments(
-        partitions: Set<TopicPartition>?,
+        partitions: Set<TopicPartition>,
         options: ListPartitionReassignmentsOptions,
     ): ListPartitionReassignmentsResult = delegate.listPartitionReassignments(partitions, options)
 

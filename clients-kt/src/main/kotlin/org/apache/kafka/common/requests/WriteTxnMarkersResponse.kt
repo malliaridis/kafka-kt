@@ -56,11 +56,10 @@ class WriteTxnMarkersResponse : AbstractResponse {
                     topicName,
                     WritableTxnMarkerTopicResult().setName(topicName)
                 )
-                topic.partitions().add(
-                    WritableTxnMarkerPartitionResult()
-                        .setErrorCode(value1.code)
-                        .setPartitionIndex(topicPartition.partition)
-                )
+                topic.partitions += WritableTxnMarkerPartitionResult()
+                    .setErrorCode(value1.code)
+                    .setPartitionIndex(topicPartition.partition)
+
                 responseTopicDataMap[topicName] = topic
             }
             WritableTxnMarkerResult()
@@ -80,19 +79,19 @@ class WriteTxnMarkersResponse : AbstractResponse {
     fun errorsByProducerId(): Map<Long, Map<TopicPartition, Errors>> {
         val errors = mutableMapOf<Long, Map<TopicPartition, Errors>>()
 
-        for (marker in data.markers()) {
+        for (marker in data.markers) {
             val topicPartitionErrorsMap: MutableMap<TopicPartition, Errors> = HashMap()
-            for (topic in marker.topics()) {
-                for (partitionResult in topic.partitions()) {
+            for (topic in marker.topics) {
+                for (partitionResult in topic.partitions) {
                     topicPartitionErrorsMap[
                         TopicPartition(
-                            topic.name(),
-                            partitionResult.partitionIndex()
+                            topic.name,
+                            partitionResult.partitionIndex
                         )
-                    ] = Errors.forCode(partitionResult.errorCode())
+                    ] = Errors.forCode(partitionResult.errorCode)
                 }
             }
-            errors[marker.producerId()] = topicPartitionErrorsMap
+            errors[marker.producerId] = topicPartitionErrorsMap
         }
         return errors
     }
@@ -105,10 +104,10 @@ class WriteTxnMarkersResponse : AbstractResponse {
     override fun errorCounts(): Map<Errors, Int> {
         val errorCounts = mutableMapOf<Errors, Int>()
 
-        for (marker in data.markers()) {
-            for (topic in marker.topics()) {
-                for (partitionResult in topic.partitions())
-                    updateErrorCounts(errorCounts, Errors.forCode(partitionResult.errorCode()))
+        for (marker in data.markers) {
+            for (topic in marker.topics) {
+                for (partitionResult in topic.partitions)
+                    updateErrorCounts(errorCounts, Errors.forCode(partitionResult.errorCode))
             }
         }
 

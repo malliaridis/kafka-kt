@@ -33,15 +33,15 @@ class CreatePartitionsResponse(
 
     override fun errorCounts(): Map<Errors, Int> {
         val counts = mutableMapOf<Errors, Int>()
-        data.results().forEach { result ->
-            updateErrorCounts(counts, Errors.forCode(result.errorCode()))
+        data.results.forEach { result ->
+            updateErrorCounts(counts, Errors.forCode(result.errorCode))
         }
         return counts
     }
 
     override fun shouldClientThrottle(version: Short): Boolean = version >= 1
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)

@@ -62,15 +62,13 @@ class OffsetsForLeaderEpochClient internal constructor(
                     topic = OffsetForLeaderTopic().setTopic(topicPartition.topic)
                     topics.add(topic)
                 }
-                topic.partitions().add(
-                    OffsetForLeaderPartition()
-                        .setPartition(topicPartition.partition)
-                        .setLeaderEpoch(fetchEpoch)
-                        .setCurrentLeaderEpoch(
-                            fetchPosition.currentLeader.epoch
-                                ?: RecordBatch.NO_PARTITION_LEADER_EPOCH
-                        )
-                )
+                topic.partitions += OffsetForLeaderPartition()
+                    .setPartition(topicPartition.partition)
+                    .setLeaderEpoch(fetchEpoch)
+                    .setCurrentLeaderEpoch(
+                        fetchPosition.currentLeader.epoch
+                            ?: RecordBatch.NO_PARTITION_LEADER_EPOCH
+                    )
             }
         }
         return OffsetsForLeaderEpochRequest.Builder.forConsumer(topics)
@@ -86,9 +84,9 @@ class OffsetsForLeaderEpochClient internal constructor(
         val endOffsets =
             mutableMapOf<TopicPartition, OffsetForLeaderEpochResponseData.EpochEndOffset>()
 
-        for (topic in response!!.data().topics()) {
-            for (partition in topic.partitions()) {
-                val topicPartition = TopicPartition(topic.topic(), partition.partition())
+        for (topic in response!!.data().topics) {
+            for (partition in topic.partitions) {
+                val topicPartition = TopicPartition(topic.topic, partition.partition)
                 if (!requestData.containsKey(topicPartition)) {
                     logger().warn(
                         "Received unrequested topic or partition {} from response, ignoring.",
@@ -96,13 +94,13 @@ class OffsetsForLeaderEpochClient internal constructor(
                     )
                     continue
                 }
-                when (val error = Errors.forCode(partition.errorCode())) {
+                when (val error = Errors.forCode(partition.errorCode)) {
                     Errors.NONE -> {
                         logger().debug(
                             "Handling OffsetsForLeaderEpoch response for {}. Got offset {} for epoch {}.",
                             topicPartition,
-                            partition.endOffset(),
-                            partition.leaderEpoch(),
+                            partition.endOffset,
+                            partition.leaderEpoch,
                         )
                         endOffsets[topicPartition] = partition
                         partitionsToRetry.remove(topicPartition)

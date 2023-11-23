@@ -83,7 +83,7 @@ class DefaultEventHandler : EventHandler {
         val netClient = NetworkClient(
             selector = selector,
             metadata = metadata,
-            clientId = config.getString(ConsumerConfig.CLIENT_ID_CONFIG)!!,
+            clientId = config.getString(ConsumerConfig.CLIENT_ID_CONFIG),
             maxInFlightRequestsPerConnection = 100, // a fixed large enough value will suffice for
             // max in-flight requests
             reconnectBackoffMs = config.getLong(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG)!!,

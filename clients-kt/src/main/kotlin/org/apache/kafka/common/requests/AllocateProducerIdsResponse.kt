@@ -36,15 +36,15 @@ class AllocateProducerIdsResponse(
      *
      * @return A count of errors.
      */
-    override fun errorCounts(): Map<Errors, Int> = mapOf(Errors.forCode(data.errorCode()) to 1)
+    override fun errorCounts(): Map<Errors, Int> = mapOf(Errors.forCode(data.errorCode) to 1)
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
     }
 
-    fun error(): Errors = Errors.forCode(data.errorCode())
+    fun error(): Errors = Errors.forCode(data.errorCode)
 
     companion object {
 

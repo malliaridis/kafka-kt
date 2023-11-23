@@ -79,13 +79,13 @@ class FenceProducersHandler(
     ): ApiResult<CoordinatorKey, ProducerIdAndEpoch> {
         response as InitProducerIdResponse
 
-        val error = Errors.forCode(response.data().errorCode())
+        val error = Errors.forCode(response.data().errorCode)
         if (error !== Errors.NONE) return handleError(key, error)
 
         val completed = mapOf(
             key to ProducerIdAndEpoch(
-                response.data().producerId(),
-                response.data().producerEpoch()
+                response.data().producerId,
+                response.data().producerEpoch
             )
         )
         return ApiResult(completed, emptyMap(), emptyList())

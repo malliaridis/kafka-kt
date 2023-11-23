@@ -21,7 +21,6 @@ import java.io.UnsupportedEncodingException
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import java.util.regex.Pattern
 import javax.management.ObjectName
 import org.apache.kafka.common.KafkaException
 
@@ -41,14 +40,14 @@ object Sanitizer {
      * containing special characters to be safe. All characters in strings sanitized using
      * [sanitize] are safe for JMX and hence included here.
      */
-    private val MBEAN_PATTERN = Pattern.compile("[\\w-%\\. \t]*")
+    private val MBEAN_PATTERN = Regex("[\\w-%. \t]*")
 
     /**
      * Sanitize `name` for safe use as JMX metric name as well as ZooKeeper node name using
      * URL-encoding.
      */
     fun sanitize(name: String?): String {
-        var encoded = ""
+        val encoded: String
         return try {
             encoded = URLEncoder.encode(name, StandardCharsets.UTF_8.name())
             val builder = StringBuilder()
@@ -82,7 +81,7 @@ object Sanitizer {
      * in JMX. User principals that are already sanitized using [sanitize] will not be quoted since
      * they are safe for JMX.
      */
-    fun jmxSanitize(name: String): String =
-        if (MBEAN_PATTERN.matcher(name).matches()) name
+    fun jmxSanitize(name: String?): String =
+        if (name?.let { MBEAN_PATTERN.matches(it) } == true) name
         else ObjectName.quote(name)
 }

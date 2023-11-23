@@ -480,8 +480,8 @@ class SubscriptionState(
                 currentPosition,
                 requestPosition,
             ) else if (
-                epochEndOffset.endOffset() == OffsetsForLeaderEpochResponse.UNDEFINED_EPOCH_OFFSET
-                || epochEndOffset.leaderEpoch() == OffsetsForLeaderEpochResponse.UNDEFINED_EPOCH
+                epochEndOffset.endOffset == OffsetsForLeaderEpochResponse.UNDEFINED_EPOCH_OFFSET
+                || epochEndOffset.leaderEpoch == OffsetsForLeaderEpochResponse.UNDEFINED_EPOCH
             ) {
                 if (hasDefaultOffsetResetPolicy()) {
                     log.info(
@@ -501,11 +501,11 @@ class SubscriptionState(
                         fetchPosition = requestPosition,
                     )
                 }
-            } else if (epochEndOffset.endOffset() < currentPosition.offset) {
+            } else if (epochEndOffset.endOffset < currentPosition.offset) {
                 if (hasDefaultOffsetResetPolicy()) {
                     val newPosition = FetchPosition(
-                        offset = epochEndOffset.endOffset(),
-                        offsetEpoch = epochEndOffset.leaderEpoch(),
+                        offset = epochEndOffset.endOffset,
+                        offsetEpoch = epochEndOffset.leaderEpoch,
                         currentLeader = currentPosition.currentLeader,
                     )
                     log.info(
@@ -518,8 +518,8 @@ class SubscriptionState(
                     state.seekValidated(newPosition)
                 } else {
                     val divergentOffset = OffsetAndMetadata(
-                        offset = epochEndOffset.endOffset(),
-                        leaderEpoch = epochEndOffset.leaderEpoch(),
+                        offset = epochEndOffset.endOffset,
+                        leaderEpoch = epochEndOffset.leaderEpoch,
                     )
                     log.warn(
                         "Truncation detected for partition {} at offset {} (the end offset from " +

@@ -78,7 +78,7 @@ data class MetricName(
     val name: String,
     val group: String,
     val description: String,
-    val tags: Map<String, String>
+    val tags: Map<String, String?>
 ) {
 
     @Deprecated(
@@ -101,7 +101,7 @@ data class MetricName(
         message = "Use property instead.",
         replaceWith = ReplaceWith("tags")
     )
-    fun tags(): Map<String, String> {
+    fun tags(): Map<String, String?> {
         return tags
     }
 

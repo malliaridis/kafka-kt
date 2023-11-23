@@ -17,30 +17,37 @@
 
 package org.apache.kafka.common.network
 
-data class CipherInformation(
-    val cipher: String,
-    val protocol: String,
+class CipherInformation(
+    cipher: String? = null,
+    protocol: String? = null,
 ) {
 
-    constructor(
-        cipher: String? = null,
-        protocol: String? = null,
-    ) : this(
-        cipher = if (cipher.isNullOrEmpty()) "unknown" else cipher,
-        protocol = if (protocol.isNullOrEmpty()) "unknown" else protocol,
-    )
+    val cipher: String
 
-    @Deprecated(
-        message = "Use property instead",
-        replaceWith = ReplaceWith("cipher")
-    )
-    fun cipher(): String = cipher
+    val protocol: String
 
-    @Deprecated(
-        message = "Use property instead",
-        replaceWith = ReplaceWith("protocol")
-    )
-    fun protocol(): String = protocol
+    init {
+        this.cipher = if (cipher.isNullOrEmpty()) "unknown" else cipher
+        this.protocol = if (protocol.isNullOrEmpty()) "unknown" else protocol
+    }
 
     override fun toString(): String = "CipherInformation(cipher=$cipher, protocol=$protocol)"
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as CipherInformation
+
+        if (cipher != other.cipher) return false
+        if (protocol != other.protocol) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = cipher.hashCode()
+        result = 31 * result + protocol.hashCode()
+        return result
+    }
 }

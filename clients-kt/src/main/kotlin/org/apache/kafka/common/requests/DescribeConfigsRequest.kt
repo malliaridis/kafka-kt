@@ -37,12 +37,12 @@ class DescribeConfigsRequest(
             DescribeConfigsResponseData()
                 .setThrottleTimeMs(throttleTimeMs)
                 .setResults(
-                    data.resources().map { result ->
+                    data.resources.map { result ->
                         DescribeConfigsResponseData.DescribeConfigsResult()
                             .setErrorCode(error.code)
                             .setErrorMessage(error.message)
-                            .setResourceName(result.resourceName())
-                            .setResourceType(result.resourceType())
+                            .setResourceName(result.resourceName)
+                            .setResourceType(result.resourceType)
                     }
                 )
         )

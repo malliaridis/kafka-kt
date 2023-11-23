@@ -628,7 +628,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
     ): TransactionManager? {
         var transactionManager: TransactionManager? = null
         if (config.getBoolean(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG)!!) {
-            val transactionalId = config.getString(ProducerConfig.TRANSACTIONAL_ID_CONFIG)
+            val transactionalId = config.getString(ProducerConfig.TRANSACTIONAL_ID_CONFIG)!!
             val transactionTimeoutMs = config.getInt(ProducerConfig.TRANSACTION_TIMEOUT_CONFIG)!!
             val retryBackoffMs = config.getLong(ProducerConfig.RETRY_BACKOFF_MS_CONFIG)!!
             transactionManager = TransactionManager(
@@ -1705,12 +1705,6 @@ open class KafkaProducer<K, V> : Producer<K, V> {
                 )
             }
         }
-
-        @Deprecated(
-            message = "User property instead",
-            replaceWith = ReplaceWith("partition"),
-        )
-        fun getPartition(): Int = partition
 
         fun topicPartition(): TopicPartition? {
             if (topicPartition == null && topic != null) {

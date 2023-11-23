@@ -31,7 +31,7 @@ dependencies {
     testRuntimeOnly(Deps.Libs.jacksonDatabind)
     testRuntimeOnly(Deps.Libs.jacksonJDK8Datatypes)
 
-    generator(project(":generator"))
+    generator(project(":generator-kt"))
 }
 
 tasks.register("createVersionFile") {
@@ -84,7 +84,7 @@ tasks.register<JavaExec>("processMessages") {
     classpath = generator
     args = listOf(
         "-p", "org.apache.kafka.common.message",
-        "-o", "src/generated/java/org/apache/kafka/common/message",
+        "-o", "src/generated/kotlin/org/apache/kafka/common/message",
         "-i", "src/main/resources/common/message",
         "-t", "ApiMessageTypeGenerator",
         "-m", "MessageDataGenerator", "JsonConverterGenerator",
@@ -93,7 +93,7 @@ tasks.register<JavaExec>("processMessages") {
         .withPropertyName("messages")
         .withPathSensitivity(PathSensitivity.RELATIVE)
     outputs.cacheIf { true }
-    outputs.dir("src/generated/java/org/apache/kafka/common/message")
+    outputs.dir("src/generated/kotlin/org/apache/kafka/common/message")
 }
 
 tasks.register<JavaExec>("processTestMessages") {
@@ -101,7 +101,7 @@ tasks.register<JavaExec>("processTestMessages") {
     classpath = generator
     args = listOf(
         "-p", "org.apache.kafka.common.message",
-        "-o", "src/generated-test/java/org/apache/kafka/common/message",
+        "-o", "src/generated-test/kotlin/org/apache/kafka/common/message",
         "-i", "src/test/resources/common/message",
         "-m", "MessageDataGenerator", "JsonConverterGenerator",
     )
@@ -109,15 +109,23 @@ tasks.register<JavaExec>("processTestMessages") {
         .withPropertyName("testMessages")
         .withPathSensitivity(PathSensitivity.RELATIVE)
     outputs.cacheIf { true }
-    outputs.dir("src/generated-test/java/org/apache/kafka/common/message")
+    outputs.dir("src/generated-test/kotlin/org/apache/kafka/common/message")
 }
 
 java.sourceSets["main"].java {
     srcDir("src/generated/java")
 }
 
+kotlin.sourceSets["main"].kotlin {
+    srcDir("src/generated/kotlin")
+}
+
 java.sourceSets["test"].java {
     srcDir("src/generated-test/java")
+}
+
+kotlin.sourceSets["test"].kotlin {
+    srcDir("src/generated-test/kotlin")
 }
 
 tasks.compileKotlin {

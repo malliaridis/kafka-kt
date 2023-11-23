@@ -30,32 +30,32 @@ class DescribeClientQuotasResponse(
 ) : AbstractResponse(ApiKeys.DESCRIBE_CLIENT_QUOTAS) {
 
     fun complete(future: KafkaFutureImpl<Map<ClientQuotaEntity, Map<String, Double>>>) {
-        val error = Errors.forCode(data.errorCode())
+        val error = Errors.forCode(data.errorCode)
 
         if (error !== Errors.NONE) {
-            future.completeExceptionally(error.exception(data.errorMessage()))
+            future.completeExceptionally(error.exception(data.errorMessage))
             return
         }
 
         val result: Map<ClientQuotaEntity, Map<String, Double>> =
-            data.entries().associate { entry ->
-                val entityMap = entry.entity().associateBy(
-                    keySelector = DescribeClientQuotasResponseData.EntityData::entityType,
-                    valueTransform = DescribeClientQuotasResponseData.EntityData::entityName,
+            data.entries?.associate { entry ->
+                val entityMap = entry.entity.associateBy(
+                    keySelector = { it.entityType },
+                    valueTransform = { it.entityName },
                 )
 
-                val values = entry.values().associateBy(
-                    keySelector = DescribeClientQuotasResponseData.ValueData::key,
-                    valueTransform = DescribeClientQuotasResponseData.ValueData::value,
+                val values = entry.values.associateBy(
+                    keySelector = { it.key },
+                    valueTransform = { it.value },
                 )
 
                 ClientQuotaEntity(entityMap) to values
-            }
+            } ?: emptyMap()
 
         future.complete(result)
     }
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
@@ -63,7 +63,7 @@ class DescribeClientQuotasResponse(
 
     override fun data(): DescribeClientQuotasResponseData = data
 
-    override fun errorCounts(): Map<Errors, Int> = errorCounts(Errors.forCode(data.errorCode()))
+    override fun errorCounts(): Map<Errors, Int> = errorCounts(Errors.forCode(data.errorCode))
 
     companion object {
 

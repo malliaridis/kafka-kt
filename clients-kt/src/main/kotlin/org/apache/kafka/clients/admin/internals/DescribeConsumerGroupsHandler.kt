@@ -83,37 +83,37 @@ class DescribeConsumerGroupsHandler(
         val failed: MutableMap<CoordinatorKey, Throwable> = HashMap()
         val groupsToUnmap: MutableSet<CoordinatorKey> = HashSet()
 
-        response.data().groups().forEach { describedGroup ->
-            val groupIdKey = CoordinatorKey.byGroupId(describedGroup.groupId())
-            val error = Errors.forCode(describedGroup.errorCode())
+        response.data().groups.forEach { describedGroup ->
+            val groupIdKey = CoordinatorKey.byGroupId(describedGroup.groupId)
+            val error = Errors.forCode(describedGroup.errorCode)
 
             if (error !== Errors.NONE) {
                 handleError(groupIdKey, error, failed, groupsToUnmap)
                 return@forEach
             }
 
-            val protocolType = describedGroup.protocolType()
+            val protocolType = describedGroup.protocolType
             if (protocolType == ConsumerProtocol.PROTOCOL_TYPE || protocolType.isEmpty()) {
-                val members = describedGroup.members()
+                val members = describedGroup.members
                 val memberDescriptions: MutableList<MemberDescription> = ArrayList(members.size)
-                val authorizedOperations = validAclOperations(describedGroup.authorizedOperations())
+                val authorizedOperations = validAclOperations(describedGroup.authorizedOperations)
 
                 members.forEach { groupMember ->
                     var partitions: Set<TopicPartition> = emptySet()
 
-                    if (groupMember.memberAssignment().isNotEmpty()) {
+                    if (groupMember.memberAssignment.isNotEmpty()) {
                         val assignment = ConsumerProtocol.deserializeAssignment(
-                            ByteBuffer.wrap(groupMember.memberAssignment())
+                            ByteBuffer.wrap(groupMember.memberAssignment)
                         )
-                        partitions = HashSet(assignment.partitions())
+                        partitions = HashSet(assignment.partitions)
                     }
 
                     memberDescriptions.add(
                         MemberDescription(
-                            memberId = groupMember.memberId(),
-                            groupInstanceId = groupMember.groupInstanceId(),
-                            clientId = groupMember.clientId(),
-                            host = groupMember.clientHost(),
+                            memberId = groupMember.memberId,
+                            groupInstanceId = groupMember.groupInstanceId,
+                            clientId = groupMember.clientId,
+                            host = groupMember.clientHost,
                             assignment = MemberAssignment(partitions)
                         )
                     )
@@ -123,8 +123,8 @@ class DescribeConsumerGroupsHandler(
                     groupId = groupIdKey.idValue,
                     isSimpleConsumerGroup = protocolType.isEmpty(),
                     members = memberDescriptions,
-                    partitionAssignor = describedGroup.protocolData(),
-                    state = ConsumerGroupState.parse(describedGroup.groupState()),
+                    partitionAssignor = describedGroup.protocolData,
+                    state = ConsumerGroupState.parse(describedGroup.groupState),
                     coordinator = broker,
                     authorizedOperations = authorizedOperations
                 )

@@ -35,15 +35,15 @@ class SaslAuthenticateResponse(
      * Possible error codes:
      * SASL_AUTHENTICATION_FAILED(57) : Authentication failed
      */
-    fun error(): Errors = Errors.forCode(data.errorCode())
+    fun error(): Errors = Errors.forCode(data.errorCode)
 
-    override fun errorCounts(): Map<Errors, Int> = errorCounts(Errors.forCode(data.errorCode()))
+    override fun errorCounts(): Map<Errors, Int> = errorCounts(Errors.forCode(data.errorCode))
 
-    fun errorMessage(): String? = data.errorMessage()
+    fun errorMessage(): String? = data.errorMessage
 
-    fun sessionLifetimeMs(): Long = data.sessionLifetimeMs()
+    fun sessionLifetimeMs(): Long = data.sessionLifetimeMs
 
-    fun saslAuthBytes(): ByteArray = data.authBytes()
+    fun saslAuthBytes(): ByteArray = data.authBytes
 
     override fun throttleTimeMs(): Int = DEFAULT_THROTTLE_TIME
 

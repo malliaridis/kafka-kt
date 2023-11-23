@@ -38,19 +38,19 @@ class InitProducerIdResponse(
     private val data: InitProducerIdResponseData,
 ) : AbstractResponse(ApiKeys.INIT_PRODUCER_ID) {
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
     }
 
-    override fun errorCounts(): Map<Errors, Int> = errorCounts(Errors.forCode(data.errorCode()))
+    override fun errorCounts(): Map<Errors, Int> = errorCounts(Errors.forCode(data.errorCode))
 
     override fun data(): InitProducerIdResponseData = data
 
     override fun toString(): String = data.toString()
 
-    fun error(): Errors = Errors.forCode(data.errorCode())
+    fun error(): Errors = Errors.forCode(data.errorCode)
 
     override fun shouldClientThrottle(version: Short): Boolean = version >= 1
 

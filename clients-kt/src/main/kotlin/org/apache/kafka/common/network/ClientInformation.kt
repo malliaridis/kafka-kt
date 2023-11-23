@@ -17,36 +17,45 @@
 
 package org.apache.kafka.common.network
 
-data class ClientInformation(
-    val softwareName: String,
-    val softwareVersion: String,
+class ClientInformation(
+    softwareName: String? = null,
+    softwareVersion: String? = null,
 ) {
 
-    constructor(
-        softwareName: String? = null,
-        softwareVersion: String? = null,
-    ) : this(
-        softwareName = if (softwareName.isNullOrEmpty()) UNKNOWN_NAME_OR_VERSION
-        else softwareName,
-        softwareVersion = if (softwareVersion.isNullOrEmpty()) UNKNOWN_NAME_OR_VERSION
-        else softwareVersion,
-    )
+    val softwareName: String
 
-    @Deprecated(
-        message = "Use property instead",
-        replaceWith = ReplaceWith("softwareName")
-    )
-    fun softwareName(): String = softwareName
+    val softwareVersion: String
 
-    @Deprecated(
-        message = "Use property instead",
-        replaceWith = ReplaceWith("softwareVersion")
-    )
-    fun softwareVersion(): String = softwareVersion
+    init {
+        this.softwareName =
+            if (softwareName.isNullOrEmpty()) UNKNOWN_NAME_OR_VERSION
+            else softwareName
+        this.softwareVersion =
+            if (softwareVersion.isNullOrEmpty()) UNKNOWN_NAME_OR_VERSION
+            else softwareVersion
+    }
 
     override fun toString(): String {
         return "ClientInformation(softwareName=" + softwareName +
                 ", softwareVersion=" + softwareVersion + ")"
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as ClientInformation
+
+        if (softwareName != other.softwareName) return false
+        if (softwareVersion != other.softwareVersion) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = softwareName.hashCode()
+        result = 31 * result + softwareVersion.hashCode()
+        return result
     }
 
     companion object {

@@ -168,7 +168,7 @@ abstract class AbstractCoordinator(
      *
      * @return Non-empty map of supported protocols and metadata
      */
-    protected abstract fun metadata(): JoinGroupRequestProtocolCollection?
+    protected abstract fun metadata(): JoinGroupRequestProtocolCollection
 
     /**
      * Invoked prior to each group join or rejoin. This is typically used to perform any cleanup
@@ -573,10 +573,10 @@ abstract class AbstractCoordinator(
         override fun handle(response: JoinGroupResponse, future: RequestFuture<ByteBuffer>) {
             val error = response.error()
             if (error === Errors.NONE) {
-                if (isProtocolTypeInconsistent(response.data().protocolType())) {
+                if (isProtocolTypeInconsistent(response.data().protocolType)) {
                     log.error(
                         "JoinGroup failed: Inconsistent Protocol Type, received {} but expected {}",
-                        response.data().protocolType(),
+                        response.data().protocolType,
                         protocolType(),
                     )
                     future.raise(Errors.INCONSISTENT_GROUP_PROTOCOL)
@@ -598,9 +598,9 @@ abstract class AbstractCoordinator(
                             // STABLE
                             if (heartbeatThread != null) heartbeatThread!!.enable()
                             generation = Generation(
-                                generationId = response.data().generationId(),
-                                memberId = response.data().memberId(),
-                                protocolName = response.data().protocolName(),
+                                generationId = response.data().generationId,
+                                memberId = response.data().memberId,
+                                protocolName = response.data().protocolName,
                             )
                             log.info(
                                 "Successfully joined group with generation {}",
@@ -678,7 +678,7 @@ abstract class AbstractCoordinator(
             } else if (error === Errors.MEMBER_ID_REQUIRED) {
                 // Broker requires a concrete member id to be allowed to join the group. Update
                 // member id and send another join group request in next cycle.
-                val memberId = response.data().memberId()
+                val memberId = response.data().memberId
                 log.debug(
                     "JoinGroup failed due to non-fatal error: {}. Will set the member id as {} " +
                             "and then rejoin. Sent generation was {}",
@@ -731,10 +731,10 @@ abstract class AbstractCoordinator(
         try {
             // perform the leader synchronization and send back the assignment for the group
             val groupAssignment = onLeaderElected(
-                joinResponse.data().leader(),
-                joinResponse.data().protocolName(),
-                joinResponse.data().members(),
-                joinResponse.data().skipAssignment(),
+                joinResponse.data().leader,
+                joinResponse.data().protocolName!!,
+                joinResponse.data().members,
+                joinResponse.data().skipAssignment,
             )
 
             val groupAssignmentList = groupAssignment.map { (key, value) ->
@@ -781,11 +781,11 @@ abstract class AbstractCoordinator(
         override fun handle(response: SyncGroupResponse, future: RequestFuture<ByteBuffer>) {
             when (val error = response.error()) {
                 Errors.NONE -> {
-                    if (isProtocolTypeInconsistent(response.data().protocolType())) {
+                    if (isProtocolTypeInconsistent(response.data().protocolType)) {
                         log.error(
                             "SyncGroup failed due to inconsistent Protocol Type, received {} but " +
                                     "expected {}",
-                            response.data().protocolType(),
+                            response.data().protocolType,
                             protocolType(),
                         )
                         future.raise(Errors.INCONSISTENT_GROUP_PROTOCOL)
@@ -798,7 +798,7 @@ abstract class AbstractCoordinator(
                                 && state == MemberState.COMPLETING_REBALANCE
                             ) {
                                 // check protocol name only if the generation is not reset
-                                val protocolName = response.data().protocolName()
+                                val protocolName = response.data().protocolName
                                 val protocolNameInconsistent =
                                     protocolName != null && protocolName != sentGeneration.protocolName
 
@@ -824,7 +824,7 @@ abstract class AbstractCoordinator(
                                         (lastRebalanceEndMs - lastRebalanceStartMs).toDouble(),
                                     )
                                     lastRebalanceStartMs = -1L
-                                    future.complete(ByteBuffer.wrap(response.data().assignment()))
+                                    future.complete(ByteBuffer.wrap(response.data().assignment))
                                 }
                             } else {
                                 log.info(
@@ -937,17 +937,17 @@ abstract class AbstractCoordinator(
                 )
             }
             val coordinatorData = coordinators[0]
-            val error = Errors.forCode(coordinatorData.errorCode())
+            val error = Errors.forCode(coordinatorData.errorCode)
             if (error === Errors.NONE) {
                 synchronized(obj) {
 
                     // use MAX_VALUE - node.id as the coordinator id to allow separate connections
                     // for the coordinator in the underlying network client layer
-                    val coordinatorConnectionId = Int.MAX_VALUE - coordinatorData.nodeId()
+                    val coordinatorConnectionId = Int.MAX_VALUE - coordinatorData.nodeId
                     coordinator = Node(
                         id = coordinatorConnectionId,
-                        host = coordinatorData.host(),
-                        port = coordinatorData.port(),
+                        host = coordinatorData.host,
+                        port = coordinatorData.port,
                     ).also {
                         log.info("Discovered group coordinator {}", it)
                         client.tryConnect(it)
@@ -959,7 +959,7 @@ abstract class AbstractCoordinator(
             } else if (error === Errors.GROUP_AUTHORIZATION_FAILED) {
                 future.raise(GroupAuthorizationException(groupId = rebalanceConfig.groupId))
             } else {
-                log.debug("Group coordinator lookup failed: {}", coordinatorData.errorMessage())
+                log.debug("Group coordinator lookup failed: {}", coordinatorData.errorMessage)
                 future.raise(error)
             }
         }
@@ -1236,8 +1236,8 @@ abstract class AbstractCoordinator(
                 leaveReason,
             )
             val request = LeaveGroupRequest.Builder(
-                rebalanceConfig.groupId,
-                listOf(
+                groupId = rebalanceConfig.groupId,
+                members = listOf(
                     MemberIdentity()
                         .setMemberId(generation.memberId)
                         .setReason(JoinGroupRequest.maybeTruncateReason(leaveReason))

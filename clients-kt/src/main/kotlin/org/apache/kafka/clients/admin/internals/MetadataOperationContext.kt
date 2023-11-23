@@ -23,11 +23,6 @@ class MetadataOperationContext<T, O : AbstractOptions<O>?>(
 ) {
     var response: MetadataResponse? = null
 
-    @Deprecated(message = "Use class property instead.")
-    fun setResponse(response: MetadataResponse?) {
-        this.response = response
-    }
-
     @Deprecated(
         message = "Use class property instead.",
         replaceWith = ReplaceWith("response"),

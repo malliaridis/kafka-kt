@@ -52,7 +52,7 @@ class ListTransactionsHandler(
         keys: Set<BrokerKey>,
     ): ListTransactionsRequest.Builder {
         val request = ListTransactionsRequestData()
-        request.setProducerIdFilters(ArrayList(options.filteredProducerIds()))
+        request.setProducerIdFilters(options.filteredProducerIds().toLongArray())
         request.setStateFilters(options.filteredStates().map { obj -> obj.toString() })
         return ListTransactionsRequest.Builder(request)
     }
@@ -65,7 +65,7 @@ class ListTransactionsHandler(
         val brokerId = broker.id
         val key = requireSingleton(keys, brokerId)
         val res = response as ListTransactionsResponse
-        val error = Errors.forCode(res.data().errorCode())
+        val error = Errors.forCode(res.data().errorCode)
         if (error === Errors.COORDINATOR_LOAD_IN_PROGRESS) {
             log.debug(
                 "The `ListTransactions` request sent to broker {} failed because the " +
@@ -101,11 +101,11 @@ class ListTransactionsHandler(
                 ),
             )
         } else {
-            val listings = res.data().transactionStates().map { transactionState ->
+            val listings = res.data().transactionStates.map { transactionState ->
                 TransactionListing(
-                    transactionState.transactionalId(),
-                    transactionState.producerId(),
-                    TransactionState.parse(transactionState.transactionState()),
+                    transactionState.transactionalId,
+                    transactionState.producerId,
+                    TransactionState.parse(transactionState.transactionState),
                 )
             }
 

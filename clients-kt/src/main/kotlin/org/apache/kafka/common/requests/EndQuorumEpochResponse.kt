@@ -43,11 +43,11 @@ class EndQuorumEpochResponse(
 
     override fun errorCounts(): Map<Errors, Int> {
         val errors = mutableMapOf<Errors, Int>()
-        errors[Errors.forCode(data.errorCode())] = 1
+        errors[Errors.forCode(data.errorCode)] = 1
 
-        for (topicResponse in data.topics())
-            for (partitionResponse in topicResponse.partitions())
-                updateErrorCounts(errors, Errors.forCode(partitionResponse.errorCode()))
+        for (topicResponse in data.topics)
+            for (partitionResponse in topicResponse.partitions)
+                updateErrorCounts(errors, Errors.forCode(partitionResponse.errorCode))
 
         return errors
     }

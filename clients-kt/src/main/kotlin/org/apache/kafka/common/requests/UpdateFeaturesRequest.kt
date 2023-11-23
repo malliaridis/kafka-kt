@@ -30,7 +30,7 @@ class UpdateFeaturesRequest(
 ) : AbstractRequest(ApiKeys.UPDATE_FEATURES, version) {
 
     fun featureUpdates(): Collection<FeatureUpdateItem> =
-        data.featureUpdates().map { update -> getFeature(update.feature()) }
+        data.featureUpdates.map { update -> getFeature(update.feature) }
 
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): UpdateFeaturesResponse {
         return UpdateFeaturesResponse.createWithErrors(
@@ -79,24 +79,24 @@ class UpdateFeaturesRequest(
         override fun toString(): String = data.toString()
     }
 
-    fun getFeature(name: String?): FeatureUpdateItem {
-        val update = data.featureUpdates().find(name)
+    fun getFeature(name: String): FeatureUpdateItem {
+        val update = data.featureUpdates.find(name)!!
 
         return if (super.version.toInt() == 0) {
-            if (update.allowDowngrade()) FeatureUpdateItem(
-                featureName = update.feature(),
-                featureLevel = update.maxVersionLevel(),
+            if (update.allowDowngrade) FeatureUpdateItem(
+                featureName = update.feature,
+                featureLevel = update.maxVersionLevel,
                 upgradeType = UpgradeType.SAFE_DOWNGRADE,
             )
             else FeatureUpdateItem(
-                featureName = update.feature(),
-                featureLevel = update.maxVersionLevel(),
+                featureName = update.feature,
+                featureLevel = update.maxVersionLevel,
                 upgradeType = UpgradeType.UPGRADE,
             )
         } else FeatureUpdateItem(
-            featureName = update.feature(),
-            featureLevel = update.maxVersionLevel(),
-            upgradeType = UpgradeType.fromCode(update.upgradeType().toInt())
+            featureName = update.feature,
+            featureLevel = update.maxVersionLevel,
+            upgradeType = UpgradeType.fromCode(update.upgradeType.toInt())
         )
     }
 

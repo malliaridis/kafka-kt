@@ -351,12 +351,12 @@ open class SaslClientAuthenticator(
     protected open fun setSaslAuthenticateAndHandshakeVersions(apiVersionsResponse: ApiVersionsResponse) {
         val authenticateVersion = apiVersionsResponse.apiVersion(ApiKeys.SASL_AUTHENTICATE.id)
         if (authenticateVersion != null) {
-            saslAuthenticateVersion = authenticateVersion.maxVersion()
+            saslAuthenticateVersion = authenticateVersion.maxVersion
                 .coerceAtMost(ApiKeys.SASL_AUTHENTICATE.latestVersion())
         }
         val handshakeVersion = apiVersionsResponse.apiVersion(ApiKeys.SASL_HANDSHAKE.id)
         if (handshakeVersion != null) {
-            saslHandshakeVersion = handshakeVersion.maxVersion()
+            saslHandshakeVersion = handshakeVersion.maxVersion
                 .coerceAtMost(ApiKeys.SASL_HANDSHAKE.latestVersion())
         }
     }

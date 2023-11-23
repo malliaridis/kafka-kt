@@ -238,7 +238,7 @@ class TransactionManager(
         if (lastError !is InvalidPidMappingException) {
             val builder = EndTxnRequest.Builder(
                 EndTxnRequestData()
-                    .setTransactionalId(transactionalId)
+                    .setTransactionalId(transactionalId!!)
                     .setProducerId(producerIdAndEpoch.producerId)
                     .setProducerEpoch(producerIdAndEpoch.epoch)
                     .setCommitted(transactionResult.id)
@@ -269,7 +269,7 @@ class TransactionManager(
         )
         val builder = AddOffsetsToTxnRequest.Builder(
             AddOffsetsToTxnRequestData()
-                .setTransactionalId(transactionalId)
+                .setTransactionalId(transactionalId!!)
                 .setProducerId(producerIdAndEpoch.producerId)
                 .setProducerEpoch(producerIdAndEpoch.epoch)
                 .setGroupId(groupMetadata.groupId)
@@ -423,19 +423,6 @@ class TransactionManager(
     }
 
     /**
-     * Set the producer id and epoch atomically.
-     */
-    @Deprecated("User property instead")
-    private fun setProducerIdAndEpoch(producerIdAndEpoch: ProducerIdAndEpoch) {
-        log.info(
-            "ProducerId set to {} with epoch {}",
-            producerIdAndEpoch.producerId,
-            producerIdAndEpoch.epoch,
-        )
-        this.producerIdAndEpoch = producerIdAndEpoch
-    }
-
-    /**
      * This method resets the producer ID and epoch and sets the state to UNINITIALIZED, which will
      * trigger a new InitProducerId request. This method is only called when the producer epoch is
      * exhausted; we will bump the epoch instead.
@@ -537,7 +524,7 @@ class TransactionManager(
 
     @Synchronized
     fun addInFlightBatch(batch: ProducerBatch) {
-        if (batch.hasSequence()) {
+        if (batch.hasSequence) {
             "Can't track batch for partition ${batch.topicPartition} when sequence is not set."
         }
         txnPartitionMap[batch.topicPartition].inflightBatchesBySequence.add(batch)
@@ -899,7 +886,7 @@ class TransactionManager(
     }
 
     fun lookupCoordinator(request: TxnRequestHandler) =
-        lookupCoordinator(request.coordinatorType(), request.coordinatorKey())
+        lookupCoordinator(request.coordinatorType(), request.coordinatorKey()!!)
 
     fun setInFlightCorrelationId(correlationId: Int) {
         inFlightRequestCorrelationId = correlationId
@@ -1083,7 +1070,7 @@ class TransactionManager(
             else null
         val initProducerIdVersion = nodeApiVersions?.apiVersion(ApiKeys.INIT_PRODUCER_ID)
         coordinatorSupportsBumpingEpoch =
-            initProducerIdVersion != null && initProducerIdVersion.maxVersion() >= 3
+            initProducerIdVersion != null && initProducerIdVersion.maxVersion >= 3
     }
 
     private fun transitionTo(target: State, error: RuntimeException? = null) {
@@ -1162,7 +1149,7 @@ class TransactionManager(
 
         val data = FindCoordinatorRequestData()
             .setKeyType(type.id)
-            .setKey(coordinatorKey)
+            .setKey(coordinatorKey!!)
         val builder = FindCoordinatorRequest.Builder(data)
         enqueueRequest(FindCoordinatorHandler(builder))
     }
@@ -1192,7 +1179,7 @@ class TransactionManager(
             pendingTxnOffsetCommits[partition] = committedOffset
         }
         val builder = TxnOffsetCommitRequest.Builder(
-            transactionalId = transactionalId,
+            transactionalId = transactionalId!!,
             consumerGroupId = groupMetadata.groupId,
             producerId = producerIdAndEpoch.producerId,
             producerEpoch = producerIdAndEpoch.epoch,
@@ -1298,7 +1285,7 @@ class TransactionManager(
         open fun retryBackoffMs(): Long = retryBackoffMs
 
         override fun onComplete(response: ClientResponse) {
-            if (response.requestHeader.correlationId() != inFlightRequestCorrelationId)
+            if (response.requestHeader.correlationId != inFlightRequestCorrelationId)
                 fatalError(
                     RuntimeException("Detected more than one in-flight transactional request.")
                 )
@@ -1306,7 +1293,7 @@ class TransactionManager(
                 clearInFlightCorrelationId()
                 if (response.disconnected) {
                     log.debug("Disconnected from {}. Will retry.", response.destination)
-                    if (needsCoordinator) lookupCoordinator(coordinatorType(), coordinatorKey())
+                    if (needsCoordinator) lookupCoordinator(coordinatorType(), coordinatorKey()!!)
                     reenqueue()
                 } else if (response.versionMismatch != null) fatalError(response.versionMismatch)
                 else if (response.hasResponse) {
@@ -1373,8 +1360,8 @@ class TransactionManager(
 
             if (error === Errors.NONE) {
                 val producerIdAndEpoch = ProducerIdAndEpoch(
-                    initProducerIdResponse.data().producerId(),
-                    initProducerIdResponse.data().producerEpoch()
+                    initProducerIdResponse.data().producerId,
+                    initProducerIdResponse.data().producerEpoch
                 )
                 this@TransactionManager.producerIdAndEpoch = producerIdAndEpoch
                 transitionTo(State.READY)
@@ -1530,7 +1517,7 @@ class TransactionManager(
         override fun coordinatorKey(): String? = null
 
         override fun handleResponse(responseBody: AbstractResponse?) {
-            val coordinatorType = CoordinatorType.forId(builder.data().keyType())
+            val coordinatorType = CoordinatorType.forId(builder.data().keyType)
             val coordinators = (responseBody as FindCoordinatorResponse).coordinators()
 
             if (coordinators.size != 1) {
@@ -1550,15 +1537,15 @@ class TransactionManager(
             // For older versions without batching, obtain key from request data since it is not
             // included in response
             val key =
-                if (coordinatorData.key() == null) builder.data().key()
-                else coordinatorData.key()
+                if (coordinatorData.key == null) builder.data().key
+                else coordinatorData.key
 
-            val error = Errors.forCode(coordinatorData.errorCode())
+            val error = Errors.forCode(coordinatorData.errorCode)
             if (error === Errors.NONE) {
                 val node = Node(
-                    id = coordinatorData.nodeId(),
-                    host = coordinatorData.host(),
-                    port = coordinatorData.port(),
+                    id = coordinatorData.nodeId,
+                    host = coordinatorData.host,
+                    port = coordinatorData.port,
                 )
 
                 when (coordinatorType) {
@@ -1579,7 +1566,7 @@ class TransactionManager(
             else fatalError(
                 KafkaException(
                     "Could not find a coordinator with type $coordinatorType with key $key due " +
-                            "to unexpected error: ${coordinatorData.errorMessage()}",
+                            "to unexpected error: ${coordinatorData.errorMessage}",
                 )
             )
         }
@@ -1587,7 +1574,7 @@ class TransactionManager(
 
     private inner class EndTxnHandler(
         private val builder: EndTxnRequest.Builder,
-    ) : TxnRequestHandler("EndTxn(${builder.data.committed()})") {
+    ) : TxnRequestHandler("EndTxn(${builder.data.committed})") {
 
         override fun requestBuilder(): EndTxnRequest.Builder = builder
 
@@ -1641,12 +1628,12 @@ class TransactionManager(
 
         override fun handleResponse(responseBody: AbstractResponse?) {
             val addOffsetsToTxnResponse = responseBody as AddOffsetsToTxnResponse
-            val error = Errors.forCode(addOffsetsToTxnResponse.data().errorCode())
+            val error = Errors.forCode(addOffsetsToTxnResponse.data().errorCode)
 
             if (error === Errors.NONE) {
                 log.debug(
                     "Successfully added partition for consumer group {} to transaction",
-                    builder.data.groupId()
+                    builder.data.groupId
                 )
 
                 // note the result is not completed until the TxnOffsetCommit returns
@@ -1673,7 +1660,7 @@ class TransactionManager(
             } else if (error === Errors.TRANSACTIONAL_ID_AUTHORIZATION_FAILED)
                 fatalError(error.exception)
             else if (error === Errors.GROUP_AUTHORIZATION_FAILED)
-                abortableError(GroupAuthorizationException(groupId = builder.data.groupId()))
+                abortableError(GroupAuthorizationException(groupId = builder.data.groupId))
             else fatalError(
                 KafkaException("Unexpected error in AddOffsetsToTxnResponse: ${error.message}")
             )
@@ -1691,7 +1678,7 @@ class TransactionManager(
 
         override fun coordinatorType(): CoordinatorType = CoordinatorType.GROUP
 
-        override fun coordinatorKey(): String = builder.data.groupId()
+        override fun coordinatorKey(): String = builder.data.groupId
 
         override fun handleResponse(responseBody: AbstractResponse?) {
             val txnOffsetCommitResponse = responseBody as TxnOffsetCommitResponse
@@ -1700,7 +1687,7 @@ class TransactionManager(
 
             log.debug(
                 "Received TxnOffsetCommit response for consumer group {}: {}",
-                builder.data.groupId(),
+                builder.data.groupId,
                 errors
             )
 
@@ -1713,14 +1700,14 @@ class TransactionManager(
                 ) {
                     if (!coordinatorReloaded) {
                         coordinatorReloaded = true
-                        lookupCoordinator(CoordinatorType.GROUP, builder.data.groupId())
+                        lookupCoordinator(CoordinatorType.GROUP, builder.data.groupId)
                     }
                 } else if (
                     error === Errors.UNKNOWN_TOPIC_OR_PARTITION
                     || error === Errors.COORDINATOR_LOAD_IN_PROGRESS
                 ) continue // If the topic is unknown or the coordinator is loading, retry with the current coordinator
                 else if (error === Errors.GROUP_AUTHORIZATION_FAILED) {
-                    abortableError(GroupAuthorizationException(groupId = builder.data.groupId()))
+                    abortableError(GroupAuthorizationException(groupId = builder.data.groupId))
                     break
                 } else if (error === Errors.FENCED_INSTANCE_ID) {
                     abortableError(error.exception!!)

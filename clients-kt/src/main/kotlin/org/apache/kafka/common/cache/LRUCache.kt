@@ -23,9 +23,9 @@ package org.apache.kafka.common.cache
 class LRUCache<K, V>(maxSize: Int) : Cache<K, V> {
 
     private val cache: LinkedHashMap<K, V> = object : LinkedHashMap<K, V>(
-        initialCapacity = 16,
-        loadFactor = .75f,
-        accessOrder = true,
+        16,
+        .75f,
+        true,
     ) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<K, V>?): Boolean {
             return size() > maxSize

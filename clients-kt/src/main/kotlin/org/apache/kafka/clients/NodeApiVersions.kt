@@ -45,8 +45,8 @@ class NodeApiVersions(
 
     init {
         for (nodeApiVersion in nodeApiVersions) {
-            if (ApiKeys.hasId(nodeApiVersion.apiKey().toInt())) {
-                val nodeApiKey = ApiKeys.forId(nodeApiVersion.apiKey().toInt())
+            if (ApiKeys.hasId(nodeApiVersion.apiKey.toInt())) {
+                val nodeApiKey = ApiKeys.forId(nodeApiVersion.apiKey.toInt())
                 supportedVersions[nodeApiKey] = nodeApiVersion
             } else {
                 // Newer brokers may support ApiKeys we don't know about
@@ -54,9 +54,9 @@ class NodeApiVersions(
             }
         }
         supportedFeatures = nodeSupportedFeatures.associate { supportedFeature ->
-            supportedFeature.name() to SupportedVersionRange(
-                minVersion = supportedFeature.minVersion(),
-                maxVersion = supportedFeature.maxVersion(),
+            supportedFeature.name to SupportedVersionRange(
+                minVersion = supportedFeature.minVersion,
+                maxVersion = supportedFeature.maxVersion,
             )
         }
     }
@@ -83,12 +83,12 @@ class NodeApiVersions(
                     .setMinVersion(oldestAllowedVersion)
                     .setMaxVersion(latestAllowedVersion)
             )
-        return intersectVersion?.maxVersion()
+        return intersectVersion?.maxVersion
             ?: throw UnsupportedVersionException(
                 "The broker does not support $apiKey with version in range " +
                         "[$oldestAllowedVersion,$latestAllowedVersion]. " +
-                        "The supported range is [${supportedVersion!!.minVersion()}," +
-                        "${supportedVersion.maxVersion()}]."
+                        "The supported range is [${supportedVersion!!.minVersion}," +
+                        "${supportedVersion.maxVersion}]."
             )
     }
 
@@ -109,9 +109,9 @@ class NodeApiVersions(
         // The apiVersion collection may not be in sorted order. We put it into a TreeMap before
         // printing it out to ensure that we always print in ascending order.
         val apiKeysText = (supportedVersions.values.associate { supportedVersion ->
-            supportedVersion.apiKey() to apiVersionToText(supportedVersion)
+            supportedVersion.apiKey to apiVersionToText(supportedVersion)
         } + unknownApis.associate { apiVersion ->
-            apiVersion.apiKey() to apiVersionToText(apiVersion)
+            apiVersion.apiKey to apiVersionToText(apiVersion)
         }).toSortedMap()
 
         // Also handle the case where some apiKey types are not specified at all in the given
@@ -142,32 +142,32 @@ class NodeApiVersions(
     private fun apiVersionToText(apiVersion: ApiVersionsResponseData.ApiVersion): String {
         val bld = StringBuilder()
         var apiKey: ApiKeys? = null
-        if (ApiKeys.hasId(apiVersion.apiKey().toInt())) {
-            apiKey = ApiKeys.forId(apiVersion.apiKey().toInt())
+        if (ApiKeys.hasId(apiVersion.apiKey.toInt())) {
+            apiKey = ApiKeys.forId(apiVersion.apiKey.toInt())
             bld.append(apiKey.name)
                 .append("(")
                 .append(apiKey.id.toInt())
                 .append("): ")
         } else bld.append("UNKNOWN(")
-            .append(apiVersion.apiKey().toInt())
+            .append(apiVersion.apiKey.toInt())
             .append("): ")
 
-        if (apiVersion.minVersion() == apiVersion.maxVersion())
-            bld.append(apiVersion.minVersion().toInt())
-        else bld.append(apiVersion.minVersion().toInt())
+        if (apiVersion.minVersion == apiVersion.maxVersion)
+            bld.append(apiVersion.minVersion.toInt())
+        else bld.append(apiVersion.minVersion.toInt())
             .append(" to ")
-            .append(apiVersion.maxVersion().toInt())
+            .append(apiVersion.maxVersion.toInt())
 
         if (apiKey != null) {
             val supportedVersion = supportedVersions[apiKey]
-            if (apiKey.latestVersion() < supportedVersion!!.minVersion())
+            if (apiKey.latestVersion() < supportedVersion!!.minVersion)
                 bld.append(" [unusable: node too new]")
-            else if (supportedVersion.maxVersion() < apiKey.oldestVersion())
+            else if (supportedVersion.maxVersion < apiKey.oldestVersion())
                 bld.append(" [unusable: node too old]")
             else {
                 val latestUsableVersion = minOf(
                     apiKey.latestVersion().toInt(),
-                    supportedVersion.maxVersion().toInt(),
+                    supportedVersion.maxVersion.toInt(),
                 )
                 bld.append(" [usable: ")
                     .append(latestUsableVersion)
@@ -214,7 +214,7 @@ class NodeApiVersions(
             for (apiKey in ApiKeys.zkBrokerApis()) {
                 var exists = false
                 for (apiVersion in apiVersions) {
-                    if (apiVersion.apiKey() == apiKey.id) {
+                    if (apiVersion.apiKey == apiKey.id) {
                         exists = true
                         break
                     }

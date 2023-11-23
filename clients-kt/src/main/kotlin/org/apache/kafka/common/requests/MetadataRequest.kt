@@ -40,13 +40,13 @@ class MetadataRequest(
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse {
         val error = Errors.forException(e)
         val responseData = MetadataResponseData()
-        if (data.topics() != null) for (topic in data.topics()) {
+        for (topic in data.topics) {
             // the response does not allow null, so convert to empty string if necessary
-            val topicName = if (topic.name() == null) "" else topic.name()
-            responseData.topics().add(
+            val topicName = if (topic.name == null) "" else topic.name
+            responseData.topics.add(
                 MetadataResponseTopic()
                     .setName(topicName)
-                    .setTopicId(topic.topicId())
+                    .setTopicId(topic.topicId)
                     .setErrorCode(error.code)
                     .setIsInternal(false)
                     .setPartitions(emptyList())
@@ -60,20 +60,20 @@ class MetadataRequest(
     val isAllTopics: Boolean
         // In version 0, an empty topic list indicates
         // "request metadata for all topics."
-        get() = data.topics() == null || data.topics().isEmpty() && version.toInt() == 0
+        get() = data.topics.isEmpty() && version.toInt() == 0
 
     fun topics(): List<String>? {
         return if (isAllTopics) null // In version 0, we return null for empty topic list
-        else data.topics().map { obj: MetadataRequestTopic -> obj.name() }
+        else data.topics.map { it.name!! }
     }
 
     fun topicIds(): List<Uuid> {
         return if (isAllTopics) emptyList()
         else if (version < 10) emptyList()
-        else data.topics().map { obj: MetadataRequestTopic -> obj.topicId() }
+        else data.topics.map { it.topicId }
     }
 
-    fun allowAutoTopicCreation(): Boolean = data.allowAutoTopicCreation()
+    fun allowAutoTopicCreation(): Boolean = data.allowAutoTopicCreation
 
     class Builder : AbstractRequest.Builder<MetadataRequest> {
 
@@ -97,60 +97,53 @@ class MetadataRequest(
         ) : super(ApiKeys.METADATA, minVersion, maxVersion) {
             val data = MetadataRequestData()
             topics?.forEach { topic: String? ->
-                data.topics().add(MetadataRequestTopic().setName(topic))
-            } ?: data.setTopics(null)
+                data.topics += MetadataRequestTopic().setName(topic)
+            } ?: data.setTopics(emptyList())
             data.setAllowAutoTopicCreation(allowAutoTopicCreation)
             this.data = data
         }
 
-        constructor(topicIds: List<Uuid?>?) : super(
+        constructor(topicIds: List<Uuid>?) : super(
             ApiKeys.METADATA,
             ApiKeys.METADATA.oldestVersion(),
             ApiKeys.METADATA.latestVersion()
         ) {
             val data = MetadataRequestData()
-            topicIds?.forEach { topicId: Uuid? ->
-                data.topics().add(MetadataRequestTopic().setTopicId(topicId))
-            } ?: data.setTopics(null)
+            topicIds?.forEach { topicId ->
+                data.topics += MetadataRequestTopic().setTopicId(topicId)
+            } ?: data.setTopics(emptyList())
 
             // It's impossible to create topic with topicId
             data.setAllowAutoTopicCreation(false)
             this.data = data
         }
 
-        fun emptyTopicList(): Boolean {
-            return data.topics().isEmpty()
-        }
+        fun emptyTopicList(): Boolean = data.topics.isEmpty()
 
         val isAllTopics: Boolean
-            get() = data.topics() == null
+            get() = data.topics.isEmpty()
 
-        fun topics(): List<String> {
-            return data.topics()
-                .stream()
-                .map { obj: MetadataRequestTopic -> obj.name() }
-                .collect(Collectors.toList())
-        }
+        fun topics(): List<String> = data.topics.map { it.name!! }
 
         override fun build(version: Short): MetadataRequest {
             if (version < 1) throw UnsupportedVersionException(
                 "MetadataRequest versions older than 1 are not supported."
             )
 
-            if (!data.allowAutoTopicCreation() && version < 4) throw UnsupportedVersionException(
+            if (!data.allowAutoTopicCreation && version < 4) throw UnsupportedVersionException(
                 "MetadataRequest versions older than 4 don't support the " +
                         "allowAutoTopicCreation field"
             )
 
-            if (data.topics() != null) {
-                data.topics().forEach { topic ->
-                    if (topic.name() == null && version < 12) throw UnsupportedVersionException(
+            if (data.topics != null) {
+                data.topics.forEach { topic ->
+                    if (topic.name == null && version < 12) throw UnsupportedVersionException(
                         "MetadataRequest version $version does not support null topic names."
                     )
-                    if (Uuid.ZERO_UUID != topic.topicId() && version < 12)
+                    if (Uuid.ZERO_UUID != topic.topicId && version < 12)
                         throw UnsupportedVersionException(
-                        "MetadataRequest version $version does not support non-zero topic IDs."
-                    )
+                            "MetadataRequest version $version does not support non-zero topic IDs."
+                        )
                 }
             }
 
@@ -161,8 +154,9 @@ class MetadataRequest(
 
         companion object {
 
-            private val ALL_TOPICS_REQUEST_DATA =
-                MetadataRequestData().setTopics(null).setAllowAutoTopicCreation(true)
+            private val ALL_TOPICS_REQUEST_DATA = MetadataRequestData()
+                .setTopics(emptyList())
+                .setAllowAutoTopicCreation(true)
 
             // This never causes auto-creation, but we set the boolean to true because that is
             // the default value when deserializing V2 and older. This way, the value is
@@ -183,8 +177,8 @@ class MetadataRequest(
             topics.map { topic -> MetadataRequestTopic().setName(topic) }
 
         fun convertTopicIdsToMetadataRequestTopic(
-            topicIds: Collection<Uuid?>,
-        ): List<MetadataRequestTopic> = topicIds.map { topicId: Uuid? ->
+            topicIds: Collection<Uuid>,
+        ): List<MetadataRequestTopic> = topicIds.map { topicId ->
             MetadataRequestTopic().setTopicId(topicId)
         }
     }

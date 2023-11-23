@@ -458,7 +458,7 @@ object TestUtils {
     }
 
     fun apiKeyFrom(networkReceive: NetworkReceive): ApiKeys {
-        return RequestHeader.parse(networkReceive.payload()!!.duplicate()).apiKey()
+        return RequestHeader.parse(networkReceive.payload()!!.duplicate()).apiKey
     }
 
     @Deprecated("Use assertNullable() instead.")

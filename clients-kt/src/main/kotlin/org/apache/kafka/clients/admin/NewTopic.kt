@@ -112,12 +112,15 @@ data class NewTopic(
             .setNumPartitions(numPartitions)
             .setReplicationFactor(replicationFactor)
         replicasAssignments.forEach { (key, value) ->
-            creatableTopic.assignments()
-                .add(CreatableReplicaAssignment().setPartitionIndex(key).setBrokerIds(value))
+            creatableTopic.assignments.add(
+                CreatableReplicaAssignment()
+                    .setPartitionIndex(key)
+                    .setBrokerIds(value.toIntArray())
+            )
         }
 
         configs.forEach { (key, value) ->
-            creatableTopic.configs().add(CreateableTopicConfig().setName(key).setValue(value))
+            creatableTopic.configs.add(CreateableTopicConfig().setName(key).setValue(value))
         }
         return creatableTopic
     }

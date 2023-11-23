@@ -46,7 +46,7 @@ class CreateTopicsResponse(
 
     override fun data(): CreateTopicsResponseData = data
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
@@ -55,8 +55,8 @@ class CreateTopicsResponse(
     override fun errorCounts(): Map<Errors, Int> {
         val counts = HashMap<Errors, Int>()
 
-        data.topics().forEach { result ->
-            updateErrorCounts(counts, Errors.forCode(result.errorCode()))
+        data.topics.forEach { result ->
+            updateErrorCounts(counts, Errors.forCode(result.errorCode))
         }
 
         return counts

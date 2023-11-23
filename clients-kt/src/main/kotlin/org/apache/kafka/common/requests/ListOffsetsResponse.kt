@@ -55,7 +55,7 @@ class ListOffsetsResponse(
     private val data: ListOffsetsResponseData,
 ) : AbstractResponse(ApiKeys.LIST_OFFSETS) {
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
@@ -67,16 +67,16 @@ class ListOffsetsResponse(
         message = "User property instead",
         replaceWith = ReplaceWith("topics"),
     )
-    fun topics(): List<ListOffsetsTopicResponse> = data.topics()
+    fun topics(): List<ListOffsetsTopicResponse> = data.topics
 
     val topics: List<ListOffsetsTopicResponse>
-        get() = data.topics()
+        get() = data.topics
 
     override fun errorCounts(): Map<Errors, Int> {
         val errorCounts = mutableMapOf<Errors, Int>()
         topics.forEach { topic ->
-            topic.partitions().forEach { partition ->
-                updateErrorCounts(errorCounts, Errors.forCode(partition.errorCode()))
+            topic.partitions.forEach { partition ->
+                updateErrorCounts(errorCounts, Errors.forCode(partition.errorCode))
             }
         }
 

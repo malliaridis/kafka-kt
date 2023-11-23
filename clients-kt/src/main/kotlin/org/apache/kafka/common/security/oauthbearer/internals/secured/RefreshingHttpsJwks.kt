@@ -105,8 +105,7 @@ class RefreshingHttpsJwks(
      * we can return the list immediately without any network I/O. They are only cached within
      * calls to [refresh].
      */
-    var jsonWebKeys: List<JsonWebKey>? = null
-        private set
+    private var jsonWebKeys: List<JsonWebKey>? = null
 
     private var isInitialized = false
 

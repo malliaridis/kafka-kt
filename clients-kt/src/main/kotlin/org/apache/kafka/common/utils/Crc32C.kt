@@ -66,7 +66,7 @@ object Crc32C {
      * @param size The number of bytes beginning from the offset to include
      * @return The CRC32C
      */
-    fun compute(buffer: ByteBuffer?, offset: Int, size: Int): Long {
+    fun compute(buffer: ByteBuffer, offset: Int, size: Int): Long {
         val crc = create()
         Checksums.update(crc, buffer, offset, size)
         return crc.value

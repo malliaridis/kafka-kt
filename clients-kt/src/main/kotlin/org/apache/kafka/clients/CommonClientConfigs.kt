@@ -319,14 +319,14 @@ object CommonClientConfigs {
     fun metricsReporters(config: AbstractConfig): List<MetricsReporter> =
         metricsReporters(emptyMap(), config)
 
-    fun metricsReporters(clientId: String, config: AbstractConfig): List<MetricsReporter> =
+    fun metricsReporters(clientId: String?, config: AbstractConfig): List<MetricsReporter> =
         metricsReporters(
             clientIdOverride = mapOf(CLIENT_ID_CONFIG to clientId),
             config = config
         )
 
     fun metricsReporters(
-        clientIdOverride: Map<String, Any>,
+        clientIdOverride: Map<String, Any?>,
         config: AbstractConfig
     ): List<MetricsReporter> {
         val reporters: MutableList<MetricsReporter> =

@@ -42,8 +42,8 @@ class ApiVersionsRequest(
 
     val isValid: Boolean
         get() = if (version >= 3)
-            SOFTWARE_NAME_VERSION_PATTERN.matcher(data.clientSoftwareName()).matches() &&
-                    SOFTWARE_NAME_VERSION_PATTERN.matcher(data.clientSoftwareVersion()).matches()
+            SOFTWARE_NAME_VERSION_PATTERN.matcher(data.clientSoftwareName).matches() &&
+                    SOFTWARE_NAME_VERSION_PATTERN.matcher(data.clientSoftwareVersion).matches()
         else true
 
     override fun data(): ApiVersionsRequestData = data

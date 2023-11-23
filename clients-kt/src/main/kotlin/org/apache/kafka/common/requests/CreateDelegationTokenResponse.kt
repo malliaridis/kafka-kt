@@ -32,13 +32,13 @@ class CreateDelegationTokenResponse(
 
     override fun errorCounts(): Map<Errors, Int> = errorCounts(error())
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
     }
 
-    fun error(): Errors = Errors.forCode(data.errorCode())
+    fun error(): Errors = Errors.forCode(data.errorCode)
 
     fun hasError(): Boolean = error() !== Errors.NONE
 
@@ -60,12 +60,12 @@ class CreateDelegationTokenResponse(
             issueTimestamp: Long = -1,
             expiryTimestamp: Long = -1,
             maxTimestamp: Long = -1,
-            tokenId: String? = "",
+            tokenId: String = "",
             hmac: ByteBuffer = ByteBuffer.wrap(byteArrayOf()),
         ): CreateDelegationTokenResponse {
             val data = CreateDelegationTokenResponseData()
                 .setThrottleTimeMs(throttleTimeMs)
-                .setErrorCode(error.code())
+                .setErrorCode(error.code)
                 .setPrincipalType(owner.principalType)
                 .setPrincipalName(owner.getName())
                 .setIssueTimestampMs(issueTimestamp)
@@ -75,7 +75,7 @@ class CreateDelegationTokenResponse(
                 .setHmac(hmac.array())
 
             if (version > 2) data.setTokenRequesterPrincipalType(tokenRequester.principalType)
-                    .setTokenRequesterPrincipalName(tokenRequester.getName())
+                .setTokenRequesterPrincipalName(tokenRequester.getName())
 
             return CreateDelegationTokenResponse(data)
         }

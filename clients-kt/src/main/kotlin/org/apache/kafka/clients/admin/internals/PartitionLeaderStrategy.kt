@@ -46,11 +46,9 @@ class PartitionLeaderStrategy(logContext: LogContext) : AdminApiLookupStrategy<T
     override fun buildRequest(keys: Set<TopicPartition>): MetadataRequest.Builder {
         val request = MetadataRequestData()
         request.setAllowAutoTopicCreation(false)
-        keys.map { obj: TopicPartition -> obj.topic }
+        keys.map { obj -> obj.topic }
             .distinct()
-            .forEach { topic: String? ->
-                request.topics().add(MetadataRequestTopic().setName(topic))
-            }
+            .forEach { topic -> request.topics += MetadataRequestTopic().setName(topic) }
         return MetadataRequest.Builder(request)
     }
 
@@ -106,7 +104,7 @@ class PartitionLeaderStrategy(logContext: LogContext) : AdminApiLookupStrategy<T
                 ) { tp: TopicPartition ->
                     topicError.exception(
                         "Failed to fetch metadata for partition $tp due to unexpected error for topic `$topic`"
-                    )!!
+                    )
                 }
             }
         }
@@ -157,16 +155,16 @@ class PartitionLeaderStrategy(logContext: LogContext) : AdminApiLookupStrategy<T
     ): AdminApiLookupStrategy.LookupResult<TopicPartition> {
         val failed: MutableMap<TopicPartition, Throwable> = HashMap()
         val mapped: MutableMap<TopicPartition, Int> = HashMap()
-        (response as MetadataResponse).data().topics().forEach { topicMetadata ->
-            val topic = topicMetadata.name()
-            val topicError = Errors.forCode(topicMetadata.errorCode())
+        (response as MetadataResponse).data().topics.forEach { topicMetadata ->
+            val topic = topicMetadata.name!!
+            val topicError = Errors.forCode(topicMetadata.errorCode)
             if (topicError != Errors.NONE) {
                 handleTopicError(topic, topicError, keys, failed)
                 return@forEach
             }
-            for (partitionMetadata in topicMetadata.partitions()) {
-                val topicPartition = TopicPartition(topic, partitionMetadata.partitionIndex())
-                val partitionError = Errors.forCode(partitionMetadata.errorCode())
+            for (partitionMetadata in topicMetadata.partitions) {
+                val topicPartition = TopicPartition(topic, partitionMetadata.partitionIndex)
+                val partitionError = Errors.forCode(partitionMetadata.errorCode)
                 if (!keys.contains(topicPartition)) {
                     // The `Metadata` response always returns all partitions for requested
                     // topics, so we have to filter any that we are not interested in.
@@ -176,7 +174,7 @@ class PartitionLeaderStrategy(logContext: LogContext) : AdminApiLookupStrategy<T
                     handlePartitionError(topicPartition, partitionError, failed)
                     return@forEach
                 }
-                val leaderId = partitionMetadata.leaderId()
+                val leaderId = partitionMetadata.leaderId
                 if (leaderId >= 0) mapped[topicPartition] = leaderId
                 else log.debug(
                     "Metadata request for {} returned no error, but the leader is unknown. Will retry",

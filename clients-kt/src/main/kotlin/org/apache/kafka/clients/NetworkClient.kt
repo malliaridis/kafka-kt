@@ -75,7 +75,7 @@ class NetworkClient(
     metadataUpdater: MetadataUpdater? = null,
     metadata: Metadata? = null,
     private val selector: Selectable,
-    private val clientId: String,
+    private val clientId: String?,
     maxInFlightRequestsPerConnection: Int,
     private val reconnectBackoffMs: Long,
     reconnectBackoffMax: Long,
@@ -195,7 +195,7 @@ class NetworkClient(
                 log.debug(
                     "Cancelled in-flight {} request with correlation id {} due to node {} being disconnected " +
                             "(elapsed time since creation: {}ms, elapsed time since send: {}ms, request timeout: {}ms): {}",
-                    request.header.apiKey(), request.header.correlationId(), nodeId,
+                    request.header.apiKey, request.header.correlationId, nodeId,
                     request.timeElapsedSinceCreateMs(now), request.timeElapsedSinceSendMs(now),
                     request.requestTimeoutMs, request.request
                 )
@@ -203,14 +203,14 @@ class NetworkClient(
                 log.info(
                     "Cancelled in-flight {} request with correlation id {} due to node {} being disconnected " +
                             "(elapsed time since creation: {}ms, elapsed time since send: {}ms, request timeout: {}ms)",
-                    request.header.apiKey(), request.header.correlationId(), nodeId,
+                    request.header.apiKey, request.header.correlationId, nodeId,
                     request.timeElapsedSinceCreateMs(now), request.timeElapsedSinceSendMs(now),
                     request.requestTimeoutMs
                 )
             }
             if (!request.isInternalRequest) {
                 responses?.add(request.disconnected(now, null))
-            } else if (request.header.apiKey() == ApiKeys.METADATA) {
+            } else if (request.header.apiKey == ApiKeys.METADATA) {
                 metadataUpdater.handleFailedRequest(now, null)
             }
         }
@@ -764,12 +764,12 @@ class NetworkClient(
             if (log.isDebugEnabled) {
                 log.debug(
                     "Received {} response from node {} for request with header {}: {}",
-                    req.header.apiKey(), req.destination, req.header, response
+                    req.header.apiKey, req.destination, req.header, response
                 )
             }
 
             // If the received response includes a throttle delay, throttle the connection.
-            maybeThrottle(response, req.header.apiVersion(), req.destination, now)
+            maybeThrottle(response, req.header.apiVersion, req.destination, now)
             if (req.isInternalRequest && response is MetadataResponse) metadataUpdater.handleSuccessfulResponse(
                 req.header, now,
                 response
@@ -782,19 +782,21 @@ class NetworkClient(
 
     private fun handleApiVersionsResponse(
         responses: MutableList<ClientResponse>,
-        req: InFlightRequest, now: Long, apiVersionsResponse: ApiVersionsResponse
+        req: InFlightRequest,
+        now: Long,
+        apiVersionsResponse: ApiVersionsResponse,
     ) {
         val node = req.destination
-        if (apiVersionsResponse.data().errorCode() != Errors.NONE.code) {
+        if (apiVersionsResponse.data().errorCode != Errors.NONE.code) {
             if (req.request.version.toInt() == 0 || apiVersionsResponse.data()
-                    .errorCode() != Errors.UNSUPPORTED_VERSION.code
+                    .errorCode != Errors.UNSUPPORTED_VERSION.code
             ) {
                 log.warn(
                     "Received error {} from node {} when making an ApiVersionsRequest with correlation id {}." +
                             "Disconnecting.",
-                    Errors.forCode(apiVersionsResponse.data().errorCode()),
+                    Errors.forCode(apiVersionsResponse.data().errorCode),
                     node,
-                    req.header.correlationId()
+                    req.header.correlationId
                 )
                 selector.close(node)
                 processDisconnection(responses, node, now, ChannelState.LOCAL_CLOSE)
@@ -803,11 +805,11 @@ class NetworkClient(
                 // the ApiVersionsRequest when an UNSUPPORTED_VERSION error is returned.
                 // If not provided, the client falls back to version 0.
                 var maxApiVersion: Short = 0
-                if (apiVersionsResponse.data().apiKeys().size > 0) {
+                if (apiVersionsResponse.data().apiKeys.size > 0) {
                     val apiVersion =
-                        apiVersionsResponse.data().apiKeys().find(ApiKeys.API_VERSIONS.id)
+                        apiVersionsResponse.data().apiKeys.find(ApiKeys.API_VERSIONS.id)
                     if (apiVersion != null) {
-                        maxApiVersion = apiVersion.maxVersion()
+                        maxApiVersion = apiVersion.maxVersion
                     }
                 }
                 nodesNeedingApiVersionsFetch[node] = ApiVersionsRequest.Builder(maxApiVersion)
@@ -815,8 +817,8 @@ class NetworkClient(
             return
         }
         val nodeVersionInfo = NodeApiVersions(
-            apiVersionsResponse.data().apiKeys(),
-            apiVersionsResponse.data().supportedFeatures()
+            apiVersionsResponse.data().apiKeys,
+            apiVersionsResponse.data().supportedFeatures
         )
         apiVersions.update(node, nodeVersionInfo)
         connectionStates.ready(node)
@@ -824,9 +826,9 @@ class NetworkClient(
             "Node {} has finalized features epoch: {}, finalized features: {}, supported features: {}," +
                     "API versions: {}.",
             node,
-            apiVersionsResponse.data().finalizedFeaturesEpoch(),
-            apiVersionsResponse.data().finalizedFeatures(),
-            apiVersionsResponse.data().supportedFeatures(),
+            apiVersionsResponse.data().finalizedFeaturesEpoch,
+            apiVersionsResponse.data().finalizedFeatures,
+            apiVersionsResponse.data().supportedFeatures,
             nodeVersionInfo
         )
     }
@@ -1006,7 +1008,7 @@ class NetworkClient(
             val errors = response.errors()
             if (errors.isNotEmpty()) log.warn(
                 "Error while fetching metadata with correlation id {} : {}",
-                requestHeader!!.correlationId(),
+                requestHeader!!.correlationId,
                 errors
             )
 
@@ -1015,7 +1017,7 @@ class NetworkClient(
             if (response.brokers().isEmpty()) {
                 log.trace(
                     "Ignoring empty metadata response with correlation id {}.",
-                    requestHeader!!.correlationId()
+                    requestHeader!!.correlationId
                 )
                 metadata.failedUpdate(now)
             } else {
@@ -1238,11 +1240,11 @@ class NetworkClient(
                     exception
                 )
             } catch (exception: CorrelationIdMismatchException) {
-                throw if ((SaslClientAuthenticator.isReserved(requestHeader.correlationId())
-                            && !SaslClientAuthenticator.isReserved(exception.responseCorrelationId()))
+                throw if ((SaslClientAuthenticator.isReserved(requestHeader.correlationId)
+                            && !SaslClientAuthenticator.isReserved(exception.responseCorrelationId))
                 ) SchemaException(
                     ("The response is unrelated to Sasl request since its correlation id is "
-                            + exception.responseCorrelationId() + " and the reserved range for Sasl request is [ "
+                            + exception.responseCorrelationId + " and the reserved range for Sasl request is [ "
                             + SaslClientAuthenticator.MIN_RESERVED_CORRELATION_ID + ","
                             + SaslClientAuthenticator.MAX_RESERVED_CORRELATION_ID + "]")
                 ) else exception

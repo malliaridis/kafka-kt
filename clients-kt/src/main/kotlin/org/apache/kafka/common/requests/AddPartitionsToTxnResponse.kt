@@ -70,7 +70,7 @@ class AddPartitionsToTxnResponse : AbstractResponse {
 
         val topicCollection = AddPartitionsToTxnTopicResultCollection()
         topicCollection.addAll(
-            resultMap.map { (key,value) ->
+            resultMap.map { (key, value) ->
                 AddPartitionsToTxnTopicResult()
                     .setName(key)
                     .setResults(value)
@@ -82,7 +82,7 @@ class AddPartitionsToTxnResponse : AbstractResponse {
             .setResults(topicCollection)
     }
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
@@ -92,11 +92,11 @@ class AddPartitionsToTxnResponse : AbstractResponse {
         if (::cachedErrorsMap.isInitialized) return cachedErrorsMap
 
         cachedErrorsMap = HashMap()
-        for (topicResult in data.results()) {
-            for (partitionResult in topicResult.results()) {
+        for (topicResult in data.results) {
+            for (partitionResult in topicResult.results) {
                 cachedErrorsMap[TopicPartition(
-                    topicResult.name(), partitionResult.partitionIndex()
-                )] = Errors.forCode(partitionResult.errorCode())
+                    topicResult.name, partitionResult.partitionIndex
+                )] = Errors.forCode(partitionResult.errorCode)
             }
         }
         return cachedErrorsMap

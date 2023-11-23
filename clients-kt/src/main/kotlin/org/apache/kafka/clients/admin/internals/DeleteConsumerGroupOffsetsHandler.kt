@@ -92,7 +92,7 @@ class DeleteConsumerGroupOffsetsHandler(
         validateKeys(keys)
         response as OffsetDeleteResponse
 
-        val error = Errors.forCode(response.data().errorCode())
+        val error = Errors.forCode(response.data().errorCode)
         if (error !== Errors.NONE) {
             val failed: MutableMap<CoordinatorKey, Throwable> = HashMap()
             val groupsToUnmap: MutableSet<CoordinatorKey> = HashSet()
@@ -102,11 +102,11 @@ class DeleteConsumerGroupOffsetsHandler(
             return ApiResult(emptyMap(), failed, ArrayList(groupsToUnmap))
         } else {
             val partitionResults: MutableMap<TopicPartition, Errors> = HashMap()
-            response.data().topics().forEach { topic ->
-                topic.partitions().forEach { partition ->
+            response.data().topics.forEach { topic ->
+                topic.partitions.forEach { partition ->
                     partitionResults[
-                        TopicPartition(topic.name(), partition.partitionIndex())
-                    ] = Errors.forCode(partition.errorCode())
+                        TopicPartition(topic.name, partition.partitionIndex)
+                    ] = Errors.forCode(partition.errorCode)
                 }
             }
             return ApiResult.completed(groupId, partitionResults)

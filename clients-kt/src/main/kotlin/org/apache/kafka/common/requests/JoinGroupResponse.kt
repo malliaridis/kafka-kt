@@ -31,23 +31,23 @@ class JoinGroupResponse(
     init {
         // All versions prior to version 7 do not support nullable
         // string for the protocol name. Empty string should be used.
-        if (version < 7 && data.protocolName() == null) data.setProtocolName("")
+        if (version < 7 && data.protocolName == null) data.setProtocolName("")
     }
 
     override fun data(): JoinGroupResponseData = data
 
     val isLeader: Boolean
-        get() = data.memberId() == data.leader()
+        get() = data.memberId == data.leader
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
     }
 
-    fun error(): Errors = Errors.forCode(data.errorCode())
+    fun error(): Errors = Errors.forCode(data.errorCode)
 
-    override fun errorCounts(): Map<Errors, Int> = errorCounts(Errors.forCode(data.errorCode()))
+    override fun errorCounts(): Map<Errors, Int> = errorCounts(Errors.forCode(data.errorCode))
 
     override fun toString(): String = data.toString()
 

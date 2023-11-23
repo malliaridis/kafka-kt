@@ -40,12 +40,12 @@ class AlterReplicaLogDirsRequest(
 
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AlterReplicaLogDirsResponse {
         val data = AlterReplicaLogDirsResponseData()
-        data.setResults(this.data.dirs().flatMap { alterDir ->
-            alterDir.topics().map { topic ->
+        data.setResults(this.data.dirs.flatMap { alterDir ->
+            alterDir.topics.map { topic ->
                 AlterReplicaLogDirTopicResult()
-                    .setTopicName(topic.name())
+                    .setTopicName(topic.name)
                     .setPartitions(
-                        topic.partitions()
+                        topic.partitions
                             .map { partitionId ->
                                 AlterReplicaLogDirPartitionResult()
                                     .setErrorCode(Errors.forException(e).code)
@@ -60,10 +60,10 @@ class AlterReplicaLogDirsRequest(
 
     fun partitionDirs(): Map<TopicPartition, String> {
         val result = mutableMapOf<TopicPartition, String>()
-        data.dirs().forEach { alterDir: AlterReplicaLogDir ->
-            alterDir.topics().forEach { topic: AlterReplicaLogDirTopic ->
-                topic.partitions().forEach { partition ->
-                    result[TopicPartition(topic.name(),partition)] = alterDir.path()
+        data.dirs.forEach { alterDir: AlterReplicaLogDir ->
+            alterDir.topics.forEach { topic: AlterReplicaLogDirTopic ->
+                topic.partitions.forEach { partition ->
+                    result[TopicPartition(topic.name, partition)] = alterDir.path
                 }
             }
         }

@@ -43,7 +43,7 @@ class ConsumerMetadata(
     }
 
     @Synchronized
-    fun newMetadataRequestBuilder(): MetadataRequest.Builder {
+    override fun newMetadataRequestBuilder(): MetadataRequest.Builder {
         if (subscription.hasPatternSubscription()) return MetadataRequest.Builder.allTopics()
         val topics = subscription.metadataTopics() + transientTopics
 
@@ -56,14 +56,13 @@ class ConsumerMetadata(
         if (!fetch().topics().containsAll(topics)) requestUpdateForNewTopics()
     }
 
-    @Synchronized
     fun clearTransientTopics() = transientTopics.clear()
 
     @Synchronized
-    internal fun retainTopic(
+    override fun retainTopic(
         topic: String,
         isInternal: Boolean,
-        nowMs: Long,
+        nowMs: Long
     ): Boolean = if (
         transientTopics.contains(topic)
         || subscription.needsMetadata(topic)) true

@@ -31,15 +31,15 @@ class RenewDelegationTokenResponse(
 
     override fun data(): RenewDelegationTokenResponseData = data
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
     }
 
-    fun error(): Errors = Errors.forCode(data.errorCode())
+    fun error(): Errors = Errors.forCode(data.errorCode)
 
-    fun expiryTimestamp(): Long = data.expiryTimestampMs()
+    fun expiryTimestamp(): Long = data.expiryTimestampMs
 
     fun hasError(): Boolean = error() !== Errors.NONE
 

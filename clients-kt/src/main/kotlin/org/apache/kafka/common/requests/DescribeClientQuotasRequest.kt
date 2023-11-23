@@ -32,20 +32,20 @@ class DescribeClientQuotasRequest(
 
     fun filter(): ClientQuotaFilter {
 
-        val components = data.components().map { data ->
-            when (data.matchType()) {
+        val components = data.components.map { data ->
+            when (data.matchType) {
                 MATCH_TYPE_EXACT -> ClientQuotaFilterComponent(
-                    entityType = data.entityType(),
-                    match = data.match()
+                    entityType = data.entityType,
+                    match = data.match
                 )
 
-                MATCH_TYPE_DEFAULT -> ClientQuotaFilterComponent(data.entityType())
-                MATCH_TYPE_SPECIFIED -> ClientQuotaFilterComponent(data.entityType())
-                else -> throw IllegalArgumentException("Unexpected match type: " + data.matchType())
+                MATCH_TYPE_DEFAULT -> ClientQuotaFilterComponent(data.entityType)
+                MATCH_TYPE_SPECIFIED -> ClientQuotaFilterComponent(data.entityType)
+                else -> throw IllegalArgumentException("Unexpected match type: " + data.matchType)
             }
         }
 
-        return if (data.strict()) ClientQuotaFilter.containsOnly(components)
+        return if (data.strict) ClientQuotaFilter.containsOnly(components)
         else ClientQuotaFilter.contains(components)
     }
 
@@ -61,7 +61,7 @@ class DescribeClientQuotasRequest(
                 .setThrottleTimeMs(throttleTimeMs)
                 .setErrorCode(error1.code)
                 .setErrorMessage(message)
-                .setEntries(null)
+                .setEntries(emptyList())
         )
     }
 

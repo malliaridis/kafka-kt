@@ -72,11 +72,6 @@ data class TokenInformation(
     )
     fun expiryTimestamp(): Long = expiryTimestamp
 
-    @Deprecated("Use property instead")
-    fun setExpiryTimestamp(expiryTimestamp: Long) {
-        this.expiryTimestamp = expiryTimestamp
-    }
-
     @Deprecated(
         message = "Use property instead",
         replaceWith = ReplaceWith("tokenId"),

@@ -31,9 +31,9 @@ import org.apache.kafka.common.protocol.ObjectSerializationCache
  */
 class RequestHeader(
     private val data: RequestHeaderData,
-    private val headerVersion: Short,
+    val headerVersion: Short,
 ) : AbstractRequestResponse {
-    
+
     private var size = SIZE_NOT_INITIALIZED
 
     constructor(
@@ -50,15 +50,47 @@ class RequestHeader(
         headerVersion = requestApiKey.requestHeaderVersion(requestVersion),
     )
 
-    fun apiKey(): ApiKeys = ApiKeys.forId(data.requestApiKey().toInt())
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("apiKey"),
+    )
+    fun apiKey(): ApiKeys = ApiKeys.forId(data.requestApiKey.toInt())
 
-    fun apiVersion(): Short = data.requestApiVersion()
+    val apiKey: ApiKeys
+        get() = ApiKeys.forId(data.requestApiKey.toInt())
 
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("apiVersion"),
+    )
+    fun apiVersion(): Short = data.requestApiVersion
+
+    val apiVersion: Short
+        get() = data.requestApiVersion
+
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("headerVersion"),
+    )
     fun headerVersion(): Short = headerVersion
 
-    fun clientId(): String = data.clientId()
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("clientId"),
+    )
+    fun clientId(): String? = data.clientId
 
-    fun correlationId(): Int = data.correlationId()
+    val clientId: String?
+        get() = data.clientId
+
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("correlationId"),
+    )
+    fun correlationId(): Int = data.correlationId
+
+    val correlationId: Int
+        get() = data.correlationId
 
     override fun data(): RequestHeaderData = data
 
@@ -80,8 +112,8 @@ class RequestHeader(
      *
      * Visible for testing.
      */
-    fun size(serializationCache: ObjectSerializationCache?): Int {
-        size = data.size(serializationCache!!, headerVersion)
+    fun size(serializationCache: ObjectSerializationCache): Int {
+        size = data.size(serializationCache, headerVersion)
         return size
     }
 
@@ -97,22 +129,22 @@ class RequestHeader(
     }
 
     fun toResponseHeader(): ResponseHeader {
-        return ResponseHeader(data.correlationId(), apiKey().responseHeaderVersion(apiVersion()))
+        return ResponseHeader(data.correlationId, apiKey.responseHeaderVersion(apiVersion))
     }
 
     override fun toString(): String {
-        return "RequestHeader(apiKey=${apiKey()}" +
-                ", apiVersion=${apiVersion()}" +
-                ", clientId=${clientId()}" +
-                ", correlationId=${correlationId()}" +
+        return "RequestHeader(apiKey=$apiKey" +
+                ", apiVersion=$apiVersion" +
+                ", clientId=$clientId" +
+                ", correlationId=$correlationId" +
                 ", headerVersion=$headerVersion" +
                 ")"
     }
 
-    override fun equals(o: Any?): Boolean {
-        if (this === o) return true
-        if (o == null || javaClass != o.javaClass) return false
-        val that = o as RequestHeader
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || javaClass != other.javaClass) return false
+        val that = other as RequestHeader
         return headerVersion == that.headerVersion && data == that.data
     }
 
@@ -121,13 +153,13 @@ class RequestHeader(
     }
 
     companion object {
-        
+
         private const val SIZE_NOT_INITIALIZED = -1
-        
+
         fun parse(buffer: ByteBuffer): RequestHeader {
             var apiKey: Short = -1
             return try {
-                
+
                 // We derive the header version from the request api version, so we read that first.
                 // The request api version is part of `RequestHeaderData`, so we reset the buffer
                 // position after the read.
@@ -137,13 +169,13 @@ class RequestHeader(
                 val headerVersion = ApiKeys.forId(apiKey.toInt()).requestHeaderVersion(apiVersion)
                 buffer.position(bufferStartPositionForHeader)
                 val headerData = RequestHeaderData(ByteBufferAccessor(buffer), headerVersion)
-                
+
                 // Due to a quirk in the protocol, client ID is marked as nullable.
                 // However, we treat a null client ID as equivalent to an empty client ID.
-                if (headerData.clientId() == null) headerData.setClientId("")
-                
+                if (headerData.clientId == null) headerData.setClientId("")
+
                 val header = RequestHeader(headerData, headerVersion)
-                
+
                 // Size of header is calculated by the shift in the position of buffer's start
                 // position during parsing. Prior to parsing, the buffer's start position points to
                 // header data and after the parsing operation the buffer's start position points to

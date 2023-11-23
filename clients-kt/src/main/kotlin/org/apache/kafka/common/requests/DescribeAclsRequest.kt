@@ -42,7 +42,7 @@ class DescribeAclsRequest private constructor(
 
     private fun normalizeAndValidate(version: Short) {
         if (version.toInt() == 0) {
-            val patternType = PatternType.fromCode(data.patternTypeFilter())
+            val patternType = PatternType.fromCode(data.patternTypeFilter)
             // On older brokers, no pattern types existed except LITERAL (effectively). So even
             // though ANY is not directly supported on those brokers, we can get the same effect as
             // ANY by setting the pattern type to LITERAL. Note that the wildcard `*` is considered
@@ -54,10 +54,10 @@ class DescribeAclsRequest private constructor(
         }
 
         require(
-            data.patternTypeFilter() != PatternType.UNKNOWN.code
-                    && data.resourceTypeFilter() != ResourceType.UNKNOWN.code
-                    && data.permissionType() != AclPermissionType.UNKNOWN.code
-                    && data.operation() != AclOperation.UNKNOWN.code
+            data.patternTypeFilter != PatternType.UNKNOWN.code
+                    && data.resourceTypeFilter != ResourceType.UNKNOWN.code
+                    && data.permissionType != AclPermissionType.UNKNOWN.code
+                    && data.operation != AclOperation.UNKNOWN.code
         ) { "DescribeAclsRequest contains UNKNOWN elements: $data" }
     }
 
@@ -75,15 +75,15 @@ class DescribeAclsRequest private constructor(
 
     fun filter(): AclBindingFilter {
         val rpf = ResourcePatternFilter(
-            ResourceType.fromCode(data.resourceTypeFilter()),
-            data.resourceNameFilter(),
-            PatternType.fromCode(data.patternTypeFilter())
+            ResourceType.fromCode(data.resourceTypeFilter),
+            data.resourceNameFilter,
+            PatternType.fromCode(data.patternTypeFilter)
         )
         val acef = AccessControlEntryFilter(
-            data.principalFilter(),
-            data.hostFilter(),
-            AclOperation.fromCode(data.operation()),
-            AclPermissionType.fromCode(data.permissionType())
+            data.principalFilter,
+            data.hostFilter,
+            AclOperation.fromCode(data.operation),
+            AclPermissionType.fromCode(data.permissionType)
         )
         return AclBindingFilter(rpf, acef)
     }

@@ -54,18 +54,18 @@ class DescribeUserScramCredentialsResult internal constructor(
                  * described because it does not exist; such a user will not appear as a key in the
                  * returned map.
                  */
-                val firstFailedDescribe = data!!.results().firstOrNull { result ->
-                    result.errorCode() != Errors.NONE.code
-                            && result.errorCode() != Errors.RESOURCE_NOT_FOUND.code
+                val firstFailedDescribe = data!!.results.firstOrNull { result ->
+                    result.errorCode != Errors.NONE.code
+                            && result.errorCode != Errors.RESOURCE_NOT_FOUND.code
                 }
 
                 if (firstFailedDescribe != null) retval.completeExceptionally(
-                    Errors.forCode(firstFailedDescribe.errorCode())
-                        .exception(firstFailedDescribe.errorMessage())
+                    Errors.forCode(firstFailedDescribe.errorCode)
+                        .exception(firstFailedDescribe.errorMessage)
                 ) else {
-                    val retvalMap = data.results().associate { userResult ->
-                        userResult.user() to UserScramCredentialsDescription(
-                            name = userResult.user(),
+                    val retvalMap = data.results.associate { userResult ->
+                        userResult.user to UserScramCredentialsDescription(
+                            name = userResult.user,
                             credentialInfos = getScramCredentialInfosFor(userResult)
                         )
                     }
@@ -93,9 +93,9 @@ class DescribeUserScramCredentialsResult internal constructor(
         dataFuture.whenComplete { data, throwable ->
             if (throwable != null) retval.completeExceptionally(throwable)
             else retval.complete(
-                data!!.results()
-                    .filter { result -> result.errorCode() != Errors.RESOURCE_NOT_FOUND.code }
-                    .map { result -> result.user() }
+                data!!.results
+                    .filter { result -> result.errorCode != Errors.RESOURCE_NOT_FOUND.code }
+                    .map { result -> result.user }
             )
         }
         return retval
@@ -116,20 +116,20 @@ class DescribeUserScramCredentialsResult internal constructor(
                 // it is possible that there is no future for this user (for example, the original
                 // describe request was for users 1, 2, and 3 but this is looking for user 4), so
                 // explicitly take care of that case
-                val userResult = data!!.results()
-                    .firstOrNull { result -> (result.user() == userName) }
+                val userResult = data!!.results
+                    .firstOrNull { result -> (result.user == userName) }
 
                 if (userResult == null) retval.completeExceptionally(
                     ResourceNotFoundException("No such user: $userName"),
                 ) else {
                     // RESOURCE_NOT_FOUND is included here
-                    if (userResult.errorCode() != Errors.NONE.code) retval.completeExceptionally(
-                        Errors.forCode(userResult.errorCode())
-                            .exception(userResult.errorMessage())
+                    if (userResult.errorCode != Errors.NONE.code) retval.completeExceptionally(
+                        Errors.forCode(userResult.errorCode)
+                            .exception(userResult.errorMessage)
                     )
                     else retval.complete(
                         UserScramCredentialsDescription(
-                            name = userResult.user(),
+                            name = userResult.user,
                             credentialInfos = getScramCredentialInfosFor(userResult),
                         )
                     )
@@ -143,11 +143,11 @@ class DescribeUserScramCredentialsResult internal constructor(
 
         private fun getScramCredentialInfosFor(
             userResult: DescribeUserScramCredentialsResponseData.DescribeUserScramCredentialsResult,
-        ): List<ScramCredentialInfo> = userResult.credentialInfos().map { credentialInfo ->
-                ScramCredentialInfo(
-                    mechanism = ScramMechanism.fromType(credentialInfo.mechanism()),
-                    iterations = credentialInfo.iterations(),
-                )
-            }
+        ): List<ScramCredentialInfo> = userResult.credentialInfos.map { credentialInfo ->
+            ScramCredentialInfo(
+                mechanism = ScramMechanism.fromType(credentialInfo.mechanism),
+                iterations = credentialInfo.iterations,
+            )
+        }
     }
 }

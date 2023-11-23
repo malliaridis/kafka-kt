@@ -39,16 +39,16 @@ class ObjectSerializationCache {
         map[o] = size
     }
 
-    fun getArraySizeInBytes(o: Any): Int? {
-        return map[o] as Int?
+    fun getArraySizeInBytes(o: Any): Int {
+        return map[o] as Int
     }
 
     fun cacheSerializedValue(o: Any, value: ByteArray) {
         map[o] = value
     }
 
-    fun getSerializedValue(o: Any): ByteArray? {
+    fun getSerializedValue(o: Any): ByteArray {
         val value = map[o]
-        return value as ByteArray?
+        return value as ByteArray
     }
 }

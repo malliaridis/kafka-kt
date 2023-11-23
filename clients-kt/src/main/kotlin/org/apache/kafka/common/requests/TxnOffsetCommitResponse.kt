@@ -63,11 +63,10 @@ class TxnOffsetCommitResponse : AbstractResponse {
             val topic = responseTopicDataMap.getOrDefault(
                 topicName, TxnOffsetCommitResponseTopic().setName(topicName)
             )
-            topic.partitions().add(
-                TxnOffsetCommitResponsePartition()
-                    .setErrorCode(value.code)
-                    .setPartitionIndex(topicPartition.partition)
-            )
+            topic.partitions += TxnOffsetCommitResponsePartition()
+                .setErrorCode(value.code)
+                .setPartitionIndex(topicPartition.partition)
+
             responseTopicDataMap[topicName] = topic
         }
 
@@ -78,25 +77,25 @@ class TxnOffsetCommitResponse : AbstractResponse {
 
     override fun data(): TxnOffsetCommitResponseData = data
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
     }
 
     override fun errorCounts(): Map<Errors, Int> = errorCounts(
-        data.topics().flatMap { topic ->
-            topic.partitions().map { partition -> Errors.forCode(partition.errorCode()) }
+        data.topics.flatMap { topic ->
+            topic.partitions.map { partition -> Errors.forCode(partition.errorCode) }
         }
     )
 
     fun errors(): Map<TopicPartition, Errors> {
         val errorMap = mutableMapOf<TopicPartition, Errors>()
 
-        for (topic in data.topics())
-            for (partition in topic.partitions())
-                errorMap[TopicPartition(topic.name(), partition.partitionIndex())] =
-                    Errors.forCode(partition.errorCode())
+        for (topic in data.topics)
+            for (partition in topic.partitions)
+                errorMap[TopicPartition(topic.name, partition.partitionIndex)] =
+                    Errors.forCode(partition.errorCode)
 
         return errorMap
     }

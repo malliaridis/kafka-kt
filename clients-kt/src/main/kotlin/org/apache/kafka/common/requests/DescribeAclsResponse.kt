@@ -56,7 +56,7 @@ class DescribeAclsResponse : AbstractResponse {
 
     override fun data(): DescribeAclsResponseData = data
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
@@ -66,37 +66,37 @@ class DescribeAclsResponse : AbstractResponse {
         message = "User property instead",
         replaceWith = ReplaceWith("error"),
     )
-    fun error(): ApiError = ApiError(Errors.forCode(data.errorCode()), data.errorMessage())
+    fun error(): ApiError = ApiError(Errors.forCode(data.errorCode), data.errorMessage)
 
     val error: ApiError
-        get() = ApiError(Errors.forCode(data.errorCode()), data.errorMessage())
+        get() = ApiError(Errors.forCode(data.errorCode), data.errorMessage)
 
-    override fun errorCounts(): Map<Errors, Int> = errorCounts(Errors.forCode(data.errorCode()))
+    override fun errorCounts(): Map<Errors, Int> = errorCounts(Errors.forCode(data.errorCode))
 
     @Deprecated(
         message = "User property instead",
         replaceWith = ReplaceWith("acls"),
     )
-    fun acls(): List<DescribeAclsResource> = data.resources()
+    fun acls(): List<DescribeAclsResource> = data.resources
 
     val acls: List<DescribeAclsResource>
-        get() = data.resources()
+        get() = data.resources
 
     override fun shouldClientThrottle(version: Short): Boolean = version >= 1
 
     private fun validate(version: Short?) {
         if (
             version?.toInt() == 0
-            && acls.any { acl -> acl.patternType() != PatternType.LITERAL.code }
+            && acls.any { acl -> acl.patternType != PatternType.LITERAL.code }
         ) throw UnsupportedVersionException("Version 0 only supports literal resource pattern types")
 
         require(
             acls.none { resource ->
-                resource.patternType() == PatternType.UNKNOWN.code
-                        || resource.resourceType() == ResourceType.UNKNOWN.code
-                        || resource.acls().none { acl ->
-                    acl.operation() == AclOperation.UNKNOWN.code
-                            || acl.permissionType() == AclPermissionType.UNKNOWN.code
+                resource.patternType == PatternType.UNKNOWN.code
+                        || resource.resourceType == ResourceType.UNKNOWN.code
+                        || resource.acls.none { acl ->
+                    acl.operation == AclOperation.UNKNOWN.code
+                            || acl.permissionType == AclPermissionType.UNKNOWN.code
                 }
             }
         ) { "Contain UNKNOWN elements" }
@@ -111,18 +111,18 @@ class DescribeAclsResponse : AbstractResponse {
             )
 
         private fun aclBindings(resource: DescribeAclsResource): List<AclBinding> {
-            return resource.acls().map { acl: AclDescription ->
+            return resource.acls.map { acl: AclDescription ->
                 val pattern =
                     ResourcePattern(
-                        ResourceType.fromCode(resource.resourceType()),
-                        resource.resourceName(),
-                        PatternType.fromCode(resource.patternType())
+                        ResourceType.fromCode(resource.resourceType),
+                        resource.resourceName,
+                        PatternType.fromCode(resource.patternType)
                     )
                 val entry = AccessControlEntry(
-                    acl.principal(),
-                    acl.host(),
-                    AclOperation.fromCode(acl.operation()),
-                    AclPermissionType.fromCode(acl.permissionType())
+                    acl.principal,
+                    acl.host,
+                    AclOperation.fromCode(acl.operation),
+                    AclPermissionType.fromCode(acl.permissionType)
                 )
 
                 AclBinding(pattern, entry)

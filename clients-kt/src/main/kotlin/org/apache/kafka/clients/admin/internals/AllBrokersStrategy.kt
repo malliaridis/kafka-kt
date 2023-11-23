@@ -60,15 +60,15 @@ class AllBrokersStrategy(
     ): AdminApiLookupStrategy.LookupResult<BrokerKey> {
         validateLookupKeys(keys)
         response as MetadataResponse
-        val brokers = response.data().brokers()
+        val brokers = response.data().brokers
         if (brokers.isEmpty()) {
             log.debug("Metadata response contained no brokers. Will backoff and retry")
             return AdminApiLookupStrategy.LookupResult.empty()
         } else log.debug("Discovered all brokers {} to send requests to", brokers)
 
         val brokerKeys = brokers.associateBy(
-            keySelector = { BrokerKey(it.nodeId()) },
-            valueTransform = MetadataResponseBroker::nodeId
+            keySelector = { BrokerKey(it.nodeId) },
+            valueTransform = { it.nodeId }
         )
 
         return AdminApiLookupStrategy.LookupResult(
@@ -107,7 +107,7 @@ class AllBrokersStrategy(
             future.complete(brokerFutures)
         }
 
-        fun completeLookupExceptionally(lookupErrors: Map<BrokerKey?, Throwable?>) {
+        override fun completeLookupExceptionally(lookupErrors: Map<BrokerKey, Throwable>) {
             require(LOOKUP_KEYS == lookupErrors.keys) {
                 "Unexpected keys among lookup errors: $lookupErrors"
             }

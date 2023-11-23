@@ -82,8 +82,8 @@ data class ApiError(
             val throwableToBeEncoded = Errors.maybeUnwrapException(t)
             val error = Errors.forException(throwableToBeEncoded)
             val message =
-                if (error === Errors.UNKNOWN_SERVER_ERROR || error.message == throwableToBeEncoded.message) null
-                else throwableToBeEncoded.message
+                if (error === Errors.UNKNOWN_SERVER_ERROR || error.message == throwableToBeEncoded?.message) null
+                else throwableToBeEncoded?.message
             return ApiError(error, message)
         }
     }

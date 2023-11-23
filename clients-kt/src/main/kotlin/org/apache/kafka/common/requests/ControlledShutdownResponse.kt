@@ -39,7 +39,7 @@ class ControlledShutdownResponse(
     private val data: ControlledShutdownResponseData,
 ) : AbstractResponse(ApiKeys.CONTROLLED_SHUTDOWN) {
 
-    fun error(): Errors = Errors.forCode(data.errorCode())
+    fun error(): Errors = Errors.forCode(data.errorCode)
 
     override fun errorCounts(): Map<Errors, Int> = errorCounts(error())
 

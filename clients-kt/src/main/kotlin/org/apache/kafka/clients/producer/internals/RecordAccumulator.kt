@@ -995,7 +995,7 @@ class RecordAccumulator(
         now: Long,
     ): List<ProducerBatch> {
         var size = 0
-        val parts = cluster.partitionsForNode(node.id())
+        val parts = cluster.partitionsForNode(node.id)
         val ready: MutableList<ProducerBatch> = ArrayList()
         // to make starvation less likely each node has its own drainIndex
         var drainIndex = getDrainIndex(node.idString())

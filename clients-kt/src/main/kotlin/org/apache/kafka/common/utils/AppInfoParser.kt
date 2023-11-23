@@ -51,7 +51,7 @@ object AppInfoParser {
     }
 
     @Synchronized
-    fun registerAppInfo(prefix: String, id: String, metrics: Metrics?, nowMs: Long) {
+    fun registerAppInfo(prefix: String, id: String?, metrics: Metrics?, nowMs: Long) {
         try {
             val name = ObjectName("$prefix:type=app-info,id=" + jmxSanitize(id))
             val mBean = AppInfo(nowMs)

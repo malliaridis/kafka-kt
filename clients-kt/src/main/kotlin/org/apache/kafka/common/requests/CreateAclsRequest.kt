@@ -46,14 +46,14 @@ class CreateAclsRequest internal constructor(
         this.data = data
     }
 
-    fun aclCreations(): List<AclCreation> = data.creations()
+    fun aclCreations(): List<AclCreation> = data.creations
 
     override fun data(): CreateAclsRequestData = data
 
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse {
         val result = aclResult(e)
 
-        val results = Collections.nCopies(data.creations().size, result)
+        val results = Collections.nCopies(data.creations.size, result)
         return CreateAclsResponse(
             CreateAclsResponseData()
                 .setThrottleTimeMs(throttleTimeMs)
@@ -63,20 +63,20 @@ class CreateAclsRequest internal constructor(
 
     private fun validate(data: CreateAclsRequestData) {
         if (version.toInt() == 0) {
-            val unsupported = data.creations()
-                .any { creation -> creation.resourcePatternType() != PatternType.LITERAL.code }
+            val unsupported = data.creations
+                .any { creation -> creation.resourcePatternType != PatternType.LITERAL.code }
             if (unsupported) throw UnsupportedVersionException(
                 "Version 0 only supports literal resource pattern types"
             )
         }
-        val unknown = data.creations().any { creation ->
-            creation.resourcePatternType() == PatternType.UNKNOWN.code
-                    || creation.resourceType() == ResourceType.UNKNOWN.code
-                    || creation.permissionType() == AclPermissionType.UNKNOWN.code
-                    || creation.operation() == AclOperation.UNKNOWN.code
+        val unknown = data.creations.any { creation ->
+            creation.resourcePatternType == PatternType.UNKNOWN.code
+                    || creation.resourceType == ResourceType.UNKNOWN.code
+                    || creation.permissionType == AclPermissionType.UNKNOWN.code
+                    || creation.operation == AclOperation.UNKNOWN.code
         }
 
-        require(!unknown) { "CreatableAcls contain unknown elements: " + data.creations() }
+        require(!unknown) { "CreatableAcls contain unknown elements: " + data.creations }
     }
 
     class Builder(
@@ -95,15 +95,15 @@ class CreateAclsRequest internal constructor(
 
         fun aclBinding(acl: AclCreation): AclBinding {
             val pattern = ResourcePattern(
-                ResourceType.fromCode(acl.resourceType()),
-                acl.resourceName(),
-                PatternType.fromCode(acl.resourcePatternType())
+                ResourceType.fromCode(acl.resourceType),
+                acl.resourceName,
+                PatternType.fromCode(acl.resourcePatternType)
             )
             val entry = AccessControlEntry(
-                acl.principal(),
-                acl.host(),
-                AclOperation.fromCode(acl.operation()),
-                AclPermissionType.fromCode(acl.permissionType())
+                acl.principal,
+                acl.host,
+                AclOperation.fromCode(acl.operation),
+                AclPermissionType.fromCode(acl.permissionType)
             )
 
             return AclBinding(pattern, entry)

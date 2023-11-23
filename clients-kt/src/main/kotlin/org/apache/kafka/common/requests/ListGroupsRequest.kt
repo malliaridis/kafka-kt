@@ -53,7 +53,7 @@ class ListGroupsRequest(
     ) : AbstractRequest.Builder<ListGroupsRequest>(ApiKeys.LIST_GROUPS) {
 
         override fun build(version: Short): ListGroupsRequest {
-            if (data.statesFilter().isNotEmpty() && version < 4)
+            if (data.statesFilter.isNotEmpty() && version < 4)
                 throw UnsupportedVersionException(
                     "The broker only supports ListGroups v$version, but we need v4 or newer to " +
                         "request groups by states."

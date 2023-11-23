@@ -43,6 +43,13 @@ The null safety was probably one of the main reasons the entire project was migr
 null safety in Kotlin nullable fields are marked accordingly, which results to a clearer API
 definition, more safety and less null-checks in consumer code.
 
+With null-safety some breaking changes were mandatory. These are listed below:
+
+| Change                  | Explanation                                                                                                                                                                                                                         |
+|-------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Kafka Consumer group ID | The Kafka consumer `group.id` is mandatory and cannot be `null` or empty. This has as a result that the group management and offset commit APIs are always available, but also that there will always be a coordinator initialized. |
+| Collections             | Larger parts of the code (mainly the messages) were migrated to empty collections instead of null. This allows iterations over collections without checking for nullability prior.                                                  |
+
 ## Serialization and Nullability
 
 Implementations of `Serializer` and `Deserializer` should, according to the documentation, prefer

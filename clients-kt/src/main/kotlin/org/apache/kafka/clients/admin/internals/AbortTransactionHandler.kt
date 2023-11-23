@@ -62,13 +62,11 @@ class AbortTransactionHandler(
             .setProducerEpoch(abortSpec.producerEpoch)
             .setProducerId(abortSpec.producerId)
             .setTransactionResult(false)
-        marker.topics().add(
-            WritableTxnMarkerTopic()
-                .setName(abortSpec.topicPartition.topic)
-                .setPartitionIndexes(listOf(abortSpec.topicPartition.partition))
-        )
+        marker.topics += WritableTxnMarkerTopic()
+            .setName(abortSpec.topicPartition.topic)
+            .setPartitionIndexes(intArrayOf(abortSpec.topicPartition.partition))
         val request = WriteTxnMarkersRequestData()
-        request.markers().add(marker)
+        request.markers += marker
         return WriteTxnMarkersRequest.Builder(request)
     }
 
@@ -79,8 +77,8 @@ class AbortTransactionHandler(
     ): ApiResult<TopicPartition, Unit> {
         validateTopicPartitions(keys)
         response as WriteTxnMarkersResponse
-        val markerResponses = response.data().markers()
-        if (markerResponses.size != 1 || markerResponses[0].producerId() != abortSpec.producerId) {
+        val markerResponses = response.data().markers
+        if (markerResponses.size != 1 || markerResponses[0].producerId != abortSpec.producerId) {
             return ApiResult.failed(
                 abortSpec.topicPartition, KafkaException(
                     "WriteTxnMarkers response " +
@@ -90,9 +88,10 @@ class AbortTransactionHandler(
             )
         }
         val markerResponse = markerResponses[0]
-        val topicResponses = markerResponse.topics()
+        val topicResponses = markerResponse.topics
         if (topicResponses.size != 1
-            || topicResponses[0].name() != abortSpec.topicPartition.topic) {
+            || topicResponses[0].name != abortSpec.topicPartition.topic
+        ) {
             return ApiResult.failed(
                 abortSpec.topicPartition, KafkaException(
                     ("WriteTxnMarkers response " +
@@ -102,9 +101,9 @@ class AbortTransactionHandler(
             )
         }
         val topicResponse = topicResponses[0]
-        val partitionResponses = topicResponse.partitions()
+        val partitionResponses = topicResponse.partitions
         if (partitionResponses.size != 1
-            || partitionResponses[0].partitionIndex() != abortSpec.topicPartition.partition
+            || partitionResponses[0].partitionIndex != abortSpec.topicPartition.partition
         ) {
             return ApiResult.failed(
                 abortSpec.topicPartition, KafkaException(
@@ -115,7 +114,7 @@ class AbortTransactionHandler(
             )
         }
         val partitionResponse = partitionResponses[0]
-        val error = Errors.forCode(partitionResponse.errorCode())
+        val error = Errors.forCode(partitionResponse.errorCode)
         return if (error != Errors.NONE) handleError(error)
         else ApiResult.completed(abortSpec.topicPartition, Unit)
     }

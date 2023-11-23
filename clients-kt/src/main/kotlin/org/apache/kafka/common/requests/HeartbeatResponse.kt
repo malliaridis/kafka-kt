@@ -37,13 +37,13 @@ class HeartbeatResponse(
     private val data: HeartbeatResponseData,
 ) : AbstractResponse(ApiKeys.HEARTBEAT) {
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
     }
 
-    fun error(): Errors = Errors.forCode(data.errorCode())
+    fun error(): Errors = Errors.forCode(data.errorCode)
 
     override fun errorCounts(): Map<Errors, Int> = errorCounts(error())
 

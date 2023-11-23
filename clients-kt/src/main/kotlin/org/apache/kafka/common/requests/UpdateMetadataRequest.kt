@@ -52,45 +52,46 @@ class UpdateMetadataRequest internal constructor(
         // Version 2 added support for rack
         // Version 3 added support for listener name, which we can infer from the security protocol for older versions
         if (version < 3) {
-            for (liveBroker: UpdateMetadataBroker in data.liveBrokers()) {
+            for (liveBroker: UpdateMetadataBroker in data.liveBrokers) {
                 // Set endpoints so that callers can rely on it always being present
-                if (version.toInt() == 0 && liveBroker.endpoints().isEmpty()) {
+                if (version.toInt() == 0 && liveBroker.endpoints.isEmpty()) {
                     val securityProtocol = SecurityProtocol.PLAINTEXT
                     liveBroker.setEndpoints(
                         listOf(
                             UpdateMetadataEndpoint()
-                                .setHost(liveBroker.v0Host())
-                                .setPort(liveBroker.v0Port())
+                                .setHost(liveBroker.v0Host)
+                                .setPort(liveBroker.v0Port)
                                 .setSecurityProtocol(securityProtocol.id)
                                 .setListener(
-                                    ListenerName.forSecurityProtocol(securityProtocol).value()
+                                    ListenerName.forSecurityProtocol(securityProtocol).value
                                 )
                         )
                     )
-                } else for (endpoint: UpdateMetadataEndpoint in liveBroker.endpoints()) {
+                } else for (endpoint: UpdateMetadataEndpoint in liveBroker.endpoints) {
                     // Set listener so that callers can rely on it always being present
-                    if (endpoint.listener().isEmpty())
+                    if (endpoint.listener.isEmpty())
                         endpoint.setListener(listenerNameFromSecurityProtocol(endpoint))
                 }
             }
         }
         if (version >= 5) {
-            for (topicState: UpdateMetadataTopicState in data.topicStates()) {
-                for (partitionState: UpdateMetadataPartitionState in topicState.partitionStates()) {
+            for (topicState: UpdateMetadataTopicState in data.topicStates) {
+                for (partitionState: UpdateMetadataPartitionState in topicState.partitionStates) {
                     // Set the topic name so that we can always present the ungrouped view to callers
-                    partitionState.setTopicName(topicState.topicName())
+                    partitionState.setTopicName(topicState.topicName)
                 }
             }
         }
     }
 
-    override fun controllerId(): Int = data.controllerId()
+    override fun controllerId(): Int = data.controllerId
 
-    override fun isKRaftController(): Boolean = data.isKRaftController
+    override val isKRaftController: Boolean
+        get() = data.isKRaftController
 
-    override fun controllerEpoch(): Int = data.controllerEpoch()
+    override fun controllerEpoch(): Int = data.controllerEpoch
 
-    override fun brokerEpoch(): Long = data.brokerEpoch()
+    override fun brokerEpoch(): Long = data.brokerEpoch
 
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): UpdateMetadataResponse {
         val data = UpdateMetadataResponseData().setErrorCode(Errors.forException(e).code)
@@ -100,19 +101,19 @@ class UpdateMetadataRequest internal constructor(
     fun partitionStates(): Iterable<UpdateMetadataPartitionState> {
         return if (version >= 5) {
             Iterable {
-                FlattenedIterator(data.topicStates().iterator()) { topicState ->
-                    topicState.partitionStates().iterator()
+                FlattenedIterator(data.topicStates.iterator()) { topicState ->
+                    topicState.partitionStates.iterator()
                 }
             }
-        } else data.ungroupedPartitionStates()
+        } else data.ungroupedPartitionStates
     }
 
     fun topicStates(): List<UpdateMetadataTopicState> {
-        return if (version >= 5) data.topicStates()
+        return if (version >= 5) data.topicStates
         else emptyList()
     }
 
-    fun liveBrokers(): List<UpdateMetadataBroker> = data.liveBrokers()
+    fun liveBrokers(): List<UpdateMetadataBroker> = data.liveBrokers
 
     override fun data(): UpdateMetadataRequestData = data
 
@@ -138,29 +139,29 @@ class UpdateMetadataRequest internal constructor(
             if (version < 3) {
                 for (broker: UpdateMetadataBroker in liveBrokers) {
                     if (version.toInt() == 0) {
-                        if (broker.endpoints().size != 1) throw UnsupportedVersionException(
+                        if (broker.endpoints.size != 1) throw UnsupportedVersionException(
                             "UpdateMetadataRequest v0 requires a single endpoint"
                         )
 
-                        if (broker.endpoints()[0].securityProtocol() != SecurityProtocol.PLAINTEXT.id)
+                        if (broker.endpoints[0].securityProtocol != SecurityProtocol.PLAINTEXT.id)
                             throw UnsupportedVersionException(
                                 "UpdateMetadataRequest v0 only handles PLAINTEXT endpoints"
                             )
 
                         // Don't null out `endpoints` since it's ignored by the generated code if version >= 1
-                        val endpoint = broker.endpoints()[0]
-                        broker.setV0Host(endpoint.host())
-                        broker.setV0Port(endpoint.port())
+                        val endpoint = broker.endpoints[0]
+                        broker.setV0Host(endpoint.host)
+                        broker.setV0Port(endpoint.port)
 
-                    } else if (broker.endpoints().any { endpoint ->
-                            endpoint.listener().isNotEmpty()
-                                    && endpoint.listener() != listenerNameFromSecurityProtocol(
+                    } else if (broker.endpoints.any { endpoint ->
+                            endpoint.listener.isNotEmpty()
+                                    && endpoint.listener != listenerNameFromSecurityProtocol(
                                 endpoint
                             )
                         }
                     ) throw UnsupportedVersionException(
                         "UpdateMetadataRequest v0-v3 does not support custom listeners, " +
-                                "request version: $version, endpoints: ${broker.endpoints()}"
+                                "request version: $version, endpoints: ${broker.endpoints}"
                     )
                 }
             }
@@ -208,15 +209,15 @@ class UpdateMetadataRequest internal constructor(
                     // We don't null out the topic name in UpdateMetadataPartitionState since it's
                     // ignored by the generated code if version >= 5
                     val topicState = topicStates.computeIfAbsent(
-                        partition.topicName()
+                        partition.topicName
                     ) {
                         UpdateMetadataTopicState()
-                            .setTopicName(partition.topicName())
+                            .setTopicName(partition.topicName)
                             .setTopicId(
-                                topicIds.getOrDefault(partition.topicName(), Uuid.ZERO_UUID)
+                                topicIds.getOrDefault(partition.topicName, Uuid.ZERO_UUID)
                             )
                     }
-                    topicState.partitionStates().add(partition)
+                    topicState.partitionStates += partition
                 }
                 return topicStates
             }
@@ -226,7 +227,7 @@ class UpdateMetadataRequest internal constructor(
     companion object {
 
         private fun listenerNameFromSecurityProtocol(endpoint: UpdateMetadataEndpoint): String {
-            val securityProtocol = SecurityProtocol.forId(endpoint.securityProtocol())!!
+            val securityProtocol = SecurityProtocol.forId(endpoint.securityProtocol)!!
             return ListenerName.forSecurityProtocol(securityProtocol).value
         }
 

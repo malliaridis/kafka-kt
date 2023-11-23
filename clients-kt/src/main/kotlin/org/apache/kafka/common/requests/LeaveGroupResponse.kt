@@ -55,13 +55,13 @@ class LeaveGroupResponse : AbstractResponse {
     constructor(data: LeaveGroupResponseData, version: Short) : super(ApiKeys.LEAVE_GROUP) {
         if (version >= 3) this.data = data
         else {
-            if (data.members().size != 1) throw UnsupportedVersionException(
+            if (data.members.size != 1) throw UnsupportedVersionException(
                 "LeaveGroup response version $version can only contain one member, " +
-                        "got ${data.members().size} members."
+                        "got ${data.members.size} members."
             )
 
-            val topLevelError = Errors.forCode(data.errorCode())
-            val errorCode = getError(topLevelError, data.members()).code
+            val topLevelError = Errors.forCode(data.errorCode)
+            val errorCode = getError(topLevelError, data.members).code
             this.data = LeaveGroupResponseData().setErrorCode(errorCode)
         }
     }
@@ -84,26 +84,26 @@ class LeaveGroupResponse : AbstractResponse {
         if (version >= 1) data.setThrottleTimeMs(throttleTimeMs)
     }
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
     }
 
-    fun memberResponses(): List<MemberResponse> = data.members()
+    fun memberResponses(): List<MemberResponse> = data.members
 
-    fun error(): Errors = getError(Errors.forCode(data.errorCode()), data.members())
+    fun error(): Errors = getError(Errors.forCode(data.errorCode), data.members)
 
-    fun topLevelError(): Errors = Errors.forCode(data.errorCode())
+    fun topLevelError(): Errors = Errors.forCode(data.errorCode)
 
     override fun errorCounts(): Map<Errors, Int> {
         val combinedErrorCounts = mutableMapOf<Errors, Int>()
         // Top level error.
-        updateErrorCounts(combinedErrorCounts, Errors.forCode(data.errorCode()))
+        updateErrorCounts(combinedErrorCounts, Errors.forCode(data.errorCode))
 
         // Member level error.
-        data.members().forEach { memberResponse ->
-            updateErrorCounts(combinedErrorCounts, Errors.forCode(memberResponse.errorCode()))
+        data.members.forEach { memberResponse ->
+            updateErrorCounts(combinedErrorCounts, Errors.forCode(memberResponse.errorCode))
         }
 
         return combinedErrorCounts
@@ -115,7 +115,7 @@ class LeaveGroupResponse : AbstractResponse {
 
     override fun equals(other: Any?): Boolean {
         return other is LeaveGroupResponse
-            && other.data == data
+                && other.data == data
     }
 
     override fun hashCode(): Int = Objects.hashCode(data)
@@ -128,7 +128,7 @@ class LeaveGroupResponse : AbstractResponse {
             return if (topLevelError !== Errors.NONE) topLevelError
             else {
                 for (memberResponse in memberResponses) {
-                    val memberError = Errors.forCode(memberResponse.errorCode())
+                    val memberError = Errors.forCode(memberResponse.errorCode)
                     if (memberError !== Errors.NONE) return memberError
                 }
                 Errors.NONE

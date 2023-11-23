@@ -37,18 +37,17 @@ class DescribeProducersRequest private constructor(
         val error = Errors.forException(e)
         val response = DescribeProducersResponseData()
 
-        response.topics().addAll(
-            data.topics().map { topicRequest ->
-                TopicResponse().setName(topicRequest.name())
-                    .setPartitions(
-                        topicRequest.partitionIndexes().map { partitionId ->
-                            DescribeProducersResponseData.PartitionResponse()
-                                .setPartitionIndex(partitionId)
-                                .setErrorCode(error.code)
-                        }
-                    )
-            }
-        )
+        response.topics += data.topics.map { topicRequest ->
+            TopicResponse()
+                .setName(topicRequest.name)
+                .setPartitions(
+                    topicRequest.partitionIndexes.map { partitionId ->
+                        DescribeProducersResponseData.PartitionResponse()
+                            .setPartitionIndex(partitionId)
+                            .setErrorCode(error.code)
+                    }
+                )
+        }
 
         return DescribeProducersResponse(response)
     }
@@ -59,9 +58,9 @@ class DescribeProducersRequest private constructor(
         val data: DescribeProducersRequestData,
     ) : AbstractRequest.Builder<DescribeProducersRequest>(ApiKeys.DESCRIBE_PRODUCERS) {
 
-        fun addTopic(topic: String?): TopicRequest {
+        fun addTopic(topic: String): TopicRequest {
             val topicRequest = TopicRequest().setName(topic)
-            data.topics().add(topicRequest)
+            data.topics += topicRequest
             return topicRequest
         }
 

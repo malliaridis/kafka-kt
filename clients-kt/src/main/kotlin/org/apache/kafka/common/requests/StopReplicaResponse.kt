@@ -36,20 +36,20 @@ class StopReplicaResponse(
     private val data: StopReplicaResponseData,
 ) : AbstractResponse(ApiKeys.STOP_REPLICA) {
 
-    fun partitionErrors(): List<StopReplicaPartitionError> = data.partitionErrors()
+    fun partitionErrors(): List<StopReplicaPartitionError> = data.partitionErrors
 
-    fun error(): Errors = Errors.forCode(data.errorCode())
+    fun error(): Errors = Errors.forCode(data.errorCode)
 
     override fun errorCounts(): Map<Errors, Int> {
-        if (data.errorCode() != Errors.NONE.code)
-            // Minor optimization since the top-level error applies to all partitions
-            return mapOf(error() to data.partitionErrors().size + 1)
+        if (data.errorCode != Errors.NONE.code)
+        // Minor optimization since the top-level error applies to all partitions
+            return mapOf(error() to data.partitionErrors.size + 1)
 
-        val errors = errorCounts(data.partitionErrors().map { Errors.forCode(it.errorCode()) })
+        val errors = errorCounts(data.partitionErrors.map { Errors.forCode(it.errorCode) })
 
         updateErrorCounts(
             errorCounts = errors.toMutableMap(),
-            error = Errors.forCode(data.errorCode()) // top level error
+            error = Errors.forCode(data.errorCode) // top level error
         )
 
         return errors

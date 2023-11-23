@@ -31,21 +31,21 @@ class DescribeClusterResponse(
     private val data: DescribeClusterResponseData,
 ) : AbstractResponse(ApiKeys.DESCRIBE_CLUSTER) {
 
-    fun nodes(): Map<Int, Node> = data.brokers().associateBy(
-        keySelector = DescribeClusterBroker::brokerId,
+    fun nodes(): Map<Int, Node> = data.brokers.associateBy(
+        keySelector = { it.brokerId },
         valueTransform = { broker ->
             Node(
-                broker.brokerId(),
-                broker.host(),
-                broker.port(),
-                broker.rack()
+                id = broker.brokerId,
+                host = broker.host,
+                port = broker.port,
+                rack = broker.rack
             )
         }
     )
 
-    override fun errorCounts(): Map<Errors, Int> = errorCounts(Errors.forCode(data.errorCode()))
+    override fun errorCounts(): Map<Errors, Int> = errorCounts(Errors.forCode(data.errorCode))
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)

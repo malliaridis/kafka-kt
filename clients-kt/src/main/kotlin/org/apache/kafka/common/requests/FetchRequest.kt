@@ -46,7 +46,7 @@ class FetchRequest(
     private var toForget: List<TopicIdPartition>? = null
 
     // This is an immutable read-only structures derived from FetchRequestData
-    private val metadata: FetchMetadata = FetchMetadata(data.sessionId(), data.sessionEpoch())
+    private val metadata: FetchMetadata = FetchMetadata(data.sessionId, data.sessionEpoch)
 
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse {
         // For versions 13+ the error is indicated by setting the top-level error code, and no
@@ -63,14 +63,14 @@ class FetchRequest(
         // For version 13+, we know the client can handle a top level error code, so we don't need
         // to send back partitions too.
         val topicResponseList = if (version < 13) {
-            data.topics().map { topic: FetchTopic ->
-                val partitionResponses = topic.partitions().map { partition ->
-                    FetchResponse.partitionResponse(partition.partition(), error)
+            data.topics.map { topic: FetchTopic ->
+                val partitionResponses = topic.partitions.map { partition ->
+                    FetchResponse.partitionResponse(partition.partition, error)
                 }
 
                 FetchableTopicResponse()
-                    .setTopic(topic.topic())
-                    .setTopicId(topic.topicId())
+                    .setTopic(topic.topic)
+                    .setTopicId(topic.topicId)
                     .setPartitions(partitionResponses)
             }
         } else emptyList()
@@ -79,18 +79,18 @@ class FetchRequest(
             FetchResponseData()
                 .setThrottleTimeMs(throttleTimeMs)
                 .setErrorCode(error.code)
-                .setSessionId(data.sessionId())
+                .setSessionId(data.sessionId)
                 .setResponses(topicResponseList)
         )
     }
 
-    fun replicaId(): Int = data.replicaId()
+    fun replicaId(): Int = data.replicaId
 
-    fun maxWait(): Int = data.maxWaitMs()
+    fun maxWait(): Int = data.maxWaitMs
 
-    fun minBytes(): Int = data.minBytes()
+    fun minBytes(): Int = data.minBytes
 
-    fun maxBytes(): Int = data.maxBytes()
+    fun maxBytes(): Int = data.maxBytes
 
     // For versions < 13, builds the partitionData map using only the FetchRequestData.
     // For versions 13+, builds the partitionData map using both the FetchRequestData and a mapping
@@ -103,28 +103,28 @@ class FetchRequest(
                     // to avoid other threads accessing a half-initialized object.
                     val fetchDataTmp = LinkedHashMap<TopicIdPartition, PartitionData>()
 
-                    data.topics().forEach { fetchTopic ->
-                        val name: String = if (version < 13) fetchTopic.topic() // can't be null
-                        else topicNames[fetchTopic.topicId()]!!
+                    data.topics.forEach { fetchTopic ->
+                        val name: String = if (version < 13) fetchTopic.topic // can't be null
+                        else topicNames[fetchTopic.topicId]!!
 
-                        fetchTopic.partitions().forEach { fetchPartition ->
+                        fetchTopic.partitions.forEach { fetchPartition ->
                             // Topic name may be null here if the topic name was unable to be
                             // resolved using the topicNames map.
                             fetchDataTmp[
                                 TopicIdPartition(
-                                    topicId = fetchTopic.topicId(),
+                                    topicId = fetchTopic.topicId,
                                     topicPartition = TopicPartition(
                                         name,
-                                        fetchPartition.partition()
+                                        fetchPartition.partition
                                     ),
                                 )
                             ] = PartitionData(
-                                fetchTopic.topicId(),
-                                fetchPartition.fetchOffset(),
-                                fetchPartition.logStartOffset(),
-                                fetchPartition.partitionMaxBytes(),
-                                optionalEpoch(fetchPartition.currentLeaderEpoch()),
-                                optionalEpoch(fetchPartition.lastFetchedEpoch())
+                                fetchTopic.topicId,
+                                fetchPartition.fetchOffset,
+                                fetchPartition.logStartOffset,
+                                fetchPartition.partitionMaxBytes,
+                                optionalEpoch(fetchPartition.currentLeaderEpoch),
+                                optionalEpoch(fetchPartition.lastFetchedEpoch)
                             )
                         }
                     }
@@ -147,17 +147,17 @@ class FetchRequest(
                     val toForgetTmp: MutableList<TopicIdPartition> =
                         ArrayList()
 
-                    data.forgottenTopicsData().forEach { forgottenTopic ->
+                    data.forgottenTopicsData.forEach { forgottenTopic ->
                         val name: String =
-                            if (version < 13) forgottenTopic.topic() // can't be null
-                            else topicNames[forgottenTopic.topicId()]!!
+                            if (version < 13) forgottenTopic.topic // can't be null
+                            else topicNames[forgottenTopic.topicId]!!
 
                         // Topic name may be null here if the topic name was unable to be
                         // resolved using the topicNames map.
-                        forgottenTopic.partitions().forEach { partitionId ->
+                        forgottenTopic.partitions.forEach { partitionId ->
                             toForgetTmp.add(
                                 TopicIdPartition(
-                                    forgottenTopic.topicId(),
+                                    forgottenTopic.topicId,
                                     TopicPartition(name, partitionId)
                                 )
                             )
@@ -173,11 +173,11 @@ class FetchRequest(
     val isFromFollower: Boolean
         get() = replicaId() >= 0
 
-    fun isolationLevel(): IsolationLevel = IsolationLevel.forId(data.isolationLevel())
+    fun isolationLevel(): IsolationLevel = IsolationLevel.forId(data.isolationLevel)
 
     fun metadata(): FetchMetadata = metadata
 
-    fun rackId(): String = data.rackId()
+    fun rackId(): String = data.rackId
 
     override fun data(): FetchRequestData = data
 
@@ -249,7 +249,7 @@ class FetchRequest(
                         .setTopicId(topicIdPartition.topicId)
                 }
 
-                forgottenTopic.partitions().add(topicIdPartition.partition)
+                forgottenTopic.partitions += topicIdPartition.partition
             })
         }
 
@@ -272,7 +272,7 @@ class FetchRequest(
             // "forget" set in order to not remove the newly added partition in the "fetch" set.
             if (version >= 13) addToForgottenTopicMap(replaced, forgottenTopicMap)
 
-            fetchRequestData.forgottenTopicsData().addAll(forgottenTopicMap.values)
+            fetchRequestData.forgottenTopicsData += forgottenTopicMap.values
 
             // We collect the partitions in a single FetchTopic only if they appear sequentially in
             // the fetchData
@@ -280,12 +280,12 @@ class FetchRequest(
             var fetchTopic: FetchTopic? = null
 
             for ((topicPartition, partitionData) in toFetch) {
-                if (fetchTopic == null || topicPartition.topic != fetchTopic.topic()) {
+                if (fetchTopic == null || topicPartition.topic != fetchTopic.topic) {
                     fetchTopic = FetchTopic()
                         .setTopic(topicPartition.topic)
                         .setTopicId(partitionData.topicId)
                         .setPartitions(ArrayList())
-                    fetchRequestData.topics().add(fetchTopic)
+                    fetchRequestData.topics += fetchTopic
                 }
                 val fetchPartition = FetchPartition()
                     .setPartition(topicPartition.partition)
@@ -299,11 +299,11 @@ class FetchRequest(
                     .setLogStartOffset(partitionData.logStartOffset)
                     .setPartitionMaxBytes(partitionData.maxBytes)
 
-                fetchTopic!!.partitions().add(fetchPartition)
+                fetchTopic.partitions += fetchPartition
             }
             if (metadata != null) {
-                fetchRequestData.setSessionEpoch(metadata!!.epoch())
-                fetchRequestData.setSessionId(metadata!!.sessionId())
+                fetchRequestData.setSessionEpoch(metadata.epoch)
+                fetchRequestData.setSessionId(metadata.sessionId)
             }
 
             fetchRequestData.setRackId(rackId)

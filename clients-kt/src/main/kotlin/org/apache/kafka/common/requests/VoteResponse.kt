@@ -43,10 +43,10 @@ class VoteResponse(private val data: VoteResponseData) : AbstractResponse(ApiKey
 
     override fun errorCounts(): Map<Errors, Int> {
         val errors: MutableMap<Errors, Int> = EnumMap(Errors::class.java)
-        errors[Errors.forCode(data.errorCode())] = 1
-        for (topicResponse in data.topics())
-            for (partitionResponse in topicResponse.partitions())
-                updateErrorCounts(errors, Errors.forCode(partitionResponse.errorCode()))
+        errors[Errors.forCode(data.errorCode)] = 1
+        for (topicResponse in data.topics)
+            for (partitionResponse in topicResponse.partitions)
+                updateErrorCounts(errors, Errors.forCode(partitionResponse.errorCode))
 
         return errors
     }

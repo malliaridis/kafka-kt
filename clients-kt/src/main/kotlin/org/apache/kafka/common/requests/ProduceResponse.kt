@@ -65,7 +65,7 @@ class ProduceResponse(private val data: ProduceResponseData) : AbstractResponse(
 
     override fun data(): ProduceResponseData = data
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
@@ -74,9 +74,9 @@ class ProduceResponse(private val data: ProduceResponseData) : AbstractResponse(
     override fun errorCounts(): Map<Errors, Int> {
         val errorCounts = mutableMapOf<Errors, Int>()
 
-        data.responses().forEach { t: TopicProduceResponse ->
-            t.partitionResponses().forEach { p: PartitionProduceResponse ->
-                updateErrorCounts(errorCounts, Errors.forCode(p.errorCode()))
+        data.responses.forEach { t: TopicProduceResponse ->
+            t.partitionResponses.forEach { p: PartitionProduceResponse ->
+                updateErrorCounts(errorCounts, Errors.forCode(p.errorCode))
             }
         }
 
@@ -122,7 +122,7 @@ class ProduceResponse(private val data: ProduceResponseData) : AbstractResponse(
             return "RecordError(" +
                     "batchIndex=$batchIndex" +
                     ", message=" + (if (message == null) "null" else "'$message'") +
-            ")"
+                    ")"
         }
     }
 
@@ -140,25 +140,23 @@ class ProduceResponse(private val data: ProduceResponseData) : AbstractResponse(
 
             responses.forEach { (tp: TopicPartition, response: PartitionResponse) ->
 
-                (data.responses().find(tp.topic) ?: TopicProduceResponse().setName(tp.topic).also {
-                    data.responses().add(it)
+                (data.responses.find(tp.topic) ?: TopicProduceResponse().setName(tp.topic).also {
+                    data.responses.add(it)
                 }).apply {
-                    partitionResponses().add(
-                        PartitionProduceResponse()
-                            .setIndex(tp.partition)
-                            .setBaseOffset(response.baseOffset)
-                            .setLogStartOffset(response.logStartOffset)
-                            .setLogAppendTimeMs(response.logAppendTime)
-                            .setErrorMessage(response.errorMessage)
-                            .setErrorCode(response.error.code)
-                            .setRecordErrors(
-                                response.recordErrors.map { e: RecordError ->
-                                    BatchIndexAndErrorMessage()
-                                        .setBatchIndex(e.batchIndex)
-                                        .setBatchIndexErrorMessage(e.message)
-                                }
-                            )
-                    )
+                    partitionResponses += PartitionProduceResponse()
+                        .setIndex(tp.partition)
+                        .setBaseOffset(response.baseOffset)
+                        .setLogStartOffset(response.logStartOffset)
+                        .setLogAppendTimeMs(response.logAppendTime)
+                        .setErrorMessage(response.errorMessage)
+                        .setErrorCode(response.error.code)
+                        .setRecordErrors(
+                            response.recordErrors.map { e: RecordError ->
+                                BatchIndexAndErrorMessage()
+                                    .setBatchIndex(e.batchIndex)
+                                    .setBatchIndexErrorMessage(e.message)
+                            }
+                        )
                 }
             }
             return data

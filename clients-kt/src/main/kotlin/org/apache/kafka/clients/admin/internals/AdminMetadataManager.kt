@@ -156,7 +156,7 @@ class AdminMetadataManager private constructor(
         if (cluster.controller != null) {
             log.trace("Clearing cached controller node {}.", cluster.controller)
             cluster = Cluster(
-                clusterId = cluster.clusterResource.clusterId(),
+                clusterId = cluster.clusterResource.clusterId,
                 nodes = cluster.nodes,
             )
         }

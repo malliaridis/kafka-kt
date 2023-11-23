@@ -91,14 +91,14 @@ object MessageUtil {
         return value.toShort()
     }
 
-    fun jsonNodeToUnsignedShort(node: JsonNode, about: String): Int {
+    fun jsonNodeToUnsignedShort(node: JsonNode, about: String): UShort {
         val value = jsonNodeToInt(node, about)
 
         if (value < 0 || value > UNSIGNED_SHORT_MAX) throw RuntimeException(
             "$about: value $value does not fit in a 16-bit unsigned integer."
         )
 
-        return value
+        return value.toUShort()
     }
 
     fun jsonNodeToUnsignedInt(node: JsonNode, about: String): Long {
@@ -171,9 +171,7 @@ object MessageUtil {
         return node.asDouble()
     }
 
-    fun duplicate(array: ByteArray?): ByteArray? =
-        if (array == null) null
-        else Arrays.copyOf(array, array.size)
+    fun duplicate(array: ByteArray): ByteArray = array.copyOf(array.size)
 
     /**
      * Compare two RawTaggedFields lists. A `null` list is equivalent to an empty one in this

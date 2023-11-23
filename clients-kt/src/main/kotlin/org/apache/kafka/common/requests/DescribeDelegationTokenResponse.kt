@@ -80,35 +80,35 @@ class DescribeDelegationTokenResponse : AbstractResponse {
 
     override fun data(): DescribeDelegationTokenResponseData = data
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
     }
 
-    fun error(): Errors = Errors.forCode(data.errorCode())
+    fun error(): Errors = Errors.forCode(data.errorCode)
 
     fun tokens(): List<DelegationToken> {
-        return data.tokens().map { ddt: DescribedDelegationToken ->
+        return data.tokens.map { ddt: DescribedDelegationToken ->
             DelegationToken(
                 TokenInformation(
-                    ddt.tokenId(),
-                    KafkaPrincipal(ddt.principalType(), ddt.principalName()),
+                    ddt.tokenId,
+                    KafkaPrincipal(ddt.principalType, ddt.principalName),
                     KafkaPrincipal(
-                        principalType = ddt.tokenRequesterPrincipalType(),
-                        name = ddt.tokenRequesterPrincipalName(),
+                        principalType = ddt.tokenRequesterPrincipalType,
+                        name = ddt.tokenRequesterPrincipalName,
                     ),
-                    ddt.renewers().map { ddtr ->
-                            KafkaPrincipal(
-                                principalType = ddtr.principalType(),
-                                name = ddtr.principalName(),
-                            )
-                        },
-                    ddt.issueTimestamp(),
-                    ddt.maxTimestamp(),
-                    ddt.expiryTimestamp()
+                    ddt.renewers.map { ddtr ->
+                        KafkaPrincipal(
+                            principalType = ddtr.principalType,
+                            name = ddtr.principalName,
+                        )
+                    },
+                    ddt.issueTimestamp,
+                    ddt.maxTimestamp,
+                    ddt.expiryTimestamp
                 ),
-                ddt.hmac()
+                ddt.hmac
             )
         }
     }

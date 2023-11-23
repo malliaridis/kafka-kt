@@ -37,33 +37,33 @@ class WriteTxnMarkersRequest private constructor(
 
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): WriteTxnMarkersResponse {
         val error = Errors.forException(e)
-        val errors: MutableMap<Long, Map<TopicPartition, Errors>> = HashMap(data.markers().size)
+        val errors: MutableMap<Long, Map<TopicPartition, Errors>> = HashMap(data.markers.size)
 
-        for (markerEntry in data.markers()) {
+        for (markerEntry in data.markers) {
             val errorsPerPartition: MutableMap<TopicPartition, Errors> = HashMap()
-            for (topic in markerEntry.topics())
-                for (partitionIdx in topic.partitionIndexes())
-                    errorsPerPartition[TopicPartition(topic.name(), partitionIdx)] = error
+            for (topic in markerEntry.topics)
+                for (partitionIdx in topic.partitionIndexes)
+                    errorsPerPartition[TopicPartition(topic.name, partitionIdx)] = error
 
-            errors[markerEntry.producerId()] = errorsPerPartition
+            errors[markerEntry.producerId] = errorsPerPartition
         }
         return WriteTxnMarkersResponse(errors)
     }
 
     fun markers(): List<TxnMarkerEntry> {
         val markers: MutableList<TxnMarkerEntry> = ArrayList()
-        for (markerEntry in data.markers()) {
+        for (markerEntry in data.markers) {
             val topicPartitions: MutableList<TopicPartition> = ArrayList()
-            for (topic in markerEntry.topics())
-                for (partitionIdx in topic.partitionIndexes())
-                    topicPartitions.add(TopicPartition(topic.name(), partitionIdx))
+            for (topic in markerEntry.topics)
+                for (partitionIdx in topic.partitionIndexes)
+                    topicPartitions.add(TopicPartition(topic.name, partitionIdx))
 
             markers.add(
                 TxnMarkerEntry(
-                    markerEntry.producerId(),
-                    markerEntry.producerEpoch(),
-                    markerEntry.coordinatorEpoch(),
-                    TransactionResult.forId(markerEntry.transactionResult()),
+                    markerEntry.producerId,
+                    markerEntry.producerEpoch,
+                    markerEntry.coordinatorEpoch,
+                    TransactionResult.forId(markerEntry.transactionResult),
                     topicPartitions
                 )
             )
@@ -172,7 +172,7 @@ class WriteTxnMarkersRequest private constructor(
                         topic1,
                         WritableTxnMarkerTopic().setName(topic1)
                     )
-                    topic.partitionIndexes().add(partition)
+                    topic.partitionIndexes += partition
                     topicMap[topic1] = topic
                 }
                 dataMarkers.add(

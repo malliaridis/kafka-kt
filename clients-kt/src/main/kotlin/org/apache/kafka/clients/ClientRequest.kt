@@ -41,7 +41,7 @@ data class ClientRequest(
     val destination: String,
     val requestBuilder: AbstractRequest.Builder<*>,
     val correlationId: Int,
-    val clientId: String,
+    val clientId: String?,
     val createdTimeMs: Long,
     val expectResponse: Boolean,
     val requestTimeoutMs: Int,

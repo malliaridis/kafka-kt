@@ -25,7 +25,7 @@ package org.apache.kafka.common.quota
  *
  * @property entries maps entity type to its name
  */
-data class ClientQuotaEntity(val entries: Map<String, String>) {
+data class ClientQuotaEntity(val entries: Map<String, String?>) {
 
     /**
      * @return map of entity type to its name
@@ -34,7 +34,7 @@ data class ClientQuotaEntity(val entries: Map<String, String>) {
         message = "Use property instead",
         replaceWith = ReplaceWith("entries"),
     )
-    fun entries(): Map<String, String> = entries
+    fun entries(): Map<String, String?> = entries
 
     override fun toString(): String = "ClientQuotaEntity(entries=$entries)"
 

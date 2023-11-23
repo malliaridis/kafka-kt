@@ -456,8 +456,8 @@ open class SaslServerAuthenticator(
         } else {
             val requestBuffer = ByteBuffer.wrap(clientToken)
             val header = RequestHeader.parse(requestBuffer)
-            val apiKey = header.apiKey()
-            val version = header.apiVersion()
+            val apiKey = header.apiKey
+            val version = header.apiVersion
             val requestContext = RequestContext(
                 header = header,
                 connectionId = connectionId,
@@ -491,7 +491,7 @@ open class SaslServerAuthenticator(
             // to support the required version if any one of them indicates it supports that
             // version.
             if (!reauthInfo.connectedClientSupportsReauthentication)
-                 reauthInfo.connectedClientSupportsReauthentication = version > 0
+                reauthInfo.connectedClientSupportsReauthentication = version > 0
 
             val saslAuthenticateRequest = requestAndSize.request as SaslAuthenticateRequest
 
@@ -499,7 +499,7 @@ open class SaslServerAuthenticator(
                 val saslServer = this.saslServer!!
 
                 val responseToken = saslServer.evaluateResponse(
-                    saslAuthenticateRequest.data().authBytes().copyOf()
+                    saslAuthenticateRequest.data().authBytes.copyOf()
                 )
 
                 if (reauthInfo.reauthenticating() && saslServer.isComplete)
@@ -562,7 +562,7 @@ open class SaslServerAuthenticator(
         try {
             val requestBuffer = ByteBuffer.wrap(requestBytes)
             val header = RequestHeader.parse(requestBuffer)
-            val apiKey = header.apiKey()
+            val apiKey = header.apiKey
 
             // A valid Kafka request header was received. SASL authentication tokens are now
             // expected only following a SaslHandshakeRequest since this is not a GSSAPI client
@@ -618,8 +618,10 @@ open class SaslServerAuthenticator(
                     )
                 }
                 if (enabledMechanisms.contains(SaslConfigs.GSSAPI_MECHANISM)) {
-                    log.debug("First client packet is not a SASL mechanism request, using default " +
-                            "mechanism GSSAPI")
+                    log.debug(
+                        "First client packet is not a SASL mechanism request, using default " +
+                                "mechanism GSSAPI"
+                    )
                     SaslConfigs.GSSAPI_MECHANISM
                 } else throw UnsupportedSaslMechanismException(
                     "Exception handling first SASL packet from client, GSSAPI is not supported " +
@@ -643,8 +645,8 @@ open class SaslServerAuthenticator(
         context: RequestContext,
         handshakeRequest: SaslHandshakeRequest
     ): String {
-        val clientMechanism = handshakeRequest.data().mechanism()
-        val version = context.header.apiVersion()
+        val clientMechanism = handshakeRequest.data().mechanism
+        val version = context.header.apiVersion
         if (version >= 1) enableKafkaSaslAuthenticateHeaders(true)
         return if (enabledMechanisms.contains(clientMechanism)) {
             log.debug("Using SASL mechanism '{}' provided by client", clientMechanism)
@@ -690,8 +692,8 @@ open class SaslServerAuthenticator(
         ) else {
             metadataRegistry.registerClientInformation(
                 ClientInformation(
-                    apiVersionsRequest.data().clientSoftwareName(),
-                    apiVersionsRequest.data().clientSoftwareVersion()
+                    apiVersionsRequest.data().clientSoftwareName,
+                    apiVersionsRequest.data().clientSoftwareVersion
                 )
             )
             sendKafkaResponse(context, apiVersionSupplier.get())

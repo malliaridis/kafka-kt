@@ -18,12 +18,11 @@
 package org.apache.kafka.common.protocol.types
 
 import java.nio.ByteBuffer
-import java.util.*
 import org.apache.kafka.common.Uuid
 import org.apache.kafka.common.record.BaseRecords
 import org.apache.kafka.common.record.MemoryRecords
 import org.apache.kafka.common.utils.ByteUtils.readDouble
-import org.apache.kafka.common.utils.ByteUtils.readUnsignedInt
+import org.apache.kafka.common.utils.ByteUtils.readFloat
 import org.apache.kafka.common.utils.ByteUtils.readUnsignedVarint
 import org.apache.kafka.common.utils.ByteUtils.readVarint
 import org.apache.kafka.common.utils.ByteUtils.readVarlong
@@ -31,6 +30,7 @@ import org.apache.kafka.common.utils.ByteUtils.sizeOfUnsignedVarint
 import org.apache.kafka.common.utils.ByteUtils.sizeOfVarint
 import org.apache.kafka.common.utils.ByteUtils.sizeOfVarlong
 import org.apache.kafka.common.utils.ByteUtils.writeDouble
+import org.apache.kafka.common.utils.ByteUtils.writeFloat
 import org.apache.kafka.common.utils.ByteUtils.writeUnsignedInt
 import org.apache.kafka.common.utils.ByteUtils.writeUnsignedVarint
 import org.apache.kafka.common.utils.ByteUtils.writeVarint
@@ -71,7 +71,7 @@ abstract class Type {
 
     /**
      * Check if the type supports null values
-     * @return whether or not null is a valid value for the type implementation
+     * @return whether null is a valid value for the type implementation
      */
     open val isNullable: Boolean = false
 
@@ -108,13 +108,26 @@ abstract class Type {
     }
 
     companion object {
+
+        private const val NULLABILITY_BYTE_SIZE = 1
+        private const val IS_NULL = 0.toByte()
+        private const val IS_NOT_NULL = 1.toByte()
+
+        private const val BOOLEAN_SIZE = 1
+        private const val INT8_SIZE = 1
+        private const val INT16_SIZE = 2
+        private const val INT32_SIZE = 4
+        private const val INT64_SIZE = 8
+        private const val FLOAT32_SIZE = 4
+        private const val FLOAT64_SIZE = 8
+        private const val UUID_SIZE = 16
         
         /**
-         * The Boolean type represents a boolean value in a byte by using
-         * the value of 0 to represent false, and 1 to represent true.
+         * The Boolean type represents a boolean value in a byte by using the value of 0 to
+         * represent false, and 1 to represent true.
          *
-         * If for some reason a value that is not 0 or 1 is read,
-         * then any non-zero value will return true.
+         * If for some reason a value that is not 0 or 1 is read, then any non-zero value will
+         * return true.
          */
         val BOOLEAN: DocumentedType = object : DocumentedType() {
             
@@ -123,9 +136,9 @@ abstract class Type {
                 else buffer.put(0.toByte())
             }
 
-            override fun read(buffer: ByteBuffer): Any = buffer.get().toInt() != 0
+            override fun read(buffer: ByteBuffer): Boolean = buffer.get() != 0.toByte()
 
-            override fun sizeOf(o: Any?): Int = 1
+            override fun sizeOf(o: Any?): Int = BOOLEAN_SIZE
 
             override fun typeName(): String = "BOOLEAN"
 
@@ -140,14 +153,59 @@ abstract class Type {
                         "When reading a boolean value, any non-zero value is considered true."
             }
         }
-        
+
+        /**
+         * The nullable Boolean type represents a boolean value in a byte by using the value of 0 to
+         * represent false, and 1 to represent true. Any other value is considered null.
+         *
+         * If a value that is not 0 or 1 is read, then null is returned.
+         */
+        val NULLABLE_BOOLEAN: DocumentedType = object : DocumentedType() {
+
+            override val isNullable: Boolean= true
+
+            override fun write(buffer: ByteBuffer, o: Any?) {
+                when (o) {
+                    is Boolean -> buffer.put(if (o) 1 else 0)
+                    0x0 -> buffer.put(0)
+                    0xF -> buffer.put(1)
+                    else -> buffer.put(0x1) // put non-zero, neither 0 (0x0), nor 1 (0xF)
+                }
+            }
+
+            override fun read(buffer: ByteBuffer): Boolean? {
+                val nullable = buffer.get()
+                if (nullable == 0x0.toByte()) return false
+                if (nullable == 0xf.toByte()) return true
+                return null
+            }
+
+            override fun sizeOf(o: Any?): Int = BOOLEAN_SIZE
+
+            override fun typeName(): String = "NULLABLE_BOOLEAN"
+
+            override fun validate(item: Any?): Boolean? {
+                return when(item) {
+                    null -> null
+                    is Boolean -> item
+                    else -> throw SchemaException("$item is not a nullable Boolean.")
+                }
+            }
+
+            override fun documentation(): String {
+                return "Represents a nullable boolean value in a byte. Values 0 and 1 are used " +
+                        "to represent false and true respectively. When reading a boolean value, " +
+                        "any non-zero value is considered null."
+            }
+        }
+
         val INT8: DocumentedType = object : DocumentedType() {
             
             override fun write(buffer: ByteBuffer, o: Any?) {
                 buffer.put(o as Byte)
             }
 
-            override fun read(buffer: ByteBuffer): Any = buffer.get()
+            override fun read(buffer: ByteBuffer): Byte = buffer.get()
 
             override fun sizeOf(o: Any?): Int = 1
 
@@ -162,14 +220,126 @@ abstract class Type {
                 return "Represents an integer between -2<sup>7</sup> and 2<sup>7</sup>-1 inclusive."
             }
         }
-        
+
+        val NULLABLE_INT8: DocumentedType = object : DocumentedType() {
+
+            override val isNullable: Boolean= true
+
+            override fun write(buffer: ByteBuffer, o: Any?) {
+                if (o == null) {
+                    buffer.put(IS_NULL)
+                    return
+                }
+                buffer.put(IS_NOT_NULL)
+                buffer.put(o as Byte)
+            }
+
+            override fun read(buffer: ByteBuffer): Byte? {
+                val nullable = buffer.get()
+                if (nullable == IS_NULL) return null
+
+                return buffer.get()
+            }
+
+            override fun sizeOf(o: Any?): Int {
+                return if (o == null) NULLABILITY_BYTE_SIZE
+                else NULLABILITY_BYTE_SIZE + INT8_SIZE
+            }
+
+            override fun typeName(): String = "NULLABLE_INT8"
+
+            override fun validate(item: Any?): Byte? {
+                return when(item) {
+                    null -> null
+                    is Byte -> item
+                    else -> throw SchemaException("$item is not a nullable Byte.")
+                }
+            }
+
+            override fun documentation(): String {
+                return "Represents a nullable integer between -2<sup>7</sup> and " +
+                        "2<sup>7</sup-1 inclusive. For non-null integer, first the nullability " +
+                        "byte is given as an $INT8 of $IS_NOT_NULL. A null value is encoded with " +
+                        "a nullability byte of $IS_NULL and there are no following bytes."
+            }
+        }
+
+        val UINT8: DocumentedType = object : DocumentedType() {
+
+            override fun write(buffer: ByteBuffer, o: Any?) {
+                buffer.put((o as Short).toByte())
+            }
+
+            override fun read(buffer: ByteBuffer): UByte {
+                return buffer.getShort().toUByte()
+            }
+
+            override fun sizeOf(o: Any?): Int = INT8_SIZE
+
+            override fun typeName(): String = "UINT8"
+
+            override fun validate(item: Any?): Short {
+                return if (item is Short) item
+                else throw SchemaException("$item is not a Short (encoding an unsigned byte)")
+            }
+
+            override fun documentation(): String {
+                return "Represents an integer between 0 and 255 inclusive. The values are " +
+                        "encoded using one byte."
+            }
+        }
+
+        val NULLABLE_UINT8: DocumentedType = object : DocumentedType() {
+
+            override val isNullable: Boolean= true
+
+            override fun write(buffer: ByteBuffer, o: Any?) {
+                if (o == null) {
+                    buffer.put(IS_NULL)
+                    return
+                }
+                buffer.put(IS_NOT_NULL)
+                buffer.put((o as Short).toByte())
+            }
+
+            override fun read(buffer: ByteBuffer): UByte? {
+                val nullable = buffer.get()
+                if (nullable == IS_NULL) return null
+
+                return buffer.getShort().toUByte()
+            }
+
+            override fun sizeOf(o: Any?): Int {
+                return if (o == null) NULLABILITY_BYTE_SIZE
+                else NULLABILITY_BYTE_SIZE + INT8_SIZE
+            }
+
+            override fun typeName(): String = "NULLABLE_UINT8"
+
+            override fun validate(item: Any?): Short? {
+                return when(item) {
+                    null -> null
+                    is Short -> item
+                    else -> throw SchemaException("$item is not a Short (encoding an unsigned byte)")
+                }
+            }
+
+            override fun documentation(): String {
+                return "Represents a nullable unsigned integer between 0 and 255 inclusive. For " +
+                        "non-null integer, first the nullability byte is given as an $INT8 of " +
+                        "$IS_NOT_NULL. Then the values are encoded using one byte. A null value " +
+                        "is encoded with a nullability byte of $IS_NULL and there are no " +
+                        "following bytes."
+            }
+        }
+
         val INT16: DocumentedType = object : DocumentedType() {
             
             override fun write(buffer: ByteBuffer, o: Any?) {
                 buffer.putShort(o as Short)
             }
 
-            override fun read(buffer: ByteBuffer): Any = buffer.getShort()
+            override fun read(buffer: ByteBuffer): Short = buffer.getShort()
 
             override fun sizeOf(o: Any?): Int = 2
 
@@ -185,19 +355,63 @@ abstract class Type {
                         "The values are encoded using two bytes in network byte order (big-endian)."
             }
         }
-        
+
+        val NULLABLE_INT16: DocumentedType = object : DocumentedType() {
+
+            override val isNullable: Boolean= true
+
+            override fun write(buffer: ByteBuffer, o: Any?) {
+                if (o == null) {
+                    buffer.put(IS_NULL)
+                    return
+                }
+                buffer.put(IS_NOT_NULL)
+                buffer.putShort(o as Short)
+            }
+
+            override fun read(buffer: ByteBuffer): Short? {
+                val nullable = buffer.get()
+                if (nullable == IS_NULL) return null
+
+                return buffer.getShort()
+            }
+
+            override fun sizeOf(o: Any?): Int {
+                return if (o == null) NULLABILITY_BYTE_SIZE
+                else NULLABILITY_BYTE_SIZE + INT16_SIZE
+            }
+
+            override fun typeName(): String = "NULLABLE_INT16"
+
+            override fun validate(item: Any?): Short? {
+                return when(item) {
+                    null -> null
+                    is Short -> item
+                    else -> throw SchemaException("$item is not a nullable Short.")
+                }
+            }
+
+            override fun documentation(): String {
+                return "Represents a nullable integer between -2<sup>15</sup> and " +
+                        "2<sup>15</sup-1 inclusive. For non-null integer, first the nullability " +
+                        "byte is given as an $INT8 of $IS_NOT_NULL. Then the values are encoded " +
+                        "using two bytes in network byte order (big-endian). A null value is " +
+                        "encoded with a nullability byte of $IS_NULL and there are no following " +
+                        "bytes."
+            }
+        }
+
         val UINT16: DocumentedType = object : DocumentedType() {
             
             override fun write(buffer: ByteBuffer, o: Any?) {
                 buffer.putShort((o as Int).toShort())
             }
 
-            override fun read(buffer: ByteBuffer): Any {
-                val value = buffer.getShort()
-                return Integer.valueOf(java.lang.Short.toUnsignedInt(value))
+            override fun read(buffer: ByteBuffer): UShort {
+                return buffer.getInt().toUShort()
             }
 
-            override fun sizeOf(o: Any?): Int = 2
+            override fun sizeOf(o: Any?): Int = INT16_SIZE
 
             override fun typeName(): String = "UINT16"
 
@@ -211,13 +425,58 @@ abstract class Type {
                         "The values are encoded using two bytes in network byte order (big-endian)."
             }
         }
+
+        val NULLABLE_UINT16: DocumentedType = object : DocumentedType() {
+
+            override val isNullable: Boolean= true
+
+            override fun write(buffer: ByteBuffer, o: Any?) {
+                if (o == null) {
+                    buffer.put(IS_NULL)
+                    return
+                }
+                buffer.put(IS_NOT_NULL)
+                buffer.putShort((o as Int).toShort())
+            }
+
+            override fun read(buffer: ByteBuffer): UShort? {
+                val nullable = buffer.get()
+                if (nullable == IS_NULL) return null
+
+                return buffer.getInt().toUShort()
+            }
+
+            override fun sizeOf(o: Any?): Int {
+                return if (o == null) NULLABILITY_BYTE_SIZE
+                else NULLABILITY_BYTE_SIZE + INT16_SIZE
+            }
+
+            override fun typeName(): String = "NULLABLE_UINT16"
+
+            override fun validate(item: Any?): Int? {
+                return when(item) {
+                    null -> null
+                    is Int -> item
+                    else -> throw SchemaException("$item is not an Int (encoding an unsigned short)")
+                }
+            }
+
+            override fun documentation(): String {
+                return "Represents a nullable unsigned integer between 0 and 65535 inclusive. " +
+                        "For non-null integer, first the nullability byte is given as an $INT8 " +
+                        "of $IS_NOT_NULL. Then the values are encoded using two bytes in network " +
+                        "byte order (big-endian). A null value is encoded with a nullability " +
+                        "byte of $IS_NULL and there are no following bytes."
+            }
+        }
+
         val INT32: DocumentedType = object : DocumentedType() {
             
             override fun write(buffer: ByteBuffer, o: Any?) {
                 buffer.putInt(o as Int)
             }
 
-            override fun read(buffer: ByteBuffer): Any = buffer.getInt()
+            override fun read(buffer: ByteBuffer): Int = buffer.getInt()
 
             override fun sizeOf(o: Any?): Int = 4
 
@@ -233,14 +492,61 @@ abstract class Type {
                         "The values are encoded using four bytes in network byte order (big-endian)."
             }
         }
-        
+
+        val NULLABLE_INT32: DocumentedType = object : DocumentedType() {
+
+            override val isNullable: Boolean= true
+
+            override fun write(buffer: ByteBuffer, o: Any?) {
+                if (o == null) {
+                    buffer.put(IS_NULL)
+                    return
+                }
+                buffer.put(IS_NOT_NULL)
+                buffer.putInt(o as Int)
+            }
+
+            override fun read(buffer: ByteBuffer): Int? {
+                val nullable = buffer.get()
+                if (nullable == IS_NULL) return null
+
+                return buffer.getInt()
+            }
+
+            override fun sizeOf(o: Any?): Int {
+                return if (o == null) NULLABILITY_BYTE_SIZE
+                else NULLABILITY_BYTE_SIZE + INT32_SIZE
+            }
+
+            override fun typeName(): String = "NULLABLE_INT32"
+
+            override fun validate(item: Any?): Int? {
+                return when(item) {
+                    null -> null
+                    is Int -> item
+                    else -> throw SchemaException("$item is not a nullable Integer.")
+                }
+            }
+
+            override fun documentation(): String {
+                return "Represents a nullable integer between -2<sup>31</sup> and " +
+                        "2<sup>31</sup-1 inclusive. For non-null integer, first the nullability " +
+                        "byte is given as an $INT8 of $IS_NOT_NULL. Then the values are encoded " +
+                        "using four bytes in network byte order (big-endian). A null value is " +
+                        "encoded with a nullability byte of $IS_NULL and there are no following " +
+                        "bytes."
+            }
+        }
+
         val UNSIGNED_INT32: DocumentedType = object : DocumentedType() {
             
             override fun write(buffer: ByteBuffer, o: Any?) {
-                writeUnsignedInt(buffer, o as Long)
+                writeUnsignedInt(buffer, o as UInt)
             }
 
-            override fun read(buffer: ByteBuffer): Any = readUnsignedInt(buffer)
+            override fun read(buffer: ByteBuffer): UInt {
+                return buffer.getLong().toUInt()
+            }
 
             override fun sizeOf(o: Any?): Int = 4
 
@@ -254,6 +560,50 @@ abstract class Type {
             override fun documentation(): String {
                 return "Represents an integer between 0 and 2<sup>32</sup>-1 inclusive. " +
                         "The values are encoded using four bytes in network byte order (big-endian)."
+            }
+        }
+
+        val NULLABLE_UINT32: DocumentedType = object : DocumentedType() {
+
+            override val isNullable: Boolean= true
+
+            override fun write(buffer: ByteBuffer, o: Any?) {
+                if (o == null) {
+                    buffer.put(IS_NULL)
+                    return
+                }
+                buffer.put(IS_NOT_NULL)
+                buffer.putInt((o as Long).toInt())
+            }
+
+            override fun read(buffer: ByteBuffer): UInt? {
+                val nullable = buffer.get()
+                if (nullable == IS_NULL) return null
+
+                return buffer.getLong().toUInt()
+            }
+
+            override fun sizeOf(o: Any?): Int {
+                return if (o == null) NULLABILITY_BYTE_SIZE
+                else NULLABILITY_BYTE_SIZE + INT32_SIZE
+            }
+
+            override fun typeName(): String = "NULLABLE_UINT32"
+
+            override fun validate(item: Any?): Long? {
+                return when(item) {
+                    null -> null
+                    is Long -> item
+                    else -> throw SchemaException("$item is not an Long (encoding an unsigned integer)")
+                }
+            }
+
+            override fun documentation(): String {
+                return "Represents a nullable unsigned integer between 0 and 4294967295 inclusive. " +
+                        "For non-null integer, first the nullability byte is given as an $INT8 " +
+                        "of $IS_NOT_NULL. Then the values are encoded using four bytes in network " +
+                        "byte order (big-endian). A null value is encoded with a nullability " +
+                        "byte of $IS_NULL and there are no following bytes."
             }
         }
         
@@ -279,9 +629,54 @@ abstract class Type {
                         "The values are encoded using eight bytes in network byte order (big-endian)."
             }
         }
-        
+
+        val NULLABLE_INT64: DocumentedType = object : DocumentedType() {
+
+            override val isNullable: Boolean= true
+
+            override fun write(buffer: ByteBuffer, o: Any?) {
+                if (o == null) {
+                    buffer.put(IS_NULL)
+                    return
+                }
+                buffer.put(IS_NOT_NULL)
+                buffer.putLong(o as Long)
+            }
+
+            override fun read(buffer: ByteBuffer): Long? {
+                val nullable = buffer.get()
+                if (nullable == IS_NULL) return null
+
+                return buffer.getLong()
+            }
+
+            override fun sizeOf(o: Any?): Int {
+                return if (o == null) NULLABILITY_BYTE_SIZE
+                else NULLABILITY_BYTE_SIZE + INT64_SIZE
+            }
+
+            override fun typeName(): String = "NULLABLE_INT64"
+
+            override fun validate(item: Any?): Long? {
+                return when(item) {
+                    null -> null
+                    is Long -> item
+                    else -> throw SchemaException("$item is not a nullable Long.")
+                }
+            }
+
+            override fun documentation(): String {
+                return "Represents a nullable integer between -2<sup>64</sup> and " +
+                        "2<sup>63</sup-1 inclusive. For non-null integer, first the nullability " +
+                        "byte is given as an $INT8 of $IS_NOT_NULL. Then the values are encoded " +
+                        "using eight bytes in network byte order (big-endian). A null value is " +
+                        "encoded with a nullability byte of $IS_NULL and there are no following " +
+                        "bytes."
+            }
+        }
+
         val UUID: DocumentedType = object : DocumentedType() {
-            
+
             override fun write(buffer: ByteBuffer, o: Any?) {
                 val (mostSignificantBits, leastSignificantBits) = o as Uuid
                 buffer.putLong(mostSignificantBits)
@@ -304,16 +699,129 @@ abstract class Type {
                         "The values are encoded using sixteen bytes in network byte order (big-endian)."
             }
         }
-        
+
+        val NULLABLE_UUID: DocumentedType = object : DocumentedType() {
+
+            override val isNullable: Boolean= true
+
+            override fun write(buffer: ByteBuffer, o: Any?) {
+                if (o == null) {
+                    buffer.put(IS_NULL)
+                    return
+                }
+                buffer.put(IS_NOT_NULL)
+                val (mostSignificantBits, leastSignificantBits) = o as Uuid
+                buffer.putLong(mostSignificantBits)
+                buffer.putLong(leastSignificantBits)
+            }
+
+            override fun read(buffer: ByteBuffer): Uuid? {
+                val nullable = buffer.get()
+                if (nullable == IS_NULL) return null
+
+                return Uuid(buffer.getLong(), buffer.getLong())
+            }
+
+            override fun sizeOf(o: Any?): Int {
+                return if (o == null) NULLABILITY_BYTE_SIZE
+                else NULLABILITY_BYTE_SIZE + UUID_SIZE
+            }
+
+            override fun typeName(): String = "NULLABLE_UUID"
+
+            override fun validate(item: Any?): Uuid? {
+                return when (item) {
+                    null -> null
+                    is Uuid -> item
+                    else -> throw SchemaException("$item is not a nullable Uuid.")
+                }
+            }
+
+            override fun documentation(): String {
+                return "Represents a nullable type 4 immutable universally unique identifier " +
+                        "(Uuid). For non-null Uuid, first the nullability byte is given as an " +
+                        "$INT8 of $IS_NOT_NULL. Then the values are encoded using sixteen bytes " +
+                        "in network byte order (big-endian). A null value is encoded with a " +
+                        "nullability byte of $IS_NULL and there are no following bytes."
+            }
+        }
+
+        val FLOAT32: DocumentedType = object : DocumentedType() {
+
+            override fun write(buffer: ByteBuffer, o: Any?) {
+                writeFloat(o as Float, buffer)
+            }
+
+            override fun read(buffer: ByteBuffer): Any = readDouble(buffer)
+
+            override fun sizeOf(o: Any?): Int = FLOAT32_SIZE
+
+            override fun typeName(): String = "FLOAT32"
+
+            override fun validate(item: Any?): Float {
+                return if (item is Float) item
+                else throw SchemaException("$item is not a Float.")
+            }
+
+            override fun documentation(): String {
+                return "Represents a single-precision 32-bit format IEEE 754 value. " +
+                        "The values are encoded using eight bytes in network byte order (big-endian)."
+            }
+        }
+
+        val NULLABLE_FLOAT32: DocumentedType = object : DocumentedType() {
+
+            override val isNullable: Boolean= true
+
+            override fun write(buffer: ByteBuffer, o: Any?) {
+                if (o == null) {
+                    buffer.put(IS_NULL)
+                    return
+                }
+                buffer.put(IS_NOT_NULL)
+                writeFloat(o as Float, buffer)
+            }
+
+            override fun read(buffer: ByteBuffer): Float? {
+                val nullable = buffer.get()
+                if (nullable == IS_NULL) return null
+
+                return readFloat(buffer)
+            }
+
+            override fun sizeOf(o: Any?): Int {
+                return if (o == null) NULLABILITY_BYTE_SIZE
+                else NULLABILITY_BYTE_SIZE + FLOAT32_SIZE
+            }
+
+            override fun typeName(): String = "NULLABLE_FLOAT32"
+
+            override fun validate(item: Any?): Float? {
+                return when(item) {
+                    null -> null
+                    is Float -> item
+                    else -> throw SchemaException("$item is not a nullable Float.")
+                }
+            }
+
+            override fun documentation(): String {
+                return "Represents a nullable single-precision 32-bit format IEEE 754 value. " +
+                        "For non-null integer, first the nullability byte is given as an $INT8 " +
+                        "of $IS_NOT_NULL. Then the values are encoded using four bytes in " +
+                        "network byte order (big-endian).A null value is encoded with a " +
+                        "nullability byte of $IS_NULL and there are no following bytes."
+            }
+        }
+
         val FLOAT64: DocumentedType = object : DocumentedType() {
-            
+
             override fun write(buffer: ByteBuffer, o: Any?) {
                 writeDouble(o as Double, buffer)
             }
 
             override fun read(buffer: ByteBuffer): Any = readDouble(buffer)
 
-            override fun sizeOf(o: Any?): Int = 8
+            override fun sizeOf(o: Any?): Int = FLOAT64_SIZE
 
             override fun typeName(): String = "FLOAT64"
 
@@ -327,7 +835,51 @@ abstract class Type {
                         "The values are encoded using eight bytes in network byte order (big-endian)."
             }
         }
-        
+
+        val NULLABLE_FLOAT64: DocumentedType = object : DocumentedType() {
+
+            override val isNullable: Boolean = true
+
+            override fun write(buffer: ByteBuffer, o: Any?) {
+                if (o == null) {
+                    buffer.put(IS_NULL)
+                    return
+                }
+                buffer.put(IS_NOT_NULL)
+                writeDouble(o as Double, buffer)
+            }
+
+            override fun read(buffer: ByteBuffer): Double? {
+                val nullable = buffer.get()
+                if (nullable == IS_NULL) return null
+
+                return readDouble(buffer)
+            }
+
+            override fun sizeOf(o: Any?): Int {
+                return if (o == null) NULLABILITY_BYTE_SIZE
+                else NULLABILITY_BYTE_SIZE + FLOAT64_SIZE
+            }
+
+            override fun typeName(): String = "NULLABLE_FLOAT64"
+
+            override fun validate(item: Any?): Double? {
+                return when(item) {
+                    null -> null
+                    is Double -> item
+                    else -> throw SchemaException("$item is not a nullable Double.")
+                }
+            }
+
+            override fun documentation(): String {
+                return "Represents a nullable double-precision 64-bit format IEEE 754 value. " +
+                        "For non-null integer, first the nullability byte is given as an $INT8 " +
+                        "of $IS_NOT_NULL. Then the values are encoded using eight bytes in " +
+                        "network byte order (big-endian). A null value is encoded with a " +
+                        "nullability byte of $IS_NULL and there are no following bytes."
+            }
+        }
+
         val STRING: DocumentedType = object : DocumentedType() {
             
             override fun write(buffer: ByteBuffer, o: Any?) {
@@ -584,7 +1136,7 @@ abstract class Type {
                 
                 if (size < 0) throw SchemaException("Bytes size $size cannot be negative")
                 if (size > buffer.remaining()) throw SchemaException(
-                    "Error reading bytes of size $, only ${buffer.remaining()} bytes available"
+                    "Error reading bytes of size $size, only ${buffer.remaining()} bytes available"
                 )
                 
                 val value = buffer.slice()
@@ -855,11 +1407,33 @@ abstract class Type {
 
         private fun toHtml(): String {
             val types = arrayOf(
-                BOOLEAN, INT8, INT16, INT32, INT64,
-                UNSIGNED_INT32, VARINT, VARLONG, UUID, FLOAT64,
-                STRING, COMPACT_STRING, NULLABLE_STRING, COMPACT_NULLABLE_STRING,
-                BYTES, COMPACT_BYTES, NULLABLE_BYTES, COMPACT_NULLABLE_BYTES,
-                RECORDS, ArrayOf(STRING), CompactArrayOf(COMPACT_STRING)
+                BOOLEAN,
+                NULLABLE_BOOLEAN,
+                INT8,
+                NULLABLE_INT8,
+                INT16,
+                NULLABLE_INT16,
+                INT32,
+                NULLABLE_INT32,
+                UNSIGNED_INT32,
+                INT64,
+                NULLABLE_INT64,
+                VARINT,
+                VARLONG,
+                UUID,
+                FLOAT32,
+                FLOAT64,
+                STRING,
+                COMPACT_STRING,
+                NULLABLE_STRING,
+                COMPACT_NULLABLE_STRING,
+                BYTES,
+                COMPACT_BYTES,
+                NULLABLE_BYTES,
+                COMPACT_NULLABLE_BYTES,
+                RECORDS,
+                ArrayOf(STRING),
+                CompactArrayOf(COMPACT_STRING),
             )
             val b = StringBuilder()
             b.append("<table class=\"data-table\"><tbody>\n")

@@ -105,7 +105,7 @@ class RefreshingHttpsJwksVerificationKeyResolver(
         check(isInitialized) { "Please call init() first" }
 
         try {
-            val jwks = refreshingHttpsJwks.jsonWebKeys
+            val jwks = refreshingHttpsJwks.getJsonWebKeys()
             val jwk = verificationJwkSelector.select(jws, jwks)
 
             if (jwk != null) return jwk.key

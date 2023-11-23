@@ -37,7 +37,7 @@ class MetricConfig {
 
     var timeWindowMs: Long = TimeUnit.MILLISECONDS.convert(30, TimeUnit.SECONDS)
 
-    var tags: Map<String, String> = emptyMap()
+    var tags: Map<String, String?> = emptyMap()
 
     var recordingLevel: RecordingLevel = RecordingLevel.INFO
 
@@ -81,7 +81,7 @@ class MetricConfig {
         message = "Use property instead",
         replaceWith = ReplaceWith("tags")
     )
-    fun tags(): Map<String, String> = tags
+    fun tags(): Map<String, String?> = tags
 
     @Deprecated("Use property instead")
     fun tags(tags: Map<String, String>): MetricConfig {

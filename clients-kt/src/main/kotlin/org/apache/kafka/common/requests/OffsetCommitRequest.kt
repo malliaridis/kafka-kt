@@ -40,16 +40,16 @@ class OffsetCommitRequest(
     fun offsets(): Map<TopicPartition, Long> {
         val offsets = mutableMapOf<TopicPartition, Long>()
 
-        for (topic: OffsetCommitRequestTopic in data.topics())
-            for (partition: OffsetCommitRequestPartition in topic.partitions())
-                offsets[TopicPartition(topic.name(), partition.partitionIndex())] =
-                    partition.committedOffset()
+        for (topic: OffsetCommitRequestTopic in data.topics)
+            for (partition: OffsetCommitRequestPartition in topic.partitions)
+                offsets[TopicPartition(topic.name, partition.partitionIndex)] =
+                    partition.committedOffset
 
         return offsets
     }
 
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): OffsetCommitResponse {
-        val responseTopicData = getErrorResponseTopics(data.topics(), Errors.forException(e))
+        val responseTopicData = getErrorResponseTopics(data.topics, Errors.forException(e))
 
         return OffsetCommitResponse(
             OffsetCommitResponseData()
@@ -63,7 +63,7 @@ class OffsetCommitRequest(
     ) : AbstractRequest.Builder<OffsetCommitRequest>(ApiKeys.OFFSET_COMMIT) {
 
         override fun build(version: Short): OffsetCommitRequest {
-            if (data.groupInstanceId() != null && version < 7)
+            if (data.groupInstanceId != null && version < 7)
                 throw UnsupportedVersionException(
                     "The broker offset commit protocol version $version " +
                             "does not support usage of config group.instance.id."
@@ -96,17 +96,17 @@ class OffsetCommitRequest(
 
             for (entry in requestTopics) {
                 val responsePartitions: MutableList<OffsetCommitResponsePartition> = ArrayList()
-                for (requestPartition in entry.partitions()) {
+                for (requestPartition in entry.partitions) {
                     responsePartitions.add(
                         OffsetCommitResponsePartition()
-                            .setPartitionIndex(requestPartition.partitionIndex())
+                            .setPartitionIndex(requestPartition.partitionIndex)
                             .setErrorCode(e.code)
                     )
                 }
 
                 responseTopicData.add(
                     OffsetCommitResponseTopic()
-                        .setName(entry.name())
+                        .setName(entry.name)
                         .setPartitions(responsePartitions)
                 )
             }

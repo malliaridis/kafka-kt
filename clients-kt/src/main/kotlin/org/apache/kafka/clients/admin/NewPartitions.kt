@@ -25,13 +25,13 @@ import org.apache.kafka.common.annotation.InterfaceStability.Evolving
  * The API of this class is evolving, see [Admin] for details.
  *
  * @property totalCount The total number of partitions after the operation succeeds.
- * @property newAssignments The replica assignments for the new partitions, or `null` if the
+ * @property newAssignments The replica assignments for the new partitions, or empty if the
  * assignment will be done by the controller.
  */
 @Evolving
 class NewPartitions private constructor(
     val totalCount: Int,
-    val newAssignments: List<List<Int>>? = null,
+    val newAssignments: List<List<Int>> = emptyList(),
 ) {
 
     /**
@@ -44,14 +44,14 @@ class NewPartitions private constructor(
     fun totalCount(): Int = totalCount
 
     /**
-     * The replica assignments for the new partitions, or `null` if the assignment will be done by
+     * The replica assignments for the new partitions, or empty if the assignment will be done by
      * the controller.
      */
     @Deprecated(
         message = "User property instead",
         replaceWith = ReplaceWith("newAssignments"),
     )
-    fun assignments(): List<List<Int>>? = newAssignments
+    fun assignments(): List<List<Int>> = newAssignments
 
     override fun toString(): String = "(totalCount=$totalCount, newAssignments=$newAssignments)"
 
@@ -90,7 +90,7 @@ class NewPartitions private constructor(
          * @param totalCount The total number of partitions after the operation succeeds.
          * @param newAssignments The replica assignments for the new partitions.
          */
-        fun increaseTo(totalCount: Int, newAssignments: List<List<Int>>?): NewPartitions =
+        fun increaseTo(totalCount: Int, newAssignments: List<List<Int>>): NewPartitions =
             NewPartitions(totalCount, newAssignments)
     }
 }

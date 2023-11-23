@@ -95,14 +95,15 @@ abstract class AbstractResponse protected constructor(
          * the [ResponseHeader] as well as the response payload.
          */
         fun parseResponse(buffer: ByteBuffer, requestHeader: RequestHeader): AbstractResponse {
-            val apiKey = requestHeader.apiKey()
-            val apiVersion = requestHeader.apiVersion()
-            val responseHeader = ResponseHeader.parse(buffer, apiKey.responseHeaderVersion(apiVersion))
-            if (requestHeader.correlationId() != responseHeader.correlationId()) {
+            val apiKey = requestHeader.apiKey
+            val apiVersion = requestHeader.apiVersion
+            val responseHeader =
+                ResponseHeader.parse(buffer, apiKey.responseHeaderVersion(apiVersion))
+            if (requestHeader.correlationId != responseHeader.correlationId()) {
                 throw CorrelationIdMismatchException(
                     "Correlation id for response (${responseHeader.correlationId()}) does not match request (" +
-                            "${requestHeader.correlationId()}), request header: $requestHeader",
-                    requestHeader.correlationId(), responseHeader.correlationId()
+                            "${requestHeader.correlationId}), request header: $requestHeader",
+                    requestHeader.correlationId, responseHeader.correlationId()
                 )
             }
             return parseResponse(apiKey, buffer, apiVersion)

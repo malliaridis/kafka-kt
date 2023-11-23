@@ -64,12 +64,12 @@ class AddPartitionsToTxnRequest(
                 partitionMap.map { (key, value) ->
                     AddPartitionsToTxnTopic()
                         .setName(key)
-                        .setPartitions(value)
+                        .setPartitions(value.toIntArray())
                 }
             )
 
             data = AddPartitionsToTxnRequestData()
-                .setTransactionalId(transactionalId)
+                .setTransactionalId(transactionalId!!)
                 .setProducerId(producerId)
                 .setProducerEpoch(producerEpoch)
                 .setTopics(topics)
@@ -83,11 +83,11 @@ class AddPartitionsToTxnRequest(
         companion object {
 
             fun getPartitions(data: AddPartitionsToTxnRequestData): List<TopicPartition> =
-                data.topics().flatMap { topicCollection ->
-                    topicCollection.partitions().map { partition ->
-                        TopicPartition(topicCollection.name(), partition)
+                data.topics.flatMap { topicCollection ->
+                    topicCollection.partitions.map { partition ->
+                        TopicPartition(topicCollection.name, partition)
                     }
-            }
+                }
         }
     }
 

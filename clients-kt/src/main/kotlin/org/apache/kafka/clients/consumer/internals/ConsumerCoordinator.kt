@@ -118,7 +118,7 @@ class ConsumerCoordinator(
     var isLeader = false
         private set
 
-    private var joinedSubscription: Set<String>? = null
+    private lateinit var joinedSubscription: Set<String>
 
     private var metadataSnapshot: MetadataSnapshot =
         MetadataSnapshot(subscriptions, metadata.fetch(), metadata.updateVersion())
@@ -192,11 +192,11 @@ class ConsumerCoordinator(
         log.debug("Joining group with current subscription: {}", subscriptions.subscription())
         joinedSubscription = subscriptions.subscription()
         val protocolSet = JoinGroupRequestProtocolCollection()
-        val topics = joinedSubscription!!.toList()
-        for (assignor: ConsumerPartitionAssignor in assignors) {
+        val topics = joinedSubscription.toList()
+        for (assignor in assignors) {
             val subscription = ConsumerPartitionAssignor.Subscription(
                 topics = topics,
-                userData = assignor.subscriptionUserData(joinedSubscription!!),
+                userData = assignor.subscriptionUserData(joinedSubscription),
                 ownedPartitions = subscriptions.assignedPartitionsList(),
                 generationId = generation().generationId,
                 rackId = rackId,
@@ -227,14 +227,12 @@ class ConsumerCoordinator(
             // Check if the assignment contains some topics that were not in the original
             // subscription, if yes we will obey what leader has decided and add these topics
             // into the subscriptions as long as they still match the subscribed pattern
-            val addedTopics: MutableSet<String> = HashSet()
-            // this is a copy because its handed to listener below
-            for (tp: TopicPartition in assignedPartitions) {
-                if (!joinedSubscription!!.contains(tp.topic)) addedTopics.add(tp.topic)
-            }
+            val addedTopics = assignedPartitions.filterNot { joinedSubscription.contains(it.topic) }
+                .map { it.topic }
+
             if (addedTopics.isNotEmpty()) {
                 val newSubscription = subscriptions.subscription().toMutableSet()
-                val newJoinedSubscription = joinedSubscription!!.toMutableSet()
+                val newJoinedSubscription = joinedSubscription.toMutableSet()
                 newSubscription.addAll(addedTopics)
                 newJoinedSubscription.addAll(addedTopics)
 
@@ -284,7 +282,10 @@ class ConsumerCoordinator(
     }
 
     private fun invokePartitionsRevoked(revokedPartitions: SortedSet<TopicPartition>): Exception? {
-        log.info("Revoke previously assigned partitions {}", join(revokedPartitions, ", "))
+        log.info(
+            "Revoke previously assigned partitions {}",
+            revokedPartitions.joinToString(", "),
+        )
         val revokePausedPartitions = subscriptions.pausedPartitions().toMutableSet()
         revokePausedPartitions.retainAll(revokedPartitions)
         if (revokePausedPartitions.isNotEmpty()) log.info(
@@ -632,12 +633,12 @@ class ConsumerCoordinator(
         val ownedPartitions: MutableMap<String, List<TopicPartition>> = HashMap()
         for (memberSubscription: JoinGroupResponseMember in allMemberMetadata) {
             val subscription = ConsumerProtocol.deserializeSubscription(
-                ByteBuffer.wrap(memberSubscription.metadata())
+                ByteBuffer.wrap(memberSubscription.metadata)
             )
-            subscription.groupInstanceId = memberSubscription.groupInstanceId()
-            subscriptions[memberSubscription.memberId()] = subscription
+            subscription.groupInstanceId = memberSubscription.groupInstanceId
+            subscriptions[memberSubscription.memberId] = subscription
             allSubscribedTopics.addAll(subscription.topics)
-            ownedPartitions[memberSubscription.memberId()] = subscription.ownedPartitions
+            ownedPartitions[memberSubscription.memberId] = subscription.ownedPartitions
         }
 
         // the leader will begin watching for changes to any of the topics the group is interested
@@ -680,7 +681,7 @@ class ConsumerCoordinator(
             generation().generationId,
             assignments
         )
-        return assignments.mapValues { (_, value) -> ConsumerProtocol.serializeAssignment(value)!! }
+        return assignments.mapValues { (_, value) -> ConsumerProtocol.serializeAssignment(value) }
     }
 
     /**
@@ -898,7 +899,7 @@ class ConsumerCoordinator(
         }
 
         // we need to join if our subscription has changed since the last join
-        if (joinedSubscription != null && joinedSubscription != subscriptions.subscription()) {
+        if (::joinedSubscription.isInitialized && joinedSubscription != subscriptions.subscription()) {
             val fullReason = String.format(
                 "subscription has changed from %s at the beginning of the rebalance to %s",
                 joinedSubscription, subscriptions.subscription()
@@ -1273,15 +1274,14 @@ class ConsumerCoordinator(
                 key = topicPartition.topic,
                 defaultValue = OffsetCommitRequestTopic().setName(topicPartition.topic),
             )
-            topic.partitions().add(
-                OffsetCommitRequestPartition()
-                    .setPartitionIndex(topicPartition.partition)
-                    .setCommittedOffset(offsetAndMetadata.offset)
-                    .setCommittedLeaderEpoch(
-                        offsetAndMetadata.leaderEpoch() ?: RecordBatch.NO_PARTITION_LEADER_EPOCH
-                    )
-                    .setCommittedMetadata(offsetAndMetadata.metadata)
-            )
+            topic.partitions += OffsetCommitRequestPartition()
+                .setPartitionIndex(topicPartition.partition)
+                .setCommittedOffset(offsetAndMetadata.offset)
+                .setCommittedLeaderEpoch(
+                    offsetAndMetadata.leaderEpoch() ?: RecordBatch.NO_PARTITION_LEADER_EPOCH
+                )
+                .setCommittedMetadata(offsetAndMetadata.metadata)
+
             requestTopicDataMap[topicPartition.topic] = topic
         }
         val generation: Generation?
@@ -1341,12 +1341,12 @@ class ConsumerCoordinator(
             sensors.commitSensor.record(this.response!!.requestLatencyMs.toDouble())
             val unauthorizedTopics = mutableSetOf<String>()
 
-            for (topic in response.data().topics()) {
-                for (partition in topic.partitions()) {
-                    val tp = TopicPartition(topic.name(), partition.partitionIndex())
+            for (topic in response.data().topics) {
+                for (partition in topic.partitions) {
+                    val tp = TopicPartition(topic.name, partition.partitionIndex)
                     val offsetAndMetadata = offsets[tp]
                     val offset = offsetAndMetadata!!.offset
-                    val error = Errors.forCode(partition.errorCode())
+                    val error = Errors.forCode(partition.errorCode)
                     if (error === Errors.NONE)
                         log.debug("Committed offset {} for partition {}", offset, tp)
                     else {
@@ -1509,10 +1509,10 @@ class ConsumerCoordinator(
         log.debug("Fetching committed offsets for partitions: {}", partitions)
         // construct the request
         val requestBuilder = OffsetFetchRequest.Builder(
-            rebalanceConfig.groupId,
-            true,
-            ArrayList(partitions),
-            throwOnFetchStableOffsetsUnsupported
+            groupId = rebalanceConfig.groupId,
+            requireStable = true,
+            partitions = ArrayList(partitions),
+            throwOnFetchStableOffsetsUnsupported = throwOnFetchStableOffsetsUnsupported
         )
 
         // send the request with a callback
@@ -1554,7 +1554,7 @@ class ConsumerCoordinator(
             for ((tp, partitionData) in responseData) {
                 if (partitionData.hasError()) {
                     val error = partitionData.error
-                    log.debug("Failed to fetch offset for partition {}: {}", tp, error.message())
+                    log.debug("Failed to fetch offset for partition {}: {}", tp, error.message)
                     if (error === Errors.UNKNOWN_TOPIC_OR_PARTITION) {
                         future.raise(KafkaException("Topic or Partition $tp does not exist"))
                         return

@@ -31,13 +31,13 @@ class ListTransactionsResponse(
 
     override fun errorCounts(): Map<Errors, Int> {
         val errorCounts = mutableMapOf<Errors, Int>()
-        updateErrorCounts(errorCounts, Errors.forCode(data.errorCode()))
+        updateErrorCounts(errorCounts, Errors.forCode(data.errorCode))
         return errorCounts
     }
 
     override fun toString(): String = data.toString()
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)

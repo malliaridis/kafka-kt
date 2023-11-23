@@ -32,24 +32,25 @@ class AlterClientQuotasResponse(
 
     fun complete(futures: Map<ClientQuotaEntity, KafkaFutureImpl<Unit>>) {
 
-        data.entries().forEach { entryData ->
-            val entityEntries: MutableMap<String, String> = HashMap(entryData.entity().size)
+        data.entries.forEach { entryData ->
+            val entityEntries: MutableMap<String, String?> = HashMap(entryData.entity.size)
 
-            entryData.entity().forEach { entityData ->
-                entityEntries[entityData.entityType()] = entityData.entityName()
+            entryData.entity.forEach { entityData ->
+                entityEntries[entityData.entityType] = entityData.entityName
             }
 
             val entity = ClientQuotaEntity(entityEntries)
-            val future = requireNotNull(futures[entity]) { "Future map must contain entity $entity" }
-            val error = Errors.forCode(entryData.errorCode())
+            val future =
+                requireNotNull(futures[entity]) { "Future map must contain entity $entity" }
+            val error = Errors.forCode(entryData.errorCode)
 
             if (error === Errors.NONE) future.complete(Unit)
-            else future.completeExceptionally(error.exception(entryData.errorMessage()))
+            else future.completeExceptionally(error.exception(entryData.errorMessage))
         }
     }
 
     override fun throttleTimeMs(): Int {
-        return data.throttleTimeMs()
+        return data.throttleTimeMs
     }
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
@@ -59,10 +60,10 @@ class AlterClientQuotasResponse(
     override fun errorCounts(): Map<Errors, Int> {
         val counts = mutableMapOf<Errors, Int>()
 
-        data.entries().forEach { entry ->
+        data.entries.forEach { entry ->
             updateErrorCounts(
                 errorCounts = counts,
-                error = Errors.forCode(entry.errorCode())
+                error = Errors.forCode(entry.errorCode)
             )
         }
 
@@ -78,18 +79,11 @@ class AlterClientQuotasResponse(
         private fun toEntityData(
             entity: ClientQuotaEntity,
         ): List<AlterClientQuotasResponseData.EntityData> {
-
-            val entityData: MutableList<AlterClientQuotasResponseData.EntityData> =
-                ArrayList(entity.entries().size)
-
-            entity.entries().forEach { (key, value) ->
-                entityData.add(
-                    AlterClientQuotasResponseData.EntityData()
-                        .setEntityType(key)
-                        .setEntityName(value)
-                )
+            return entity.entries.map { (key, value) ->
+                AlterClientQuotasResponseData.EntityData()
+                    .setEntityType(key)
+                    .setEntityName(value)
             }
-            return entityData
         }
 
         fun parse(buffer: ByteBuffer?, version: Short): AlterClientQuotasResponse {

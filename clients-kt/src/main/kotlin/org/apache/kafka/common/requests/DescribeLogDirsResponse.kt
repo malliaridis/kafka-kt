@@ -31,7 +31,7 @@ class DescribeLogDirsResponse(
 
     override fun data(): DescribeLogDirsResponseData = data
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
@@ -39,9 +39,9 @@ class DescribeLogDirsResponse(
 
     override fun errorCounts(): Map<Errors, Int> {
         val errorCounts = mutableMapOf<Errors, Int>()
-        errorCounts[Errors.forCode(data.errorCode())] = 1
-        data.results().forEach { result: DescribeLogDirsResponseData.DescribeLogDirsResult ->
-            updateErrorCounts(errorCounts, Errors.forCode(result.errorCode()))
+        errorCounts[Errors.forCode(data.errorCode)] = 1
+        data.results.forEach { result: DescribeLogDirsResponseData.DescribeLogDirsResult ->
+            updateErrorCounts(errorCounts, Errors.forCode(result.errorCode))
         }
 
         return errorCounts
@@ -75,9 +75,9 @@ class DescribeLogDirsResponse(
     class ReplicaInfo(val size: Long, val offsetLag: Long, val isFuture: Boolean) {
         override fun toString(): String {
             return "(size=$size" +
-            ", offsetLag=$offsetLag" +
-            ", isFuture=$isFuture" +
-            ")"
+                    ", offsetLag=$offsetLag" +
+                    ", isFuture=$isFuture" +
+                    ")"
         }
     }
 

@@ -40,19 +40,19 @@ class ElectLeadersRequest private constructor(
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse {
         val (error, message) = ApiError.fromThrowable(e)
 
-        val electionResults = data.topicPartitions()?.map { topic ->
+        val electionResults = data.topicPartitions.map { topic ->
             val electionResult = ReplicaElectionResult()
-            electionResult.setTopic(topic.topic())
+            electionResult.setTopic(topic.topic)
 
-            for (partitionId in topic.partitions()) {
+            for (partitionId in topic.partitions) {
                 val partitionResult = PartitionResult()
-                partitionResult.setPartitionId(partitionId!!)
+                partitionResult.setPartitionId(partitionId)
                 partitionResult.setErrorCode(error.code)
                 partitionResult.setErrorMessage(message)
-                electionResult.partitionResult().add(partitionResult)
+                electionResult.partitionResult += partitionResult
             }
             electionResult
-        } ?: emptyList()
+        }
 
         return ElectLeadersResponse(
             throttleTimeMs = throttleTimeMs,
@@ -89,13 +89,15 @@ class ElectLeadersRequest private constructor(
             val data = ElectLeadersRequestData().setTimeoutMs(timeoutMs)
 
             topicPartitions?.forEach { (topic, partition): TopicPartition ->
-                var tps = data.topicPartitions().find(topic)
+                var tps = data.topicPartitions.find(topic)
                 if (tps == null) {
                     tps = TopicPartitions().setTopic(topic)
-                    data.topicPartitions().add(tps)
+                    data.topicPartitions += TopicPartitions().setTopic(topic).also {
+                        tps = it
+                    }
                 }
-                tps.partitions().add(partition)
-            } ?: data.setTopicPartitions(null)
+                tps!!.partitions += partition
+            } ?: data.setTopicPartitions(ElectLeadersRequestData.TopicPartitionsCollection())
 
             data.setElectionType(electionType.value)
             return data

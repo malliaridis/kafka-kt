@@ -38,8 +38,8 @@ class AlterUserScramCredentialsRequest private constructor(
         val (error, errorMessage) = ApiError.fromThrowable(e)
         val errorCode = error.code
         val users =
-            data.deletions().map { deletion -> deletion.name() } +
-            data.upsertions().map { upsertion -> upsertion.name() }
+            data.deletions.map { deletion -> deletion.name } +
+                data.upsertions.map { upsertion -> upsertion.name }
 
         val results = users.sorted().map { user ->
             AlterUserScramCredentialsResponseData.AlterUserScramCredentialsResult()

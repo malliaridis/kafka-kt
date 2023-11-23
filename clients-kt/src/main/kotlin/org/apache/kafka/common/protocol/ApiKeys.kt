@@ -17,15 +17,13 @@
 
 package org.apache.kafka.common.protocol
 
-import java.util.*
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.function.Function
-import java.util.stream.Collectors
 import org.apache.kafka.common.message.ApiMessageType
 import org.apache.kafka.common.message.ApiMessageType.ListenerType
 import org.apache.kafka.common.protocol.types.Schema
 import org.apache.kafka.common.protocol.types.Type
 import org.apache.kafka.common.record.RecordBatch
+import java.util.*
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Identifiers for all the Kafka APIs
@@ -378,8 +376,8 @@ enum class ApiKeys(
         // The generator ensures every `ApiMessageType` has a unique id
         private val ID_TO_TYPE = values().associateBy(ApiKeys::id)
 
-        private fun shouldRetainsBufferReference(requestSchemas: Array<Schema>): Boolean =
-            requestSchemas.any(::retainsBufferReference)
+        private fun shouldRetainsBufferReference(requestSchemas: Array<Schema?>): Boolean =
+            requestSchemas.any { schema -> schema?.let { retainsBufferReference(it) } ?: false }
 
         fun forId(id: Int): ApiKeys = ID_TO_TYPE[id.toShort()]
             ?: throw IllegalArgumentException("Unexpected api key: $id")
@@ -432,9 +430,9 @@ enum class ApiKeys(
             return hasBuffer.get()
         }
 
-        fun zkBrokerApis(): EnumSet<ApiKeys> = apisForListener(ListenerType.ZK_BROKER)
+        fun zkBrokerApis(): Set<ApiKeys> = apisForListener(ListenerType.ZK_BROKER)
 
-        fun controllerApis(): EnumSet<ApiKeys> = apisForListener(ListenerType.CONTROLLER)
+        fun controllerApis(): Set<ApiKeys> = apisForListener(ListenerType.CONTROLLER)
 
         fun clientApis(): EnumSet<ApiKeys> {
             return EnumSet.copyOf(
@@ -444,7 +442,7 @@ enum class ApiKeys(
             )
         }
 
-        fun apisForListener(listener: ListenerType): EnumSet<ApiKeys> = APIS_BY_LISTENER[listener]!!
+        fun apisForListener(listener: ListenerType): Set<ApiKeys> = APIS_BY_LISTENER[listener]!!
 
         private fun filterApisForListener(listener: ListenerType): EnumSet<ApiKeys> {
             return EnumSet.copyOf(values().filter { apiKey -> apiKey.inScope(listener) })

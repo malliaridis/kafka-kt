@@ -34,7 +34,7 @@ class AlterPartitionReassignmentsResponse(
 
     override fun shouldClientThrottle(version: Short): Boolean = true
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
@@ -42,10 +42,10 @@ class AlterPartitionReassignmentsResponse(
 
     override fun errorCounts(): Map<Errors, Int> {
         val counts = mutableMapOf<Errors, Int>()
-        updateErrorCounts(counts, Errors.forCode(data.errorCode()))
-        data.responses().forEach { topicResponse ->
-            topicResponse.partitions().forEach { partitionResponse ->
-                updateErrorCounts(counts, Errors.forCode(partitionResponse.errorCode()))
+        updateErrorCounts(counts, Errors.forCode(data.errorCode))
+        data.responses.forEach { topicResponse ->
+            topicResponse.partitions.forEach { partitionResponse ->
+                updateErrorCounts(counts, Errors.forCode(partitionResponse.errorCode))
             }
         }
 

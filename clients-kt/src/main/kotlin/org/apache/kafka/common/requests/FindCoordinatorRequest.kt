@@ -40,7 +40,7 @@ class FindCoordinatorRequest private constructor(
 
         return if (version < MIN_BATCHED_VERSION)
             FindCoordinatorResponse.prepareOldResponse(error, Node.noNode())
-        else FindCoordinatorResponse.prepareErrorResponse(error, data.coordinatorKeys())
+        else FindCoordinatorResponse.prepareErrorResponse(error, data.coordinatorKeys)
     }
 
     override fun data(): FindCoordinatorRequestData = data
@@ -73,24 +73,24 @@ class FindCoordinatorRequest private constructor(
 
         override fun build(version: Short): FindCoordinatorRequest {
 
-            if (version < 1 && data.keyType() == CoordinatorType.TRANSACTION.id)
+            if (version < 1 && data.keyType == CoordinatorType.TRANSACTION.id)
                 throw UnsupportedVersionException(
                     "Cannot create a v$version FindCoordinator request because we require " +
-                        "features supported only in 2 or later."
+                            "features supported only in 2 or later."
                 )
 
-            val batchedKeys = data.coordinatorKeys().size
+            val batchedKeys = data.coordinatorKeys.size
             if (version < MIN_BATCHED_VERSION) {
                 if (batchedKeys > 1) throw NoBatchedFindCoordinatorsException(
                     "Cannot create a v$version FindCoordinator request because we require " +
-                        "features supported only in $MIN_BATCHED_VERSION or later."
+                            "features supported only in $MIN_BATCHED_VERSION or later."
                 )
                 if (batchedKeys == 1) {
-                    data.setKey(data.coordinatorKeys()[0])
+                    data.setKey(data.coordinatorKeys[0])
                     data.setCoordinatorKeys(emptyList())
                 }
-            } else if (batchedKeys == 0 && data.key() != null) {
-                data.setCoordinatorKeys(listOf(data.key()))
+            } else if (batchedKeys == 0 && data.key != null) {
+                data.setCoordinatorKeys(listOf(data.key))
                 data.setKey("") // default value
             }
             return FindCoordinatorRequest(data, version)

@@ -37,24 +37,24 @@ class LeaderAndIsrResponse(
     private val version: Short,
 ) : AbstractResponse(ApiKeys.LEADER_AND_ISR) {
 
-    fun topics(): LeaderAndIsrTopicErrorCollection = data.topics()
+    fun topics(): LeaderAndIsrTopicErrorCollection = data.topics
 
-    fun error(): Errors = Errors.forCode(data.errorCode())
+    fun error(): Errors = Errors.forCode(data.errorCode)
 
     override fun errorCounts(): Map<Errors, Int> {
         val error = error()
         // Minor optimization since the top-level error applies to all partitions
         if (error !== Errors.NONE) mapOf(
-            if (version < 5) error to data.partitionErrors().size + 1
-            else error to data.topics().sumOf { it.partitionErrors().size } + 1
+            if (version < 5) error to data.partitionErrors.size + 1
+            else error to data.topics.sumOf { it.partitionErrors.size } + 1
         )
 
         val errors: Map<Errors, Int> = errorCounts(
-            if (version < 5) data.partitionErrors()
-                .map { Errors.forCode(it.errorCode()) }
-            else data.topics()
-                .flatMap { it.partitionErrors() }
-                .map { Errors.forCode(it.errorCode()) }
+            if (version < 5) data.partitionErrors
+                .map { Errors.forCode(it.errorCode) }
+            else data.topics
+                .flatMap { it.partitionErrors }
+                .map { Errors.forCode(it.errorCode) }
         )
         updateErrorCounts(errors.toMutableMap(), Errors.NONE)
         return errors
@@ -62,15 +62,15 @@ class LeaderAndIsrResponse(
 
     fun partitionErrors(topicNames: Map<Uuid, String>): Map<TopicPartition, Errors> {
         val errors = mutableMapOf<TopicPartition, Errors>()
-        if (version < 5) data.partitionErrors().forEach { partition ->
-            errors[TopicPartition(partition.topicName(), partition.partitionIndex())] =
-                Errors.forCode(partition.errorCode())
+        if (version < 5) data.partitionErrors.forEach { partition ->
+            errors[TopicPartition(partition.topicName, partition.partitionIndex)] =
+                Errors.forCode(partition.errorCode)
 
-        } else data.topics().forEach { topic ->
-            val topicName = topicNames[topic.topicId()]
-            if (topicName != null) topic.partitionErrors().forEach { partition ->
-                errors[TopicPartition(topicName, partition.partitionIndex())] =
-                    Errors.forCode(partition.errorCode())
+        } else data.topics.forEach { topic ->
+            val topicName = topicNames[topic.topicId]
+            if (topicName != null) topic.partitionErrors.forEach { partition ->
+                errors[TopicPartition(topicName, partition.partitionIndex)] =
+                    Errors.forCode(partition.errorCode)
             }
         }
 

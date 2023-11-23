@@ -41,30 +41,30 @@ class DeleteGroupsResponse(
 
     override fun data(): DeleteGroupsResponseData = data
 
-    fun errors(): Map<String, Errors> = data.results().associate { result ->
-        result.groupId() to Errors.forCode(result.errorCode())
+    fun errors(): Map<String, Errors> = data.results.associate { result ->
+        result.groupId to Errors.forCode(result.errorCode)
     }
 
     @Throws(IllegalArgumentException::class)
     operator fun get(group: String): Errors {
-        val result = requireNotNull(data.results().find(group)) {
+        val result = requireNotNull(data.results.find(group)) {
             "could not find group $group in the delete group response"
         }
 
-        return Errors.forCode(result.errorCode())
+        return Errors.forCode(result.errorCode)
     }
 
     override fun errorCounts(): Map<Errors, Int> {
         val counts = mutableMapOf<Errors, Int>()
 
-        data.results().forEach { result: DeletableGroupResult ->
-            updateErrorCounts(counts, Errors.forCode(result.errorCode()))
+        data.results.forEach { result: DeletableGroupResult ->
+            updateErrorCounts(counts, Errors.forCode(result.errorCode))
         }
 
         return counts
     }
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)

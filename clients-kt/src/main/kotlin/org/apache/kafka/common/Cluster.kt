@@ -282,7 +282,7 @@ class Cluster private constructor(
     }
 
     override fun toString(): String {
-        return "Cluster(id = ${clusterResource.clusterId()}" + ", nodes = $nodes" +
+        return "Cluster(id = ${clusterResource.clusterId}" + ", nodes = $nodes" +
                 ", partitions = ${partitionsByTopicPartition.values}, controller = $controller)"
     }
 

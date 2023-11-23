@@ -66,7 +66,7 @@ class FetchSnapshotRequest(
         fun singleton(
             clusterId: String?,
             topicPartition: TopicPartition,
-            operator: UnaryOperator<FetchSnapshotRequestData.PartitionSnapshot?>,
+            operator: UnaryOperator<FetchSnapshotRequestData.PartitionSnapshot>,
         ): FetchSnapshotRequestData {
             val partitionSnapshot = operator.apply(
                 FetchSnapshotRequestData.PartitionSnapshot()
@@ -96,10 +96,10 @@ class FetchSnapshotRequest(
             topicPartition: TopicPartition,
         ): FetchSnapshotRequestData.PartitionSnapshot? {
             return data
-                .topics()
-                .filter { topic -> topic.name() == topicPartition.topic }
-                .flatMap { topic -> topic.partitions() }
-                .firstOrNull { partition -> partition.partition() == topicPartition.partition }
+                .topics
+                .filter { topic -> topic.name == topicPartition.topic }
+                .flatMap { topic -> topic.partitions }
+                .firstOrNull { partition -> partition.partition == topicPartition.partition }
         }
 
         fun parse(buffer: ByteBuffer, version: Short): FetchSnapshotRequest =

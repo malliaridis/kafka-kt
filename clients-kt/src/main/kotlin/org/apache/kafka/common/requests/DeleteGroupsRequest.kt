@@ -34,7 +34,7 @@ class DeleteGroupsRequest(
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse {
         val error = Errors.forException(e)
         val groupResults = DeletableGroupResultCollection()
-        for (groupId in data.groupsNames()) {
+        for (groupId in data.groupsNames) {
             groupResults.add(
                 DeletableGroupResult()
                     .setGroupId(groupId)

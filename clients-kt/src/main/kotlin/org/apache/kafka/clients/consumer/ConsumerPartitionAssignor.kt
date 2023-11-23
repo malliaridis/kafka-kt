@@ -130,11 +130,6 @@ interface ConsumerPartitionAssignor {
         )
         fun rackId(): String? = rackId
 
-        @Deprecated("Use property instead")
-        fun setGroupInstanceId(groupInstanceId: String?) {
-            this.groupInstanceId = groupInstanceId
-        }
-
         @Deprecated(
             message = "Use property instead",
             replaceWith = ReplaceWith("groupInstanceId"),

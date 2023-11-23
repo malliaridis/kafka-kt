@@ -64,11 +64,10 @@ class OffsetCommitResponse : AbstractResponse {
                 topicName,
                 OffsetCommitResponseTopic().setName(topicName)
             )
-            topic.partitions().add(
-                OffsetCommitResponsePartition()
-                    .setErrorCode(value.code)
-                    .setPartitionIndex(topicPartition.partition)
-            )
+            topic.partitions += OffsetCommitResponsePartition()
+                .setErrorCode(value.code)
+                .setPartitionIndex(topicPartition.partition)
+
             responseTopicDataMap[topicName] = topic
         }
 
@@ -86,9 +85,9 @@ class OffsetCommitResponse : AbstractResponse {
 
     override fun errorCounts(): Map<Errors, Int> {
         return errorCounts(
-            data.topics().flatMap { topicResult ->
-                topicResult.partitions().map { partitionResult ->
-                    Errors.forCode(partitionResult.errorCode())
+            data.topics.flatMap { topicResult ->
+                topicResult.partitions.map { partitionResult ->
+                    Errors.forCode(partitionResult.errorCode)
                 }
             }
         )
@@ -96,7 +95,7 @@ class OffsetCommitResponse : AbstractResponse {
 
     override fun toString(): String = data.toString()
 
-    override fun throttleTimeMs(): Int = data.throttleTimeMs()
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
