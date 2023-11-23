@@ -44,7 +44,7 @@ class MetadataCache private constructor(
     clusterInstance: Cluster?
 ) {
     private val metadataByPartition: MutableMap<TopicPartition, PartitionMetadata>
-    private var clusterInstance: Cluster? = null
+    private val clusterInstance: Cluster
 
     internal constructor(
         clusterId: String?,
@@ -72,8 +72,7 @@ class MetadataCache private constructor(
         partitions.forEach { partition ->
             metadataByPartition[partition.topicPartition] = partition
         }
-        if (clusterInstance == null) computeClusterView()
-        else this.clusterInstance = clusterInstance
+        this.clusterInstance = clusterInstance ?: computeClusterView()
     }
 
     fun partitionMetadata(topicPartition: TopicPartition): PartitionMetadata? {
@@ -88,9 +87,7 @@ class MetadataCache private constructor(
         return nodes[id]
     }
 
-    fun cluster(): Cluster = checkNotNull(clusterInstance) {
-        "Cached Cluster instance should not be null, but was."
-    }
+    fun cluster(): Cluster = clusterInstance
 
     fun clusterResource(): ClusterResource {
         return ClusterResource(clusterId)
@@ -175,12 +172,9 @@ class MetadataCache private constructor(
     }
 
     private fun computeClusterView() : Cluster {
-        val partitionInfos = metadataByPartition.values
-            .stream()
-            .map { metadata: PartitionMetadata ->
-                MetadataResponse.toPartitionInfo(metadata, nodes)
-            }
-            .collect(Collectors.toList())
+        val partitionInfos = metadataByPartition.values.map { metadata ->
+            MetadataResponse.toPartitionInfo(metadata, nodes)
+        }
         return Cluster(
             clusterId = clusterId,
             nodes = nodes.values,

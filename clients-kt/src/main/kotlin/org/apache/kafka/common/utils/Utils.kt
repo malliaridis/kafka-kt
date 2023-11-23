@@ -64,6 +64,7 @@ import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.common.network.TransferableChannel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import kotlin.reflect.KClass
 
 object Utils {
     // This matches URIs of formats: host:port and protocol:\\host:port

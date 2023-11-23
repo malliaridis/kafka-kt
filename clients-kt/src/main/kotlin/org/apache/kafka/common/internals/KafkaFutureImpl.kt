@@ -32,7 +32,7 @@ import org.apache.kafka.common.KafkaFuture
  */
 class KafkaFutureImpl<T> private constructor(
     private val isDependant: Boolean,
-    private val completableFuture: KafkaCompletableFuture<T>
+    private val completableFuture: KafkaCompletableFuture<T>,
 ) : KafkaFuture<T>() {
 
     constructor() : this(
@@ -73,14 +73,13 @@ class KafkaFutureImpl<T> private constructor(
     }
 
     override fun whenComplete(action: BiConsumer<in T?, in Throwable?>): KafkaFuture<T> {
-        val tCompletableFuture = completableFuture.whenComplete(
-            java.util.function.BiConsumer { a: T, b: Throwable ->
+        val tCompletableFuture = completableFuture.whenComplete { a: T?, b: Throwable? ->
                 try {
                     action.accept(a, b)
-                } catch (t: CompletionException) {
-                    throw CompletionException(t)
+                } catch(ce: CompletionException) {
+                    throw CompletionException(ce)
                 }
-            } as java.util.function.BiConsumer<in T, in Throwable>)
+            }
         return KafkaFutureImpl(true, toKafkaCompletableFuture(tCompletableFuture))
     }
 

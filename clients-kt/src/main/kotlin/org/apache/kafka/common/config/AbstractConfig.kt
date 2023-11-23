@@ -21,11 +21,11 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import org.apache.kafka.common.Configurable
 import org.apache.kafka.common.KafkaException
-import org.apache.kafka.common.config.ConfigDef.ConfigKey
 import org.apache.kafka.common.config.provider.ConfigProvider
 import org.apache.kafka.common.config.types.Password
 import org.apache.kafka.common.utils.Utils
 import org.slf4j.LoggerFactory
+import kotlin.reflect.KClass
 
 /**
  * A convenient base class for configurations to extend.
@@ -92,16 +92,13 @@ open class AbstractConfig(
     private val originals: Map<String, Any>
 
     /* the parsed values */
-    private val values: Map<String, Any?>
+    private val values: MutableMap<String, Any?>
 
     init {
         this.originals = resolveConfigVariables(configProviderProps, originals)
-        val tempValues = definition.parse(this.originals).toMutableMap()
-        val configUpdates = postProcessParsedConfig(tempValues)
-        configUpdates.forEach { (key, value) ->
-            tempValues[key] = value
-        }
-        values = tempValues
+        values = definition.parse(this.originals).toMutableMap()
+        val configUpdates = postProcessParsedConfig(values)
+        for ((key, value) in configUpdates) values[key] = value
         definition.parse(values)
         if (doLog) logAll()
     }
@@ -321,7 +318,7 @@ open class AbstractConfig(
     private fun <T> getConfiguredInstance(
         klass: Any?,
         t: Class<T>,
-        configPairs: Map<String, Any?>
+        configPairs: Map<String, Any?>,
     ): T {
 
         val o: T = when (klass) {
@@ -398,7 +395,7 @@ open class AbstractConfig(
     fun <T> getConfiguredInstances(
         key: String,
         t: Class<T>,
-        configOverrides: Map<String, Any?>
+        configOverrides: Map<String, Any?>,
     ): List<T> {
         return getConfiguredInstances(getList(key), t, configOverrides)
     }
@@ -417,18 +414,16 @@ open class AbstractConfig(
     fun <T> getConfiguredInstances(
         classNames: List<String>?,
         t: Class<T>,
-        configOverrides: Map<String, Any?>?
+        configOverrides: Map<String, Any?>?,
     ): List<T> {
         val objects: MutableList<T> = ArrayList()
 
         if (classNames == null) return objects
 
-        val configPairs = originals().apply {
-            putAll(configOverrides!!)
-        }
+        val configPairs = originals(configOverrides!!)
 
         try {
-            classNames.forEach { klass ->
+            classNames.forEach { klass: Any ->
                 val o: T? = getConfiguredInstance(klass, t, configPairs)
                 objects.add(t.cast(o))
             }
@@ -524,7 +519,7 @@ open class AbstractConfig(
      */
     private fun instantiateConfigProviders(
         indirectConfigs: Map<String, String>,
-        providerConfigProperties: Map<String, Any?>
+        providerConfigProperties: Map<String, Any?>,
     ): Map<String, ConfigProvider> {
 
         val configProviders = indirectConfigs[CONFIG_PROVIDERS_CONFIG]
@@ -601,7 +596,7 @@ open class AbstractConfig(
         constructor(
             m: Map<String, V>?,
             prefix: String = "",
-            withIgnoreFallback: Boolean = false
+            withIgnoreFallback: Boolean = false,
         ) : super(m) {
             this.prefix = prefix
             this.withIgnoreFallback = withIgnoreFallback
@@ -628,7 +623,7 @@ open class AbstractConfig(
      */
     private class ResolvingMap<V>(
         resolved: Map<String, V?>,
-        private val originals: Map<String, Any?>
+        private val originals: Map<String, Any?>,
     ) : HashMap<String, V>(resolved) {
 
         override operator fun get(key: String): V? {

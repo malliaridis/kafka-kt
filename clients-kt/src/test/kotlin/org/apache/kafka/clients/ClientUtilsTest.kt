@@ -32,7 +32,9 @@ import kotlin.test.assertTrue
 
 
 class ClientUtilsTest {
+
     private val hostResolver: HostResolver = DefaultHostResolver()
+
     @Test
     fun testParseAndValidateAddresses() {
         checkWithoutLookup("127.0.0.1:8000")

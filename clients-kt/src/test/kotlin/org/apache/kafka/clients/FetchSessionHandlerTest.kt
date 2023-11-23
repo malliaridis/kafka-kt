@@ -953,7 +953,7 @@ class FetchSessionHandlerTest {
     }
 
     @ParameterizedTest
-    @MethodSource("ΙdUsageCombinations")
+    @MethodSource("idUsageCombinations")
     fun testTopicIdReplaced(startsWithTopicIds: Boolean, endsWithTopicIds: Boolean) {
         val tp = TopicPartition("foo", 0)
         val handler = FetchSessionHandler(LOG_CONTEXT, 1)
@@ -1865,6 +1865,7 @@ class FetchSessionHandlerTest {
             return map
         }
 
+        @JvmStatic
         private fun idUsageCombinations(): Stream<Arguments> {
             return Stream.of(
                 Arguments.of(true, true),

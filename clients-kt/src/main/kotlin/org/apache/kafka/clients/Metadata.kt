@@ -321,7 +321,7 @@ open class Metadata(
         }
         val newClusterId = cache.clusterResource().clusterId
         if (previousClusterId != newClusterId) {
-            log.info("Cluster ID: {}", newClusterId)
+            log.info("Cluster ID: {}", newClusterId.toString())
         }
         clusterResourceListeners.onUpdate(cache.clusterResource())
         log.debug("Updated cluster metadata updateVersion {} to {}", updateVersion, cache)

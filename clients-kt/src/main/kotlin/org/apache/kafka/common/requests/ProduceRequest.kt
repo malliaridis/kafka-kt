@@ -265,8 +265,8 @@ class ProduceRequest(
 
         fun requiredMagicForVersion(produceRequestVersion: Short): Byte {
             require(
-                produceRequestVersion < ApiKeys.PRODUCE.oldestVersion()
-                        || produceRequestVersion > ApiKeys.PRODUCE.latestVersion()
+                produceRequestVersion >= ApiKeys.PRODUCE.oldestVersion()
+                        && produceRequestVersion <= ApiKeys.PRODUCE.latestVersion()
             ) {
                 "Magic value to use for produce request version $produceRequestVersion is not known"
             }

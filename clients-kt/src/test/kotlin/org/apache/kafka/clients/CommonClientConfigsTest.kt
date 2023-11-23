@@ -33,12 +33,14 @@ import org.apache.kafka.common.utils.Utils.enumOptions
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class CommonClientConfigsTest {
 
     @Suppress("Deprecation")
     private class TestConfig(props: Map<String, Any?>) : AbstractConfig(CONFIG, props) {
+
         override fun postProcessParsedConfig(parsedValues: Map<String, Any?>): Map<String, Any?> {
             postValidateSaslMechanismConfig(this)
             return postProcessReconnectBackoffConfigs(this, parsedValues)
@@ -154,24 +156,29 @@ class CommonClientConfigsTest {
             config = config,
         )
         assertEquals(expected = 1, actual = reporters.size)
-        assertTrue(reporters[0] is JmxReporter)
+        assertIs<JmxReporter>(reporters[0])
+
         config = TestConfig(
             props = mapOf(CommonClientConfigs.AUTO_INCLUDE_JMX_REPORTER_CONFIG to "false"),
         )
         reporters = metricsReporters("clientId", config)
         assertTrue(reporters.isEmpty())
+
         config = TestConfig(
             props = mapOf(
-                CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG to JmxReporter::class.java.getName(),
+                CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG to JmxReporter::class.java.name,
             )
         )
         reporters = metricsReporters("clientId", config)
         assertEquals(expected = 1, actual = reporters.size)
-        assertTrue(reporters[0] is JmxReporter)
-        val props = mutableMapOf<String, String>()
-        props[CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG] =
-            JmxReporter::class.java.getName() + "," + MyJmxReporter::class.java.getName()
-        config = TestConfig(props)
+        assertIs<JmxReporter>(reporters[0])
+
+        config = TestConfig(
+            props = mapOf(
+                CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG to
+                        "${JmxReporter::class.java.name},${MyJmxReporter::class.java.name}",
+            )
+        )
         reporters = metricsReporters("clientId", config)
         assertEquals(expected = 2, actual = reporters.size)
     }

@@ -157,6 +157,8 @@ class LazyDownConversionRecordsTest {
     }
 
     companion object {
+
+        @JvmStatic
         private fun parameters(): Collection<Arguments> {
             val arguments: MutableList<Arguments> = ArrayList()
             for (toMagic in RecordBatch.MAGIC_VALUE_V0..RecordBatch.CURRENT_MAGIC_VALUE) {

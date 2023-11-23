@@ -44,6 +44,7 @@ class ApiErrorTest {
 
     companion object {
 
+        @JvmStatic
         private fun parameters(): Collection<Arguments> {
             val notCoordinatorErrorMsg = "Not coordinator"
             val notControllerErrorMsg = "Not controller"

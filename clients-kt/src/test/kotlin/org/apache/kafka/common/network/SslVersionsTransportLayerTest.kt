@@ -50,7 +50,7 @@ class SslVersionsTransportLayerTest {
      * `System.setProperty("javax.net.debug", "ssl:handshake");`
      */
     @ParameterizedTest(name = "tlsServerProtocol = {0}, tlsClientProtocol = {1}")
-    @MethodSource("Parameters")
+    @MethodSource("parameters")
     @Throws(Exception::class)
     fun testTlsDefaults(serverProtocols: List<String?>, clientProtocols: List<String?>) {
         // Create certificates for use by client and server. Add server cert to client truststore and vice versa.
@@ -155,6 +155,7 @@ class SslVersionsTransportLayerTest {
 
         private val TIME = Time.SYSTEM
 
+        @JvmStatic
         fun parameters(): Stream<Arguments> {
             val parameters = mutableListOf<Arguments>()
             parameters.add(Arguments.of(listOf("TLSv1.2"), listOf("TLSv1.2")))

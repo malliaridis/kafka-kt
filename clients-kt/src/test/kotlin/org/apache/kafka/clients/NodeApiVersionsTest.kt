@@ -61,16 +61,12 @@ class NodeApiVersionsTest {
 
     @Test
     fun testVersionsToString() {
-        val versionList: MutableList<ApiVersionsResponseData.ApiVersion> = ArrayList()
-        for (apiKey in ApiKeys.values()) {
-            if (apiKey === ApiKeys.DELETE_TOPICS) {
-                versionList.add(
-                    ApiVersionsResponseData.ApiVersion()
-                        .setApiKey(apiKey.id)
-                        .setMinVersion(10000.toShort())
-                        .setMaxVersion(10001.toShort())
-                )
-            } else versionList.add(ApiVersionsResponse.toApiVersion(apiKey))
+        val versionList = ApiKeys.values().map { apiKey ->
+            if (apiKey === ApiKeys.DELETE_TOPICS) ApiVersionsResponseData.ApiVersion()
+                    .setApiKey(apiKey.id)
+                    .setMinVersion(10000)
+                    .setMaxVersion(10001)
+            else ApiVersionsResponse.toApiVersion(apiKey)
         }
         val versions = NodeApiVersions(versionList, emptyList())
         val bld = StringBuilder()
@@ -78,7 +74,7 @@ class NodeApiVersionsTest {
         for (apiKey in ApiKeys.values()) {
             bld.append(prefix)
             if (apiKey === ApiKeys.DELETE_TOPICS)
-                bld.append("DeleteTopics(20): 10000 to 10001 [unusable: node too new]")
+                bld.append("DELETE_TOPICS(20): 10000 to 10001 [unusable: node too new]")
             else {
                 bld.append(apiKey.name)
                     .append("(")

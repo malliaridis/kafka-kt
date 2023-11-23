@@ -54,13 +54,11 @@ class ApiVersions {
         // use a magic version which is supported by all brokers to reduce the chance that
         // we will need to convert the messages when they are ready to be sent.
         val knownBrokerNodesMinRequiredMagicForProduce: Byte? =
-            nodeApiVersions.values.filter { versions: NodeApiVersions ->
+            nodeApiVersions.values.filter { versions ->
                 // filter out Raft controller nodes
                 versions.apiVersion(ApiKeys.PRODUCE) != null
-            }.minOfOrNull { versions: NodeApiVersions ->
-                ProduceRequest.requiredMagicForVersion(
-                    versions.latestUsableVersion(ApiKeys.PRODUCE)
-                )
+            }.minOfOrNull { versions ->
+                ProduceRequest.requiredMagicForVersion(versions.latestUsableVersion(ApiKeys.PRODUCE))
             }
         return min(
             RecordBatch.CURRENT_MAGIC_VALUE.toInt(),
