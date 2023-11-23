@@ -131,7 +131,7 @@ open class SaslClientAuthenticator(
     }
 
     // visible for testing
-    fun createSaslClient(): SaslClient = try {
+    internal open fun createSaslClient(): SaslClient = try {
         Subject.doAs(
             subject,
             PrivilegedExceptionAction {
@@ -296,13 +296,13 @@ open class SaslClientAuthenticator(
 
     @Throws(IOException::class)
     override fun reauthenticate(reauthenticationContext: ReauthenticationContext) {
-        with(reauthenticationContext.previousAuthenticator() as SaslClientAuthenticator) {
+        with(reauthenticationContext.previousAuthenticator as SaslClientAuthenticator) {
             val apiVersionsResponseFromAuth = reauthInfo.apiVersionsResponse
             close()
 
             reauthInfo.reauthenticating(
                 apiVersionsResponseFromAuth,
-                reauthenticationContext.reauthenticationBeginNanos()
+                reauthenticationContext.reauthenticationBeginNanos
             )
         }
         val netInBufferFromChannel = reauthenticationContext.networkReceive()
@@ -469,7 +469,7 @@ open class SaslClientAuthenticator(
             }
             val sessionLifetimeMs = response.sessionLifetimeMs()
             if (sessionLifetimeMs > 0L) reauthInfo.positiveSessionLifetimeMs = sessionLifetimeMs
-            Utils.copyArray(response.saslAuthBytes())
+            response.saslAuthBytes().copyOf()
         } ?: run { null }
     }
 
@@ -526,15 +526,13 @@ open class SaslClientAuthenticator(
         val receive: NetworkReceive = netInBuffer ?: NetworkReceive(node)
         netInBuffer = receive
         return try {
-            val responseBytes = receiveResponseOrToken()
-            if (responseBytes == null) null else {
-                val response = NetworkClient.parseResponse(
-                    ByteBuffer.wrap(responseBytes),
-                    currentRequestHeader!!
-                )
-                currentRequestHeader = null
-                response
-            }
+            val responseBytes = receiveResponseOrToken() ?: return null
+            val response = NetworkClient.parseResponse(
+                ByteBuffer.wrap(responseBytes),
+                currentRequestHeader!!
+            )
+            currentRequestHeader = null
+            response
         } catch (e: BufferUnderflowException) {
             handleKafkaResponseException(receive, e)
             return null
@@ -571,27 +569,18 @@ open class SaslClientAuthenticator(
         when (error) {
             Errors.NONE -> {}
             Errors.UNSUPPORTED_SASL_MECHANISM -> throw UnsupportedSaslMechanismException(
-                String.format(
-                    "Client SASL mechanism '%s' not enabled in the server, enabled mechanisms are %s",
-                    mechanism, response.enabledMechanisms()
-                )
+                "Client SASL mechanism '$mechanism' not enabled in the server, " +
+                        "enabled mechanisms are ${response.enabledMechanisms()}"
             )
 
             Errors.ILLEGAL_SASL_STATE -> throw IllegalSaslStateException(
-                String.format(
-                    "Unexpected handshake request with client mechanism %s, enabled mechanisms are %s",
-                    mechanism,
-                    response.enabledMechanisms(),
-                )
+                "Unexpected handshake request with client mechanism $mechanism, " +
+                        "enabled mechanisms are ${response.enabledMechanisms()}"
             )
 
             else -> throw IllegalSaslStateException(
-                String.format(
-                    "Unknown error code %s, client mechanism is %s, enabled mechanisms are %s",
-                    response.error(),
-                    mechanism,
-                    response.enabledMechanisms()
-                )
+                "Unknown error code ${response.error()}, client mechanism is $mechanism, " +
+                        "enabled mechanisms are ${response.enabledMechanisms()}"
             )
         }
     }

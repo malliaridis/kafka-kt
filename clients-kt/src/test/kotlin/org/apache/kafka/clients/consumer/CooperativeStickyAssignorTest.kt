@@ -326,11 +326,13 @@ class CooperativeStickyAssignorTest : AbstractStickyAssignorTest() {
      * initial assignment may be unbalanced, so if we do detect partitions being revoked we should trigger a second
      * "rebalance" to get the final assignment and then verify that it is both valid and balanced.
      */
-    fun verifyValidityAndBalance(
-        subscriptions: MutableMap<String, ConsumerPartitionAssignor.Subscription>,
-        assignments: MutableMap<String, List<TopicPartition>>,
+    override fun verifyValidityAndBalance(
+        subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>,
+        assignments: Map<String, List<TopicPartition>>,
         partitionsPerTopic: Map<String, Int>,
     ) {
+        val subscriptions = subscriptions.toMutableMap()
+        val assignments = assignments.toMutableMap()
         var rebalances = 0
         // partitions are being revoked, we must go through another assignment to get the final state
         while (verifyCooperativeValidity(subscriptions, assignments)) {

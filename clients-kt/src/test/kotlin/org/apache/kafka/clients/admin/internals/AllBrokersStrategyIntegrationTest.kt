@@ -34,11 +34,8 @@ import org.apache.kafka.common.requests.MetadataRequest
 import org.apache.kafka.common.requests.MetadataResponse
 import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.MockTime
-import org.apache.kafka.common.utils.Utils.mkSet
 import org.apache.kafka.test.TestUtils.assertFutureThrows
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
-import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
@@ -101,7 +98,7 @@ class AllBrokersStrategyIntegrationTest {
         val lookupSpecs = driver.poll()
         assertEquals(1, lookupSpecs.size)
         val lookupSpec = lookupSpecs[0]
-        val brokerIds = mkSet(1, 2)
+        val brokerIds = setOf(1, 2)
         driver.onResponse(
             currentTimeMs = time.milliseconds(),
             spec = lookupSpec,
@@ -118,7 +115,7 @@ class AllBrokersStrategyIntegrationTest {
         driver.onResponse(
             currentTimeMs = time.milliseconds(),
             spec = requestSpec1,
-            response = null,
+            response = responseWithBrokers(emptySet()),
             node = Node.noNode(),
         )
         val future1 = brokerFutures[brokerId1]!!
@@ -130,7 +127,7 @@ class AllBrokersStrategyIntegrationTest {
         driver.onResponse(
             currentTimeMs = time.milliseconds(),
             spec = requestSpec2,
-            response = null,
+            response = responseWithBrokers(emptySet()),
             node = Node.noNode(),
         )
         val future2 = brokerFutures[brokerId2]!!
@@ -170,7 +167,7 @@ class AllBrokersStrategyIntegrationTest {
         driver.onResponse(
             currentTimeMs = time.milliseconds(),
             spec = retrySpec,
-            response = null,
+            response = responseWithBrokers(emptySet()),
             node = Node(id = brokerId, host = "host", port = 1234),
         )
         assertTrue(future.isDone)

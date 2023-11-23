@@ -77,7 +77,7 @@ class CooperativeStickyAssignor : AbstractStickyAssignor() {
         else try {
             val struct = COOPERATIVE_STICKY_ASSIGNOR_USER_DATA_V0.read(buffer)
             struct.getInt(GENERATION_KEY_NAME)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             DEFAULT_GENERATION
         }
 
@@ -87,7 +87,7 @@ class CooperativeStickyAssignor : AbstractStickyAssignor() {
     override fun assign(
         partitionsPerTopic: Map<String, Int>,
         subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>
-    ): Map<String, MutableList<TopicPartition>> {
+    ): Map<String, List<TopicPartition>> {
         val assignments = super.assign(partitionsPerTopic, subscriptions)
         val partitionsTransferringOwnership = super.partitionsTransferringOwnership
             ?: computePartitionsTransferringOwnership(subscriptions, assignments)
@@ -98,17 +98,18 @@ class CooperativeStickyAssignor : AbstractStickyAssignor() {
     // Following the cooperative rebalancing protocol requires removing partitions that must first
     // be revoked from the assignment
     private fun adjustAssignment(
-        assignments: Map<String, MutableList<TopicPartition>>,
+        assignments: Map<String, List<TopicPartition>>,
         partitionsTransferringOwnership: Map<TopicPartition, String>
     ) {
+        val mutableAssignments = assignments.toMutableMap()
         for ((key, value) in partitionsTransferringOwnership) {
-            assignments[value]!!.remove(key)
+            mutableAssignments[value] = assignments[value]!! - key
         }
     }
 
     private fun computePartitionsTransferringOwnership(
         subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>,
-        assignments: Map<String, MutableList<TopicPartition>>
+        assignments: Map<String, List<TopicPartition>>
     ): Map<TopicPartition, String> {
         val allAddedPartitions: MutableMap<TopicPartition, String> = HashMap()
         val allRevokedPartitions: MutableSet<TopicPartition> = HashSet()

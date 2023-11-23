@@ -46,7 +46,7 @@ class ConsumerInterceptorsTest {
 
     private val filterTopicPart2 = TopicPartition(topic = "test6", partition = filterPartition2)
 
-    private val consumerRecord = ConsumerRecord<Int?, Int?>(
+    private val consumerRecord = ConsumerRecord(
         topic = topic,
         partition = partition,
         offset = 0,
@@ -77,13 +77,13 @@ class ConsumerInterceptorsTest {
 
         override fun configure(configs: Map<String, Any?>) = Unit
 
-        override fun onConsume(records: ConsumerRecords<K?, V?>): ConsumerRecords<K?, V?> {
+        override fun onConsume(records: ConsumerRecords<K, V>): ConsumerRecords<K, V> {
             onConsumeCount++
             if (throwExceptionOnConsume)
                 throw KafkaException("Injected exception in FilterConsumerInterceptor.onConsume.")
 
             // filters out topic/partitions with partition == FILTER_PARTITION
-            val recordMap: MutableMap<TopicPartition, List<ConsumerRecord<K?, V?>>> = HashMap()
+            val recordMap: MutableMap<TopicPartition, List<ConsumerRecord<K, V>>> = HashMap()
             for (tp in records.partitions())
                 if (tp.partition != filterPartition) recordMap[tp] = records.records(tp)
 
@@ -119,10 +119,10 @@ class ConsumerInterceptorsTest {
         val interceptors = ConsumerInterceptors(listOf(interceptor1, interceptor2))
 
         // verify that onConsumer modifies ConsumerRecords
-        val records = mutableMapOf<TopicPartition, List<ConsumerRecord<Int?, Int?>>>()
+        val records = mutableMapOf<TopicPartition, List<ConsumerRecord<Int, Int>>>()
         val list1 = listOf(consumerRecord)
 
-        val list2 = listOf<ConsumerRecord<Int?, Int?>>(
+        val list2 = listOf(
             ConsumerRecord(
                 topic = filterTopicPart1.topic,
                 partition = filterTopicPart1.partition,
@@ -137,7 +137,7 @@ class ConsumerInterceptorsTest {
                 leaderEpoch = null,
             ),
         )
-        val list3 = listOf<ConsumerRecord<Int?, Int?>>(
+        val list3 = listOf(
             ConsumerRecord(
                 topic = filterTopicPart2.topic,
                 partition = filterTopicPart2.partition,

@@ -48,11 +48,11 @@ abstract class SaslAuthenticatorFailureDelayTest(private val failedAuthenticatio
     
     private val time = MockTime(1)
     
-    private var server: NioEchoServer? = null
+    private lateinit var server: NioEchoServer
     
     private var selector: Selector? = null
     
-    private var channelBuilder: ChannelBuilder? = null
+    private lateinit var channelBuilder: ChannelBuilder
     
     private lateinit var serverCertStores: CertStores
     
@@ -72,8 +72,8 @@ abstract class SaslAuthenticatorFailureDelayTest(private val failedAuthenticatio
         LoginManager.closeAll()
         serverCertStores = CertStores(true, "localhost")
         clientCertStores = CertStores(false, "localhost")
-        saslServerConfigs = serverCertStores.getTrustingConfig(clientCertStores)
-        saslClientConfigs = clientCertStores.getTrustingConfig(serverCertStores)
+        saslServerConfigs = serverCertStores.getTrustingConfig(clientCertStores).toMutableMap()
+        saslClientConfigs = clientCertStores.getTrustingConfig(serverCertStores).toMutableMap()
         credentialCache = CredentialCache()
         SaslAuthenticatorTest.TestLogin.loginCount.set(0)
         startTimeMs = time.milliseconds()
@@ -83,7 +83,7 @@ abstract class SaslAuthenticatorFailureDelayTest(private val failedAuthenticatio
     @Throws(Exception::class)
     fun teardown() {
         val now = time.milliseconds()
-        if (server != null) server!!.close()
+        if (::server.isInitialized) server.close()
         if (selector != null) selector!!.close()
         assertTrue(
             actual = now - startTimeMs >= failedAuthenticationDelayMs,
@@ -106,7 +106,7 @@ abstract class SaslAuthenticatorFailureDelayTest(private val failedAuthenticatio
             securityProtocol, node, "PLAIN",
             "Authentication failed: Invalid username or password"
         )
-        server!!.verifyAuthenticationMetrics(0, 1)
+        server.verifyAuthenticationMetrics(0, 1)
     }
 
     /**
@@ -130,7 +130,7 @@ abstract class SaslAuthenticatorFailureDelayTest(private val failedAuthenticatio
             mechanism = "SCRAM-SHA-256",
             expectedErrorMessage = null,
         )
-        server!!.verifyAuthenticationMetrics(0, 1)
+        server.verifyAuthenticationMetrics(0, 1)
     }
 
     /**
@@ -151,7 +151,7 @@ abstract class SaslAuthenticatorFailureDelayTest(private val failedAuthenticatio
             mechanism = "SCRAM-SHA-256",
             expectedErrorMessage = null,
         )
-        server!!.verifyAuthenticationMetrics(0, 1)
+        server.verifyAuthenticationMetrics(0, 1)
     }
 
     /**
@@ -166,13 +166,13 @@ abstract class SaslAuthenticatorFailureDelayTest(private val failedAuthenticatio
         jaasConfig.setClientOptions("PLAIN", TestJaasConfig.USERNAME, "invalidpassword")
         server = createEchoServer(securityProtocol = securityProtocol)
         createClientConnection(securityProtocol, node)
-        val delayedClosingChannels = NetworkTestUtils.delayedClosingChannels(server!!.selector)
+        val delayedClosingChannels = NetworkTestUtils.delayedClosingChannels(server.selector)!!
 
         // Wait until server has established connection with client and has processed the auth failure
         waitForCondition(
             testCondition = {
                 poll(selector)
-                server!!.selector.channels().isNotEmpty()
+                server.selector.channels().isNotEmpty()
             },
             conditionDetails = "Timeout waiting for connection",
         )
@@ -193,7 +193,7 @@ abstract class SaslAuthenticatorFailureDelayTest(private val failedAuthenticatio
             conditionDetails = "Timeout waiting for delayed response remove",
         )
         waitForCondition(
-            testCondition = { server!!.selector.channels().isEmpty() },
+            testCondition = { server.selector.channels().isEmpty() },
             conditionDetails = "Timeout waiting for connection close",
         )
 
@@ -202,7 +202,7 @@ abstract class SaslAuthenticatorFailureDelayTest(private val failedAuthenticatio
             testCondition = { time.milliseconds() > startTimeMs + failedAuthenticationDelayMs + 1 },
             conditionDetails = "Timeout when waiting for auth failure response timeout to elapse",
         )
-        NetworkTestUtils.completeDelayedChannelClose(server!!.selector, time.nanoseconds())
+        NetworkTestUtils.completeDelayedChannelClose(server.selector, time.nanoseconds())
     }
 
     private fun poll(selector: Selector?) {
@@ -223,7 +223,7 @@ abstract class SaslAuthenticatorFailureDelayTest(private val failedAuthenticatio
         return TestJaasConfig.createConfiguration(clientMechanism, serverMechanisms)
     }
 
-    private fun createSelector(securityProtocol: SecurityProtocol, clientConfigs: Map<String, Any?>?) {
+    private fun createSelector(securityProtocol: SecurityProtocol, clientConfigs: Map<String, Any?>) {
         if (selector != null) {
             selector!!.close()
             selector = null
@@ -259,7 +259,7 @@ abstract class SaslAuthenticatorFailureDelayTest(private val failedAuthenticatio
             securityProtocol = securityProtocol,
             clientConfigs = saslClientConfigs,
         )
-        val addr = InetSocketAddress("localhost", server!!.port)
+        val addr = InetSocketAddress("localhost", server.port)
         selector!!.connect(
             id = node,
             address = addr,
@@ -296,7 +296,7 @@ abstract class SaslAuthenticatorFailureDelayTest(private val failedAuthenticatio
     ): ChannelState {
         createClientConnection(securityProtocol, node)
         val finalState = NetworkTestUtils.waitForChannelClose(
-            selector,
+            selector!!,
             node,
             ChannelState.State.AUTHENTICATION_FAILED,
         )

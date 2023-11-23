@@ -41,7 +41,7 @@ class MockConsumerTest {
         beginningOffsets[TopicPartition("test", 1)] = 0L
         consumer.updateBeginningOffsets(beginningOffsets)
         consumer.seek(TopicPartition("test", 0), 0)
-        val rec1 = ConsumerRecord<String?, String?>(
+        val rec1 = ConsumerRecord(
             topic = "test",
             partition = 0,
             offset = 0,
@@ -54,7 +54,7 @@ class MockConsumerTest {
             headers = RecordHeaders(),
             leaderEpoch = null,
         )
-        val rec2 = ConsumerRecord<String?, String?>(
+        val rec2 = ConsumerRecord(
             topic = "test",
             partition = 0,
             offset = 1,
@@ -100,7 +100,7 @@ class MockConsumerTest {
         beginningOffsets[TopicPartition("test", 1)] = 0L
         consumer.updateBeginningOffsets(beginningOffsets)
         consumer.seek(TopicPartition("test", 0), 0)
-        val rec1 = ConsumerRecord<String?, String?>(
+        val rec1 = ConsumerRecord(
             topic = "test",
             partition = 0,
             offset = 0,
@@ -113,7 +113,7 @@ class MockConsumerTest {
             headers = RecordHeaders(),
             leaderEpoch = null,
         )
-        val rec2 = ConsumerRecord<String?, String?>(
+        val rec2 = ConsumerRecord(
             topic = "test",
             partition = 0,
             offset = 1,
@@ -157,8 +157,8 @@ class MockConsumerTest {
                 topic = "test",
                 partition = 0,
                 offset = 0,
-                key = null,
-                value = null,
+                key = "key",
+                value = "value",
             )
         )
         consumer.updateEndOffsets(mapOf(partition to 1L))
@@ -178,8 +178,8 @@ class MockConsumerTest {
                 topic = "test",
                 partition = 0,
                 offset = 0,
-                key = null,
-                value = null,
+                key = "key",
+                value = "value",
             )
         )
         consumer.updateBeginningOffsets(mapOf(partition0 to 0L))

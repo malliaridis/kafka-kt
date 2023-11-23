@@ -879,7 +879,9 @@ abstract class AbstractStickyAssignorTest {
 
         verifyValidityAndBalance(subscriptions, assignment, partitionsPerTopic)
 
-        subscriptions[getConsumerName(0, 3)]!!.topics.add(getTopicName(1, 5))
+        val subKey = getConsumerName(0, 3)
+        val newTopics = subscriptions[subKey]!!.topics + getTopicName(1, 5)
+        subscriptions[subKey] = Subscription(newTopics)
         assignment = assignor.assign(partitionsPerTopic, subscriptions)
 
         verifyValidityAndBalance(subscriptions, assignment, partitionsPerTopic)
@@ -1396,10 +1398,10 @@ abstract class AbstractStickyAssignorTest {
      * @param assignments given assignment for balance check
      * @param partitionsPerTopic number of partitions per topic
      */
-    protected open fun verifyValidityAndBalance(
+    internal open fun verifyValidityAndBalance(
         subscriptions: Map<String, Subscription>,
         assignments: Map<String, List<TopicPartition>>,
-        partitionsPerTopic: Map<String, Int>?,
+        partitionsPerTopic: Map<String, Int>,
     ) {
         val size = subscriptions.size
         assert(size == assignments.size)

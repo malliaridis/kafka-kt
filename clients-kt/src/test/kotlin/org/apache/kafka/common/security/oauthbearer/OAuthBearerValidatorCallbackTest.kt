@@ -23,6 +23,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertSame
 
 class OAuthBearerValidatorCallbackTest {
+
     @Test
     fun testError() {
         val errorStatus = "errorStatus"

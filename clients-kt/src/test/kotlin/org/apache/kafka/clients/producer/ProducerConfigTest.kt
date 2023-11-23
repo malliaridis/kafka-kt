@@ -31,7 +31,7 @@ class ProducerConfigTest {
     
     private val keySerializer: Serializer<ByteArray> = ByteArraySerializer()
     
-    private val valueSerializer: Serializer<String?> = StringSerializer()
+    private val valueSerializer: Serializer<String> = StringSerializer()
     
     private val keySerializerClass: Any = keySerializer.javaClass
     

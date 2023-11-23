@@ -84,36 +84,43 @@ class EchoServer(
         try {
             while (!closing) {
                 val socket = serverSocket!!.accept()
+                var broken = false
                 synchronized(sockets) {
-                    if (closing) break
+                    if (closing) {
+                        broken = true
+                        return@synchronized
+                    }
                     sockets.add(socket)
-                    val thread: Thread = object : Thread() {
+                    val thread = object : Thread() {
                         override fun run() {
-                            socket.use {
-                                try {
-                                    val input = DataInputStream(socket.getInputStream())
-                                    val output = DataOutputStream(socket.getOutputStream())
-                                    while (socket.isConnected && !socket.isClosed) {
-                                        val size = input.readInt()
-                                        if (renegotiate.get()) {
-                                            renegotiate.set(false)
-                                            (socket as SSLSocket).startHandshake()
-                                        }
-                                        val bytes = ByteArray(size)
-                                        input.readFully(bytes)
-                                        output.writeInt(size)
-                                        output.write(bytes)
-                                        output.flush()
-                                    }
-                                } catch (e: IOException) {
-                                    // ignore
-                                }
-                            }
+                            processSocket(socket)
                         }
                     }
                     thread.start()
                     threads.add(thread)
                 }
+                if (broken) break
+            }
+        } catch (_: IOException) {
+            // ignore
+        }
+    }
+
+    private fun processSocket(socket: Socket) = socket.use {
+        try {
+            val input = DataInputStream(socket.getInputStream())
+            val output = DataOutputStream(socket.getOutputStream())
+            while (socket.isConnected && !socket.isClosed) {
+                val size = input.readInt()
+                if (renegotiate.get()) {
+                    renegotiate.set(false)
+                    (socket as SSLSocket).startHandshake()
+                }
+                val bytes = ByteArray(size)
+                input.readFully(bytes)
+                output.writeInt(size)
+                output.write(bytes)
+                output.flush()
             }
         } catch (e: IOException) {
             // ignore

@@ -89,13 +89,14 @@ class AbstractConfigTest {
     @Test
     fun testValuesWithPrefixOverride() {
         val prefix = "prefix."
-        val props = Properties()
-        props["sasl.mechanism"] = "PLAIN"
-        props["prefix.sasl.mechanism"] = "GSSAPI"
-        props["prefix.sasl.kerberos.kinit.cmd"] = "/usr/bin/kinit2"
-        props["prefix.ssl.truststore.location"] = "my location"
-        props["sasl.kerberos.service.name"] = "service name"
-        props["ssl.keymanager.algorithm"] = "algorithm"
+        val props = mapOf(
+            "sasl.mechanism" to "PLAIN",
+            "prefix.sasl.mechanism" to "GSSAPI",
+            "prefix.sasl.kerberos.kinit.cmd" to "/usr/bin/kinit2",
+            "prefix.ssl.truststore.location" to "my location",
+            "sasl.kerberos.service.name" to "service name",
+            "ssl.keymanager.algorithm" to "algorithm",
+        )
         val config = TestSecurityConfig(props)
         val valuesWithPrefixOverride = config.valuesWithPrefixOverride(prefix)
 
@@ -150,14 +151,15 @@ class AbstractConfigTest {
         val saslJaasConfig1 = Password("test.myLoginModule1 required;")
         val (value) = Password("test.myLoginModule2 required;")
         val saslJaasConfig3 = Password("test.myLoginModule3 required;")
-        val props = Properties()
-        props["listener.name.listener1.test-mechanism.sasl.jaas.config"] = saslJaasConfig1.value
-        props["test-mechanism.sasl.jaas.config"] = value
-        props["sasl.jaas.config"] = saslJaasConfig3.value
-        props["listener.name.listener1.gssapi.sasl.kerberos.kinit.cmd"] = "/usr/bin/kinit2"
-        props["listener.name.listener1.gssapi.sasl.kerberos.service.name"] = "testkafka"
-        props["listener.name.listener1.gssapi.sasl.kerberos.min.time.before.relogin"] = "60000"
-        props["ssl.provider"] = "TEST"
+        val props = mapOf(
+            "listener.name.listener1.test-mechanism.sasl.jaas.config" to saslJaasConfig1.value,
+            "test-mechanism.sasl.jaas.config" to value,
+            "sasl.jaas.config" to saslJaasConfig3.value,
+            "listener.name.listener1.gssapi.sasl.kerberos.kinit.cmd" to "/usr/bin/kinit2",
+            "listener.name.listener1.gssapi.sasl.kerberos.service.name" to "testkafka",
+            "listener.name.listener1.gssapi.sasl.kerberos.min.time.before.relogin" to "60000",
+            "ssl.provider" to "TEST",
+        )
         val config = TestSecurityConfig(props)
         val valuesWithPrefixOverride = config.valuesWithPrefixOverride(prefix)
 
@@ -196,13 +198,14 @@ class AbstractConfigTest {
     fun testValuesWithPrefixAllOrNothing() {
         val prefix1 = "prefix1."
         val prefix2 = "prefix2."
-        val props = Properties()
-        props["sasl.mechanism"] = "PLAIN"
-        props["prefix1.sasl.mechanism"] = "GSSAPI"
-        props["prefix1.sasl.kerberos.kinit.cmd"] = "/usr/bin/kinit2"
-        props["prefix1.ssl.truststore.location"] = "my location"
-        props["sasl.kerberos.service.name"] = "service name"
-        props["ssl.keymanager.algorithm"] = "algorithm"
+        val props = mapOf(
+            "sasl.mechanism" to "PLAIN",
+            "prefix1.sasl.mechanism" to "GSSAPI",
+            "prefix1.sasl.kerberos.kinit.cmd" to "/usr/bin/kinit2",
+            "prefix1.ssl.truststore.location" to "my location",
+            "sasl.kerberos.service.name" to "service name",
+            "ssl.keymanager.algorithm" to "algorithm",
+        )
         val config = TestSecurityConfig(props)
         val valuesWithPrefixAllOrNothing1 = config.valuesWithPrefixAllOrNothing(prefix1)
 

@@ -25,7 +25,7 @@ class OAuthBearerTokenMock : OAuthBearerToken {
 
     override fun lifetimeMs(): Long = 0
 
-    override fun principalName(): String = null
+    override fun principalName(): String = "principalName"
 
     override fun startTimeMs(): Long? = null
 }

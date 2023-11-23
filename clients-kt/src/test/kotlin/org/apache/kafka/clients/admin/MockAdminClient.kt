@@ -268,7 +268,14 @@ class MockAdminClient private constructor(
                 partitionLogDirs = logDirs,
                 configs = newTopic.configs,
             )
-            future.complete(null)
+            future.complete(
+                TopicMetadataAndConfig(
+                    topicId = topicId,
+                    numPartitions = numberOfPartitions,
+                    replicationFactor = replicationFactor,
+                    config = Config(emptyMap()),
+                )
+            )
             createTopicResult[topicName] = future
         }
         return CreateTopicsResult(createTopicResult)

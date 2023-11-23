@@ -26,9 +26,12 @@ import org.apache.kafka.test.TestUtils.assertFutureError
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.util.concurrent.ExecutionException
+import java.util.concurrent.TimeUnit
+import org.junit.jupiter.api.Timeout
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 
 class DeleteConsumerGroupOffsetsResultTest {
     
@@ -77,7 +80,7 @@ class DeleteConsumerGroupOffsetsResultTest {
         assertFalse(partitionFutures.isCompletedExceptionally)
         val missingPartitionResult = DeleteConsumerGroupOffsetsResult(partitionFutures, partitions)
         assertFutureError(missingPartitionResult.all(), IllegalArgumentException::class.java)
-        assertNull(missingPartitionResult.partitionResult(tpZero).get())
+        assertSame(Unit, missingPartitionResult.partitionResult(tpZero).get())
         assertFutureError(missingPartitionResult.partitionResult(tpOne), IllegalArgumentException::class.java)
     }
 
@@ -100,9 +103,9 @@ class DeleteConsumerGroupOffsetsResultTest {
         errorsMap[tpOne] = Errors.NONE
         val noErrorResult = DeleteConsumerGroupOffsetsResult(partitionFutures, partitions)
         partitionFutures.complete(errorsMap)
-        assertNull(noErrorResult.all().get())
-        assertNull(noErrorResult.partitionResult(tpZero).get())
-        assertNull(noErrorResult.partitionResult(tpOne).get())
+        assertSame(Unit, noErrorResult.all().get())
+        assertSame(Unit, noErrorResult.partitionResult(tpZero).get())
+        assertSame(Unit, noErrorResult.partitionResult(tpOne).get())
     }
 
     @Throws(InterruptedException::class, ExecutionException::class)
@@ -117,7 +120,7 @@ class DeleteConsumerGroupOffsetsResultTest {
             partitionLevelErrorResult.all(),
             UnknownTopicOrPartitionException::class.java
         )
-        assertNull(partitionLevelErrorResult.partitionResult(tpZero).get())
+        assertSame(Unit, partitionLevelErrorResult.partitionResult(tpZero).get())
         assertFutureError(
             partitionLevelErrorResult.partitionResult(tpOne),
             UnknownTopicOrPartitionException::class.java

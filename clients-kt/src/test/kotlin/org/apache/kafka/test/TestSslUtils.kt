@@ -191,7 +191,7 @@ object TestSslUtils {
         trustStore: Boolean,
         mode: Mode,
         trustStoreFile: File,
-        certAlias: String?,
+        certAlias: String,
         cn: String = "localhost",
     ): Map<String, Any> = createSslConfig(
         useClientCert = useClientCert,
@@ -209,7 +209,7 @@ object TestSslUtils {
         createTrustStore: Boolean,
         mode: Mode,
         trustStoreFile: File,
-        certAlias: String?,
+        certAlias: String,
         cn: String,
         certBuilder: CertificateBuilder
     ): Map<String, Any> {
@@ -478,7 +478,7 @@ object TestSslUtils {
 
         var createTrustStore: Boolean = true
 
-        lateinit var trustStoreFile: File
+        var trustStoreFile: File? = null
 
         var trustStorePassword: Password = Password(TRUST_STORE_PASSWORD)
 
@@ -489,7 +489,7 @@ object TestSslUtils {
 
         var keyPassword: Password = keyStorePassword
 
-        var certAlias: String? = mode.name.lowercase()
+        var certAlias: String = mode.name.lowercase()
 
         var cn: String = "localhost"
 
@@ -504,7 +504,7 @@ object TestSslUtils {
             return this
         }
 
-        fun createNewTrustStore(trustStoreFile: File): SslConfigsBuilder {
+        fun createNewTrustStore(trustStoreFile: File?): SslConfigsBuilder {
             this.trustStoreFile = trustStoreFile
             createTrustStore = true
             return this
@@ -521,7 +521,7 @@ object TestSslUtils {
             return this
         }
 
-        fun certAlias(certAlias: String?): SslConfigsBuilder {
+        fun certAlias(certAlias: String): SslConfigsBuilder {
             this.certAlias = certAlias
             return this
         }
@@ -554,7 +554,7 @@ object TestSslUtils {
 
         @Throws(IOException::class, GeneralSecurityException::class)
         private fun buildJks(): Map<String, Any> {
-            val certs: MutableMap<String?, X509Certificate> = HashMap()
+            val certs: MutableMap<String, X509Certificate> = HashMap()
             var keyStoreFile: File? = null
             if (mode === Mode.CLIENT && useClientCert) {
                 keyStoreFile = TestUtils.tempFile("clientKS", ".jks")
@@ -585,6 +585,7 @@ object TestSslUtils {
                 keyStoreFile.deleteOnExit()
             }
 
+            val trustStoreFile = requireNotNull(trustStoreFile)
             if (createTrustStore) {
                 createTrustStore(trustStoreFile.path, trustStorePassword, certs)
                 trustStoreFile.deleteOnExit()

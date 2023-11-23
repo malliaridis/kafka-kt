@@ -370,11 +370,11 @@ open class SaslServerAuthenticator(
                 "Invalid saslHandshakeReceive in server-side re-authentication context: null"
             )
         val previousSaslServerAuthenticator =
-            reauthenticationContext.previousAuthenticator() as SaslServerAuthenticator
+            reauthenticationContext.previousAuthenticator as SaslServerAuthenticator
         reauthInfo.reauthenticating(
             previousSaslServerAuthenticator.saslMechanism,
             previousSaslServerAuthenticator.principal(),
-            reauthenticationContext.reauthenticationBeginNanos()
+            reauthenticationContext.reauthenticationBeginNanos
         )
         previousSaslServerAuthenticator.close()
         netInBuffer = saslHandshakeReceive

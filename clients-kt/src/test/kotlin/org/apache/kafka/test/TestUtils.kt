@@ -48,6 +48,7 @@ import java.util.regex.Pattern
 import kotlin.math.min
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
@@ -442,6 +443,20 @@ object TestUtils {
             assertEquals(
                 expected = exceptionClass, actual = cause!!.javaClass,
                 message = "Expected a ${exceptionClass.simpleName} exception, but got ${cause.javaClass.simpleName}"
+            )
+        }
+    }
+
+    @Throws(InterruptedException::class)
+    inline fun <reified T : Throwable?> assertFutureError(future: Future<*>) {
+        try {
+            future.get()
+            fail("Expected a ${T::class.simpleName} exception, but got success.")
+        } catch (ee: ExecutionException) {
+            val cause = ee.cause
+            assertIs<T>(
+                value = cause!!,
+                message = "Expected a ${T::class.simpleName} exception, but got ${cause.javaClass.simpleName}",
             )
         }
     }

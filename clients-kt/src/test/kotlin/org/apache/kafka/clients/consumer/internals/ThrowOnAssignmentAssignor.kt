@@ -26,7 +26,7 @@ import org.apache.kafka.clients.consumer.ConsumerPartitionAssignor.RebalanceProt
  * A mock assignor which throws for [ConsumerPartitionAssignor.onAssignment].
  */
 class ThrowOnAssignmentAssignor internal constructor(
-    supportedProtocols: List<RebalanceProtocol?>?,
+    supportedProtocols: List<RebalanceProtocol?>,
     private val bookeepedException: RuntimeException,
     private val name: String,
 ) : MockPartitionAssignor(supportedProtocols) {

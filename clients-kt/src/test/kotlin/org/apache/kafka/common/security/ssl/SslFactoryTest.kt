@@ -312,13 +312,11 @@ abstract class SslFactoryTest(private val tlsProtocol: String) {
     @Test
     @Throws(Exception::class)
     fun testPemReconfiguration() {
-        val props = Properties()
-        props.putAll(
-            sslConfigsBuilder(Mode.SERVER)
-                .createNewTrustStore(trustStoreFile = null)
-                .usePem(true)
-                .build()
-        )
+        val props = sslConfigsBuilder(Mode.SERVER)
+            .createNewTrustStore(trustStoreFile = null)
+            .usePem(true)
+            .build()
+            .toMutableMap()
         var sslConfig = TestSecurityConfig(props)
         val sslFactory = SslFactory(Mode.SERVER)
         sslFactory.configure(sslConfig.values())

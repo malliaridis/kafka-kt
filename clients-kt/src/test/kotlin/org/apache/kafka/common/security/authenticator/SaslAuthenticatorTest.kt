@@ -20,8 +20,12 @@ package org.apache.kafka.common.security.authenticator
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
+import java.nio.channels.FileChannel
+import java.nio.channels.SelectionKey
+import java.nio.channels.SocketChannel
 import java.nio.charset.StandardCharsets
 import java.security.NoSuchAlgorithmException
+import java.security.Principal
 import java.util.Base64
 import java.util.concurrent.atomic.AtomicInteger
 import javax.net.ssl.SSLPeerUnverifiedException
@@ -68,6 +72,7 @@ import org.apache.kafka.common.network.NetworkSend
 import org.apache.kafka.common.network.NetworkTestUtils
 import org.apache.kafka.common.network.NetworkTestUtils.waitForChannelClose
 import org.apache.kafka.common.network.NioEchoServer
+import org.apache.kafka.common.network.PlaintextTransportLayer
 import org.apache.kafka.common.network.SaslChannelBuilder
 import org.apache.kafka.common.network.Selector
 import org.apache.kafka.common.network.TransportLayer
@@ -2204,18 +2209,58 @@ class SaslAuthenticatorTest {
     fun testCorrelationId() {
         val authenticator = object : SaslClientAuthenticator(
             configs = emptyMap<String, Any?>(),
-            callbackHandler = null,
+            callbackHandler = object : AuthenticateCallbackHandler {
+                override fun configure(
+                    configs: Map<String, *>,
+                    saslMechanism: String,
+                    jaasConfigEntries: List<AppConfigurationEntry>,
+                ) = Unit
+                override fun close() = Unit
+                override fun handle(callbacks: Array<out Callback>?) = Unit
+            },
             node = "node",
-            subject = null,
-            servicePrincipal = null,
-            host = null,
+            subject = Subject(),
+            servicePrincipal = "servicePrincipal",
+            host = "",
             mechanism = "plain",
             handshakeRequestEnable = false,
-            transportLayer = null,
-            time = null,
+            transportLayer = object : TransportLayer {
+                override fun ready(): Boolean = false
+                override fun finishConnect(): Boolean = false
+                override fun disconnect() = Unit
+                override val isConnected: Boolean = false
+                override fun socketChannel(): SocketChannel? = null
+                override fun selectionKey(): SelectionKey = error("Should not be called")
+                override fun handshake() = Unit
+                override fun peerPrincipal(): Principal? = null
+                override fun addInterestOps(ops: Int) = Unit
+                override fun removeInterestOps(ops: Int) = Unit
+                override val isMute: Boolean = false
+                override fun hasBytesBuffered(): Boolean = false
+                override fun close() = Unit
+                override fun isOpen(): Boolean = false
+                override fun read(dsts: Array<out ByteBuffer>?, offset: Int, length: Int): Long = -1
+                override fun read(dsts: Array<out ByteBuffer>?): Long = -1
+                override fun read(dst: ByteBuffer?): Int = -1
+                override fun hasPendingWrites(): Boolean = false
+                override fun transferFrom(fileChannel: FileChannel, position: Long, count: Long): Long = -1
+                override fun write(srcs: Array<out ByteBuffer>?, offset: Int, length: Int): Long = -1
+                override fun write(srcs: Array<out ByteBuffer>?): Long = -1
+                override fun write(src: ByteBuffer?): Int = -1
+            },
+            time = MockTime(),
             logContext = LogContext(),
         ) {
-            override fun createSaslClient(): SaslClient = null
+            override fun createSaslClient(): SaslClient = object : SaslClient {
+                override fun getMechanismName(): String = "plain"
+                override fun hasInitialResponse(): Boolean = false
+                override fun evaluateChallenge(challenge: ByteArray?): ByteArray = challenge!!
+                override fun isComplete(): Boolean = false
+                override fun unwrap(incoming: ByteArray?, offset: Int, len: Int): ByteArray = incoming!!
+                override fun wrap(outgoing: ByteArray?, offset: Int, len: Int): ByteArray = outgoing!!
+                override fun getNegotiatedProperty(propName: String?): Any = Unit
+                override fun dispose() = Unit
+            }
         }
         val count =
             (SaslClientAuthenticator.MAX_RESERVED_CORRELATION_ID - SaslClientAuthenticator.MIN_RESERVED_CORRELATION_ID) * 2
@@ -2814,21 +2859,29 @@ class SaslAuthenticatorTest {
             logContext = LogContext(),
             apiVersionSupplier = apiVersionSupplier,
         ) {
+
             override fun buildServerAuthenticator(
                 configs: Map<String, *>,
                 callbackHandlers: Map<String, AuthenticateCallbackHandler>,
                 id: String,
                 transportLayer: TransportLayer,
                 subjects: Map<String, Subject>,
-                connectionsMaxReauthMsByMechanism: Map<String?, Long>,
-                metadataRegistry: ChannelMetadataRegistry?,
+                connectionsMaxReauthMsByMechanism: Map<String, Long>,
+                metadataRegistry: ChannelMetadataRegistry
             ): SaslServerAuthenticator {
                 return object : SaslServerAuthenticator(
-                    configs, callbackHandlers,
-                    id, subjects, null, listenerName,
-                    securityProtocol,
-                    transportLayer, connectionsMaxReauthMsByMechanism,
-                    metadataRegistry!!, time, apiVersionSupplier
+                    configs = configs,
+                    callbackHandlers = callbackHandlers,
+                    connectionId = id,
+                    subjects = subjects,
+                    kerberosNameParser = null,
+                    listenerName = listenerName,
+                    securityProtocol = securityProtocol,
+                    transportLayer = transportLayer,
+                    connectionsMaxReauthMsByMechanism = connectionsMaxReauthMsByMechanism,
+                    metadataRegistry = metadataRegistry,
+                    time = time,
+                    apiVersionSupplier = apiVersionSupplier,
                 ) {
                     // Don't enable Kafka SASL_AUTHENTICATE headers
                     override fun enableKafkaSaslAuthenticateHeaders(flag: Boolean) = Unit
@@ -2852,7 +2905,8 @@ class SaslAuthenticatorTest {
     @Throws(Exception::class)
     private fun createClientConnectionWithoutSaslAuthenticateHeader(
         securityProtocol: SecurityProtocol,
-        saslMechanism: String, node: String,
+        saslMechanism: String,
+        node: String,
     ) {
         val listenerName = ListenerName.forSecurityProtocol(securityProtocol)
         val configs = emptyMap<String, Any>()
@@ -2883,9 +2937,17 @@ class SaslAuthenticatorTest {
                 subject: Subject
             ): SaslClientAuthenticator {
                 return object : SaslClientAuthenticator(
-                    configs, callbackHandler, id, subject,
-                    servicePrincipal, serverHost, saslMechanism, true,
-                    transportLayer, time, LogContext()
+                    configs = configs,
+                    callbackHandler = callbackHandler,
+                    node = id,
+                    subject = subject,
+                    servicePrincipal = servicePrincipal,
+                    host = serverHost,
+                    mechanism = saslMechanism,
+                    handshakeRequestEnable = true,
+                    transportLayer = transportLayer,
+                    time = time,
+                    logContext = LogContext()
                 ) {
                     override fun createSaslHandshakeRequest(version: Short): SaslHandshakeRequest {
                         return buildSaslHandshakeRequest(mechanism = saslMechanism, version = 0)
@@ -3534,7 +3596,7 @@ class SaslAuthenticatorTest {
         handshakeRequestEnable: Boolean,
         credentialCache: CredentialCache?,
         tokenCache: DelegationTokenCache?,
-        time: Time?,
+        time: Time,
     ) : SaslChannelBuilder(
         mode = mode,
         jaasContexts = jaasContexts,
@@ -3546,7 +3608,7 @@ class SaslAuthenticatorTest {
         credentialCache = credentialCache,
         tokenCache = tokenCache,
         sslClientAuthOverride = null,
-        time = time!!,
+        time = time,
         logContext = LogContext(),
         apiVersionSupplier = {
             ApiVersionsResponse.defaultApiVersionsResponse(listenerType = ApiMessageType.ListenerType.ZK_BROKER)
