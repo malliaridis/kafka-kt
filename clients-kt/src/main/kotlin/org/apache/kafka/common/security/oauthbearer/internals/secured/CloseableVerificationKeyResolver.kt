@@ -32,7 +32,7 @@ import org.jose4j.keys.resolvers.VerificationKeyResolver
  * @see VerificationKeyResolver
  * @see Closeable
  */
-interface CloseableVerificationKeyResolver : Initable, Closeable, VerificationKeyResolver {
+fun interface CloseableVerificationKeyResolver : Initable, Closeable, VerificationKeyResolver {
 
     /**
      * Lifecycle method to perform a clean shutdown of the [VerificationKeyResolver].

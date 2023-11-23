@@ -22,7 +22,7 @@ class LoginAccessTokenValidatorTest : AccessTokenValidatorTest() {
     override fun createAccessTokenValidator(
         builder: AccessTokenBuilder,
     ): AccessTokenValidator = LoginAccessTokenValidator(
-        scopeClaimName = builder.scopeClaimName(),
-        subClaimName = builder.subjectClaimName(),
+        scopeClaimName = builder.scopeClaimName,
+        subClaimName = builder.subjectClaimName,
     )
 }

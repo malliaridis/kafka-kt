@@ -49,7 +49,7 @@ class TestJaasConfig : Configuration() {
         entryMap[name] = arrayOf(entry)
     }
 
-    fun addEntry(name: String, loginModule: String?, options: Map<String?, Any?>?) {
+    fun addEntry(name: String, loginModule: String?, options: Map<String, Any?>) {
         val entry = AppConfigurationEntry(loginModule, LoginModuleControlFlag.REQUIRED, options)
         val existing = entryMap[name]
         val newEntries = existing?.copyOf(existing.size + 1) ?: arrayOfNulls(1)
@@ -127,8 +127,8 @@ class TestJaasConfig : Configuration() {
             "password" to PASSWORD,
         )
 
-        fun defaultServerOptions(mechanism: String): Map<String?, Any?> {
-            val options = mutableMapOf<String?, Any?>()
+        fun defaultServerOptions(mechanism: String): Map<String, Any?> {
+            val options = mutableMapOf<String, Any?>()
             when (mechanism) {
                 "PLAIN", "DIGEST-MD5" -> options["user_$USERNAME"] = PASSWORD
                 "OAUTHBEARER" -> options["unsecuredLoginStringClaim_sub"] = USERNAME

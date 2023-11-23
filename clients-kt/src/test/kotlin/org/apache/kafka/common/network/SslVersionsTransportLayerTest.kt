@@ -77,7 +77,7 @@ class SslVersionsTransportLayerTest {
         val node = "0"
         selector.connect(
             id = node,
-            address = InetSocketAddress("localhost", server.port()),
+            address = InetSocketAddress("localhost", server.port),
             sendBufferSize = BUFFER_SIZE,
             receiveBufferSize = BUFFER_SIZE,
         )

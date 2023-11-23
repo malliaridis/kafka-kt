@@ -413,7 +413,7 @@ abstract class ExpiringCredentialRefreshingLogin(
     open class LoginContextFactory internal constructor() {
 
         @Throws(LoginException::class)
-        fun createLoginContext(
+        open fun createLoginContext(
             expiringCredentialRefreshingLogin: ExpiringCredentialRefreshingLogin,
         ): LoginContext {
             return with(expiringCredentialRefreshingLogin) {

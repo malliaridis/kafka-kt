@@ -153,7 +153,7 @@ object TestSslUtils {
     fun <T : Certificate?> createTrustStore(
         filename: String,
         password: Password,
-        certs: Map<String?, T>,
+        certs: Map<String, T>,
     ) {
         var ks = KeyStore.getInstance("JKS")
         try {

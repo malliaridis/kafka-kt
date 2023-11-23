@@ -90,7 +90,7 @@ open class SaslServerAuthenticator(
     private val listenerName: ListenerName?,
     private val securityProtocol: SecurityProtocol,
     private val transportLayer: TransportLayer,
-    private val connectionsMaxReauthMsByMechanism: Map<String?, Long>,
+    private val connectionsMaxReauthMsByMechanism: Map<String, Long>,
     private val metadataRegistry: ChannelMetadataRegistry,
     private val time: Time,
     private val apiVersionSupplier: Supplier<ApiVersionsResponse>
@@ -213,8 +213,8 @@ open class SaslServerAuthenticator(
             throw KafkaException("Principal has name with unexpected format $servicePrincipal")
         }
 
-        val servicePrincipalName = kerberosName.serviceName()
-        val serviceHostname = kerberosName.hostName()
+        val servicePrincipalName = kerberosName.serviceName
+        val serviceHostname = kerberosName.hostName
         log.debug("Creating SaslServer for {} with mechanism {}", kerberosName, saslMechanism)
 
         return try {

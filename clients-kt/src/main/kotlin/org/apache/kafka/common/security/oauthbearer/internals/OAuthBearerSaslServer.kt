@@ -95,9 +95,9 @@ class OAuthBearerSaslServer(private val callbackHandler: CallbackHandler) : Sasl
         }
 
         return process(
-            clientResponse.tokenValue(),
-            clientResponse.authorizationId(),
-            clientResponse.extensions()
+            clientResponse.tokenValue,
+            clientResponse.authorizationId,
+            clientResponse.saslExtensions
         )
     }
 

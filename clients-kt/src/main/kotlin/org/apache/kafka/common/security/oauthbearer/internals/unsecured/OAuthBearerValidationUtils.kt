@@ -80,7 +80,7 @@ object OAuthBearerValidationUtils {
         allowableClockSkewMs: Int,
     ): OAuthBearerValidationResult {
         val value: Number = try {
-            jwt.issuedAt()
+            jwt.issuedAt
         } catch (e: OAuthBearerIllegalTokenException) {
             return e.reason
         } ?: return doesNotExistResult(required, "iat")
@@ -119,7 +119,7 @@ object OAuthBearerValidationUtils {
         allowableClockSkewMs: Int
     ): OAuthBearerValidationResult {
         val value: Number = try {
-            Objects.requireNonNull(jwt).expirationTime()
+            Objects.requireNonNull(jwt).expirationTime
         } catch (e: OAuthBearerIllegalTokenException) {
             return e.reason
         } ?: return doesNotExistResult(true, "exp")
@@ -151,8 +151,8 @@ object OAuthBearerValidationUtils {
         val issuedAt: Number?
         val expirationTime: Number?
         try {
-            issuedAt = jwt.issuedAt()
-            expirationTime = jwt.expirationTime()
+            issuedAt = jwt.issuedAt
+            expirationTime = jwt.expirationTime
         } catch (e: OAuthBearerIllegalTokenException) {
             return e.reason
         }

@@ -17,8 +17,6 @@
 
 package org.apache.kafka.common.network
 
-import java.util.Collections
-import java.util.function.Supplier
 import javax.security.auth.Subject
 import javax.security.auth.callback.CallbackHandler
 import javax.security.auth.login.LoginException
@@ -97,7 +95,7 @@ class SaslChannelBuilderTest {
         val builder = createChannelBuilder(SecurityProtocol.SASL_SSL, "PLAIN")
         assertFailsWith<KafkaException>("Exception should have been thrown") {
             // Use invalid config so that an exception is thrown
-            builder.configure(Collections.singletonMap(SslConfigs.SSL_ENABLED_PROTOCOLS_CONFIG, "1"))
+            builder.configure(mapOf(SslConfigs.SSL_ENABLED_PROTOCOLS_CONFIG to "1"))
         }
         assertTrue(builder.loginManagers().isEmpty())
 
@@ -111,9 +109,13 @@ class SaslChannelBuilderTest {
         System.setProperty(SaslChannelBuilder.GSS_NATIVE_PROP, "true")
 
         val jaasConfig = TestJaasConfig()
-        jaasConfig.addEntry("jaasContext", TestGssapiLoginModule::class.java.getName(), HashMap())
+        jaasConfig.addEntry(
+            name = "jaasContext",
+            loginModule = TestGssapiLoginModule::class.java.getName(),
+            options = emptyMap(),
+        )
         val jaasContext = JaasContext("jaasContext", JaasContext.Type.SERVER, jaasConfig, null)
-        val jaasContexts = Collections.singletonMap("GSSAPI", jaasContext)
+        val jaasContexts = mapOf("GSSAPI" to jaasContext)
         val gssManager = mock<GSSManager>()
         val gssName = mock<GSSName>()
         `when`(gssManager.createName(anyString(), any())).thenAnswer { gssName }
@@ -195,7 +197,7 @@ class SaslChannelBuilderTest {
             sslClientAuthOverride = null,
             time = Time.SYSTEM,
             logContext = LogContext(),
-            apiVersionSupplier = defaultApiVersionsSupplier(),
+            apiVersionSupplier = defaultApiVersionsSupplier,
         ) {
             override fun gssManager(): GSSManager = gssManager
         }
@@ -204,10 +206,8 @@ class SaslChannelBuilderTest {
         return channelBuilder
     }
 
-    private fun defaultApiVersionsSupplier(): Supplier<ApiVersionsResponse> {
-        return Supplier {
-            ApiVersionsResponse.defaultApiVersionsResponse(listenerType = ApiMessageType.ListenerType.ZK_BROKER)
-        }
+    private val defaultApiVersionsSupplier = {
+        ApiVersionsResponse.defaultApiVersionsResponse(listenerType = ApiMessageType.ListenerType.ZK_BROKER)
     }
 
     private fun createChannelBuilder(securityProtocol: SecurityProtocol, saslMechanism: String): SaslChannelBuilder {
@@ -219,10 +219,19 @@ class SaslChannelBuilderTest {
             else -> throw IllegalArgumentException("Unsupported SASL mechanism $saslMechanism")
         }
         val jaasConfig = TestJaasConfig()
-        jaasConfig.addEntry("jaasContext", loginModule.getName(), HashMap())
+        jaasConfig.addEntry(
+            name = "jaasContext",
+            loginModule = loginModule.getName(),
+            options = emptyMap(),
+        )
 
-        val jaasContext = JaasContext("jaasContext", JaasContext.Type.SERVER, jaasConfig, null)
-        val jaasContexts = Collections.singletonMap(saslMechanism, jaasContext)
+        val jaasContext = JaasContext(
+            name = "jaasContext",
+            type = JaasContext.Type.SERVER,
+            configuration = jaasConfig,
+            dynamicJaasConfig = null,
+        )
+        val jaasContexts = mapOf(saslMechanism to jaasContext)
 
         return SaslChannelBuilder(
             mode = Mode.CLIENT,
@@ -237,7 +246,7 @@ class SaslChannelBuilderTest {
             sslClientAuthOverride = null,
             time = Time.SYSTEM,
             logContext = LogContext(),
-            apiVersionSupplier = defaultApiVersionsSupplier()
+            apiVersionSupplier = defaultApiVersionsSupplier,
         )
     }
 

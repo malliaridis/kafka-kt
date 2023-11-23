@@ -21,6 +21,7 @@ import java.util.*
 import java.util.function.Consumer
 import org.apache.kafka.common.config.ConfigDef
 import org.apache.kafka.common.security.scram.internals.ScramMechanism
+import org.apache.kafka.common.security.scram.internals.ScramMechanism.Companion.mechanismNames
 
 /**
  * Define the dynamic quota configs. Note that these are not normal configurations that exist in properties files. They
@@ -101,7 +102,7 @@ object QuotaConfigs {
 
     fun userConfigs(): ConfigDef {
         val configDef = ConfigDef()
-        ScramMechanism.mechanismNames().forEach(
+        mechanismNames.forEach(
             Consumer { mechanismName: String ->
                 configDef.define(
                     name = mechanismName,

@@ -116,7 +116,7 @@ abstract class OAuthBearerTest {
         }
     }
 
-    protected fun createRetryable(attempts: Array<Exception>): Retryable<String> {
+    protected fun createRetryable(attempts: Array<Exception?>): Retryable<String> {
         val i = attempts.iterator()
         return Retryable {
             val e = if (i.hasNext()) i.next() else null
