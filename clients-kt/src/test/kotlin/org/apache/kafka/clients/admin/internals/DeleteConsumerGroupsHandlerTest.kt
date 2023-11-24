@@ -34,8 +34,11 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class DeleteConsumerGroupsHandlerTest {
+
     private val logContext = LogContext()
+
     private val groupId1 = "group-id1"
+
     @Test
     fun testBuildRequest() {
         val handler = DeleteConsumerGroupsHandler(logContext)

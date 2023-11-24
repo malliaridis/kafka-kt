@@ -27,9 +27,17 @@ import org.apache.kafka.common.annotation.InterfaceStability.Evolving
  */
 @Evolving
 class RemoveMembersFromConsumerGroupOptions(
-    val members: Set<MemberToRemove> = emptySet(),
+    members: Collection<MemberToRemove> = emptySet(),
 ) : AbstractOptions<RemoveMembersFromConsumerGroupOptions>() {
+
+    val members: Set<MemberToRemove>
+
     var reason: String? = null
+
+    init {
+        require(members.isNotEmpty()) { "Invalid empty members has been provided" }
+        this.members = members.toSet()
+    }
 
     /**
      * Sets an optional reason.

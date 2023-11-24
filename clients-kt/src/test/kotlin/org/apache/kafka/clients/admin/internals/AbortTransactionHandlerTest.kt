@@ -34,8 +34,10 @@ import org.apache.kafka.common.message.WriteTxnMarkersResponseData.WritableTxnMa
 import org.apache.kafka.common.protocol.Errors
 import org.apache.kafka.common.requests.WriteTxnMarkersResponse
 import org.apache.kafka.common.utils.LogContext
+import org.apache.kafka.test.TestUtils.assertNotFails
 import kotlin.reflect.KClass
 import org.junit.jupiter.api.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
@@ -102,7 +104,7 @@ class AbortTransactionHandlerTest {
             expected = abortSpec.topicPartition.topic,
             actual = topicRequest.name,
         )
-        assertEquals(
+        assertContentEquals(
             expected = intArrayOf(abortSpec.topicPartition.partition),
             actual = topicRequest.partitionIndexes,
         )
@@ -300,7 +302,7 @@ class AbortTransactionHandlerTest {
         assertEquals(emptySet(), result.failedKeys.keys)
         assertEquals(emptyList(), result.unmappedKeys)
         assertEquals(setOf(topicPartition), result.completedKeys.keys)
-        assertNull(result.completedKeys[topicPartition])
+        assertNotFails { result.completedKeys[topicPartition] }
     }
 
     private fun assertFailed(

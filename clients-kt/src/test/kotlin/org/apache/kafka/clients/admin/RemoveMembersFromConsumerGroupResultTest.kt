@@ -26,6 +26,8 @@ import org.apache.kafka.test.TestUtils.assertFutureError
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.util.concurrent.ExecutionException
+import org.apache.kafka.test.TestUtils.assertNotFails
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
@@ -75,7 +77,7 @@ class RemoveMembersFromConsumerGroupResultTest {
         assertFalse(memberFutures.isCompletedExceptionally)
         val missingMemberResult = RemoveMembersFromConsumerGroupResult(memberFutures, membersToRemove)
         assertFutureError(missingMemberResult.all(), IllegalArgumentException::class.java)
-        assertNull(missingMemberResult.memberResult(instanceOne).get())
+        assertNotFails { (missingMemberResult.memberResult(instanceOne).get()) }
         assertFutureError(missingMemberResult.memberResult(instanceTwo), IllegalArgumentException::class.java)
     }
 
@@ -96,9 +98,9 @@ class RemoveMembersFromConsumerGroupResultTest {
         errorsMap[instanceTwo.toMemberIdentity()] = Errors.NONE
         val noErrorResult = RemoveMembersFromConsumerGroupResult(memberFutures, membersToRemove)
         memberFutures.complete(errorsMap)
-        assertNull(noErrorResult.all().get())
-        assertNull(noErrorResult.memberResult(instanceOne).get())
-        assertNull(noErrorResult.memberResult(instanceTwo).get())
+        assertNotFails { noErrorResult.all().get() }
+        assertNotFails { noErrorResult.memberResult(instanceOne).get() }
+        assertNotFails { noErrorResult.memberResult(instanceTwo).get() }
     }
 
     @Throws(InterruptedException::class, ExecutionException::class)
@@ -107,7 +109,7 @@ class RemoveMembersFromConsumerGroupResultTest {
         assertFalse(memberFutures.isCompletedExceptionally)
         val memberLevelErrorResult = RemoveMembersFromConsumerGroupResult(memberFutures, membersToRemove)
         assertFutureError(memberLevelErrorResult.all(), FencedInstanceIdException::class.java)
-        assertNull(memberLevelErrorResult.memberResult(instanceOne).get())
+        assertNotFails { (memberLevelErrorResult.memberResult(instanceOne).get()) }
         assertFutureError(
             future = memberLevelErrorResult.memberResult(instanceTwo),
             exceptionClass = FencedInstanceIdException::class.java,

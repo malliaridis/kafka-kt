@@ -528,4 +528,12 @@ object TestUtils {
         val expectedSegmentsSet = iterator2.asSequence().toHashSet()
         return (allSegmentsSet == expectedSegmentsSet)
     }
+
+    fun <T> assertNotFails(block: () -> T) : T {
+        try {
+            return block()
+        } catch (e: Exception) {
+            fail("Unexpected exception thrown: ${e.message}")
+        }
+    }
 }

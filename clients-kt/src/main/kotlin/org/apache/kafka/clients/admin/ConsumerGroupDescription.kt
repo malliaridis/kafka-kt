@@ -27,7 +27,7 @@ import org.apache.kafka.common.acl.AclOperation
  * @property groupId
  * @property isSimpleConsumerGroup If consumer group is simple or not.
  */
-class ConsumerGroupDescription(
+data class ConsumerGroupDescription(
     val groupId: String = "",
     val isSimpleConsumerGroup: Boolean,
     val members: Collection<MemberDescription> = emptyList(),

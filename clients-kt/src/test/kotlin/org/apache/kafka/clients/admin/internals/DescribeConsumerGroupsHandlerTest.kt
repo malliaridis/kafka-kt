@@ -89,8 +89,8 @@ class DescribeConsumerGroupsHandlerTest {
         val members = listOf(
             MemberDescription(
                 memberId = "memberId",
-                groupInstanceId = "clientId",
-                clientId = "host",
+                clientId = "clientId",
+                host = "host",
                 assignment = MemberAssignment(tps),
             )
         )

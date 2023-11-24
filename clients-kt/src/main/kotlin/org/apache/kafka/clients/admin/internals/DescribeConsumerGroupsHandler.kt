@@ -105,7 +105,7 @@ class DescribeConsumerGroupsHandler(
                         val assignment = ConsumerProtocol.deserializeAssignment(
                             ByteBuffer.wrap(groupMember.memberAssignment)
                         )
-                        partitions = HashSet(assignment.partitions)
+                        partitions = assignment.partitions.toSet()
                     }
 
                     memberDescriptions.add(

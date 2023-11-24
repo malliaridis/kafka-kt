@@ -26,7 +26,26 @@ class CoordinatorKey private constructor(
 
     override fun toString(): String = "CoordinatorKey(idValue='$idValue', type=$type)"
 
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as CoordinatorKey
+
+        if (type != other.type) return false
+        if (idValue != other.idValue) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = type.hashCode()
+        result = 31 * result + idValue.hashCode()
+        return result
+    }
+
     companion object {
+
         fun byGroupId(groupId: String): CoordinatorKey {
             return CoordinatorKey(CoordinatorType.GROUP, groupId)
         }

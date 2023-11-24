@@ -87,7 +87,7 @@ class CoordinatorStrategy(
 
         (response as FindCoordinatorResponse).coordinators().forEach { coordinator ->
             val key =
-                if (coordinator.key == null) requireSingletonAndType(keys)  // old version without batching
+                if (coordinator.key.isEmpty()) requireSingletonAndType(keys)  // old version without batching
                 else if ((type == CoordinatorType.GROUP)) CoordinatorKey.byGroupId(coordinator.key)
                 else CoordinatorKey.byTransactionalId(coordinator.key)
 

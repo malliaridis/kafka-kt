@@ -47,7 +47,14 @@ import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.*
+import java.util.AbstractMap
+import java.util.Collections
+import java.util.EnumSet
+import java.util.Locale
+import java.util.Objects
+import java.util.Properties
+import java.util.SortedSet
+import java.util.TreeSet
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.BiConsumer
 import java.util.function.BinaryOperator
@@ -64,7 +71,6 @@ import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.common.network.TransferableChannel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import kotlin.reflect.KClass
 
 object Utils {
     // This matches URIs of formats: host:port and protocol:\\host:port
@@ -585,7 +591,7 @@ object Utils {
      */
     @Deprecated("Use Kotlin collection operator.")
     fun <T> join(strs: Array<T>, separator: String): String {
-        return join(Arrays.asList(*strs), separator)
+        return strs.joinToString(separator)
     }
 
     /**
@@ -1275,9 +1281,7 @@ object Utils {
     fun <T> concatListsUnmodifiable(left: List<T>, right: List<T>): List<T> {
         return concatLists(
             left, right
-        ) { list: List<T>? ->
-            Collections.unmodifiableList(list)
-        }
+        ) { list: List<T>? -> Collections.unmodifiableList(list) }
     }
 
     @Deprecated("Use Kotlin operator for list concatenation.")

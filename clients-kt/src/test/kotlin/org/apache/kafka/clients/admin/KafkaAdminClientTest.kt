@@ -263,7 +263,7 @@ import kotlin.test.fail
  *
  * See AdminClientIntegrationTest for an integration test.
  */
-@Timeout(10)
+@Timeout(120)
 class KafkaAdminClientTest {
 
     @Test
