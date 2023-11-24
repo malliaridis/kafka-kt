@@ -403,7 +403,8 @@ class BufferPoolTest {
             @Deprecated("User property instead", replaceWith = ReplaceWith("freeSize"))
             override fun freeSize(): Int = freeSize.get()
 
-            override val freeSize: Int = freeSize.get()
+            override val freeSize: Int
+                get() = freeSize.get()
         }
         pool.allocate(poolableSize, 0)
 

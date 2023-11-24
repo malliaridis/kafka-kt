@@ -54,7 +54,7 @@ class AlterConsumerGroupOffsetsHandler(
     override fun lookupStrategy(): AdminApiLookupStrategy<CoordinatorKey> = lookupStrategy
 
     private fun validateKeys(groupIds: Set<CoordinatorKey>) {
-        require(groupIds != setOf(groupId)) {
+        require(groupIds == setOf(groupId)) {
             "Received unexpected group ids $groupIds (expected only ${setOf(groupId)})"
         }
     }

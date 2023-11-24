@@ -20,10 +20,11 @@ package org.apache.kafka.common.errors
 /**
  * An error indicating that security is disabled on the broker.
  */
-class SecurityDisabledException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : ApiException(message = message, cause = cause) {
+class SecurityDisabledException : ApiException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

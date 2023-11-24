@@ -134,9 +134,8 @@ object ClaimValidationUtils {
     private fun validateString(name: String, value: String?): String {
         if (value == null) throw ValidateException("$name value must be non-null")
 
-        var updatedValue = value
-        if (updatedValue.isEmpty()) throw ValidateException("$name value must be non-empty")
-        updatedValue = updatedValue.trim { it <= ' ' }
+        if (value.isEmpty()) throw ValidateException("$name value must be non-empty")
+        val updatedValue = value.trim { it <= ' ' }
         if (updatedValue.isEmpty()) throw ValidateException("$name value must not contain only whitespace")
         return updatedValue
     }

@@ -57,14 +57,12 @@ class SerializedJwt(token: String?) {
     val signature: String
 
     init {
-        val trimmedToken = token?.trim { it <= ' ' } ?: ""
+        val trimmedToken = token?.trim() ?: ""
         if (trimmedToken.isEmpty()) throw ValidateException(
             "Empty JWT provided; expected three sections (header, payload, and signature)"
         )
 
-        val splits = trimmedToken.split("\\.".toRegex())
-            .dropLastWhile { it.isEmpty() }
-            .toTypedArray()
+        val splits = trimmedToken.split("\\.".toRegex()).toTypedArray()
 
         if (splits.size != JWT_SECTION_COUNT) throw ValidateException(
             String.format(

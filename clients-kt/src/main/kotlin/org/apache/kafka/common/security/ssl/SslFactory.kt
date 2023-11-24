@@ -79,9 +79,9 @@ class SslFactory(
                 SslEngineValidator.validate(builder, builder)
             } catch (e: Exception) {
                 throw ConfigException(
-                    "A client SSLEngine created with the provided settings " +
+                    name = "A client SSLEngine created with the provided settings " +
                             "can't connect to a server SSLEngine created with those settings.",
-                    e
+                    value = e
                 )
             }
         }

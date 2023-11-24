@@ -20,7 +20,7 @@ package org.apache.kafka.common.errors
 /**
  * Exception thrown when there are unstable offsets for the requested topic partitions.
  */
-class UnstableOffsetCommitException(message: String?) : RetriableException(message) {
+class UnstableOffsetCommitException(message: String? = null) : RetriableException(message) {
     companion object {
         private const val serialVersionUID = 1L
     }

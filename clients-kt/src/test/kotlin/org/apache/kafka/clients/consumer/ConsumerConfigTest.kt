@@ -38,13 +38,13 @@ class ConsumerConfigTest {
     
     private val valueDeserializer: Deserializer<String> = StringDeserializer()
     
-    private val keyDeserializerClassName = keyDeserializer.javaClass.getName()
+    private val keyDeserializerClassName = keyDeserializer::class.java.name
     
-    private val valueDeserializerClassName = valueDeserializer.javaClass.getName()
+    private val valueDeserializerClassName = valueDeserializer::class.java.name
     
-    private val keyDeserializerClass: Any = keyDeserializer.javaClass
+    private val keyDeserializerClass: Any = keyDeserializer::class.java
     
-    private val valueDeserializerClass: Any = valueDeserializer.javaClass
+    private val valueDeserializerClass: Any = valueDeserializer::class.java
     
     private val properties = Properties()
     
@@ -150,11 +150,8 @@ class ConsumerConfigTest {
     @Test
     fun testDefaultPartitionAssignor() {
         assertEquals(
-            listOf(
-                RangeAssignor::class.java.getName(),
-                CooperativeStickyAssignor::class.java.getName(),
-            ),
-            ConsumerConfig(properties).getList(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG)
+            expected = listOf(RangeAssignor::class.java.name, CooperativeStickyAssignor::class.java.name),
+            actual = ConsumerConfig(properties).getList(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG)
         )
     }
 

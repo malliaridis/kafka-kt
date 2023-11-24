@@ -556,9 +556,9 @@ open class AbstractConfig(
             } catch (e: ClassNotFoundException) {
                 log.error("Could not load config provider class $value", e)
                 throw ConfigException(
-                    providerClassProperty(key),
-                    value,
-                    "Could not load config provider class or one of its dependencies"
+                    name = providerClassProperty(key),
+                    value = value,
+                    message = "Could not load config provider class or one of its dependencies"
                 )
             }
         }

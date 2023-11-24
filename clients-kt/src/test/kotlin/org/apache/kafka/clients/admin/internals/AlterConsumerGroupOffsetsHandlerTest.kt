@@ -24,14 +24,9 @@ import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.protocol.Errors
 import org.apache.kafka.common.requests.OffsetCommitResponse
 import org.apache.kafka.common.utils.LogContext
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import java.util.*
-import java.util.function.Consumer
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
-
 
 class AlterConsumerGroupOffsetsHandlerTest {
 
@@ -74,9 +69,13 @@ class AlterConsumerGroupOffsetsHandlerTest {
     @Test
     fun testHandleSuccessfulResponse() {
         val handler = AlterConsumerGroupOffsetsHandler(groupId, partitions, logContext)
-        val responseData = Collections.singletonMap(t0p0, Errors.NONE)
+        val responseData = mapOf(t0p0 to Errors.NONE)
         val response = OffsetCommitResponse(0, responseData)
-        val result = handler.handleResponse(node, setOf(CoordinatorKey.byGroupId(groupId)), response)
+        val result = handler.handleResponse(
+            broker = node,
+            keys = setOf(CoordinatorKey.byGroupId(groupId)),
+            response = response,
+        )
         assertCompleted(result, responseData)
     }
 
@@ -116,9 +115,13 @@ class AlterConsumerGroupOffsetsHandlerTest {
         partitions: Map<TopicPartition, OffsetAndMetadata>,
         partitionResults: Map<TopicPartition, Errors>,
     ): ApiResult<CoordinatorKey, Map<TopicPartition, Errors>> {
-        val handler = AlterConsumerGroupOffsetsHandler(groupKey.idValue, partitions, logContext)
-        val response = OffsetCommitResponse(0, partitionResults)
-        return handler.handleResponse(node, setOf(groupKey), response)
+        val handler = AlterConsumerGroupOffsetsHandler(
+            groupId = groupKey.idValue,
+            offsets = partitions,
+            logContext = logContext,
+        )
+        val response = OffsetCommitResponse(requestThrottleMs = 0, responseData = partitionResults)
+        return handler.handleResponse(broker = node, keys = setOf(groupKey), response = response)
     }
 
     private fun partitionErrors(error: Errors): Map<TopicPartition, Errors> {

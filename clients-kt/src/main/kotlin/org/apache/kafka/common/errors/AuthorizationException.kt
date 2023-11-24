@@ -17,7 +17,9 @@
 
 package org.apache.kafka.common.errors
 
-open class AuthorizationException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : ApiException(message = message, cause = cause)
+open class AuthorizationException : ApiException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message: String?, cause: Throwable?) : super(message, cause)
+}

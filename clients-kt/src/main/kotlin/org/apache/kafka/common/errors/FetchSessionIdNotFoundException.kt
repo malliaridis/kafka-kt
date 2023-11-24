@@ -17,7 +17,11 @@
 
 package org.apache.kafka.common.errors
 
-class FetchSessionIdNotFoundException(message: String? = null) : RetriableException(message) {
+class FetchSessionIdNotFoundException : RetriableException {
+
+    constructor() : super()
+
+    constructor(message: String?) : super(message)
 
     companion object {
         private const val serialVersionUID = 1L

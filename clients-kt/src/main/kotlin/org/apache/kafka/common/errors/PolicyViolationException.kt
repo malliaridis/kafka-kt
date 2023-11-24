@@ -20,7 +20,9 @@ package org.apache.kafka.common.errors
 /**
  * Exception thrown if a create topics request does not satisfy the configured policy for a topic.
  */
-class PolicyViolationException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : ApiException(message = message, cause = cause)
+class PolicyViolationException : ApiException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
+}

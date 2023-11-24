@@ -31,21 +31,15 @@ data class TopicPartition(
         message = "Use property instead.",
         replaceWith = ReplaceWith("partition"),
     )
-    fun partition(): Int {
-        return partition
-    }
+    fun partition(): Int = partition
 
     @Deprecated(
         message = "Use property instead.",
         replaceWith = ReplaceWith("topic"),
     )
-    fun topic(): String {
-        return topic
-    }
+    fun topic(): String = topic
 
-    override fun toString(): String {
-        return "$topic-$partition"
-    }
+    override fun toString(): String = "$topic-$partition"
 
     companion object {
         private const val serialVersionUID = -613627415771699627L

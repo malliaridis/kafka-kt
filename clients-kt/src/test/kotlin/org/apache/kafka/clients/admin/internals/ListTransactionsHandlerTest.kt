@@ -28,6 +28,7 @@ import org.apache.kafka.common.protocol.Errors
 import org.apache.kafka.common.requests.ListTransactionsResponse
 import org.apache.kafka.common.utils.LogContext
 import org.junit.jupiter.api.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
@@ -44,8 +45,8 @@ class ListTransactionsHandlerTest {
         val options = ListTransactionsOptions()
         val handler = ListTransactionsHandler(options, logContext)
         val request = handler.buildBatchedRequest(brokerId, setOf(brokerKey)).build()
-        
-        assertEquals(longArrayOf(), request.data().producerIdFilters)
+
+        assertContentEquals(longArrayOf(), request.data().producerIdFilters)
         assertEquals(emptyList(), request.data().stateFilters)
     }
 
@@ -59,7 +60,7 @@ class ListTransactionsHandlerTest {
         val handler = ListTransactionsHandler(options, logContext)
         val request = handler.buildBatchedRequest(brokerId, setOf(brokerKey)).build()
         
-        assertEquals(longArrayOf(filteredProducerId), request.data().producerIdFilters)
+        assertContentEquals(longArrayOf(filteredProducerId), request.data().producerIdFilters)
         assertEquals(emptyList(), request.data().stateFilters)
     }
 
@@ -73,7 +74,7 @@ class ListTransactionsHandlerTest {
         val request = handler.buildBatchedRequest(brokerId, setOf(brokerKey)).build()
         
         assertEquals(listOf(filteredState.toString()), request.data().stateFilters)
-        assertEquals(longArrayOf(), request.data().producerIdFilters)
+        assertContentEquals(longArrayOf(), request.data().producerIdFilters)
     }
 
     @Test

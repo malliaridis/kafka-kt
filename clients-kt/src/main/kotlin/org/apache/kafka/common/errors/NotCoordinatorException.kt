@@ -24,10 +24,11 @@ package org.apache.kafka.common.errors
  * In the context of the transactional coordinator, it returns this error when it receives a transactional
  * request with a transactionalId the coordinator doesn't own.
  */
-class NotCoordinatorException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : RetriableException(message = message, cause = cause) {
+class NotCoordinatorException : RetriableException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

@@ -42,8 +42,8 @@ class AccessTokenBuilder(time: Time = MockTime()) {
     private var scope: Any = "engineering"
         set(value) {
             require(value is String || value is Collection<*>) {
-                "$scopeClaimName parameter must be a ${String::class.java.getName()} or " +
-                        "a ${MutableCollection::class.java.getName()} containing ${String::class.java.getName()}"
+                "$scopeClaimName parameter must be a ${String::class.java.name} or " +
+                        "a ${MutableCollection::class.java.name} containing ${String::class.java.name}"
             }
             field = value
         }
@@ -114,8 +114,8 @@ class AccessTokenBuilder(time: Time = MockTime()) {
             is String -> this
             is Collection<*> -> this
             else -> throw IllegalArgumentException(
-                "$scopeClaimName parameter must be a ${String::class.java.getName()} or " +
-                        "a ${MutableCollection::class.java.getName()} containing ${String::class.java.getName()}"
+                "$scopeClaimName parameter must be a ${String::class.java.name} or " +
+                        "a ${MutableCollection::class.java.name} containing ${String::class.java.name}"
             )
         }
     }
@@ -156,9 +156,9 @@ class AccessTokenBuilder(time: Time = MockTime()) {
         return this
     }
 
-    fun addCustomClaim(name: String?, value: String?): AccessTokenBuilder {
-        val validatedName = validateClaimNameOverride("claim name", name!!)
-        val validatedValue = validateClaimNameOverride(validatedName, value!!)
+    fun addCustomClaim(name: String, value: String): AccessTokenBuilder {
+        val validatedName = validateClaimNameOverride("claim name", name)
+        val validatedValue = validateClaimNameOverride(validatedName, value)
         customClaims[validatedName] = validatedValue
         return this
     }
@@ -173,25 +173,25 @@ class AccessTokenBuilder(time: Time = MockTime()) {
 
             is Collection<*> -> {
                 val child = node.putArray(scopeClaimName)
-                (scope as Collection<*>).forEach { v -> child.add(v as? String) }
+                (scope as Collection<*>).forEach { v -> child.add(v as? String?) }
             }
 
             else -> throw IllegalArgumentException(
-                "$scopeClaimName claim must be a ${String::class.java.getName()} or " +
-                        "a ${MutableCollection::class.java.getName()} containing ${String::class.java.getName()}"
+                "$scopeClaimName claim must be a ${String::class.java.name} or " +
+                        "a ${MutableCollection::class.java.name} containing ${String::class.java.name}"
             )
         }
         node.put(ReservedClaimNames.ISSUED_AT, issuedAtSeconds)
-        node.put(ReservedClaimNames.EXPIRATION_TIME, expirationSeconds)
+        expirationSeconds?.let { node.put(ReservedClaimNames.EXPIRATION_TIME, it) }
         for ((key, value) in customClaims) node.put(key, value)
         val json = objectMapper.writeValueAsString(node)
         val jws = JsonWebSignature()
         jws.payload = json
-        if (jwk != null) {
-            jws.setKey(jwk!!.privateKey)
-            jws.keyIdHeaderValue = jwk!!.keyId
+        jwk?.let {
+            jws.setKey(it.privateKey)
+            jws.keyIdHeaderValue = it.keyId
         }
-        if (alg != null) jws.algorithmHeaderValue = alg
+        alg?.let { jws.algorithmHeaderValue = it }
 
         return jws.getCompactSerialization()
     }

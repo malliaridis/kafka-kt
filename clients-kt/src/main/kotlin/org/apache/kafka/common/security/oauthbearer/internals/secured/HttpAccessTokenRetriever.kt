@@ -58,7 +58,7 @@ class HttpAccessTokenRetriever(
     private val loginRetryBackoffMs: Long,
     private val loginRetryBackoffMaxMs: Long,
     private val loginConnectTimeoutMs: Int? = null,
-    private val loginReadTimeoutMs: Int? = null
+    private val loginReadTimeoutMs: Int? = null,
 ) : AccessTokenRetriever {
 
     /**
@@ -149,7 +149,7 @@ class HttpAccessTokenRetriever(
             headers: Map<String, String>?,
             requestBody: String?,
             connectTimeoutMs: Int?,
-            readTimeoutMs: Int?
+            readTimeoutMs: Int?,
         ): String {
             handleInput(
                 connection = connection,
@@ -167,7 +167,7 @@ class HttpAccessTokenRetriever(
             headers: Map<String, String>?,
             requestBody: String?,
             connectTimeoutMs: Int?,
-            readTimeoutMs: Int?
+            readTimeoutMs: Int?,
         ) {
             log.debug("handleInput - starting post for {}", connection.url)
 
@@ -242,7 +242,8 @@ class HttpAccessTokenRetriever(
             }
             return when (responseCode) {
                 HttpURLConnection.HTTP_OK,
-                HttpURLConnection.HTTP_CREATED -> {
+                HttpURLConnection.HTTP_CREATED,
+                -> {
                     log.debug(
                         "handleOutput - responseCode: {}, error response: {}",
                         responseCode,
@@ -335,16 +336,12 @@ class HttpAccessTokenRetriever(
                     snippet = "$s (trimmed to first $MAX_RESPONSE_BODY_LENGTH characters out of $actualLength total)"
                 }
                 throw IOException(
-                    String.format(
-                        "The token endpoint response did not contain an access_token value. " +
-                                "Response: (%s)",
-                        snippet
-                    )
+                        "The token endpoint response did not contain an access_token value. Response: ($snippet)"
                 )
             }
             return sanitizeString(
-                "the token endpoint response's access_token JSON attribute",
-                accessTokenNode.textValue(),
+                name = "the token endpoint response's access_token JSON attribute",
+                value = accessTokenNode.textValue(),
             )
         }
 
@@ -384,7 +381,8 @@ class HttpAccessTokenRetriever(
             }
         }
 
-        private fun sanitizeString(name: String, value: String): String {
+        private fun sanitizeString(name: String, value: String?): String {
+            requireNotNull(value) { "The value for $name must be non-null" }
             require(value.isNotEmpty()) { "The value for $name must be non-empty" }
 
             val sanitized = value.trim { it <= ' ' }

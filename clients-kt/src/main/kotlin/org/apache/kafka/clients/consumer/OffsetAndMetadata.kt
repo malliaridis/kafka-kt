@@ -30,7 +30,7 @@ import org.apache.kafka.common.requests.OffsetFetchResponse
  * @property leaderEpoch The leader epoch or `null` if not known
  * @property metadata Non-null metadata
  */
-class OffsetAndMetadata(
+data class OffsetAndMetadata(
     val offset: Long,
     // We use null to represent the absence of a leader epoch to simplify serialization.
     // I.e., older serializations of this class which do not have this field will automatically

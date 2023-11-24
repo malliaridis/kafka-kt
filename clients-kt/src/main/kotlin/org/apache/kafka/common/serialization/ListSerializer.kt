@@ -84,8 +84,9 @@ class ListSerializer<Inner> : Serializer<List<Inner>?> {
 
         } catch (e: ClassNotFoundException) {
             throw ConfigException(
-                innerSerdePropertyName, innerSerdeClassOrName,
-                "Serializer class $innerSerdeClassOrName could not be found."
+                name = innerSerdePropertyName,
+                value = innerSerdeClassOrName,
+                message = "Serializer class $innerSerdeClassOrName could not be found."
             )
         }
     }

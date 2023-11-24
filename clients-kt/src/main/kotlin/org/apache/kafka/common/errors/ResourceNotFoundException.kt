@@ -24,11 +24,29 @@ package org.apache.kafka.common.errors
  * @property message the exception's message
  * @property cause the exception's cause
  */
-class ResourceNotFoundException(
-    val resource: String? = null,
-    message: String? = null,
-    cause: Throwable? = null,
-) : ApiException(message = message, cause = cause) {
+class ResourceNotFoundException : ApiException {
+
+    val resource: String?
+
+    constructor(message: String?) : this(resource = null, message = message)
+
+    constructor(message : String?, cause: Throwable?) : this(
+        resource = null,
+        message = message,
+        cause = cause,
+    )
+
+    constructor(resource: String?, message: String?) : super(message) {
+        this.resource = resource
+    }
+
+    constructor(
+        resource: String?,
+        message: String?,
+        cause: Throwable?,
+    ) : super(message, cause) {
+        this.resource = resource
+    }
 
     /**
      *

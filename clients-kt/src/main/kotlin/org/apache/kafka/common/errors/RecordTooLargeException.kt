@@ -22,11 +22,32 @@ import org.apache.kafka.common.TopicPartition
 /**
  * This record is larger than the maximum allowable size
  */
-class RecordTooLargeException(
-    message: String? = null,
-    cause: Throwable? = null,
-    val recordTooLargePartitions: Map<TopicPartition, Long>? = null,
-) : ApiException(message = message, cause = cause) {
+class RecordTooLargeException : ApiException {
+
+    val recordTooLargePartitions: Map<TopicPartition, Long>?
+
+    constructor() : super() {
+        recordTooLargePartitions = null
+    }
+
+    constructor(message: String?) : super(message) {
+        recordTooLargePartitions = null
+    }
+
+    constructor(cause: Throwable?) : super(cause) {
+        recordTooLargePartitions = null
+    }
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause) {
+        recordTooLargePartitions = null
+    }
+
+    constructor(
+        message: String?,
+        recordTooLargePartitions: Map<TopicPartition, Long>?,
+    ) : super(message) {
+        this.recordTooLargePartitions = recordTooLargePartitions
+    }
 
     @Deprecated(
         message = "Use property instead.",

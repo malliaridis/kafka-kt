@@ -19,7 +19,16 @@ package org.apache.kafka.common.security.oauthbearer.internals.secured
 
 import org.apache.kafka.common.KafkaException
 
-class UnretryableException(
-    message: String? = null,
-    cause: Throwable? = null
-) : KafkaException(message, cause)
+class UnretryableException : KafkaException {
+
+    constructor() : super()
+
+    constructor(message: String?) : super(message)
+
+    constructor(cause: Throwable?) : super(cause)
+
+    constructor(
+        message: String?,
+        cause: Throwable?,
+    ) : super(message, cause)
+}

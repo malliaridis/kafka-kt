@@ -18,7 +18,6 @@
 package org.apache.kafka.common.security.oauthbearer.internals.unsecured
 
 import org.apache.kafka.common.security.oauthbearer.internals.unsecured.OAuthBearerScopeUtils.parseScope
-import org.apache.kafka.common.utils.Utils.isBlank
 import org.junit.jupiter.api.Test
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
@@ -36,7 +35,7 @@ class OAuthBearerScopeUtilsTest {
             "scope1   Scope2"
         ).forEach { validScope ->
             val parsedScope = parseScope(validScope)
-            if (isBlank(validScope)) assertTrue(parsedScope.isEmpty())
+            if (validScope.isBlank()) assertTrue(parsedScope.isEmpty())
             else if (validScope.contains("Scope2"))
                 assertTrue(parsedScope.size == 2 && parsedScope[0] == "scope1" && parsedScope[1] == "Scope2")
             else assertTrue(parsedScope.size == 1 && parsedScope[0] == "scope1")

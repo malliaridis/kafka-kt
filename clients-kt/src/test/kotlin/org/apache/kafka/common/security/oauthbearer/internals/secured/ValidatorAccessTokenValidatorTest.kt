@@ -27,7 +27,8 @@ class ValidatorAccessTokenValidatorTest : AccessTokenValidatorTest() {
     
     override fun createAccessTokenValidator(builder: AccessTokenBuilder): AccessTokenValidator {
         return ValidatorAccessTokenValidator(
-            clockSkew = 30, expectedAudiences = emptySet(),
+            clockSkew = 30,
+            expectedAudiences = emptySet(),
             expectedIssuer = null,
             verificationKeyResolver = { _, _ -> builder.jwk!!.key },
             scopeClaimName = builder.scopeClaimName,
@@ -69,13 +70,15 @@ class ValidatorAccessTokenValidatorTest : AccessTokenValidatorTest() {
         val tokenBuilder = AccessTokenBuilder().apply {
             this.jwk = jwk
             this.alg = AlgorithmIdentifiers.RSA_USING_SHA256
-            addCustomClaim(subClaimName, subject)
+            this.addCustomClaim(subClaimName, subject)
+            this.subjectClaimName = subClaimName
             this.subject = null
         }
         val validator = createAccessTokenValidator(tokenBuilder)
 
         // Validation should succeed (e.g. signature verification) even if sub-claim is missing
-        val token = validator.validate(tokenBuilder.build())
+        val unverifiedToken = tokenBuilder.build()
+        val token = validator.validate(unverifiedToken)
         assertEquals(subject, token.principalName())
     }
 

@@ -20,10 +20,15 @@ package org.apache.kafka.common.errors
 /**
  * A retriable exception is a transient exception that if retried may succeed.
  */
-abstract class RetriableException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : ApiException(message = message, cause = cause) {
+abstract class RetriableException : ApiException {
+
+    constructor() : super()
+
+    constructor(message: String?) : super(message)
+
+    constructor(cause: Throwable?) : super(cause)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

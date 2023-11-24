@@ -18,8 +18,10 @@
 package org.apache.kafka.common.errors
 
 
-class PreferredLeaderNotAvailableException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : InvalidMetadataException(message = message, cause = cause)
+class PreferredLeaderNotAvailableException : InvalidMetadataException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
+}
 

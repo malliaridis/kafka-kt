@@ -21,10 +21,11 @@ package org.apache.kafka.common.errors
  * Exception thrown when attempting to define a credential that does not meet the criteria for acceptability
  * (for example, attempting to create a SCRAM credential with an empty username or password or too few/many iterations).
  */
-class UnacceptableCredentialException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : ApiException(message = message, cause = cause) {
+class UnacceptableCredentialException : ApiException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

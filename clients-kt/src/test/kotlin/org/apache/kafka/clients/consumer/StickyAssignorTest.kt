@@ -133,18 +133,18 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
     fun testAllConsumersHaveOwnedPartitionInvalidatedWhenClaimedByMultipleConsumersInSameGenerationWithUnequalPartitionsPerConsumer() {
         val partitionsPerTopic = mapOf(topic to 4)
         subscriptions[consumer1] = buildSubscriptionV2Above(
-            topics = topics(topic),
+            topics = listOf(topic),
             partitions = listOf(
-                TopicPartition(topic = topic, partition =  0),
-                TopicPartition(topic = topic, partition =  1),
+                TopicPartition(topic = topic, partition = 0),
+                TopicPartition(topic = topic, partition = 1),
             ),
             generationId = generationId,
         )
         subscriptions[consumer2] = buildSubscriptionV2Above(
-            topics = topics(topic),
+            topics = listOf(topic),
             partitions = listOf(
-                TopicPartition(topic = topic, partition =  0),
-                TopicPartition(topic = topic, partition =  2),
+                TopicPartition(topic = topic, partition = 0),
+                TopicPartition(topic = topic, partition = 2),
             ),
             generationId = generationId,
         )
@@ -176,8 +176,8 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
     @ParameterizedTest(name = "testAssignmentWithMultipleGenerations1 with isAllSubscriptionsEqual: {0}")
     @ValueSource(booleans = [true, false])
     fun testAssignmentWithMultipleGenerations1(isAllSubscriptionsEqual: Boolean) {
-        val allTopics = topics(topic, topic2)
-        val consumer2SubscribedTopics = if (isAllSubscriptionsEqual) allTopics else topics(topic)
+        val allTopics = listOf(topic, topic2)
+        val consumer2SubscribedTopics = if (isAllSubscriptionsEqual) allTopics else listOf(topic)
         val partitionsPerTopic = mapOf(topic to 6, topic2 to 6)
         subscriptions[consumer1] = Subscription(allTopics)
         subscriptions[consumer2] = Subscription(consumer2SubscribedTopics)
@@ -227,9 +227,9 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
     @ParameterizedTest(name = "testAssignmentWithMultipleGenerations2 with isAllSubscriptionsEqual: {0}")
     @ValueSource(booleans = [true, false])
     fun testAssignmentWithMultipleGenerations2(isAllSubscriptionsEqual: Boolean) {
-        val allTopics = topics(topic, topic2, topic3)
-        val consumer1SubscribedTopics = if (isAllSubscriptionsEqual) allTopics else topics(topic)
-        val consumer3SubscribedTopics = if (isAllSubscriptionsEqual) allTopics else topics(topic, topic2)
+        val allTopics = listOf(topic, topic2, topic3)
+        val consumer1SubscribedTopics = if (isAllSubscriptionsEqual) allTopics else listOf(topic)
+        val consumer3SubscribedTopics = if (isAllSubscriptionsEqual) allTopics else listOf(topic, topic2)
         val partitionsPerTopic = mapOf(
             topic to 4,
             topic2 to 4,
@@ -294,9 +294,9 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
         partitionsPerTopic[topic] = 4
         partitionsPerTopic[topic2] = 4
         partitionsPerTopic[topic3] = 4
-        val allTopics = topics(topic, topic2, topic3)
-        val consumer1SubscribedTopics = if (isAllSubscriptionsEqual) allTopics else topics(topic)
-        val consumer2SubscribedTopics = if (isAllSubscriptionsEqual) allTopics else topics(topic, topic2)
+        val allTopics = listOf(topic, topic2, topic3)
+        val consumer1SubscribedTopics = if (isAllSubscriptionsEqual) allTopics else listOf(topic)
+        val consumer2SubscribedTopics = if (isAllSubscriptionsEqual) allTopics else listOf(topic, topic2)
         subscriptions[consumer1] = Subscription(consumer1SubscribedTopics)
         subscriptions[consumer2] = Subscription(consumer2SubscribedTopics)
         subscriptions[consumer3] = Subscription(allTopics)
@@ -377,7 +377,7 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
         )
         val userDataWithHigherGenerationId = assignor.subscriptionUserData(topics = setOf(topic))
         val subscription = Subscription(
-            topics = topics(topic),
+            topics = listOf(topic),
             userData = userDataWithHigherGenerationId,
             ownedPartitions = ownedPartitionsInSubscription,
         )

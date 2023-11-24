@@ -36,10 +36,11 @@ import javax.security.sasl.SaslServer
  * security-critical information in the message that should not be leaked to unauthenticated clients.
  *
  */
-class SaslAuthenticationException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : AuthenticationException(message = message, cause = cause) {
+class SaslAuthenticationException : AuthenticationException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

@@ -36,8 +36,7 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
 
     // Keep track of the partitions being migrated from one consumer to another during assignment
     // so the cooperative assignor can adjust the assignment
-    var partitionsTransferringOwnership: MutableMap<TopicPartition, String>? =
-        mutableMapOf()
+    var partitionsTransferringOwnership: MutableMap<TopicPartition, String>? = mutableMapOf()
 
     abstract fun memberData(
         subscription: ConsumerPartitionAssignor.Subscription,
@@ -395,7 +394,7 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
                             "minQuota partitions, but no more partitions to be assigned"
                 )
             } else {
-                for (unfilledMember: String in unfilledMembersWithUnderMinQuotaPartitions) {
+                for (unfilledMember in unfilledMembersWithUnderMinQuotaPartitions) {
                     val assignedPartitionsCount = assignment[unfilledMember]!!.size
                     if (assignedPartitionsCount != minQuota) {
                         log.error(

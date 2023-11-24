@@ -585,7 +585,7 @@ class ConfigDef {
     ) : Validator {
 
         override fun ensureValid(name: String, value: Any?) {
-            if (value == null) throw ConfigException(name, null, "Value must be non-null")
+            if (value == null) throw ConfigException(name = name, message = "Value must be non-null")
             val n = value as Number
             if (min != null && n.toDouble() < min.toDouble()) throw ConfigException(
                 name = name,
@@ -710,7 +710,11 @@ class ConfigDef {
         override fun ensureValid(name: String, value: Any?) {
             if (value == null) {
                 // Pass in the string null to avoid the spotbugs warning
-                throw ConfigException(name, "null", "entry must be non null")
+                throw ConfigException(
+                    name = name,
+                    value = "null",
+                    message = "entry must be non null"
+                )
             }
         }
 
@@ -776,7 +780,11 @@ class ConfigDef {
             val s = value as String?
 
             if (s != null && s.isEmpty()) {
-                throw ConfigException(name, value, "String must be non-empty")
+                throw ConfigException(
+                    name = name,
+                    value = value,
+                    message = "String must be non-empty"
+                )
             }
         }
 
@@ -793,9 +801,11 @@ class ConfigDef {
                 // name configuration - a missing name parameter is caught when checking for mandatory parameters,
                 // thus we can ok a null value here
                 return
-            } else if (s.isEmpty()) {
-                throw ConfigException(name, value, "String may not be empty")
-            }
+            } else if (s.isEmpty()) throw ConfigException(
+                name = name,
+                value = value,
+                message = "String may not be empty"
+            )
 
             // Check name string for illegal characters
             val foundIllegalCharacters = ArrayList<Int>()
@@ -804,14 +814,12 @@ class ConfigDef {
                     foundIllegalCharacters.add(s.codePointAt(i))
                 }
             }
-            if (foundIllegalCharacters.isNotEmpty()) {
-                throw ConfigException(
-                    name,
-                    value,
-                    "String may not contain control sequences but had the following ASCII chars: " +
+            if (foundIllegalCharacters.isNotEmpty()) throw ConfigException(
+                name = name,
+                value = value,
+                message = "String may not contain control sequences but had the following ASCII chars: " +
                         foundIllegalCharacters.joinToString(", "),
-                )
-            }
+            )
         }
 
         override fun toString(): String {
@@ -830,9 +838,11 @@ class ConfigDef {
         override fun ensureValid(name: String, value: Any?) {
             val values = value as List<String>
 
-            if (values.size > maxSize) {
-                throw ConfigException(name, value, "exceeds maximum list size of [$maxSize].")
-            }
+            if (values.size > maxSize) throw ConfigException(
+                name = name,
+                value = value,
+                message = "exceeds maximum list size of [$maxSize]."
+            )
         }
 
         override fun toString(): String {
@@ -1285,7 +1295,11 @@ class ConfigDef {
                     else if (value is String)
                         if (trimmed!!.isEmpty()) emptyList<Any>()
                         else listOf(*COMMA_WITH_WHITESPACE.split(trimmed, -1))
-                    else throw ConfigException(name, value, "Expected a comma separated list.")
+                    else throw ConfigException(
+                        name = name,
+                        value = value,
+                        message = "Expected a comma separated list."
+                    )
 
                     Type.CLASS -> return when (value) {
                         is Class<*> -> value
@@ -1310,9 +1324,9 @@ class ConfigDef {
                     else -> throw IllegalStateException("Unknown type.")
                 }
             } catch (e: NumberFormatException) {
-                throw ConfigException(name, value, "Not a number of type $type")
+                throw ConfigException(name = name, value = value, message = "Not a number of type $type")
             } catch (e: ClassNotFoundException) {
-                throw ConfigException(name, value, "Class $value could not be found.")
+                throw ConfigException(name = name, value = value, message = "Class $value could not be found.")
             }
         }
 

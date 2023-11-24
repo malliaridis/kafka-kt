@@ -23,7 +23,6 @@ import com.fasterxml.jackson.databind.node.JsonNodeType
 import java.io.IOException
 import java.util.*
 import org.apache.kafka.common.security.oauthbearer.OAuthBearerToken
-import org.apache.kafka.common.utils.Utils.isBlank
 import kotlin.math.roundToLong
 
 /**
@@ -104,11 +103,11 @@ class OAuthBearerUnsecuredJws(
             )
         lifetime = convertClaimTimeInSecondsToMs(expirationTimeSeconds)
         val principalName = claim(this.principalClaimName, String::class.java)
-        if (isBlank(principalName)) throw OAuthBearerIllegalTokenException(
+        if (principalName.isNullOrBlank()) throw OAuthBearerIllegalTokenException(
             OAuthBearerValidationResult
                 .newFailure("No principal name in JWT claim: " + this.principalClaimName)
         )
-        this.principalName = principalName!! // isBlank() checks for null value
+        this.principalName = principalName // isBlank() checks for null value
         startTimeMs = calculateStartTimeMs()
     }
 
@@ -328,9 +327,9 @@ class OAuthBearerUnsecuredJws(
         if (isClaimType(scopeClaimName, String::class.java)) {
             val scopeClaimValue = claim(scopeClaimName, String::class.java)
 
-            return if (isBlank(scopeClaimValue)) emptySet() else {
+            return if (scopeClaimValue.isNullOrBlank()) emptySet() else {
                 val retval: MutableSet<String> = HashSet()
-                retval.add(scopeClaimValue!!.trim { it <= ' ' }) // isBlank() checks for null
+                retval.add(scopeClaimValue.trim { it <= ' ' }) // isBlank() checks for null
                 retval.toSet()
             }
         }
@@ -339,7 +338,7 @@ class OAuthBearerUnsecuredJws(
         if (scopeClaimValue.isNullOrEmpty()) return emptySet()
 
         return (scopeClaimValue as List<String>).mapNotNull { scope ->
-            if (!isBlank(scope)) scope.trim { it <= ' ' }
+            if (!scope.isNullOrBlank()) scope.trim { it <= ' ' }
             else null
         }.toSet()
     }

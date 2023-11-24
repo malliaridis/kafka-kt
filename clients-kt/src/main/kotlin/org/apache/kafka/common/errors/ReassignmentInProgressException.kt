@@ -20,7 +20,9 @@ package org.apache.kafka.common.errors
 /**
  * Thrown if a request cannot be completed because a partition reassignment is in progress.
  */
-class ReassignmentInProgressException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : ApiException(message = message, cause = cause)
+class ReassignmentInProgressException : ApiException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
+}

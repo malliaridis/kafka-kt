@@ -22,10 +22,13 @@ import org.apache.kafka.common.KafkaException
 /**
  * An unchecked wrapper for InterruptedException
  */
-class InterruptException(
-    message: String? = null,
-    cause: InterruptedException? = InterruptedException(),
-) : KafkaException(message = message, cause = cause) {
+class InterruptException : KafkaException {
+
+    constructor(message: String?) : super(message = message)
+
+    constructor(cause: Throwable?) : super(cause = cause)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     init {
         Thread.currentThread().interrupt()

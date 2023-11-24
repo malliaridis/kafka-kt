@@ -1425,7 +1425,11 @@ object Utils {
      */
     fun propsToMap(properties: Properties): Map<String, Any?> {
         return properties.map { (key, value) ->
-            if (key !is String) throw ConfigException(key.toString(), value, "Key must be a string.")
+            if (key !is String) throw ConfigException(
+                name = key.toString(),
+                value = value,
+                message = "Key must be a string."
+            )
             key to value
         }.toMap()
     }
@@ -1486,6 +1490,10 @@ object Utils {
      * @param str a string to be checked
      * @return true if the string is null, empty or whitespace only; otherwise, return false.
      */
+    @Deprecated(
+        message = "Use String.isNullOrBlank()",
+        replaceWith = ReplaceWith("str.isNullOrBlank()"),
+    )
     fun isBlank(str: String?): Boolean {
         return str == null || str.trim { it <= ' ' }.isEmpty()
     }

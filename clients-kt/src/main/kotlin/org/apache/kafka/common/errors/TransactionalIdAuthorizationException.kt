@@ -17,4 +17,4 @@
 
 package org.apache.kafka.common.errors
 
-class TransactionalIdAuthorizationException(message: String?) : AuthorizationException(message)
+class TransactionalIdAuthorizationException(message: String? = null) : AuthorizationException(message)

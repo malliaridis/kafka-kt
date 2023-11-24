@@ -909,12 +909,12 @@ class ProducerConfig : AbstractConfig {
             if (keySerializer != null)
                 newConfigs[KEY_SERIALIZER_CLASS_CONFIG] = keySerializer.javaClass
             else if (newConfigs[KEY_SERIALIZER_CLASS_CONFIG] == null)
-                throw ConfigException(KEY_SERIALIZER_CLASS_CONFIG, null, "must be non-null.")
+                throw ConfigException(name = KEY_SERIALIZER_CLASS_CONFIG, message = "must be non-null.")
 
             if (valueSerializer != null)
                 newConfigs[VALUE_SERIALIZER_CLASS_CONFIG] = valueSerializer.javaClass
             else if (newConfigs[VALUE_SERIALIZER_CLASS_CONFIG] == null)
-                throw ConfigException(VALUE_SERIALIZER_CLASS_CONFIG, null, "must be non-null.")
+                throw ConfigException(name = VALUE_SERIALIZER_CLASS_CONFIG, message = "must be non-null.")
 
             return newConfigs
         }

@@ -21,11 +21,13 @@ package org.apache.kafka.common.errors
  * This is the Exception thrown when we are aborting any undrained batches during
  * a transaction which is aborted without any underlying cause - which likely means that the user chose to abort.
  */
-class TransactionAbortedException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : ApiException(message = message, cause = cause) {
-    constructor() : this (message = "Failing batch since transaction was aborted")
+class TransactionAbortedException : ApiException {
+
+    constructor() : super(message = "Failing batch since transaction was aborted")
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

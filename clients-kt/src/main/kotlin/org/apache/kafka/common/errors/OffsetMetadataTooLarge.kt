@@ -20,10 +20,15 @@ package org.apache.kafka.common.errors
 /**
  * The client has tried to save its offset with associated metadata larger than the maximum size allowed by the server.
  */
-class OffsetMetadataTooLarge(
-    message: String? = null,
-    cause: Throwable? = null,
-) : ApiException(message = message, cause = cause) {
+class OffsetMetadataTooLarge : ApiException {
+
+    constructor() : super()
+
+    constructor(message: String?) : super(message)
+
+    constructor(cause: Throwable?) : super(cause)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

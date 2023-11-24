@@ -22,10 +22,11 @@ package org.apache.kafka.common.errors
  * and no reset policy has been configured.
  * @see OffsetOutOfRangeException
  */
-open class InvalidOffsetException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : ApiException(message = message, cause = cause) {
+open class InvalidOffsetException : ApiException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

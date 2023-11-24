@@ -20,10 +20,11 @@ package org.apache.kafka.common.errors
 /**
  * Exception used to indicate a kafka principal deserialization failure during request forwarding.
  */
-class PrincipalDeserializationException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : ApiException(message = message, cause = cause) {
+class PrincipalDeserializationException : ApiException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

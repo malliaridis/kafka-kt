@@ -17,10 +17,11 @@
 
 package org.apache.kafka.common.errors
 
-class InvalidConfigurationException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : ApiException(message = message, cause = cause) {
+class InvalidConfigurationException : ApiException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

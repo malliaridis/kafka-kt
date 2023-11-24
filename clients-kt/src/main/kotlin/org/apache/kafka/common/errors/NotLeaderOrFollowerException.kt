@@ -26,10 +26,15 @@ package org.apache.kafka.common.errors
  * of the topic partition.
  */
 @Suppress("deprecation")
-class NotLeaderOrFollowerException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : NotLeaderForPartitionException(message = message, cause = cause) {
+class NotLeaderOrFollowerException : NotLeaderForPartitionException {
+
+    constructor() : super()
+
+    constructor(message: String?) : super(message)
+
+    constructor(cause: Throwable?) : super(cause)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

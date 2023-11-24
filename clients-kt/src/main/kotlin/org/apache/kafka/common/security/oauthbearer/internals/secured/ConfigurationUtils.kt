@@ -61,23 +61,14 @@ class ConfigurationUtils(
             throw ConfigException(
                 name = name,
                 value = url.toString(),
-                message = String.format(
-                    "The OAuth configuration option %s contains a URL (%s) that is malformed: %s",
-                    name,
-                    url,
-                    e.message
-                )
+                message = "The OAuth configuration option $name contains a URL ($url) that is malformed: ${e.message}"
             )
         }
 
         if (!file.exists()) throw ConfigException(
             name = name,
             value = file,
-            message = String.format(
-                "The OAuth configuration option %s contains a file (%s) that doesn't exist",
-                name,
-                file
-            )
+            message = "The OAuth configuration option $name contains a file ($file) that doesn't exist"
         )
 
         if (!file.canRead()) throw ConfigException(
@@ -94,11 +85,7 @@ class ConfigurationUtils(
         if (file.isDirectory) throw ConfigException(
             name = name,
             value = file,
-            message = String.format(
-                "The OAuth configuration option %s references a directory (%s), not a file",
-                name,
-                file
-            )
+            message = "The OAuth configuration option $name references a directory ($file), not a file"
         )
         return file.toPath()
     }
@@ -117,7 +104,7 @@ class ConfigurationUtils(
         return get<Int>(name)
             ?: if (isRequired) throw ConfigException(
                 name = name,
-                message = String.format("The OAuth configuration option %s must be non-null", name)
+                message = "The OAuth configuration option $name must be non-null"
             ) else null
     }
 
@@ -136,17 +123,13 @@ class ConfigurationUtils(
     fun validateRequiredInt(name: String, min: Int? = null): Int {
         val value = get<Int>(name) ?: throw ConfigException(
             name = name,
-            message = String.format("The OAuth configuration option %s must be non-null", name)
+            message = "The OAuth configuration option $name must be non-null"
         )
 
         if (min != null && value < min) throw ConfigException(
             name = name,
             value = value,
-            message = String.format(
-                "The OAuth configuration option %s value must be at least %s",
-                name,
-                min,
-            )
+            message = "The OAuth configuration option $name value must be at least $min"
         )
         return value
     }
@@ -172,11 +155,7 @@ class ConfigurationUtils(
         if (min != null && value < min) throw ConfigException(
             name = name,
             value = value,
-            message = String.format(
-                "The OAuth configuration option %s value must be at least %s",
-                name,
-                min,
-            )
+            message = "The OAuth configuration option $name value must be at least $min"
         )
         return value
     }
@@ -195,17 +174,13 @@ class ConfigurationUtils(
         val value = get<Long>(name)
             ?: return if (isRequired) throw ConfigException(
                 name = name,
-                message = String.format("The OAuth configuration option %s must be non-null", name)
+                message = "The OAuth configuration option $name must be non-null"
             ) else null
 
         if (min != null && value < min) throw ConfigException(
             name = name,
             value = value,
-            message = String.format(
-                "The OAuth configuration option %s value must be at least %s",
-                name,
-                min,
-            )
+            message = "The OAuth configuration option $name value must be at least $min"
         )
         return value
     }
@@ -225,17 +200,13 @@ class ConfigurationUtils(
     fun validateRequiredLong(name: String, min: Long? = null): Long {
         val value = get<Long>(name) ?: throw ConfigException(
             name = name,
-            message = String.format("The OAuth configuration option %s must be non-null", name)
+            message = "The OAuth configuration option $name must be non-null"
         )
 
         if (min != null && value < min) throw ConfigException(
             name = name,
             value = value,
-            message = String.format(
-                "The OAuth configuration option %s value must be at least %s",
-                name,
-                min,
-            )
+            message = "The OAuth configuration option $name value must be at least $min"
         )
         return value
     }
@@ -261,11 +232,7 @@ class ConfigurationUtils(
         if (min != null && value < min) throw ConfigException(
             name = name,
             value = value,
-            message = String.format(
-                "The OAuth configuration option %s value must be at least %s",
-                name,
-                min,
-            )
+            message = "The OAuth configuration option $name value must be at least $min"
         )
         return value
     }
@@ -287,12 +254,7 @@ class ConfigurationUtils(
             throw ConfigException(
                 name = name,
                 value = value,
-                message = String.format(
-                    "The OAuth configuration option %s contains a URL (%s) that is malformed: %s",
-                    name,
-                    value,
-                    e.message
-                )
+                message = "The OAuth configuration option $name contains a URL ($value) that is malformed: ${e.message}"
             )
         }
 
@@ -300,11 +262,7 @@ class ConfigurationUtils(
         if (protocol == null || protocol.trim { it <= ' ' }.isEmpty()) throw ConfigException(
             name = name,
             value = value,
-            message = String.format(
-                "The OAuth configuration option %s contains a URL (%s) that is missing the protocol",
-                name,
-                value
-            )
+            message = "The OAuth configuration option $name contains a URL ($value) that is missing the protocol"
         )
 
         protocol = protocol.lowercase()

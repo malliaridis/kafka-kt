@@ -22,10 +22,11 @@ package org.apache.kafka.common.errors
  * This most likely occurs because of a request being malformed by the client library or
  * the message was sent to an incompatible broker.
  */
-class InvalidRequestException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : ApiException(message = message, cause = cause) {
+class InvalidRequestException : ApiException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

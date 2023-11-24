@@ -21,10 +21,11 @@ package org.apache.kafka.common.errors
  * There is no currently available leader for the given partition (either because a leadership election is in progress
  * or because all replicas are down).
  */
-class LeaderNotAvailableException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : InvalidMetadataException(message = message, cause = cause) {
+class LeaderNotAvailableException : InvalidMetadataException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

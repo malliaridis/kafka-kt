@@ -91,8 +91,7 @@ class CooperativeStickyAssignor : AbstractStickyAssignor() {
         val assignments = super.assign(partitionsPerTopic, subscriptions)
         val partitionsTransferringOwnership = super.partitionsTransferringOwnership
             ?: computePartitionsTransferringOwnership(subscriptions, assignments)
-        adjustAssignment(assignments, partitionsTransferringOwnership)
-        return assignments
+        return adjustAssignment(assignments, partitionsTransferringOwnership)
     }
 
     // Following the cooperative rebalancing protocol requires removing partitions that must first
@@ -100,11 +99,14 @@ class CooperativeStickyAssignor : AbstractStickyAssignor() {
     private fun adjustAssignment(
         assignments: Map<String, List<TopicPartition>>,
         partitionsTransferringOwnership: Map<TopicPartition, String>
-    ) {
+    ) : Map<String, List<TopicPartition>> {
         val mutableAssignments = assignments.toMutableMap()
-        for ((key, value) in partitionsTransferringOwnership) {
-            mutableAssignments[value] = assignments[value]!! - key
+        partitionsTransferringOwnership.forEach { (topicPartition, consumer) ->
+            mutableAssignments.computeIfPresent(consumer) { _, topicPartitions ->
+                topicPartitions - topicPartition
+            }
         }
+        return mutableAssignments.toMap()
     }
 
     private fun computePartitionsTransferringOwnership(

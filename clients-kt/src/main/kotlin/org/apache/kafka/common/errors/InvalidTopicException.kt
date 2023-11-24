@@ -24,16 +24,33 @@ package org.apache.kafka.common.errors
  *
  * @see UnknownTopicOrPartitionException
  */
-class InvalidTopicException(
-    message: String? = null,
-    cause: Throwable? = null,
-    val invalidTopics: Set<String> = emptySet()
-) : ApiException(message = message, cause = cause) {
+class InvalidTopicException : ApiException {
 
-    constructor(invalidTopics: Set<String>) : this(
-        message = "Invalid topics: $invalidTopics",
-        invalidTopics = invalidTopics,
-    )
+    val invalidTopics: Set<String>
+
+    constructor() : super() {
+        invalidTopics = emptySet()
+    }
+
+    constructor(message: String?) : super(message) {
+        invalidTopics = emptySet()
+    }
+
+    constructor(cause: Throwable?) : super(cause) {
+        invalidTopics = emptySet()
+    }
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause) {
+        invalidTopics = emptySet()
+    }
+
+    constructor(invalidTopics: Set<String>) : super(message = "Invalid topics: $invalidTopics") {
+        this.invalidTopics = invalidTopics
+    }
+
+    constructor(message: String?, invalidTopics: Set<String>) : super(message) {
+        this.invalidTopics = invalidTopics
+    }
 
     @Deprecated(
         message = "Use property instead.",

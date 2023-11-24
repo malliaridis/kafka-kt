@@ -35,7 +35,6 @@ import org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule
 import org.apache.kafka.common.security.oauthbearer.OAuthBearerTokenCallback
 import org.apache.kafka.common.security.oauthbearer.internals.OAuthBearerClientInitialResponse
 import org.apache.kafka.common.utils.Time
-import org.apache.kafka.common.utils.Utils.isBlank
 import org.slf4j.LoggerFactory
 
 /**
@@ -168,12 +167,12 @@ class OAuthBearerUnsecuredLoginCallbackHandler : AuthenticateCallbackHandler {
 
         val principalClaimNameValue = optionValue(PRINCIPAL_CLAIM_NAME_OPTION)
         val principalClaimName =
-            if (isBlank(principalClaimNameValue)) DEFAULT_PRINCIPAL_CLAIM_NAME
+            if (principalClaimNameValue.isNullOrBlank()) DEFAULT_PRINCIPAL_CLAIM_NAME
             else principalClaimNameValue!!.trim { it <= ' ' } // isBlank does null-check
 
         val scopeClaimNameValue = optionValue(SCOPE_CLAIM_NAME_OPTION)
         val scopeClaimName =
-            if (isBlank(scopeClaimNameValue)) DEFAULT_SCOPE_CLAIM_NAME
+            if (scopeClaimNameValue.isNullOrBlank()) DEFAULT_SCOPE_CLAIM_NAME
             else scopeClaimNameValue!!.trim { it <= ' ' } // isBlank does null-check
 
         val headerJson = "{${claimOrHeaderJsonText("alg", "none")}}"

@@ -55,10 +55,10 @@ object OAuthBearerScopeUtils {
             .mapNotNull { individualScopeItem ->
 
             if (individualScopeItem.isNotEmpty()) {
-                if (!isValidScopeItem(individualScopeItem)) throw OAuthBearerConfigException(
-                    String.format("Invalid scope value: %s", individualScopeItem)
-                )
-                individualScopeItem
+                if (!isValidScopeItem(individualScopeItem))
+                    throw OAuthBearerConfigException("Invalid scope value: $individualScopeItem")
+
+                return@mapNotNull individualScopeItem
             }
             null
         }

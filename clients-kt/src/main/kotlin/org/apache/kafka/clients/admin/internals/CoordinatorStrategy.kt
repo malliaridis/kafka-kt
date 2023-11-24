@@ -149,8 +149,8 @@ class CoordinatorStrategy(
 
             Errors.GROUP_AUTHORIZATION_FAILED -> failedKeys[key] =
                 GroupAuthorizationException(
-                    ("FindCoordinator request for groupId " +
-                            "`" + key + "` failed due to authorization failure"), key.idValue
+                    message = "FindCoordinator request for groupId `$key` failed due to authorization failure",
+                    groupId = key.idValue
                 )
 
             Errors.TRANSACTIONAL_ID_AUTHORIZATION_FAILED -> failedKeys.put(

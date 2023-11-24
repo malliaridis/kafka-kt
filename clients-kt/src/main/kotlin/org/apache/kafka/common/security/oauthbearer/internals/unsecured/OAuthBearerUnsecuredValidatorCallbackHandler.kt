@@ -32,7 +32,6 @@ import org.apache.kafka.common.security.oauthbearer.internals.unsecured.OAuthBea
 import org.apache.kafka.common.security.oauthbearer.internals.unsecured.OAuthBearerValidationUtils.validateScope
 import org.apache.kafka.common.security.oauthbearer.internals.unsecured.OAuthBearerValidationUtils.validateTimeConsistency
 import org.apache.kafka.common.utils.Time
-import org.apache.kafka.common.utils.Utils.isBlank
 import org.slf4j.LoggerFactory
 
 /**
@@ -199,19 +198,19 @@ open class OAuthBearerUnsecuredValidatorCallbackHandler : AuthenticateCallbackHa
 
     private fun principalClaimName(): String {
         val principalClaimNameValue = option(PRINCIPAL_CLAIM_NAME_OPTION)
-        return if (isBlank(principalClaimNameValue)) "sub"
+        return if (principalClaimNameValue.isNullOrBlank()) "sub"
         else principalClaimNameValue!!.trim { it <= ' ' }
     }
 
     private fun scopeClaimName(): String {
         val scopeClaimNameValue = option(SCOPE_CLAIM_NAME_OPTION)
-        return if (isBlank(scopeClaimNameValue)) "scope"
+        return if (scopeClaimNameValue.isNullOrBlank()) "scope"
         else scopeClaimNameValue!!.trim { it <= ' ' }
     }
 
     private fun requiredScope(): List<String> {
         val requiredSpaceDelimitedScope = option(REQUIRED_SCOPE_OPTION)
-        return if (isBlank(requiredSpaceDelimitedScope)) emptyList()
+        return if (requiredSpaceDelimitedScope.isNullOrBlank()) emptyList()
         else parseScope(requiredSpaceDelimitedScope!!.trim { it <= ' ' })
     }
 
@@ -219,7 +218,7 @@ open class OAuthBearerUnsecuredValidatorCallbackHandler : AuthenticateCallbackHa
         val allowableClockSkewMsValue = option(ALLOWABLE_CLOCK_SKEW_MILLIS_OPTION)
 
         val allowableClockSkewMs = try {
-            if (isBlank(allowableClockSkewMsValue)) 0
+            if (allowableClockSkewMsValue.isNullOrBlank()) 0
             else allowableClockSkewMsValue!!.trim { it <= ' ' }.toInt()
         } catch (e: NumberFormatException) {
             throw OAuthBearerConfigException(e.message, e)

@@ -34,6 +34,7 @@ import kotlin.test.assertContains
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
 
 class HttpAccessTokenRetrieverTest : OAuthBearerTest() {
 
@@ -103,7 +104,8 @@ class HttpAccessTokenRetrieverTest : OAuthBearerTest() {
                 readTimeoutMs = null,
             )
         }
-        assertErrorMessageContains(ioe.message!!, """{"some_arg" - "some problem with arg"}""")
+        val message = assertNotNull(ioe.message)
+        assertContains(message, """{"some_arg" - "some problem with arg"}""")
     }
 
     @Test

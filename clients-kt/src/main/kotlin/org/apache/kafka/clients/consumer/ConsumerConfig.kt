@@ -47,6 +47,22 @@ import java.util.concurrent.atomic.AtomicInteger
  */
 class ConsumerConfig : AbstractConfig {
 
+    constructor(props: Properties) : super(
+        definition = CONFIG,
+        originals = propsToMap(props),
+    )
+
+    constructor(props: Map<String, Any?>) : super(
+        definition = CONFIG,
+        originals = props,
+    )
+
+    internal constructor(props: Map<String, Any>, doLog: Boolean) : super(
+        definition = CONFIG,
+        originals = props,
+        doLog = doLog,
+    )
+
     override fun postProcessParsedConfig(parsedValues: Map<String, Any?>): Map<String, Any?> {
         postValidateSaslMechanismConfig(this)
         val refinedConfigs = postProcessReconnectBackoffConfigs(this, parsedValues)
@@ -86,22 +102,6 @@ class ConsumerConfig : AbstractConfig {
         }
         return enableAutoCommit
     }
-
-    constructor(props: Properties) : super(
-        definition = CONFIG,
-        originals = propsToMap(props),
-    )
-
-    constructor(props: Map<String, Any?>) : super(
-        definition = CONFIG,
-        originals = props,
-    )
-
-    internal constructor(props: Map<String, Any>, doLog: Boolean) : super(
-        definition = CONFIG,
-        originals = props,
-        doLog = doLog,
-    )
 
     companion object {
 
@@ -532,8 +532,8 @@ class ConsumerConfig : AbstractConfig {
                 name = PARTITION_ASSIGNMENT_STRATEGY_CONFIG,
                 type = ConfigDef.Type.LIST,
                 defaultValue = listOf(
-                    RangeAssignor::class.java,
-                    CooperativeStickyAssignor::class.java,
+                    RangeAssignor::class.java.name,
+                    CooperativeStickyAssignor::class.java.name,
                 ),
                 validator = NonNullValidator(),
                 importance = Importance.MEDIUM,
@@ -810,12 +810,14 @@ class ConsumerConfig : AbstractConfig {
             if (keyDeserializer != null)
                 newConfigs[KEY_DESERIALIZER_CLASS_CONFIG] = keyDeserializer.javaClass
             else if (newConfigs[KEY_DESERIALIZER_CLASS_CONFIG] == null) throw ConfigException(
-                KEY_DESERIALIZER_CLASS_CONFIG, null, "must be non-null."
+                name = KEY_DESERIALIZER_CLASS_CONFIG,
+                message = "must be non-null.",
             )
             if (valueDeserializer != null)
                 newConfigs[VALUE_DESERIALIZER_CLASS_CONFIG] = valueDeserializer.javaClass
             else if (newConfigs[VALUE_DESERIALIZER_CLASS_CONFIG] == null) throw ConfigException(
-                VALUE_DESERIALIZER_CLASS_CONFIG, null, "must be non-null."
+                name = VALUE_DESERIALIZER_CLASS_CONFIG,
+                message = "must be non-null.",
             )
             return newConfigs
         }

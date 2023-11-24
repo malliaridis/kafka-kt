@@ -23,10 +23,13 @@ package org.apache.kafka.common.errors
  * and other requests intended only for the leader or follower of the topic partition return
  * [NotLeaderOrFollowerException] if the broker is a not a replica of the partition.
  */
-class ReplicaNotAvailableException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : InvalidMetadataException(message = message, cause = cause) {
+class ReplicaNotAvailableException : InvalidMetadataException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(cause: Throwable?) : super(cause)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

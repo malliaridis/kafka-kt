@@ -58,7 +58,6 @@ import org.apache.kafka.common.utils.Utils.getHost
 import org.apache.kafka.common.utils.Utils.getNullableSizePrefixedArray
 import org.apache.kafka.common.utils.Utils.getPort
 import org.apache.kafka.common.utils.Utils.intersection
-import org.apache.kafka.common.utils.Utils.isBlank
 import org.apache.kafka.common.utils.Utils.isEqualConstantTime
 import org.apache.kafka.common.utils.Utils.join
 import org.apache.kafka.common.utils.Utils.loadProps
@@ -888,11 +887,11 @@ class UtilsTest {
 
     @Test
     fun testIsBlank() {
-        assertTrue(isBlank(null))
-        assertTrue(isBlank(""))
-        assertTrue(isBlank(" "))
-        assertFalse(isBlank("bob"))
-        assertFalse(isBlank(" bob "))
+        assertTrue(null.isNullOrBlank())
+        assertTrue("".isNullOrBlank())
+        assertTrue(" ".isNullOrBlank())
+        assertFalse("bob".isNullOrBlank())
+        assertFalse(" bob ".isNullOrBlank())
     }
 
     @Test

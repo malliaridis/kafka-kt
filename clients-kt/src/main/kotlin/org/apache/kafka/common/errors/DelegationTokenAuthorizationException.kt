@@ -17,10 +17,11 @@
 
 package org.apache.kafka.common.errors
 
-class DelegationTokenAuthorizationException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : AuthorizationException(message = message, cause = cause) {
+class DelegationTokenAuthorizationException : AuthorizationException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

@@ -20,10 +20,15 @@ package org.apache.kafka.common.errors
 /**
  * Server disconnected before a request could be completed.
  */
-class DisconnectException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : RetriableException(message = message, cause = cause) {
+class DisconnectException : RetriableException {
+
+    constructor() : super()
+
+    constructor(message: String?) : super(message = message)
+
+    constructor(cause: Throwable?) : super(cause = cause)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         val INSTANCE = DisconnectException()

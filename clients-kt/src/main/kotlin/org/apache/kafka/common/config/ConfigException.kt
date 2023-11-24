@@ -23,15 +23,14 @@ import org.apache.kafka.common.KafkaException
  * Thrown if the user supplies an invalid configuration
  */
 class ConfigException : KafkaException {
+
     constructor(message: String?) : super(message)
 
     constructor(
-        name: Any?,
+        name: String?,
         value: Any? = null,
         message: String? = null,
-    ) : super(
-        message = "Invalid value $value for configuration $name${if (message == null) "" else ": $message"}"
-    )
+    ) : super(message = "Invalid value $value for configuration $name${if (message == null) "" else ": $message"}")
 
     companion object {
         private const val serialVersionUID = 1L

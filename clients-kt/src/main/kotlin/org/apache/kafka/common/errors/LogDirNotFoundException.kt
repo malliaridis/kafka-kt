@@ -20,10 +20,13 @@ package org.apache.kafka.common.errors
 /**
  * Thrown when a request is made for a log directory that is not present on the broker
  */
-class LogDirNotFoundException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : ApiException(message = message, cause = cause) {
+class LogDirNotFoundException : ApiException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(cause: Throwable?) : super(cause)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

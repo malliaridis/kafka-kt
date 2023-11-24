@@ -35,7 +35,7 @@ import org.slf4j.Logger
 class ListConsumerGroupOffsetsHandler(
     private val groupSpecs: Map<String, ListConsumerGroupOffsetsSpec>,
     private val requireStable: Boolean,
-    logContext: LogContext
+    logContext: LogContext,
 ) : AdminApiHandler<CoordinatorKey, Map<TopicPartition, OffsetAndMetadata?>> {
 
     private val log: Logger = logContext.logger(ListConsumerGroupOffsetsHandler::class.java)
@@ -74,7 +74,7 @@ class ListConsumerGroupOffsetsHandler(
 
     override fun buildRequest(
         brokerId: Int,
-        keys: Set<CoordinatorKey>
+        keys: Set<CoordinatorKey>,
     ): Collection<RequestAndKeys<CoordinatorKey>> {
         validateKeys(keys)
 
@@ -90,7 +90,7 @@ class ListConsumerGroupOffsetsHandler(
     override fun handleResponse(
         broker: Node,
         keys: Set<CoordinatorKey>,
-        response: AbstractResponse
+        response: AbstractResponse,
     ): ApiResult<CoordinatorKey, Map<TopicPartition, OffsetAndMetadata?>> {
         validateKeys(keys)
         response as OffsetFetchResponse
@@ -103,14 +103,13 @@ class ListConsumerGroupOffsetsHandler(
 
             val group = coordinatorKey.idValue
 
-            response.groupLevelError(group)?.let { error ->
-                handleGroupError(
-                    groupId = CoordinatorKey.byGroupId(group),
-                    error = error,
-                    failed = failed,
-                    groupsToUnmap = unmapped
-                )
-            } ?: run {
+            if (response.groupHasError(group)) handleGroupError(
+                groupId = CoordinatorKey.byGroupId(group),
+                error = response.groupLevelError(group)!!,
+                failed = failed,
+                groupsToUnmap = unmapped
+            )
+            else {
                 val groupOffsetsListing: MutableMap<TopicPartition, OffsetAndMetadata?> = HashMap()
                 val responseData = response.partitionDataMap(group)
 
@@ -138,7 +137,7 @@ class ListConsumerGroupOffsetsHandler(
         groupId: CoordinatorKey,
         error: Errors,
         failed: MutableMap<CoordinatorKey, Throwable>,
-        groupsToUnmap: MutableList<CoordinatorKey>
+        groupsToUnmap: MutableList<CoordinatorKey>,
     ) {
         when (error) {
             Errors.GROUP_AUTHORIZATION_FAILED -> {
@@ -159,7 +158,8 @@ class ListConsumerGroupOffsetsHandler(
                 )
 
             Errors.COORDINATOR_NOT_AVAILABLE,
-            Errors.NOT_COORDINATOR -> {
+            Errors.NOT_COORDINATOR,
+            -> {
                 // If the coordinator is unavailable or there was a coordinator change, then we unmap
                 // the key so that we retry the `FindCoordinator` request
                 log.debug(

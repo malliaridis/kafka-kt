@@ -24,10 +24,11 @@ package org.apache.kafka.common.errors
  * This is currently used only for missing listeners on leader brokers, but may be used for followers
  * in future.
  */
-class ListenerNotFoundException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : InvalidMetadataException(message = message, cause = cause) {
+class ListenerNotFoundException : InvalidMetadataException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L
