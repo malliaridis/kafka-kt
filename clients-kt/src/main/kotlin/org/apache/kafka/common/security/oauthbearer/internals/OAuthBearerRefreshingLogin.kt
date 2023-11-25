@@ -88,7 +88,7 @@ class OAuthBearerRefreshingLogin : Login {
 
                 if (privateCredentialTokens.isEmpty()) return null
 
-                val token = privateCredentialTokens.iterator().next()
+                val token = privateCredentialTokens.first()
                 if (log.isDebugEnabled) log.debug(
                     "Found expiring credential with principal '{}'.",
                     token.principalName()

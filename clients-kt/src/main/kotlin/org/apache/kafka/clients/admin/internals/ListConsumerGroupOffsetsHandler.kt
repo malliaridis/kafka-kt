@@ -56,20 +56,19 @@ class ListConsumerGroupOffsetsHandler(
 
     fun buildBatchedRequest(groupIds: Set<CoordinatorKey>): OffsetFetchRequest.Builder {
         // Create a map that only contains the consumer groups owned by the coordinator.
-        val coordinatorGroupIdToTopicPartitions: MutableMap<String, List<TopicPartition>> =
+        val coordinatorGroupIdToTopicPartitions: MutableMap<String, List<TopicPartition>?> =
             HashMap(groupIds.size)
 
-        groupIds.forEach { g: CoordinatorKey ->
-            val spec = groupSpecs[g.idValue]
-
-            val partitions: List<TopicPartition>? =
-                if (spec!!.topicPartitions != null) ArrayList(spec.topicPartitions)
-                else null
-
-            coordinatorGroupIdToTopicPartitions[g.idValue] = partitions!!
+        groupIds.forEach { coordinatorKey ->
+            val spec = groupSpecs[coordinatorKey.idValue]!!
+            coordinatorGroupIdToTopicPartitions[coordinatorKey.idValue] = spec.topicPartitions?.toList()
         }
 
-        return OffsetFetchRequest.Builder(coordinatorGroupIdToTopicPartitions, requireStable, false)
+        return OffsetFetchRequest.Builder(
+            groupIdToTopicPartitionMap = coordinatorGroupIdToTopicPartitions,
+            requireStable = requireStable,
+            throwOnFetchStableOffsetsUnsupported = false,
+        )
     }
 
     override fun buildRequest(

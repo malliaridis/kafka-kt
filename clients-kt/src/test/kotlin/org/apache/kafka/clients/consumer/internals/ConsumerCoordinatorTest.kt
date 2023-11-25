@@ -183,7 +183,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             topic2 to 1,
         ),
     )
-    private val node = metadataResponse.brokers().iterator().next()
+    private val node = metadataResponse.brokers().first()
 
     private lateinit var subscriptions: SubscriptionState
     private lateinit var metadata: ConsumerMetadata

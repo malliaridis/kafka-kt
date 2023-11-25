@@ -767,13 +767,12 @@ enum class Errors(
      *
      * @param message The message string to set.
      * @return The exception.
-     * @throws NullPointerException if called for [Errors.NONE].
      */
-    fun exception(message: String?): ApiException {
+    fun exception(message: String?): ApiException? {
         return if (message == null) {
             // If no error message was specified, return an exception with the default error message.
-            exception!!
-        } else builder(message)!!
+            exception
+        } else builder(message)
         // Return an exception with the given error message.
     }
 
@@ -820,19 +819,22 @@ enum class Errors(
         get() = _exception?.message ?: toString()
 
     companion object {
+
         private val log = LoggerFactory.getLogger(Errors::class.java)
+
         private val classToError: MutableMap<Class<*>, Errors> = HashMap()
-        private val codeToError: MutableMap<Short, Errors?> = HashMap()
+
+        private val codeToError: Map<Short, Errors?>
 
         init {
-            for (error: Errors in values()) {
-                if (codeToError.put(error.code, error) != null)
-                    throw ExceptionInInitializerError(
-                        "Code ${error.code} for error $error has already been used"
-                    )
+            val tmp = mutableMapOf<Short, Errors?>()
+            for (error in Errors.values()) {
+                if (tmp.put(error.code, error) != null)
+                    throw ExceptionInInitializerError("Code ${error.code} for error $error has already been used")
 
                 error._exception?.let { classToError[it.javaClass] = error }
             }
+            codeToError = tmp.toMap()
         }
 
         /**

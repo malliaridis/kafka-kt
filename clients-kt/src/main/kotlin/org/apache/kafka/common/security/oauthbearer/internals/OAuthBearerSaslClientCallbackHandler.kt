@@ -100,7 +100,7 @@ class OAuthBearerSaslClientCallbackHandler : AuthenticateCallbackHandler {
             "No OAuth Bearer tokens in Subject's private credentials"
         )
 
-        if (privateCredentials.size == 1) callback.token = privateCredentials.iterator().next()
+        if (privateCredentials.size == 1) callback.token = privateCredentials.first()
         else {
             /*
              * There a very small window of time upon token refresh (on the order of milliseconds)
@@ -139,7 +139,7 @@ class OAuthBearerSaslClientCallbackHandler : AuthenticateCallbackHandler {
                 subject != null
                 && subject.getPublicCredentials(SaslExtensions::class.java).isNotEmpty()
             ) extensionsCallback.extensions =
-                subject.getPublicCredentials(SaslExtensions::class.java).iterator().next()
+                subject.getPublicCredentials(SaslExtensions::class.java).first()
         }
     }
 }

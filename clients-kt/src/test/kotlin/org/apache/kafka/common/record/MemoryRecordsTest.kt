@@ -1175,7 +1175,7 @@ class MemoryRecordsTest {
             compressionType = compression,
             records = arrayOf(SimpleRecord(10L, "key1".toByteArray(), "value1".toByteArray())),
         )
-        val key = utf8(memoryRecords.batches().iterator().next().iterator().next().key()!!)
+        val key = utf8(memoryRecords.batches().first().first().key()!!)
         assertEquals("key1", key)
     }
 

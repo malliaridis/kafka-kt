@@ -1108,11 +1108,11 @@ class MessageTest {
         for (version in ApiKeys.PRODUCE.allVersions()) {
             val responseData = response()
             if (version < 8) {
-                responseData.responses.iterator().next().partitionResponses[0].setRecordErrors(emptyList())
-                responseData.responses.iterator().next().partitionResponses[0].setErrorMessage(null)
+                responseData.responses.first().partitionResponses[0].setRecordErrors(emptyList())
+                responseData.responses.first().partitionResponses[0].setErrorMessage(null)
             }
-            if (version < 5) responseData.responses.iterator().next().partitionResponses[0].setLogStartOffset(-1)
-            if (version < 2) responseData.responses.iterator().next().partitionResponses[0].setLogAppendTimeMs(-1)
+            if (version < 5) responseData.responses.first().partitionResponses[0].setLogStartOffset(-1)
+            if (version < 2) responseData.responses.first().partitionResponses[0].setLogAppendTimeMs(-1)
 
             if (version < 1) responseData.setThrottleTimeMs(0)
             when (version) {

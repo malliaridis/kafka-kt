@@ -169,7 +169,7 @@ class DescribeTransactionsHandler(
             else -> failed[transactionalIdKey] = error.exception(
                 "DescribeTransactions request for transactionalId `${transactionalIdKey.idValue}`" +
                         " failed due to unexpected error"
-            )
+            )!!
         }
     }
 

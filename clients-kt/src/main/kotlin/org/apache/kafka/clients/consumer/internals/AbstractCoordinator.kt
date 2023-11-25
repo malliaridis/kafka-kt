@@ -152,6 +152,12 @@ abstract class AbstractCoordinator(
     // introduced)
     val obj = Object()
 
+    init {
+        requireNotNull(rebalanceConfig.groupId) {
+            "Expected a non-null group id for coordinator construction"
+        }
+    }
+
     /**
      * Unique identifier for the class of supported protocols (e.g. "consumer" or "connect").
      *
@@ -280,7 +286,7 @@ abstract class AbstractCoordinator(
                     // we found the coordinator, but the connection has failed, so mark it dead and
                     // backoff before retrying discovery
                     markCoordinatorUnknown("coordinator unavailable")
-                    timer.sleep(rebalanceConfig.retryBackoffMs)
+                    timer.sleep(rebalanceConfig.retryBackoffMs!!)
                 }
                 clearFindCoordinatorFuture()
                 if (fatalException != null) throw fatalException
@@ -491,7 +497,7 @@ abstract class AbstractCoordinator(
                 ) continue
                 else if (!future.isRetriable) throw exception
 
-                timer.sleep(rebalanceConfig.retryBackoffMs)
+                timer.sleep(rebalanceConfig.retryBackoffMs!!)
             }
         }
         return true
@@ -544,13 +550,13 @@ abstract class AbstractCoordinator(
         log.info("(Re-)joining group")
         val requestBuilder = JoinGroupRequest.Builder(
             JoinGroupRequestData()
-                .setGroupId(rebalanceConfig.groupId)
+                .setGroupId(rebalanceConfig.groupId!!)
                 .setSessionTimeoutMs(rebalanceConfig.sessionTimeoutMs)
                 .setMemberId(generation.memberId)
                 .setGroupInstanceId(rebalanceConfig.groupInstanceId)
                 .setProtocolType(protocolType())
                 .setProtocols(metadata())
-                .setRebalanceTimeoutMs(rebalanceConfig.rebalanceTimeoutMs)
+                .setRebalanceTimeoutMs(rebalanceConfig.rebalanceTimeoutMs!!)
                 .setReason(JoinGroupRequest.maybeTruncateReason(rejoinReason))
         )
         log.debug("Sending JoinGroup ({}) to coordinator {}", requestBuilder, coordinator)
@@ -715,7 +721,7 @@ abstract class AbstractCoordinator(
         // send follower's sync group with an empty assignment
         val requestBuilder = SyncGroupRequest.Builder(
             SyncGroupRequestData()
-                .setGroupId(rebalanceConfig.groupId)
+                .setGroupId(rebalanceConfig.groupId!!)
                 .setMemberId(generation.memberId)
                 .setProtocolType(protocolType())
                 .setProtocolName(generation.protocolName)
@@ -745,7 +751,7 @@ abstract class AbstractCoordinator(
 
             val requestBuilder = SyncGroupRequest.Builder(
                 SyncGroupRequestData()
-                    .setGroupId(rebalanceConfig.groupId)
+                    .setGroupId(rebalanceConfig.groupId!!)
                     .setMemberId(generation.memberId)
                     .setProtocolType(protocolType())
                     .setProtocolName(generation.protocolName)
@@ -912,7 +918,7 @@ abstract class AbstractCoordinator(
         log.debug("Sending FindCoordinator request to broker {}", node)
         val data = FindCoordinatorRequestData()
             .setKeyType(CoordinatorType.GROUP.id)
-            .setKey(rebalanceConfig.groupId)
+            .setKey(rebalanceConfig.groupId!!)
 
         val requestBuilder = FindCoordinatorRequest.Builder(data)
         return client.send(node, requestBuilder).compose(FindCoordinatorResponseHandler())
@@ -1040,7 +1046,7 @@ abstract class AbstractCoordinator(
                 lastTimeOfConnectionMs = time.milliseconds()
             } ?: run {
                 val durationOfOngoingDisconnect = time.milliseconds() - lastTimeOfConnectionMs
-                if (durationOfOngoingDisconnect > rebalanceConfig.rebalanceTimeoutMs) log.warn(
+                if (durationOfOngoingDisconnect > rebalanceConfig.rebalanceTimeoutMs!!) log.warn(
                     "Consumer has been disconnected from the group coordinator for {}ms",
                     durationOfOngoingDisconnect
                 )
@@ -1186,7 +1192,7 @@ abstract class AbstractCoordinator(
             // Synchronize after closing the heartbeat thread since heartbeat thread
             // needs this lock to complete and terminate after close flag is set.
             synchronized(obj) {
-                if (rebalanceConfig.leaveGroupOnClose) {
+                if (rebalanceConfig.leaveGroupOnClose == true) {
                     onLeavePrepare()
                     maybeLeaveGroup("the consumer is being closed")
                 }
@@ -1236,7 +1242,7 @@ abstract class AbstractCoordinator(
                 leaveReason,
             )
             val request = LeaveGroupRequest.Builder(
-                groupId = rebalanceConfig.groupId,
+                groupId = rebalanceConfig.groupId!!,
                 members = listOf(
                     MemberIdentity()
                         .setMemberId(generation.memberId)
@@ -1298,7 +1304,7 @@ abstract class AbstractCoordinator(
         )
         val requestBuilder = HeartbeatRequest.Builder(
             HeartbeatRequestData()
-                .setGroupId(rebalanceConfig.groupId)
+                .setGroupId(rebalanceConfig.groupId!!)
                 .setMemberId(generation.memberId)
                 .setGroupInstanceId(rebalanceConfig.groupInstanceId)
                 .setGenerationId(generation.generationId)
@@ -1614,7 +1620,7 @@ abstract class AbstractCoordinator(
 
     private inner class HeartbeatThread : KafkaThread(
         name = HEARTBEAT_THREAD_PREFIX +
-                if (rebalanceConfig.groupId.isEmpty()) ""
+                if (rebalanceConfig.groupId!!.isEmpty()) ""
                 else " | " + rebalanceConfig.groupId,
         daemon = true,
     ), AutoCloseable {
@@ -1676,7 +1682,7 @@ abstract class AbstractCoordinator(
                             } else lookupCoordinator()
 
                             // backoff properly
-                            obj.wait(rebalanceConfig.retryBackoffMs)
+                            obj.wait(rebalanceConfig.retryBackoffMs!!)
                         } else if (heartbeat.sessionTimeoutExpired(now)) {
                             // the session timeout has expired without seeing a successful
                             // heartbeat, so we should probably make sure the coordinator is still
@@ -1701,7 +1707,7 @@ abstract class AbstractCoordinator(
                         } else if (!heartbeat.shouldHeartbeat(now)) {
                             // poll again after waiting for the retry backoff in case the heartbeat
                             // failed or the coordinator disconnected
-                            obj.wait(rebalanceConfig.retryBackoffMs)
+                            obj.wait(rebalanceConfig.retryBackoffMs!!)
                         } else {
                             heartbeat.sentHeartbeat(now)
                             val heartbeatFuture = sendHeartbeatRequest()

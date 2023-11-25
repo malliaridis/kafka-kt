@@ -561,7 +561,7 @@ class MockAdminClient private constructor(
     ): ListConsumerGroupOffsetsResult {
         // ignoring the groups and assume one test would only work on one group only
         if (groupSpecs.size != 1) throw UnsupportedOperationException("Not implemented yet")
-        val group = groupSpecs.keys.iterator().next()
+        val group = groupSpecs.keys.first()
         val topicPartitions = groupSpecs[group]!!.topicPartitions
         val future = KafkaFutureImpl<Map<TopicPartition, OffsetAndMetadata?>>()
         if (listConsumerGroupOffsetsException != null) {

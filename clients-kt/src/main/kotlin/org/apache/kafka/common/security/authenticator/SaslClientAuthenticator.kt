@@ -305,7 +305,7 @@ open class SaslClientAuthenticator(
                 reauthenticationContext.reauthenticationBeginNanos
             )
         }
-        val netInBufferFromChannel = reauthenticationContext.networkReceive()
+        val netInBufferFromChannel = reauthenticationContext.networkReceive
         netInBuffer = netInBufferFromChannel
         setSaslState(SaslState.REAUTH_PROCESS_ORIG_APIVERSIONS_RESPONSE) // Will set immediately
         authenticate()
@@ -465,7 +465,7 @@ open class SaslClientAuthenticator(
             if (error != Errors.NONE) {
                 setSaslState(SaslState.FAILED)
                 val errMsg = response.errorMessage()
-                throw if (errMsg == null) error.exception!! else error.exception(errMsg)
+                throw if (errMsg == null) error.exception!! else error.exception(errMsg)!!
             }
             val sessionLifetimeMs = response.sessionLifetimeMs()
             if (sessionLifetimeMs > 0L) reauthInfo.positiveSessionLifetimeMs = sessionLifetimeMs

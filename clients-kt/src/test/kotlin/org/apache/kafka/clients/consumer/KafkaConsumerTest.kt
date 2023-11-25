@@ -116,6 +116,7 @@ import org.apache.kafka.test.TestUtils
 import org.apache.kafka.test.TestUtils.singletonCluster
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Timeout
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
@@ -642,10 +643,7 @@ class KafkaConsumerTest {
 
             if (groupId != null) setProperty(ConsumerConfig.GROUP_ID_CONFIG, groupId)
             enableAutoCommit?.let { autoCommit ->
-                setProperty(
-                    ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,
-                    autoCommit.toString()
-                )
+                setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, autoCommit.toString())
             }
         }
 

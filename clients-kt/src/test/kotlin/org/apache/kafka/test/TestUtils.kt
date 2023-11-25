@@ -437,11 +437,12 @@ object TestUtils {
     fun assertFutureError(future: Future<*>, exceptionClass: Class<out Throwable?>) {
         try {
             future.get()
-            fail("Expected a " + exceptionClass.simpleName + " exception, but got success.")
+            fail("Expected a ${exceptionClass.simpleName} exception, but got success.")
         } catch (ee: ExecutionException) {
             val cause = ee.cause
             assertEquals(
-                expected = exceptionClass, actual = cause!!.javaClass,
+                expected = exceptionClass,
+                actual = cause!!.javaClass,
                 message = "Expected a ${exceptionClass.simpleName} exception, but got ${cause.javaClass.simpleName}"
             )
         }

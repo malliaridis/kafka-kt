@@ -65,7 +65,7 @@ class AlterConsumerGroupOffsetsResult internal constructor(
             topicPartitionErrorsMap.values.forEach { error ->
                 if (error !== Errors.NONE) throw error.exception(
                     "Failed altering consumer group offsets for the following partitions: $partitionsFailed"
-                )
+                )!!
             }
         }
     }

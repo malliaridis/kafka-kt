@@ -33,12 +33,12 @@ class DescribeClientQuotasResponse(
         val error = Errors.forCode(data.errorCode)
 
         if (error !== Errors.NONE) {
-            future.completeExceptionally(error.exception(data.errorMessage))
+            future.completeExceptionally(error.exception(data.errorMessage)!!)
             return
         }
 
         val result: Map<ClientQuotaEntity, Map<String, Double>> =
-            data.entries?.associate { entry ->
+            data.entries.associate { entry ->
                 val entityMap = entry.entity.associateBy(
                     keySelector = { it.entityType },
                     valueTransform = { it.entityName },

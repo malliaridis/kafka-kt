@@ -45,7 +45,7 @@ class AlterClientQuotasResponse(
             val error = Errors.forCode(entryData.errorCode)
 
             if (error === Errors.NONE) future.complete(Unit)
-            else future.completeExceptionally(error.exception(entryData.errorMessage))
+            else future.completeExceptionally(error.exception(entryData.errorMessage)!!)
         }
     }
 

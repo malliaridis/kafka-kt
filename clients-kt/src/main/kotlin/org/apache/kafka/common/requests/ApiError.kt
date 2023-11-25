@@ -68,7 +68,7 @@ data class ApiError(
      */
     fun messageWithFallback(): String = message ?: error.message
 
-    fun exception(): ApiException = error.exception(message)
+    fun exception(): ApiException? = error.exception(message)
 
     override fun toString(): String = "ApiError(error=$error, message=$message)"
 

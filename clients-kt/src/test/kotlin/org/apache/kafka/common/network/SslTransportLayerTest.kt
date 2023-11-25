@@ -936,7 +936,7 @@ class SslTransportLayerTest {
         selector.poll(1000L)
         val receiveList = selector.completedReceives()
         assertEquals(1, receiveList.size)
-        assertEquals(message, String(Utils.toArray(receiveList.iterator().next().payload()!!)))
+        assertEquals(message, String(Utils.toArray(receiveList.first().payload()!!)))
     }
 
     /**

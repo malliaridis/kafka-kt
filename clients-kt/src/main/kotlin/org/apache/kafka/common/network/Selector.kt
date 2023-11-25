@@ -761,7 +761,7 @@ open class Selector private constructor(
     fun completeDelayedChannelClose(currentTimeNanos: Long) {
         if (delayedClosingChannels == null) return
         while (!delayedClosingChannels.isEmpty()) {
-            val delayedClose = delayedClosingChannels.values.iterator().next()
+            val delayedClose = delayedClosingChannels.values.first()
             if (!delayedClose.tryClose(currentTimeNanos)) break
         }
     }
@@ -981,12 +981,12 @@ open class Selector private constructor(
     fun lowestPriorityChannel(): KafkaChannel? {
         var channel: KafkaChannel? = null
         if (closingChannels.isNotEmpty()) {
-            channel = closingChannels.values.iterator().next()
+            channel = closingChannels.values.first()
         } else if (idleExpiryManager != null && idleExpiryManager.lruConnections.isNotEmpty()) {
-            val channelId = idleExpiryManager.lruConnections.keys.iterator().next()
+            val channelId = idleExpiryManager.lruConnections.keys.first()
             channel = channel(channelId)
         } else if (channels.isNotEmpty()) {
-            channel = channels.values.iterator().next()
+            channel = channels.values.first()
         }
         return channel
     }
@@ -1691,7 +1691,7 @@ open class Selector private constructor(
                 nextIdleCloseCheckTime = currentTimeNanos + connectionsMaxIdleNanos
                 return null
             }
-            val oldestConnectionEntry = lruConnections.entries.iterator().next()
+            val oldestConnectionEntry = lruConnections.entries.first()
             val connectionLastActiveTime = oldestConnectionEntry.value
             nextIdleCloseCheckTime = connectionLastActiveTime + connectionsMaxIdleNanos
             return if (currentTimeNanos > nextIdleCloseCheckTime) oldestConnectionEntry else null

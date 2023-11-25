@@ -175,7 +175,7 @@ class AbortTransactionHandler(
             ApiResult.failed(
                 abortSpec.topicPartition, error.exception(
                     "WriteTxnMarkers request with $abortSpec failed due to unexpected error: " + error.message
-                )
+                )!!
             )
         }
     }

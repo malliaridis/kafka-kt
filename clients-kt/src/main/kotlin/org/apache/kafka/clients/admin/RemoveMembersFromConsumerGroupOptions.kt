@@ -26,17 +26,19 @@ import org.apache.kafka.common.annotation.InterfaceStability.Evolving
  * The API of this class is evolving, see [AdminClient] for details.
  */
 @Evolving
-class RemoveMembersFromConsumerGroupOptions(
-    members: Collection<MemberToRemove> = emptySet(),
-) : AbstractOptions<RemoveMembersFromConsumerGroupOptions>() {
+class RemoveMembersFromConsumerGroupOptions : AbstractOptions<RemoveMembersFromConsumerGroupOptions> {
 
     val members: Set<MemberToRemove>
 
     var reason: String? = null
 
-    init {
+    constructor(members: Collection<MemberToRemove>) {
         require(members.isNotEmpty()) { "Invalid empty members has been provided" }
         this.members = members.toSet()
+    }
+
+    constructor() {
+        members = emptySet()
     }
 
     /**

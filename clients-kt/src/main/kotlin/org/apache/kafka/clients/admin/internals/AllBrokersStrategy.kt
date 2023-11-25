@@ -80,7 +80,7 @@ class AllBrokersStrategy(
 
     private fun validateLookupKeys(keys: Set<BrokerKey>) {
         require(keys.size == 1) { "Unexpected key set: $keys" }
-        val key = keys.iterator().next()
+        val key = keys.first()
         require(key === ANY_BROKER) { "Unexpected key set: $keys" }
     }
 

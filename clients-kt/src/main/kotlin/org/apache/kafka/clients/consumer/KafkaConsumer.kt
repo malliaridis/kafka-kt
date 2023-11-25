@@ -17,6 +17,15 @@
 
 package org.apache.kafka.clients.consumer
 
+import java.time.Duration
+import java.util.Collections
+import java.util.Objects
+import java.util.OptionalLong
+import java.util.Properties
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
+import java.util.regex.Pattern
 import org.apache.kafka.clients.ApiVersions
 import org.apache.kafka.clients.ClientUtils.createChannelBuilder
 import org.apache.kafka.clients.ClientUtils.parseAndValidateAddresses
@@ -29,7 +38,6 @@ import org.apache.kafka.clients.consumer.internals.ConsumerCoordinator
 import org.apache.kafka.clients.consumer.internals.ConsumerInterceptors
 import org.apache.kafka.clients.consumer.internals.ConsumerMetadata
 import org.apache.kafka.clients.consumer.internals.ConsumerNetworkClient
-import org.apache.kafka.clients.consumer.internals.ConsumerNetworkClient.PollCondition
 import org.apache.kafka.clients.consumer.internals.Fetch
 import org.apache.kafka.clients.consumer.internals.Fetcher
 import org.apache.kafka.clients.consumer.internals.FetcherMetricsRegistry
@@ -48,11 +56,9 @@ import org.apache.kafka.common.errors.InterruptException
 import org.apache.kafka.common.errors.InvalidGroupIdException
 import org.apache.kafka.common.errors.TimeoutException
 import org.apache.kafka.common.internals.ClusterResourceListeners
-import org.apache.kafka.common.metrics.KafkaMetric
 import org.apache.kafka.common.metrics.KafkaMetricsContext
 import org.apache.kafka.common.metrics.MetricConfig
 import org.apache.kafka.common.metrics.Metrics
-import org.apache.kafka.common.metrics.MetricsContext
 import org.apache.kafka.common.metrics.Sensor
 import org.apache.kafka.common.network.Selector
 import org.apache.kafka.common.requests.MetadataRequest
@@ -65,13 +71,6 @@ import org.apache.kafka.common.utils.Timer
 import org.apache.kafka.common.utils.Utils.closeQuietly
 import org.apache.kafka.common.utils.Utils.propsToMap
 import org.slf4j.Logger
-import java.time.Duration
-import java.util.*
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicLong
-import java.util.concurrent.atomic.AtomicReference
-import java.util.function.BiConsumer
-import java.util.regex.Pattern
 import kotlin.math.min
 
 /**
@@ -580,7 +579,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
 
     private val groupId: String?
 
-    private val coordinator: ConsumerCoordinator
+    private val coordinator: ConsumerCoordinator?
 
     private val keyDeserializer: Deserializer<K>
 
@@ -643,9 +642,9 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
         keyDeserializer: Deserializer<K>? = null,
         valueDeserializer: Deserializer<V>? = null,
     ) : this(
-        propsToMap(properties),
-        keyDeserializer,
-        valueDeserializer,
+        configs = propsToMap(properties),
+        keyDeserializer = keyDeserializer,
+        valueDeserializer = valueDeserializer,
     )
 
     /**
@@ -716,10 +715,10 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
             }
             log.debug("Initializing the Kafka consumer")
             requestTimeoutMs = config.getInt(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG)!!.toLong()
-            defaultApiTimeoutMs = (config.getInt(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG))!!
+            defaultApiTimeoutMs = config.getInt(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG)!!
             time = Time.SYSTEM
             metrics = buildMetrics(config, time, clientId)
-            retryBackoffMs = (config.getLong(ConsumerConfig.RETRY_BACKOFF_MS_CONFIG))!!
+            retryBackoffMs = config.getLong(ConsumerConfig.RETRY_BACKOFF_MS_CONFIG)!!
 
             val interceptorList = config.getConfiguredInstances(
                 key = ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG,
@@ -839,25 +838,31 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
                 configs = config.originals(mapOf(ConsumerConfig.CLIENT_ID_CONFIG to clientId)),
             )
 
-            // Coordinator is always constructed since group ID is mandatory
-            coordinator = ConsumerCoordinator(
-                rebalanceConfig = groupRebalanceConfig,
-                logContext = logContext,
-                client = client,
-                assignors = assignors!!,
-                metadata = metadata,
-                subscriptions = subscriptions,
-                metrics = metrics,
-                metricGrpPrefix = metricGrpPrefix,
-                time = time,
-                autoCommitEnabled = enableAutoCommit,
-                autoCommitIntervalMs =
-                config.getInt(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG)!!,
-                interceptors = interceptors,
-                throwOnFetchStableOffsetsUnsupported =
-                config.getBoolean(ConsumerConfig.THROW_ON_FETCH_STABLE_OFFSET_UNSUPPORTED)!!,
-                rackId = config.getString(ConsumerConfig.CLIENT_RACK_CONFIG),
-            )
+            coordinator = if (groupId == null) {
+                config.ignore(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG)
+                config.ignore(ConsumerConfig.THROW_ON_FETCH_STABLE_OFFSET_UNSUPPORTED)
+                null
+            } else {
+                ConsumerCoordinator(
+                    rebalanceConfig = groupRebalanceConfig,
+                    logContext = logContext,
+                    client = client,
+                    assignors = assignors!!,
+                    metadata = metadata,
+                    subscriptions = subscriptions,
+                    metrics = metrics,
+                    metricGrpPrefix = metricGrpPrefix,
+                    time = time,
+                    autoCommitEnabled = enableAutoCommit,
+                    autoCommitIntervalMs =
+                    config.getInt(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG)!!,
+                    interceptors = interceptors,
+                    throwOnFetchStableOffsetsUnsupported =
+                    config.getBoolean(ConsumerConfig.THROW_ON_FETCH_STABLE_OFFSET_UNSUPPORTED)!!,
+                    rackId = config.getString(ConsumerConfig.CLIENT_RACK_CONFIG),
+                )
+            }
+
             fetcher = Fetcher(
                 logContext = logContext,
                 client = client,
@@ -1018,6 +1023,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
     override fun subscribe(topics: Collection<String>, callback: ConsumerRebalanceListener) {
         acquireAndEnsureOpen()
         try {
+            maybeThrowInvalidGroupIdException()
             if (topics.isEmpty()) {
                 // treat subscribing to empty topic list as the same as unsubscribing
                 unsubscribe()
@@ -1085,6 +1091,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
      * one partition assignment strategy
      */
     override fun subscribe(pattern: Pattern, callback: ConsumerRebalanceListener) {
+        maybeThrowInvalidGroupIdException()
         require(pattern.toString().isNotEmpty()) {
             "Topic pattern to subscribe to cannot be empty"
         }
@@ -1094,7 +1101,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
             throwIfNoAssignorsConfigured()
             log.info("Subscribed to pattern: '{}'", pattern)
             subscriptions.subscribe(pattern, callback)
-            coordinator.updatePatternSubscription(metadata.fetch())
+            coordinator!!.updatePatternSubscription(metadata.fetch())
             metadata.requestUpdateForNewTopics()
         } finally {
             release()
@@ -1133,8 +1140,8 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
         acquireAndEnsureOpen()
         try {
             fetcher.clearBufferedDataForUnassignedPartitions(emptySet())
-            coordinator.onLeavePrepare()
-            coordinator.maybeLeaveGroup("the consumer unsubscribed from all topics")
+            coordinator?.onLeavePrepare()
+            coordinator?.maybeLeaveGroup("the consumer unsubscribed from all topics")
             subscriptions.unsubscribe()
             log.info("Unsubscribed all topics or patterns and assigned partitions")
         } finally {
@@ -1175,7 +1182,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
 
                 // make sure the offsets of topic partitions the consumer is unsubscribing from
                 // are committed since there will be no following rebalance
-                coordinator.maybeAutoCommitOffsetsAsync(time.milliseconds())
+                coordinator?.maybeAutoCommitOffsetsAsync(time.milliseconds())
                 log.info("Assigned to partition(s): {}", partitions.joinToString(", "))
 
                 if (subscriptions.assignFromUser(HashSet(partitions)))
@@ -1327,7 +1334,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
     }
 
     fun updateAssignmentMetadataIfNeeded(timer: Timer, waitForJoinGroup: Boolean = true): Boolean {
-        return if (!coordinator.poll(timer, waitForJoinGroup)) false
+        return if (coordinator != null && !coordinator.poll(timer, waitForJoinGroup)) false
         else updateFetchPositions(timer)
     }
 
@@ -1335,7 +1342,8 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
      * @throws KafkaException if the rebalance callback throws exception
      */
     private fun pollForFetches(timer: Timer): Fetch<K, V> {
-        var pollTimeout = min(coordinator.timeToNextPoll(timer.currentTimeMs), timer.remainingMs)
+        var pollTimeout = coordinator?.let { min(it.timeToNextPoll(timer.currentTimeMs), timer.remainingMs) }
+            ?: timer.remainingMs
 
         // if data is available already, return it immediately
         val fetch: Fetch<K, V> = fetcher.collectFetch()
@@ -1558,13 +1566,14 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
         acquireAndEnsureOpen()
         val commitStart: Long = time.nanoseconds()
         try {
+            maybeThrowInvalidGroupIdException()
             offsets.forEach { (topicPartition, offsetAndMetadata) ->
                 updateLastSeenEpochIfNewer(
                     topicPartition = topicPartition,
                     offsetAndMetadata = offsetAndMetadata,
                 )
             }
-            if (!coordinator.commitOffsetsSync(offsets, time.timer(timeout)))
+            if (!coordinator!!.commitOffsetsSync(offsets, time.timer(timeout)))
                 throw TimeoutException(
                     "Timeout of ${timeout.toMillis()}ms expired before successfully committing " +
                             "offsets $offsets"
@@ -1640,6 +1649,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
     ) {
         acquireAndEnsureOpen()
         try {
+            maybeThrowInvalidGroupIdException()
             log.debug("Committing offsets: {}", offsets)
             offsets.forEach { (topicPartition, offsetAndMetadata) ->
                 updateLastSeenEpochIfNewer(
@@ -1647,7 +1657,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
                     offsetAndMetadata = offsetAndMetadata
                 )
             }
-            coordinator.commitOffsetsAsync(offsets.toMap(), callback)
+            coordinator!!.commitOffsetsAsync(offsets.toMap(), callback)
         } finally {
             release()
         }
@@ -1970,8 +1980,8 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
         acquireAndEnsureOpen()
         val start: Long = time.nanoseconds()
         try {
-            val offsets: Map<TopicPartition, OffsetAndMetadata?>? =
-                coordinator.fetchCommittedOffsets(partitions, time.timer(timeout))
+            maybeThrowInvalidGroupIdException()
+            val offsets = coordinator!!.fetchCommittedOffsets(partitions, time.timer(timeout))
             if (offsets == null) {
                 throw TimeoutException(
                     "Timeout of ${timeout.toMillis()}ms expired before the last committed offset " +
@@ -2395,7 +2405,12 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
      */
     override fun groupMetadata(): ConsumerGroupMetadata {
         acquireAndEnsureOpen()
-        return coordinator.groupMetadata().also { release() }
+        return try {
+            maybeThrowInvalidGroupIdException()
+            coordinator!!.groupMetadata()
+        } finally {
+            release()
+        }
     }
 
     /**
@@ -2508,7 +2523,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
         log.trace("Closing the Kafka consumer")
         val firstException = AtomicReference<Throwable?>()
         try {
-            coordinator.close(time.timer(min(timeoutMs, requestTimeoutMs)))
+            coordinator?.close(time.timer(min(timeoutMs, requestTimeoutMs)))
         } catch (t: Throwable) {
             firstException.compareAndSet(null, t)
             log.error("Failed to close coordinator", t)
@@ -2551,7 +2566,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
         // there are partitions which have missing positions, so a consumer with manually assigned
         // partitions can avoid a coordinator dependence by always ensuring that assigned partitions
         // have an initial position.
-        if (!coordinator.refreshCommittedOffsetsIfNeeded(timer)) return false
+        if (coordinator != null && !coordinator.refreshCommittedOffsetsIfNeeded(timer)) return false
 
         // If there are partitions still needing a position and a reset policy is defined, request
         // reset using the default policy. If no reset strategy is defined and there are partitions
@@ -2607,6 +2622,13 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
             "Must configure at least one partition assigner class name to " +
                     "${ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG} configuration property"
         }
+    }
+
+    private fun maybeThrowInvalidGroupIdException() {
+        if (groupId == null) throw InvalidGroupIdException(
+            "To use the group management or offset commit APIs, you must provide a valid " +
+                    ConsumerConfig.GROUP_ID_CONFIG + " in the consumer configuration."
+        )
     }
 
     private fun updateLastSeenEpochIfNewer(

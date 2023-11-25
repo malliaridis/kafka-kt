@@ -366,7 +366,7 @@ open class SelectorTest {
             }
             if (!selector.completedReceives().isEmpty()) {
                 assertEquals(1, selector.completedReceives().size)
-                assertEquals(request, asString(selector.completedReceives().iterator().next()))
+                assertEquals(request, asString(selector.completedReceives().first()))
                 selector.clearCompletedReceives()
                 assertEquals(0, selector.completedReceives().size)
                 received = true
@@ -397,7 +397,7 @@ open class SelectorTest {
         )
         assertEquals(
             expected = "0",
-            actual = selector.completedReceives().iterator().next().source(),
+            actual = selector.completedReceives().first().source(),
             message = "The response should not be from the muted node",
         )
         selector.unmute("1")
@@ -409,7 +409,7 @@ open class SelectorTest {
         )
         assertEquals(
             expected = "1",
-            actual = selector.completedReceives().iterator().next().source(),
+            actual = selector.completedReceives().first().source(),
             message = "The response should be from the previously muted node",
         )
     }
@@ -746,7 +746,7 @@ open class SelectorTest {
                     message = "Too many completed receives in one poll",
                 )
             }
-            assertEquals(channel!!.id, selector.disconnected().keys.iterator().next())
+            assertEquals(channel!!.id, selector.disconnected().keys.first())
             maxReceiveCountAfterClose = max(maxReceiveCountAfterClose.toDouble(), receiveCount.toDouble()).toInt()
             i++
         }
@@ -785,7 +785,7 @@ open class SelectorTest {
             conditionDetails = "Channel not disconnected",
         )
         assertEquals(1, selector.disconnected().size)
-        assertEquals(channel.id, selector.disconnected().keys.iterator().next())
+        assertEquals(channel.id, selector.disconnected().keys.first())
         assertEquals(0, selector.completedReceives().size)
     }
 
@@ -838,7 +838,7 @@ open class SelectorTest {
                 completed = selector.completedReceives()
             }
             assertEquals(1, completed.size, "could not read a single request within timeout")
-            val firstReceive = completed.iterator().next()
+            val firstReceive = completed.first()
             assertEquals(0, pool.availableMemory())
             assertTrue(selector.isOutOfMemory)
             selector.poll(10)

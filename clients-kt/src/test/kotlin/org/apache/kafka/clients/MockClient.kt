@@ -17,6 +17,10 @@
 
 package org.apache.kafka.clients
 
+import java.util.*
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ConcurrentLinkedDeque
+import java.util.function.Consumer
 import org.apache.kafka.clients.MockClient.RequestMatcher
 import org.apache.kafka.common.Node
 import org.apache.kafka.common.errors.AuthenticationException
@@ -29,10 +33,6 @@ import org.apache.kafka.common.requests.MetadataRequest
 import org.apache.kafka.common.requests.MetadataResponse
 import org.apache.kafka.common.utils.Time
 import org.apache.kafka.test.TestUtils.waitForCondition
-import java.util.*
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ConcurrentLinkedDeque
-import java.util.function.Consumer
 
 /**
  * A mock network client for use testing code
@@ -320,10 +320,10 @@ open class MockClient(
         }
 
         val copy = mutableListOf<ClientResponse>()
-        var response: ClientResponse
+        var response: ClientResponse?
         while ((responses.poll().also { response = it }) != null) {
-            response.onComplete()
-            copy.add(response)
+            response!!.onComplete()
+            copy.add(response!!)
         }
         return copy
     }
@@ -460,11 +460,11 @@ open class MockClient(
         isUnsupportedVersion: Boolean = false,
     ) = futureResponses.add(
         FutureResponse(
-            node,
-            matcher,
-            response,
-            disconnected,
-            isUnsupportedVersion
+            node = node,
+            requestMatcher = matcher,
+            responseBody = response,
+            disconnected = disconnected,
+            isUnsupportedRequest = isUnsupportedVersion
         )
     )
 
@@ -586,7 +586,7 @@ open class MockClient(
 
     class MetadataUpdate internal constructor(
         val updateResponse: MetadataResponse,
-        val expectMatchRefreshTopics: Boolean
+        val expectMatchRefreshTopics: Boolean,
     ) {
         fun topics(): Set<String> = updateResponse.topicMetadata()
             .map { it.topic }

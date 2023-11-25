@@ -76,7 +76,7 @@ class NetworkClientTest {
 
     private val selector = MockSelector(time)
 
-    private val node = singletonCluster().nodes.iterator().next()
+    private val node = singletonCluster().nodes.first()
 
     private val reconnectBackoffMsTest = 10 * 1000L
 
@@ -1042,7 +1042,7 @@ class NetworkClientTest {
             now = time.milliseconds(),
         )
         assertEquals(expected = 1, actual = responses.size)
-        assertTrue(responses.iterator().next().disconnected)
+        assertTrue(responses.first().disconnected)
     }
 
     @Test

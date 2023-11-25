@@ -1679,7 +1679,7 @@ class RecordAccumulatorTest {
 
         assertEquals(1, secondResult.readyNodes.size)
 
-        val readyNode = secondResult.readyNodes.iterator().next()
+        val readyNode = secondResult.readyNodes.first()
         val secondDrained = accumulator.drain(
             cluster = cluster,
             nodes = secondResult.readyNodes,
@@ -2547,9 +2547,9 @@ class RecordAccumulatorTest {
         )
 
         assertEquals(1, batches.size)
-        assertEquals(1, batches.values.iterator().next().size)
+        assertEquals(1, batches.values.first().size)
 
-        val batch = batches.values.iterator().next()[0]
+        val batch = batches.values.first()[0]
         val numSplitBatches = accum.splitAndReenqueue(batch)
         accum.deallocate(batch)
 

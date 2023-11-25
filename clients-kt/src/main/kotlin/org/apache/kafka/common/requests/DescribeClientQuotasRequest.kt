@@ -17,13 +17,13 @@
 
 package org.apache.kafka.common.requests
 
+import java.nio.ByteBuffer
 import org.apache.kafka.common.message.DescribeClientQuotasRequestData
 import org.apache.kafka.common.message.DescribeClientQuotasResponseData
 import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.protocol.ByteBufferAccessor
 import org.apache.kafka.common.quota.ClientQuotaFilter
 import org.apache.kafka.common.quota.ClientQuotaFilterComponent
-import java.nio.ByteBuffer
 
 class DescribeClientQuotasRequest(
     private val data: DescribeClientQuotasRequestData,
@@ -39,8 +39,8 @@ class DescribeClientQuotasRequest(
                     match = data.match
                 )
 
-                MATCH_TYPE_DEFAULT -> ClientQuotaFilterComponent(data.entityType)
-                MATCH_TYPE_SPECIFIED -> ClientQuotaFilterComponent(data.entityType)
+                MATCH_TYPE_DEFAULT -> ClientQuotaFilterComponent.ofDefaultEntity(data.entityType)
+                MATCH_TYPE_SPECIFIED -> ClientQuotaFilterComponent.ofEntityType(data.entityType)
                 else -> throw IllegalArgumentException("Unexpected match type: " + data.matchType)
             }
         }
@@ -53,7 +53,7 @@ class DescribeClientQuotasRequest(
 
     override fun getErrorResponse(
         throttleTimeMs: Int,
-        e: Throwable
+        e: Throwable,
     ): DescribeClientQuotasResponse {
         val (error1, message) = ApiError.fromThrowable(e)
         return DescribeClientQuotasResponse(
@@ -75,8 +75,19 @@ class DescribeClientQuotasRequest(
             val componentData = filter.components().map { (entityType, match) ->
                 DescribeClientQuotasRequestData.ComponentData()
                     .setEntityType(entityType)
-                    .setMatchType(if (match == null) MATCH_TYPE_DEFAULT else MATCH_TYPE_EXACT)
-                    .setMatch(match)
+                    .setMatchType(
+                        when (match) {
+                            null -> MATCH_TYPE_SPECIFIED
+                            "" -> MATCH_TYPE_EXACT
+                            else -> MATCH_TYPE_DEFAULT
+                        }
+                    )
+                    .setMatch(
+                        when (match) {
+                            null, "" -> match
+                            else -> null
+                        }
+                    )
             }
 
             data = DescribeClientQuotasRequestData()

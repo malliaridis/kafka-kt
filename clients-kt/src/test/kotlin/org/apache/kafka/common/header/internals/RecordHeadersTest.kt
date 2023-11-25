@@ -36,7 +36,7 @@ class RecordHeadersTest {
     fun testAdd() {
         val headers: Headers = RecordHeaders()
         headers.add(RecordHeader("key", "value".toByteArray()))
-        val header = headers.iterator().next()
+        val header = headers.first()
         assertHeader("key", "value", header)
         headers.add(RecordHeader("key2", "value2".toByteArray()))
         assertHeader("key2", "value2", headers.lastHeader("key2"))

@@ -72,16 +72,12 @@ class AdminClientUnitTestEnv(
             metadataExpireMs = adminClientConfig.getLong(AdminClientConfig.METADATA_MAX_AGE_CONFIG)!!,
         )
         mockClient = MockClient(time, object : MockMetadataUpdater {
-            override fun fetchNodes(): List<Node> {
-                return cluster.nodes
-            }
+            override fun fetchNodes(): List<Node> = cluster.nodes
 
-            override val isUpdateNeeded: Boolean
-                get() = false
+            override val isUpdateNeeded: Boolean = false
 
-            override fun update(time: Time, update: MetadataUpdate) {
+            override fun update(time: Time, update: MetadataUpdate) =
                 throw UnsupportedOperationException()
-            }
         })
         metadataManager.update(cluster, time.milliseconds())
         unreachableNodes.forEach { (node, durationMs) ->
@@ -91,8 +87,10 @@ class AdminClientUnitTestEnv(
             )
         }
         adminClient = KafkaAdminClient.createInternal(
-            adminClientConfig, metadataManager, mockClient,
-            time
+            config = adminClientConfig,
+            metadataManager = metadataManager,
+            client = mockClient,
+            time = time,
         )
     }
 

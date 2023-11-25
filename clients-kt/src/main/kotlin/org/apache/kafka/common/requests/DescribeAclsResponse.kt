@@ -17,6 +17,8 @@
 
 package org.apache.kafka.common.requests
 
+import java.nio.ByteBuffer
+import java.util.*
 import org.apache.kafka.common.acl.AccessControlEntry
 import org.apache.kafka.common.acl.AclBinding
 import org.apache.kafka.common.acl.AclOperation
@@ -31,10 +33,6 @@ import org.apache.kafka.common.protocol.Errors
 import org.apache.kafka.common.resource.PatternType
 import org.apache.kafka.common.resource.ResourcePattern
 import org.apache.kafka.common.resource.ResourceType
-import java.nio.ByteBuffer
-import java.util.*
-import java.util.stream.Collectors
-import java.util.stream.Stream
 
 class DescribeAclsResponse : AbstractResponse {
 
@@ -94,7 +92,7 @@ class DescribeAclsResponse : AbstractResponse {
             acls.none { resource ->
                 resource.patternType == PatternType.UNKNOWN.code
                         || resource.resourceType == ResourceType.UNKNOWN.code
-                        || resource.acls.none { acl ->
+                        || resource.acls.any { acl ->
                     acl.operation == AclOperation.UNKNOWN.code
                             || acl.permissionType == AclPermissionType.UNKNOWN.code
                 }

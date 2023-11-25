@@ -1326,7 +1326,7 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
             val reversePair = ConsumerPair(newConsumer, oldConsumer)
 
             return if (!partitionMovementsForThisTopic.containsKey(reversePair)) partition
-            else partitionMovementsForThisTopic[reversePair]!!.iterator().next()
+            else partitionMovementsForThisTopic[reversePair]!!.first()
         }
 
         private fun isLinked(

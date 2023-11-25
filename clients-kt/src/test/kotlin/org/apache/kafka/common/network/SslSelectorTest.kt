@@ -345,7 +345,7 @@ abstract class SslSelectorTest : SelectorTest() {
                 if (firstReceive == null) {
                     if (!completed.isEmpty()) {
                         assertEquals(1, completed.size, "expecting a single request")
-                        firstReceive = completed.iterator().next()
+                        firstReceive = completed.first()
                         assertTrue(selector.isMadeReadProgressLastPoll)
                         assertEquals(0, pool.availableMemory())
                     }

@@ -202,15 +202,14 @@ class AdminApiDriver<K, V>(
             completeExceptionally(failedKeys)
             retryLookup(unmappedKeys)
         }
-        else handler.lookupStrategy()
-            .handleResponse(
-                keys = spec.keys,
-                response = response,
-            ).run {
-                completedKeys.forEach { value -> lookupMap.remove(value) }
-                completeLookup(mappedKeys)
-                completeLookupExceptionally(failedKeys)
-            }
+        else handler.lookupStrategy().handleResponse(
+            keys = spec.keys,
+            response = response,
+        ).run {
+            completedKeys.forEach { value -> lookupMap.remove(value) }
+            completeLookup(mappedKeys)
+            completeLookupExceptionally(failedKeys)
+        }
     }
 
     /**
@@ -260,8 +259,7 @@ class AdminApiDriver<K, V>(
         multimap.entrySet().forEach { (scope, keys) ->
             if (keys.isEmpty()) return@forEach
 
-            val requestState: RequestState =
-                requestStates.computeIfAbsent(scope as ApiRequestScope) { RequestState() }
+            val requestState: RequestState = requestStates.computeIfAbsent(scope as ApiRequestScope) { RequestState() }
 
             if (requestState.hasInflight()) return@forEach
 
@@ -272,15 +270,15 @@ class AdminApiDriver<K, V>(
 
             // Only process the first request; all the remaining requests will be targeted at the same broker
             // and we don't want to issue more than one fulfillment request per broker at a time
-            val newRequest = newRequests.iterator().next()
+            val newRequest = newRequests.first()
             val spec = RequestSpec(
-                handler.apiName() + "(api=${newRequest.request.apiKey})",
-                scope,
-                newRequest.keys,
-                newRequest.request,
-                requestState.nextAllowedRetryMs,
-                deadlineMs,
-                requestState.tries
+                name = handler.apiName() + "(api=${newRequest.request.apiKey})",
+                scope = scope,
+                keys = newRequest.keys,
+                request = newRequest.request,
+                nextAllowedTryMs = requestState.nextAllowedRetryMs,
+                deadlineMs = deadlineMs,
+                tries = requestState.tries
             )
             requestState.setInflight(spec)
             requests.add(spec)

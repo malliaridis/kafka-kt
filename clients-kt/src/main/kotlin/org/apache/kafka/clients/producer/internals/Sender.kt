@@ -728,7 +728,7 @@ class Sender(
                 "The producer is not authorized to do idempotent sends"
             )
 
-            else -> response.error.exception(response.errorMessage)
+            else -> response.error.exception(response.errorMessage)!!
         }
 
         if (response.recordErrors.isEmpty()) failBatch(

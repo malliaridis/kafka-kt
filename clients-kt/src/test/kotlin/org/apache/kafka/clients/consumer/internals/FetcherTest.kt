@@ -968,7 +968,7 @@ class FetcherTest {
         buildFetcher()
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
-        val node = initialUpdateResponse.brokers().iterator().next()
+        val node = initialUpdateResponse.brokers().first()
         client!!.backoff(node, 500)
 
         assertEquals(0, fetcher.sendFetches())
@@ -2706,7 +2706,7 @@ class FetcherTest {
 
         // Check that we skip sending the ListOffset request when the node is blacked out
         client!!.updateMetadata(initialUpdateResponse)
-        val node = initialUpdateResponse.brokers().iterator().next()
+        val node = initialUpdateResponse.brokers().first()
         client!!.backoff(node, 500)
         fetcher.resetOffsetsIfNeeded()
 

@@ -94,12 +94,12 @@ class ConsumerCoordinator(
     private val throwOnFetchStableOffsetsUnsupported: Boolean,
     rackId: String?,
 ) : AbstractCoordinator(
-    rebalanceConfig,
-    logContext,
-    client!!,
-    metrics,
-    metricGrpPrefix,
-    time,
+    rebalanceConfig = rebalanceConfig,
+    logContext = logContext,
+    client = client!!,
+    metrics = metrics,
+    metricGrpPrefix = metricGrpPrefix,
+    time = time,
 ) {
 
     private val log: Logger = logContext.logger(ConsumerCoordinator::class.java)
@@ -130,7 +130,7 @@ class ConsumerCoordinator(
     private val asyncCommitFenced = AtomicBoolean(false)
 
     private var groupMetadata: ConsumerGroupMetadata = ConsumerGroupMetadata(
-        groupId = rebalanceConfig.groupId,
+        groupId = rebalanceConfig.groupId!!,
         generationId = JoinGroupRequest.UNKNOWN_GENERATION_ID,
         memberId = JoinGroupRequest.UNKNOWN_MEMBER_ID,
         groupInstanceId = rebalanceConfig.groupInstanceId,
@@ -361,7 +361,7 @@ class ConsumerCoordinator(
 
         // Give the assignor a chance to update internal state based on the received assignment
         groupMetadata = ConsumerGroupMetadata(
-            groupId = rebalanceConfig.groupId,
+            groupId = rebalanceConfig.groupId!!,
             generationId = generation,
             memberId = memberId,
             groupInstanceId = rebalanceConfig.groupInstanceId,
@@ -735,7 +735,7 @@ class ConsumerCoordinator(
         joinPrepareTimer?.update() ?: run {
             // We should complete onJoinPrepare before rebalanceTimeout, and continue to join group
             // to avoid member got kicked out from group
-            joinPrepareTimer = time.timer(rebalanceConfig.rebalanceTimeoutMs.toLong())
+            joinPrepareTimer = time.timer(rebalanceConfig.rebalanceTimeoutMs!!.toLong())
         }
 
         // async commit offsets prior to rebalance if auto-commit enabled and there is no in-flight
@@ -779,7 +779,7 @@ class ConsumerCoordinator(
             if (requestFuture.isDone) this.autoCommitOffsetRequestFuture = null
 
             if (!onJoinPrepareAsyncCommitCompleted) {
-                pollTimer.sleep(min(pollTimer.remainingMs, rebalanceConfig.retryBackoffMs))
+                pollTimer.sleep(min(pollTimer.remainingMs, rebalanceConfig.retryBackoffMs!!))
                 timer.update()
                 return false
             }
@@ -992,7 +992,7 @@ class ConsumerCoordinator(
                 pendingCommittedOffsetRequest = null
                 if (future.succeeded()) return future.value()
                 else if (!future.isRetriable) throw future.exception()
-                else timer.sleep(rebalanceConfig.retryBackoffMs)
+                else timer.sleep(rebalanceConfig.retryBackoffMs!!)
             } else return null
 
         } while (timer.isNotExpired)
@@ -1158,7 +1158,7 @@ class ConsumerCoordinator(
                 return true
             }
             if (future.failed() && !future.isRetriable) throw future.exception()
-            timer.sleep(rebalanceConfig.retryBackoffMs)
+            timer.sleep(rebalanceConfig.retryBackoffMs!!)
         } while (timer.isNotExpired)
         return false
     }
@@ -1220,7 +1220,7 @@ class ConsumerCoordinator(
                         offsets,
                         exception,
                     )
-                    nextAutoCommitTimer!!.updateAndReset(rebalanceConfig.retryBackoffMs)
+                    nextAutoCommitTimer!!.updateAndReset(rebalanceConfig.retryBackoffMs!!)
                 } else {
                     log.warn(
                         "Asynchronous auto-commit of offsets {} failed: {}",
@@ -1320,7 +1320,7 @@ class ConsumerCoordinator(
         }
         val builder = OffsetCommitRequest.Builder(
             OffsetCommitRequestData()
-                .setGroupId(rebalanceConfig.groupId)
+                .setGroupId(rebalanceConfig.groupId!!)
                 .setGenerationId(generation.generationId)
                 .setMemberId(generation.memberId)
                 .setGroupInstanceId(groupInstanceId)
@@ -1509,7 +1509,7 @@ class ConsumerCoordinator(
         log.debug("Fetching committed offsets for partitions: {}", partitions)
         // construct the request
         val requestBuilder = OffsetFetchRequest.Builder(
-            groupId = rebalanceConfig.groupId,
+            groupId = rebalanceConfig.groupId!!,
             requireStable = true,
             partitions = ArrayList(partitions),
             throwOnFetchStableOffsetsUnsupported = throwOnFetchStableOffsetsUnsupported
@@ -1527,7 +1527,7 @@ class ConsumerCoordinator(
             response: OffsetFetchResponse,
             future: RequestFuture<Map<TopicPartition, OffsetAndMetadata?>>,
         ) {
-            val responseError = response.groupLevelError(rebalanceConfig.groupId)
+            val responseError = response.groupLevelError(rebalanceConfig.groupId!!)
             if (responseError !== Errors.NONE) {
                 log.debug("Offset fetch failed: {}", responseError!!.message)
                 if (responseError === Errors.COORDINATOR_LOAD_IN_PROGRESS) {

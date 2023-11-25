@@ -157,8 +157,8 @@ class OAuthBearerLoginModuleTest {
         // Now we should have the first token and extensions
         assertEquals(1, privateCredentials.size)
         assertEquals(1, publicCredentials.size)
-        assertSame(tokens[0], privateCredentials.iterator().next())
-        assertSame(extensions[0], publicCredentials.iterator().next())
+        assertSame(tokens[0], privateCredentials.first())
+        assertSame(extensions[0], publicCredentials.first())
 
         // Now login on loginModule2 to get the second token
         // loginModule2 does not support the extensions callback and will raise UnsupportedCallbackException
@@ -167,8 +167,8 @@ class OAuthBearerLoginModuleTest {
         // Should still have just the first token and extensions
         assertEquals(1, privateCredentials.size)
         assertEquals(1, publicCredentials.size)
-        assertSame(tokens[0], privateCredentials.iterator().next())
-        assertSame(extensions[0], publicCredentials.iterator().next())
+        assertSame(tokens[0], privateCredentials.first())
+        assertSame(extensions[0], publicCredentials.first())
         loginModule2.commit()
 
         // Should have the first and second tokens at this point
@@ -187,8 +187,8 @@ class OAuthBearerLoginModuleTest {
         // Now we should have just the second token and extension
         assertEquals(1, privateCredentials.size)
         assertEquals(1, publicCredentials.size)
-        assertSame(tokens[1], privateCredentials.iterator().next())
-        assertSame(extensions[1], publicCredentials.iterator().next())
+        assertSame(tokens[1], privateCredentials.first())
+        assertSame(extensions[1], publicCredentials.first())
 
         // Now login on loginModule3 to get the third token
         loginModule3.login()
@@ -196,8 +196,8 @@ class OAuthBearerLoginModuleTest {
         // Should still have just the second token and extensions
         assertEquals(1, privateCredentials.size)
         assertEquals(1, publicCredentials.size)
-        assertSame(tokens[1], privateCredentials.iterator().next())
-        assertSame(extensions[1], publicCredentials.iterator().next())
+        assertSame(tokens[1], privateCredentials.first())
+        assertSame(extensions[1], publicCredentials.first())
         loginModule3.commit()
 
         // Should have the second and third tokens at this point
@@ -216,8 +216,8 @@ class OAuthBearerLoginModuleTest {
         // Now we should have just the third token
         assertEquals(1, privateCredentials.size)
         assertEquals(1, publicCredentials.size)
-        assertSame(tokens[2], privateCredentials.iterator().next())
-        assertSame(extensions[2], publicCredentials.iterator().next())
+        assertSame(tokens[2], privateCredentials.first())
+        assertSame(extensions[2], publicCredentials.first())
         verifyNoInteractions(*tokens)
     }
 
@@ -272,8 +272,8 @@ class OAuthBearerLoginModuleTest {
         // Now we should have the first token
         assertEquals(1, privateCredentials.size)
         assertEquals(1, publicCredentials.size)
-        assertSame(tokens[0], privateCredentials.iterator().next())
-        assertSame(extensions[0], publicCredentials.iterator().next())
+        assertSame(tokens[0], privateCredentials.first())
+        assertSame(extensions[0], publicCredentials.first())
         loginModule1.logout()
 
         // Should have nothing again
@@ -289,8 +289,8 @@ class OAuthBearerLoginModuleTest {
         // Now we should have the second token
         assertEquals(1, privateCredentials.size)
         assertEquals(1, publicCredentials.size)
-        assertSame(tokens[1], privateCredentials.iterator().next())
-        assertSame(extensions[1], publicCredentials.iterator().next())
+        assertSame(tokens[1], privateCredentials.first())
+        assertSame(extensions[1], publicCredentials.first())
         loginModule2.logout()
 
         // Should have nothing again
@@ -352,8 +352,8 @@ class OAuthBearerLoginModuleTest {
         // Now we should have the second token
         assertEquals(1, privateCredentials.size)
         assertEquals(1, publicCredentials.size)
-        assertSame(tokens[1], privateCredentials.iterator().next())
-        assertSame(extensions[1], publicCredentials.iterator().next())
+        assertSame(tokens[1], privateCredentials.first())
+        assertSame(extensions[1], publicCredentials.first())
         loginModule.logout()
 
         // Should have nothing again
@@ -422,8 +422,8 @@ class OAuthBearerLoginModuleTest {
         // Now we should have the first token
         assertEquals(1, privateCredentials.size)
         assertEquals(1, publicCredentials.size)
-        assertSame(tokens[0], privateCredentials.iterator().next())
-        assertSame(extensions[0], publicCredentials.iterator().next())
+        assertSame(tokens[0], privateCredentials.first())
+        assertSame(extensions[0], publicCredentials.first())
 
         // Now go get the second token
         loginModule2.login()
@@ -431,24 +431,24 @@ class OAuthBearerLoginModuleTest {
         // Should still have first token
         assertEquals(1, privateCredentials.size)
         assertEquals(1, publicCredentials.size)
-        assertSame(tokens[0], privateCredentials.iterator().next())
-        assertSame(extensions[0], publicCredentials.iterator().next())
+        assertSame(tokens[0], privateCredentials.first())
+        assertSame(extensions[0], publicCredentials.first())
         loginModule2.abort()
 
         // Should still have just the first token because we aborted
         assertEquals(1, privateCredentials.size)
-        assertSame(tokens[0], privateCredentials.iterator().next())
+        assertSame(tokens[0], privateCredentials.first())
         assertEquals(1, publicCredentials.size)
-        assertSame(extensions[0], publicCredentials.iterator().next())
+        assertSame(extensions[0], publicCredentials.first())
 
         // Now go get the third token
         loginModule2.login()
 
         // Should still have first token
         assertEquals(1, privateCredentials.size)
-        assertSame(tokens[0], privateCredentials.iterator().next())
+        assertSame(tokens[0], privateCredentials.first())
         assertEquals(1, publicCredentials.size)
-        assertSame(extensions[0], publicCredentials.iterator().next())
+        assertSame(extensions[0], publicCredentials.first())
         loginModule2.commit()
 
         // Should have first and third tokens at this point
@@ -464,9 +464,9 @@ class OAuthBearerLoginModuleTest {
 
         // Now we should have just the third token
         assertEquals(1, privateCredentials.size)
-        assertSame(tokens[2], privateCredentials.iterator().next())
+        assertSame(tokens[2], privateCredentials.first())
         assertEquals(1, publicCredentials.size)
-        assertSame(extensions[2], publicCredentials.iterator().next())
+        assertSame(extensions[2], publicCredentials.first())
         verifyNoInteractions(*tokens)
     }
 

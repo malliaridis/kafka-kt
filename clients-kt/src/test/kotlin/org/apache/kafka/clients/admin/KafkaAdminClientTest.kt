@@ -247,7 +247,10 @@ import java.util.concurrent.ExecutionException
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
+import org.apache.kafka.clients.ClientRequest
+import org.apache.kafka.test.TestUtils.assertNotFails
 import kotlin.test.assertContains
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
@@ -264,6 +267,7 @@ import kotlin.test.fail
  * See AdminClientIntegrationTest for an integration test.
  */
 @Timeout(120)
+@Suppress("LargeClass", "LongParameterList", "LongMethod")
 class KafkaAdminClientTest {
 
     @Test
@@ -749,8 +753,8 @@ class KafkaAdminClientTest {
                 ),
                 CreateTopicsOptions().apply { retryOnQuotaViolation = true }
             )
-            assertNull(result.values()["topic1"]!!.get())
-            assertNull(result.values()["topic2"]!!.get())
+            assertNotFails(result.values()["topic1"]!!::get)
+            assertNotFails(result.values()["topic2"]!!::get)
             assertFutureThrows(
                 future = (result.values()["topic3"])!!,
                 exceptionCauseClass = TopicExistsException::class.java,
@@ -808,7 +812,7 @@ class KafkaAdminClientTest {
 
             // Advance time past the default api timeout to time out the inflight request
             time.sleep(defaultApiTimeout.toLong() + 1)
-            assertNull(result.values()["topic1"]!!.get())
+            assertNotFails(result.values()["topic1"]!!::get)
             val e: ThrottlingQuotaExceededException =
                 assertFutureThrows(
                     future = (result.values()["topic2"])!!,
@@ -844,7 +848,7 @@ class KafkaAdminClientTest {
                 ),
                 CreateTopicsOptions().apply { retryOnQuotaViolation = false }
             )
-            assertNull(result.values()["topic1"]!!.get())
+            assertNotFails(result.values()["topic1"]!!::get)
             val e = assertFutureThrows(
                 future = result.values()["topic2"]!!,
                 exceptionCauseClass = ThrottlingQuotaExceededException::class.java,
@@ -883,7 +887,7 @@ class KafkaAdminClientTest {
                 topics = listOf("myTopic"),
                 options = DeleteTopicsOptions(),
             ).all()
-            assertNull(future.get())
+            assertNotFails(future::get)
             env.mockClient.prepareResponse(
                 matcher = expectDeleteTopicsRequestWithTopics("myTopic"),
                 response = prepareDeleteTopicsResponse(
@@ -925,7 +929,7 @@ class KafkaAdminClientTest {
                 topics = TopicCollection.ofTopicIds(listOf(topicId)),
                 options = DeleteTopicsOptions(),
             ).all()
-            assertNull(future.get())
+            assertNotFails(future::get)
             env.mockClient.prepareResponse(
                 matcher = expectDeleteTopicsRequestWithTopicIds(topicId),
                 response = prepareDeleteTopicsResponseWithTopicId(
@@ -1035,8 +1039,8 @@ class KafkaAdminClientTest {
                 topics = mutableListOf("topic1", "topic2", "topic3"),
                 options = DeleteTopicsOptions().apply { retryOnQuotaViolation = true }
             )
-            assertNull(result.nameFutures!!["topic1"]!!.get())
-            assertNull(result.nameFutures!!["topic2"]!!.get())
+            assertNotFails(result.nameFutures!!["topic1"]!!::get)
+            assertNotFails(result.nameFutures!!["topic2"]!!::get)
             assertFutureThrows(
                 future = result.nameFutures!!["topic3"]!!,
                 exceptionCauseClass = TopicExistsException::class.java,
@@ -1073,8 +1077,8 @@ class KafkaAdminClientTest {
                 topics = TopicCollection.ofTopicIds(listOf(topicId1, topicId2, topicId3)),
                 options = DeleteTopicsOptions().apply { retryOnQuotaViolation = true },
             )
-            assertNull(resultIds.topicIdFutures!![topicId1]!!.get())
-            assertNull(resultIds.topicIdFutures!![topicId2]!!.get())
+            assertNotFails(resultIds.topicIdFutures!![topicId1]!!::get)
+            assertNotFails(resultIds.topicIdFutures!![topicId2]!!::get)
             assertFutureThrows(
                 future = resultIds.topicIdFutures!![topicId3]!!,
                 exceptionCauseClass = UnknownTopicIdException::class.java,
@@ -1128,7 +1132,7 @@ class KafkaAdminClientTest {
 
             // Advance time past the default api timeout to time out the inflight request
             time.sleep(defaultApiTimeout.toLong() + 1)
-            assertNull(result.nameFutures!!["topic1"]!!.get())
+            assertNotFails(result.nameFutures!!["topic1"]!!::get)
             var e = assertFutureThrows(
                 future = result.nameFutures!!["topic2"]!!,
                 exceptionCauseClass = ThrottlingQuotaExceededException::class.java
@@ -1178,7 +1182,7 @@ class KafkaAdminClientTest {
 
             // Advance time past the default api timeout to time out the inflight request
             time.sleep(defaultApiTimeout.toLong() + 1)
-            assertNull(resultIds.topicIdFutures!![topicId1]!!.get())
+            assertNotFails(resultIds.topicIdFutures!![topicId1]!!::get)
             e = assertFutureThrows(
                 future = resultIds.topicIdFutures!![topicId2]!!,
                 exceptionCauseClass = ThrottlingQuotaExceededException::class.java,
@@ -1209,7 +1213,7 @@ class KafkaAdminClientTest {
                 topics = mutableListOf("topic1", "topic2", "topic3"),
                 options = DeleteTopicsOptions().apply { retryOnQuotaViolation = false },
             )
-            assertNull(result.nameFutures!!["topic1"]!!.get())
+            assertNotFails(result.nameFutures!!["topic1"]!!::get)
             var e = assertFutureThrows(
                 future = result.nameFutures!!["topic2"]!!,
                 exceptionCauseClass = ThrottlingQuotaExceededException::class.java,
@@ -1237,7 +1241,7 @@ class KafkaAdminClientTest {
                 topics = TopicCollection.ofTopicIds(listOf(topicId1, topicId2, topicId3)),
                 options = DeleteTopicsOptions().apply { retryOnQuotaViolation = false },
             )
-            assertNull(resultIds.topicIdFutures!![topicId1]!!.get())
+            assertNotFails(resultIds.topicIdFutures!![topicId1]!!::get)
             e = assertFutureThrows(
                 future = resultIds.topicIdFutures!![topicId2]!!,
                 exceptionCauseClass = ThrottlingQuotaExceededException::class.java,
@@ -2416,8 +2420,8 @@ class KafkaAdminClientTest {
                 newPartitions = counts,
                 options = CreatePartitionsOptions().apply { retryOnQuotaViolation = true },
             )
-            assertNull(result.futures["topic1"]!!.get())
-            assertNull(result.futures["topic2"]!!.get())
+            assertNotFails(result.futures["topic1"]!!::get)
+            assertNotFails(result.futures["topic2"]!!::get)
             assertFutureThrows(
                 future = result.futures["topic3"]!!,
                 exceptionCauseClass = TopicExistsException::class.java,
@@ -2475,7 +2479,7 @@ class KafkaAdminClientTest {
 
             // Advance time past the default api timeout to time out the inflight request
             time.sleep(defaultApiTimeout.toLong() + 1)
-            assertNull(result.futures["topic1"]!!.get())
+            assertNotFails(result.futures["topic1"]!!::get)
             val e = assertFutureThrows(
                 future = (result.futures["topic2"])!!,
                 exceptionCauseClass = ThrottlingQuotaExceededException::class.java,
@@ -2510,7 +2514,7 @@ class KafkaAdminClientTest {
                 newPartitions = counts,
                 options = CreatePartitionsOptions().apply { retryOnQuotaViolation = false }
             )
-            assertNull(result.futures["topic1"]!!.get())
+            assertNotFails(result.futures["topic1"]!!::get)
             val e = assertFutureThrows(
                 future = result.futures["topic2"]!!,
                 exceptionCauseClass = ThrottlingQuotaExceededException::class.java,
@@ -3356,7 +3360,7 @@ class KafkaAdminClientTest {
             offsets[foo0] = OffsetAndMetadata(123L)
             offsets[foo1] = OffsetAndMetadata(456L)
             val result = env.adminClient.alterConsumerGroupOffsets(GROUP_ID, offsets)
-            assertNull(result.partitionResult(foo0).get())
+            assertNotFails(result.partitionResult(foo0)::get)
             assertFutureError(
                 future = result.partitionResult(foo1),
                 exceptionClass = UnknownTopicOrPartitionException::class.java,
@@ -3781,7 +3785,7 @@ class KafkaAdminClientTest {
             env.mockClient.prepareResponse(response = DescribeGroupsResponse(data))
             val result = env.adminClient.describeConsumerGroups(listOf(GROUP_ID))
             val groupDescription = result.describedGroups()[GROUP_ID]!!.get()
-            assertNull(groupDescription.authorizedOperations)
+            assertEquals(emptySet(), groupDescription.authorizedOperations)
         }
     }
 
@@ -3875,7 +3879,7 @@ class KafkaAdminClientTest {
                 expected = listOf("A"),
                 actual = data.groups[0].topics.map(OffsetFetchRequestTopics::name),
             )
-            assertEquals(
+            assertContentEquals(
                 expected = intArrayOf(0),
                 actual = data.groups[0].topics[0].partitionIndexes,
             )
@@ -4015,9 +4019,11 @@ class KafkaAdminClientTest {
     fun testListConsumerGroupOffsetsNonRetriableErrors() {
         // Non-retriable errors throw an exception
         val nonRetriableErrors = listOf(
-            Errors.GROUP_AUTHORIZATION_FAILED, Errors.INVALID_GROUP_ID, Errors.GROUP_ID_NOT_FOUND
+            Errors.GROUP_AUTHORIZATION_FAILED,
+            Errors.INVALID_GROUP_ID,
+            Errors.GROUP_ID_NOT_FOUND,
         )
-        AdminClientUnitTestEnv(mockCluster(1, 0)).use { env ->
+        AdminClientUnitTestEnv(mockCluster(numNodes = 1, controllerIndex = 0)).use { env ->
             env.mockClient.setNodeApiVersions(NodeApiVersions.create())
             for (error in nonRetriableErrors) {
                 env.mockClient.prepareResponse(
@@ -4173,10 +4179,9 @@ class KafkaAdminClientTest {
             .setMinVersion(0)
             .setMaxVersion(7)
         AdminClientUnitTestEnv(
-            time,
-            cluster,
-            AdminClientConfig.RETRY_BACKOFF_MS_CONFIG,
-            "0",
+            time = time,
+            cluster = cluster,
+            vals = arrayOf(AdminClientConfig.RETRY_BACKOFF_MS_CONFIG, "0"),
         ).use { env ->
             env.mockClient.setNodeApiVersions(
                 NodeApiVersions.create(listOf(findCoordinatorV3, offsetFetchV7))
@@ -4202,6 +4207,7 @@ class KafkaAdminClientTest {
                 batched = false,
                 error = Errors.COORDINATOR_LOAD_IN_PROGRESS,
             )
+
             sendOffsetFetchResponse(
                 mockClient = env.mockClient,
                 groupSpecs = groupSpecs,
@@ -4214,6 +4220,7 @@ class KafkaAdminClientTest {
                 batched = false,
                 error = Errors.NONE,
             )
+
             verifyListOffsetsForMultipleGroups(groupSpecs, result)
         }
     }
@@ -4309,23 +4316,19 @@ class KafkaAdminClientTest {
         error: Errors,
     ) {
         waitForRequest(mockClient, ApiKeys.OFFSET_FETCH)
-        val (_, requestBuilder) = mockClient.requests().peek()
-        val data = (requestBuilder as OffsetFetchRequest.Builder).data
-        val results: MutableMap<String, Map<TopicPartition, OffsetFetchResponse.PartitionData>> =
-            HashMap()
-        val errors: MutableMap<String, Errors> = HashMap()
+        val clientRequest = mockClient.requests().peek()
+        val data = (clientRequest.requestBuilder as OffsetFetchRequest.Builder).data
+        val results = mutableMapOf<String, Map<TopicPartition, OffsetFetchResponse.PartitionData>>()
+        val errors = mutableMapOf<String, Errors>()
         data.groups.forEach { group ->
-            val partitionResults: MutableMap<TopicPartition, OffsetFetchResponse.PartitionData> =
-                HashMap()
-            for (tp: TopicPartition in groupSpecs[group.groupId]!!.topicPartitions!!) {
-                partitionResults[tp] = OffsetFetchResponse.PartitionData(
+            results[group.groupId] = groupSpecs[group.groupId]!!.topicPartitions!!.associateWith {
+                OffsetFetchResponse.PartitionData(
                     offset = 10,
                     leaderEpoch = null,
                     metadata = "",
                     error = Errors.NONE,
                 )
             }
-            results[group.groupId] = partitionResults
             errors[group.groupId] = error
         }
         if (!batched) {
@@ -4334,7 +4337,7 @@ class KafkaAdminClientTest {
                 OffsetFetchResponse(
                     throttleTimeMs = THROTTLE,
                     error = error,
-                    responseData = results.values.iterator().next(),
+                    responseData = results.values.first(),
                 )
             )
         } else mockClient.respond(OffsetFetchResponse(THROTTLE, errors, results))
@@ -4507,7 +4510,7 @@ class KafkaAdminClientTest {
             )
             val result = env.adminClient.deleteConsumerGroups(groupIds)
             val results = result.deletedGroups()["groupId"]!!
-            assertNull(results.get())
+            assertNotFails(results::get)
 
             // should throw error for non-retriable errors
             env.mockClient.prepareResponse(
@@ -4580,7 +4583,7 @@ class KafkaAdminClientTest {
             )
             errorResult = env.adminClient.deleteConsumerGroups(groupIds)
             val errorResults = errorResult.deletedGroups()["groupId"]!!
-            assertNull(errorResults.get())
+            assertNotFails(errorResults::get)
         }
     }
 
@@ -4636,7 +4639,7 @@ class KafkaAdminClientTest {
             val result: DeleteConsumerGroupsResult = env.adminClient
                 .deleteConsumerGroups(groupIds)
             val results = result.deletedGroups()["group1"]!!
-            assertNull(results.get(5, TimeUnit.SECONDS))
+            assertNotFails { results.get(5, TimeUnit.SECONDS) }
         }
     }
 
@@ -4779,7 +4782,7 @@ class KafkaAdminClientTest {
                 groupId = GROUP_ID,
                 partitions = setOf(tp1, tp2),
             )
-            assertNull(errorResult.partitionResult(tp1).get())
+            assertNotFails(errorResult.partitionResult(tp1)::get)
             assertFutureError(
                 future = errorResult.all(),
                 exceptionClass = GroupSubscribedToTopicException::class.java
@@ -4833,8 +4836,8 @@ class KafkaAdminClientTest {
                 )
             )
             val errorResult1 = env.adminClient.deleteConsumerGroupOffsets(GROUP_ID, setOf(tp1))
-            assertNull(errorResult1.all().get())
-            assertNull(errorResult1.partitionResult(tp1).get())
+            assertNotFails(errorResult1.all()::get)
+            assertNotFails(errorResult1.partitionResult(tp1)::get)
         }
     }
 
@@ -4895,9 +4898,9 @@ class KafkaAdminClientTest {
                 )
             )
             val result: DeleteConsumerGroupOffsetsResult = env.adminClient
-                .deleteConsumerGroupOffsets(GROUP_ID, setOf(tp1),)
-            assertNull(result.all().get())
-            assertNull(result.partitionResult(tp1).get())
+                .deleteConsumerGroupOffsets(GROUP_ID, setOf(tp1))
+            assertNotFails(result.all()::get)
+            assertNotFails(result.partitionResult(tp1)::get)
         }
     }
 
@@ -5146,8 +5149,8 @@ class KafkaAdminClientTest {
                 groupId = GROUP_ID,
                 options = RemoveMembersFromConsumerGroupOptions(membersToRemove)
             )
-            assertNull(result.all().get())
-            assertNull(result.memberResult(memberToRemove).get())
+            assertNotFails(result.all()::get)
+            assertNotFails(result.memberResult(memberToRemove)::get)
         }
     }
 
@@ -5264,7 +5267,7 @@ class KafkaAdminClientTest {
                 future = memberLevelErrorResult.memberResult(memberOne),
                 exceptionClass = UnknownMemberIdException::class.java,
             )
-            assertNull(memberLevelErrorResult.memberResult(memberTwo).get())
+            assertNotFails(memberLevelErrorResult.memberResult(memberTwo)::get)
 
             // Return with missing member.
             env.mockClient.prepareResponse(
@@ -5290,7 +5293,7 @@ class KafkaAdminClientTest {
                 future = missingMemberResult.memberResult(memberOne),
                 exceptionClass = IllegalArgumentException::class.java,
             )
-            assertNull(missingMemberResult.memberResult(memberTwo).get())
+            assertNotFails(missingMemberResult.memberResult(memberTwo)::get)
 
             // Return with success.
             env.mockClient.prepareResponse(
@@ -5314,9 +5317,9 @@ class KafkaAdminClientTest {
                 groupId = GROUP_ID,
                 options = RemoveMembersFromConsumerGroupOptions(membersToRemove)
             )
-            assertNull(noErrorResult.all().get())
-            assertNull(noErrorResult.memberResult(memberOne).get())
-            assertNull(noErrorResult.memberResult(memberTwo).get())
+            assertNotFails(noErrorResult.all()::get)
+            assertNotFails(noErrorResult.memberResult(memberOne)::get)
+            assertNotFails(noErrorResult.memberResult(memberTwo)::get)
 
             // Test the "removeAll" scenario
             val topicPartitions = listOf(1, 2, 3).map { partition ->
@@ -5386,7 +5389,7 @@ class KafkaAdminClientTest {
                 groupId = GROUP_ID,
                 options = RemoveMembersFromConsumerGroupOptions()
             )
-            assertNull(successResult.all().get())
+            assertNotFails(successResult.all()::get)
         }
     }
 
@@ -5422,13 +5425,11 @@ class KafkaAdminClientTest {
             val memberToRemove2 = MemberToRemove("instance-2")
             val options = RemoveMembersFromConsumerGroupOptions(
                 members = setOf(memberToRemove1, memberToRemove2)
-            ).apply {
-                this.reason = reason
-            }
+            ).apply { this.reason = reason }
             val result = env.adminClient.removeMembersFromConsumerGroup(GROUP_ID, options)
-            assertNull(result.all().get())
-            assertNull(result.memberResult(memberToRemove1).get())
-            assertNull(result.memberResult(memberToRemove2).get())
+            assertNotFails(result.all()::get)
+            assertNotFails(result.memberResult(memberToRemove1)::get)
+            assertNotFails(result.memberResult(memberToRemove2)::get)
         }
     }
 
@@ -5772,9 +5773,9 @@ class KafkaAdminClientTest {
                 tp2 to OffsetAndMetadata(456L),
             )
             val result = env.adminClient.alterConsumerGroupOffsets(GROUP_ID, offsets)
-            assertNull(result.all().get())
-            assertNull(result.partitionResult(tp1).get())
-            assertNull(result.partitionResult(tp2).get())
+            assertNotFails(result.all()::get)
+            assertNotFails(result.partitionResult(tp1)::get)
+            assertNotFails(result.partitionResult(tp2)::get)
             assertFutureError(
                 future = result.partitionResult(tp3),
                 exceptionClass = IllegalArgumentException::class.java,
@@ -5815,8 +5816,8 @@ class KafkaAdminClientTest {
                 tp1 to OffsetAndMetadata(123L),
             )
             val result1 = env.adminClient.alterConsumerGroupOffsets(GROUP_ID, offsets)
-            assertNull(result1.all().get())
-            assertNull(result1.partitionResult(tp1).get())
+            assertNotFails(result1.all()::get)
+            assertNotFails(result1.partitionResult(tp1)::get)
         }
     }
 
@@ -5870,8 +5871,8 @@ class KafkaAdminClientTest {
             env.mockClient.prepareResponse(prepareOffsetCommitResponse(tp1, Errors.NONE))
             val offsets = mapOf(tp1 to OffsetAndMetadata(123L))
             val result = env.adminClient.alterConsumerGroupOffsets(GROUP_ID, offsets)
-            assertNull(result.all().get())
-            assertNull(result.partitionResult(tp1).get())
+            assertNotFails(result.all()::get)
+            assertNotFails(result.partitionResult(tp1)::get)
         }
     }
 
@@ -6395,7 +6396,7 @@ class KafkaAdminClientTest {
     private fun testUpdateFeatures(
         featureUpdates: Map<String, FeatureUpdate>,
         topLevelError: ApiError,
-        featureUpdateErrors: Map<String, ApiError>
+        featureUpdateErrors: Map<String, ApiError>,
     ) {
         mockClientEnv().use { env ->
             env.mockClient.prepareResponse(
@@ -6407,8 +6408,8 @@ class KafkaAdminClientTest {
                 ),
             )
             val futures = env.adminClient.updateFeatures(
-                featureUpdates,
-                UpdateFeaturesOptions().apply { timeoutMs = 10000 }
+                featureUpdates = featureUpdates,
+                options = UpdateFeaturesOptions().apply { timeoutMs = 10000 },
             ).futures
             for ((key, future) in futures) {
                 val error = featureUpdateErrors[key]
@@ -6418,15 +6419,15 @@ class KafkaAdminClientTest {
                     else {
                         val e = assertFailsWith<ExecutionException> { future.get() }
                         assertEquals(
-                            expected = e.cause!!::class.java,
-                            actual = error.exception()::class.java,
+                            expected = e.cause!!::class,
+                            actual = error.exception()!!::class,
                         )
                     }
                 } else {
                     val e = assertFailsWith<ExecutionException> { future.get() }
                     assertEquals(
                         expected = e.cause!!::class.java,
-                        actual = topLevelError.exception()::class.java,
+                        actual = topLevelError.exception()!!::class.java,
                     )
                 }
             }
@@ -7268,7 +7269,7 @@ class KafkaAdminClientTest {
                 subLevelErrors = errorsMap,
                 subKey = MemberIdentity().setGroupInstanceId("non-exist-id"),
                 keyNotFoundMsg = "For unit test",
-            )?.javaClass
+            )
         )
         assertNull(
             KafkaAdminClient.getSubLevelError(
@@ -7282,7 +7283,7 @@ class KafkaAdminClientTest {
                 subLevelErrors = errorsMap,
                 subKey = memberIdentities[1],
                 keyNotFoundMsg = "For unit test",
-            )?.javaClass
+            )
         )
     }
 
@@ -7344,7 +7345,7 @@ class KafkaAdminClientTest {
             )
             env.mockClient.respond(prepareMetadataResponse(cluster, Errors.NONE))
             assertEquals(expected = 1, actual = result.listings.get().size)
-            assertEquals(expected = "foo", actual = result.listings.get().iterator().next().name)
+            assertEquals(expected = "foo", actual = result.listings.get().first().name)
         }
     }
 
@@ -7570,7 +7571,6 @@ class KafkaAdminClientTest {
         }
     }
 
-    @Suppress("Deprecation")
     @Test
     fun testEqualsOfClientQuotaFilterComponent() {
         assertEquals(
@@ -7584,20 +7584,20 @@ class KafkaAdminClientTest {
 
         // match = null is different from match = Empty
         assertNotEquals(
-            ClientQuotaFilterComponent.ofDefaultEntity(ClientQuotaEntity.USER),
-            ClientQuotaFilterComponent.ofEntityType(ClientQuotaEntity.USER)
+            illegal = ClientQuotaFilterComponent.ofDefaultEntity(ClientQuotaEntity.USER),
+            actual = ClientQuotaFilterComponent.ofEntityType(ClientQuotaEntity.USER),
         )
         assertEquals(
-            ClientQuotaFilterComponent.ofEntity(ClientQuotaEntity.USER, "user"),
-            ClientQuotaFilterComponent.ofEntity(ClientQuotaEntity.USER, "user")
+            expected = ClientQuotaFilterComponent.ofEntity(ClientQuotaEntity.USER, "user"),
+            actual = ClientQuotaFilterComponent.ofEntity(ClientQuotaEntity.USER, "user"),
         )
         assertNotEquals(
-            ClientQuotaFilterComponent.ofEntity(ClientQuotaEntity.USER, "user"),
-            ClientQuotaFilterComponent.ofDefaultEntity(ClientQuotaEntity.USER)
+            illegal = ClientQuotaFilterComponent.ofEntity(ClientQuotaEntity.USER, "user"),
+            actual = ClientQuotaFilterComponent.ofDefaultEntity(ClientQuotaEntity.USER),
         )
         assertNotEquals(
-            ClientQuotaFilterComponent.ofEntity(ClientQuotaEntity.USER, "user"),
-            ClientQuotaFilterComponent.ofEntityType(ClientQuotaEntity.USER)
+            illegal = ClientQuotaFilterComponent.ofEntity(ClientQuotaEntity.USER, "user"),
+            actual = ClientQuotaFilterComponent.ofEntityType(ClientQuotaEntity.USER),
         )
     }
 
@@ -7676,8 +7676,8 @@ class KafkaAdminClientTest {
                 tpr1 to "/data1",
             )
             val result = env.adminClient.alterReplicaLogDirs(logDirs)
-            assertNull(result.futures[tpr0]!!.get())
-            assertNull(result.futures[tpr1]!!.get())
+            assertNotFails(result.futures[tpr0]!!::get)
+            assertNotFails(result.futures[tpr1]!!::get)
         }
     }
 
@@ -7704,7 +7704,7 @@ class KafkaAdminClientTest {
                 tpr1 to "/data1",
             )
             val result = env.adminClient.alterReplicaLogDirs(logDirs)
-            assertNull(result.futures[tpr0]!!.get())
+            assertNotFails(result.futures[tpr0]!!::get)
             assertFutureError(
                 future = result.futures[tpr1]!!,
                 exceptionClass = LogDirNotFoundException::class.java,
@@ -7726,7 +7726,7 @@ class KafkaAdminClientTest {
             val tpr1 = TopicPartitionReplica(topic = "topic", partition = 1, brokerId = 0)
             val logDirs = mapOf(tpr1 to "/data1")
             val result = env.adminClient.alterReplicaLogDirs(logDirs)
-            assertNull(result.futures[tpr1]!!.get())
+            assertNotFails(result.futures[tpr1]!!::get)
         }
     }
 
@@ -7747,7 +7747,7 @@ class KafkaAdminClientTest {
                 tpr2 to "/data1",
             )
             val result = env.adminClient.alterReplicaLogDirs(logDirs)
-            assertNull(result.futures[tpr1]!!.get())
+            assertNotFails(result.futures[tpr1]!!::get)
             assertFutureThrows(
                 future = result.futures[tpr2]!!,
                 exceptionCauseClass = ApiException::class.java,
@@ -7793,7 +7793,7 @@ class KafkaAdminClientTest {
                 future = result.futures[tpr1]!!,
                 exceptionCauseClass = ApiException::class.java,
             )
-            assertNull(result.futures[tpr2]!!.get())
+            assertNotFails(result.futures[tpr2]!!::get)
         }
     }
 
@@ -8238,7 +8238,7 @@ class KafkaAdminClientTest {
     fun testDescribeProducers() {
         mockClientEnv().use { env ->
             val topicPartition = TopicPartition("foo", 0)
-            val leader = env.cluster.nodes.iterator().next()
+            val leader = env.cluster.nodes.first()
             expectMetadataRequest(env, topicPartition, leader)
             val expected = listOf(
                 ProducerState(
@@ -8282,7 +8282,7 @@ class KafkaAdminClientTest {
             val topicPartition = TopicPartition("foo", 0)
             val requestTimeoutMs = 15000
             if (!timeoutInMetadataLookup) {
-                val leader = env.cluster.nodes.iterator().next()
+                val leader = env.cluster.nodes.first()
                 expectMetadataRequest(env, topicPartition, leader)
             }
             val options = DescribeProducersOptions().apply { timeoutMs = requestTimeoutMs }
@@ -8369,7 +8369,7 @@ class KafkaAdminClientTest {
     fun testDescribeTransactions() {
         mockClientEnv().use { env ->
             val transactionalId = "foo"
-            val coordinator = env.cluster.nodes.iterator().next()
+            val coordinator = env.cluster.nodes.first()
             val expected = TransactionDescription(
                 coordinatorId = coordinator.id,
                 state = TransactionState.COMPLETE_COMMIT,
@@ -8519,7 +8519,7 @@ class KafkaAdminClientTest {
                 coordinatorEpoch = 200,
                 topicPartition = topicPartition,
             )
-            val leader = env.cluster.nodes.iterator().next()
+            val leader = env.cluster.nodes.first()
             expectMetadataRequest(env, topicPartition, leader)
             env.mockClient.prepareResponseFrom(
                 matcher = { request -> request is WriteTxnMarkersRequest },
@@ -8527,7 +8527,7 @@ class KafkaAdminClientTest {
                 node = leader,
             )
             val result = env.adminClient.abortTransaction(abortSpec)
-            assertNull(result.all().get())
+            assertNotFails(result.all()::get)
         }
     }
 
@@ -8570,7 +8570,7 @@ class KafkaAdminClientTest {
                 node = retryLeader,
             )
             val result = env.adminClient.abortTransaction(abortSpec)
-            assertNull(result.all().get())
+            assertNotFails(result.all()::get)
         }
     }
 
@@ -8808,7 +8808,7 @@ class KafkaAdminClientTest {
     fun testFenceProducers() {
         mockClientEnv().use { env ->
             val transactionalId = "copyCat"
-            val transactionCoordinator = env.cluster.nodes.iterator().next()
+            val transactionCoordinator = env.cluster.nodes.first()
 
             // fail to find the coordinator at first with a retriable error
             env.mockClient.prepareResponse(
@@ -8860,7 +8860,7 @@ class KafkaAdminClientTest {
                 node = transactionCoordinator,
             )
             val result = env.adminClient.fenceProducers(setOf(transactionalId))
-            assertNull(result.all().get())
+            assertNotFails(result.all()::get)
             assertEquals(
                 expected = 4761,
                 actual = result.producerId(transactionalId).get(),
@@ -9516,7 +9516,7 @@ class KafkaAdminClientTest {
 
         private fun prepareDescribeLogDirsResponse(
             error: Errors, logDir: String,
-            topics: List<DescribeLogDirsTopic>
+            topics: List<DescribeLogDirsTopic>,
         ): DescribeLogDirsResponse {
             return DescribeLogDirsResponse(
                 DescribeLogDirsResponseData().setResults(
@@ -9658,7 +9658,7 @@ class KafkaAdminClientTest {
 
         private fun convertToMemberDescriptions(
             member: DescribedGroupMember,
-            assignment: MemberAssignment
+            assignment: MemberAssignment,
         ): MemberDescription {
             return MemberDescription(
                 memberId = member.memberId,

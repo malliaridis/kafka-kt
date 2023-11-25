@@ -18,7 +18,7 @@
 package org.apache.kafka.clients.admin
 
 import java.time.Duration
-import java.util.*
+import java.util.Properties
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.ElectionType
 import org.apache.kafka.common.Metric
@@ -189,7 +189,7 @@ interface Admin : AutoCloseable {
      * @return The DeleteTopicsResult.
      */
     fun deleteTopics(topics: Collection<String>, options: DeleteTopicsOptions): DeleteTopicsResult {
-        return deleteTopics(topics, options)
+        return deleteTopics(TopicCollection.ofTopicNames(topics), options)
     }
 
     /**
@@ -262,7 +262,7 @@ interface Admin : AutoCloseable {
         topicNames: Collection<String>,
         options: DescribeTopicsOptions = DescribeTopicsOptions(),
     ): DescribeTopicsResult {
-        return describeTopics(topicNames, options)
+        return describeTopics(TopicCollection.ofTopicNames(topicNames), options)
     }
 
     /**
@@ -919,12 +919,13 @@ interface Admin : AutoCloseable {
         groupId: String,
         options: ListConsumerGroupOffsetsOptions = ListConsumerGroupOffsetsOptions()
     ): ListConsumerGroupOffsetsResult {
-        @Suppress("deprecation")
-        val groupSpec = ListConsumerGroupOffsetsSpec().topicPartitions(options.topicPartitions())
+        @Suppress("Deprecation")
+        val groupSpec = ListConsumerGroupOffsetsSpec()
+            .apply { topicPartitions = options.topicPartitions() }
 
         // We can use the provided options with the batched API, which uses topic partitions from
         // the group spec and ignores any topic partitions set in the options.
-        return listConsumerGroupOffsets(Collections.singletonMap(groupId, groupSpec), options)
+        return listConsumerGroupOffsets(mapOf(groupId to groupSpec), options)
     }
 
     /**

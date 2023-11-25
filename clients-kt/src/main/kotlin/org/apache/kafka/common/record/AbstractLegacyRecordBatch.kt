@@ -82,7 +82,7 @@ abstract class AbstractLegacyRecordBatch : AbstractRecordBatch(), Record {
 
     override fun timestampType(): TimestampType = outerRecord().timestampType()
 
-    override fun baseOffset(): Long = iterator().next().offset()
+    override fun baseOffset(): Long = first().offset()
 
     override fun magic(): Byte = outerRecord().magic()
 

@@ -31,9 +31,9 @@ class Heartbeat(
     private val time: Time,
 ) {
 
-    private val maxPollIntervalMs: Int = rebalanceConfig.rebalanceTimeoutMs
+    private val maxPollIntervalMs: Int = rebalanceConfig.rebalanceTimeoutMs!!
 
-    private val heartbeatTimer: Timer = time.timer(rebalanceConfig.heartbeatIntervalMs.toLong())
+    private val heartbeatTimer: Timer = time.timer(rebalanceConfig.heartbeatIntervalMs!!.toLong())
 
     private val sessionTimer: Timer = time.timer(rebalanceConfig.sessionTimeoutMs.toLong())
 
@@ -51,7 +51,7 @@ class Heartbeat(
     private var heartbeatInFlight = false
 
     init {
-        require(rebalanceConfig.heartbeatIntervalMs < rebalanceConfig.sessionTimeoutMs) {
+        require(rebalanceConfig.heartbeatIntervalMs!! < rebalanceConfig.sessionTimeoutMs) {
             "Heartbeat must be set lower than the session timeout"
         }
     }
@@ -73,7 +73,7 @@ class Heartbeat(
         lastHeartbeatSend = now
         heartbeatInFlight = true
         update(now)
-        heartbeatTimer.reset(rebalanceConfig.heartbeatIntervalMs.toLong())
+        heartbeatTimer.reset(rebalanceConfig.heartbeatIntervalMs!!.toLong())
 
         if (log.isTraceEnabled) log.trace(
             "Sending heartbeat request with {}ms remaining on timer",
@@ -84,7 +84,7 @@ class Heartbeat(
     fun failHeartbeat() {
         update(time.milliseconds())
         heartbeatInFlight = false
-        heartbeatTimer.reset(rebalanceConfig.retryBackoffMs)
+        heartbeatTimer.reset(rebalanceConfig.retryBackoffMs!!)
 
         log.trace(
             "Heartbeat failed, reset the timer to {}ms remaining",
@@ -123,7 +123,7 @@ class Heartbeat(
         update(time.milliseconds())
         sessionTimer.reset(rebalanceConfig.sessionTimeoutMs.toLong())
         pollTimer.reset(maxPollIntervalMs.toLong())
-        heartbeatTimer.reset(rebalanceConfig.heartbeatIntervalMs.toLong())
+        heartbeatTimer.reset(rebalanceConfig.heartbeatIntervalMs!!.toLong())
     }
 
     fun resetSessionTimeout() {

@@ -233,7 +233,7 @@ class AllBrokersStrategyIntegrationTest {
             broker: Node,
             keys: Set<BrokerKey>,
             response: AbstractResponse,
-        ): ApiResult<BrokerKey, Int> = ApiResult.completed(keys.iterator().next(), broker.id)
+        ): ApiResult<BrokerKey, Int> = ApiResult.completed(keys.first(), broker.id)
 
         override fun lookupStrategy(): AdminApiLookupStrategy<BrokerKey> = allBrokersStrategy
     }
