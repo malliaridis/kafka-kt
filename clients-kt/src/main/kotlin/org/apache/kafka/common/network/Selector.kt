@@ -941,15 +941,10 @@ open class Selector private constructor(
     }
 
     private fun openOrClosingChannelOrFail(id: String): KafkaChannel {
-        var channel = channels[id]
-        if (channel == null) channel = closingChannels[id]
-
-        checkNotNull(channel) {
+        return checkNotNull(channels[id] ?: closingChannels[id]) {
             "Attempt to retrieve channel for which there is no connection. Connection id $id " +
                     "existing connections ${channels.keys}"
         }
-
-        return channel
     }
 
     /**
@@ -1014,7 +1009,7 @@ open class Selector private constructor(
         currentTimeMs: Long,
     ) {
         check(!hasCompletedReceive(channel)) {
-            "Attempting to add second completed receive to channel " + channel.id
+            "Attempting to add second completed receive to channel ${channel.id}"
         }
         completedReceives[channel.id] = networkReceive
         sensors.recordCompletedReceive(channel.id, networkReceive.size().toLong(), currentTimeMs)

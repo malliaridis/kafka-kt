@@ -144,9 +144,8 @@ class ConsumerNetworkClient(
      */
     fun awaitMetadataUpdate(timer: Timer): Boolean {
         val version = metadata.requestUpdate()
-        do {
-            poll(timer)
-        } while (metadata.updateVersion() == version && timer.isNotExpired)
+        do poll(timer)
+        while (metadata.updateVersion() == version && timer.isNotExpired)
         return metadata.updateVersion() > version
     }
 

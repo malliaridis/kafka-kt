@@ -1006,18 +1006,17 @@ class Sender(
 
                     // per-topic record send rate
                     val topicRecordsCountName = "topic.$topic.records-per-batch"
-                    val topicRecordCount = checkNotNull(metrics.getSensor(topicRecordsCountName))
+                    val topicRecordCount = metrics.getSensor(topicRecordsCountName)!!
                     topicRecordCount.record(batch.recordCount.toDouble())
 
                     // per-topic bytes send rate
                     val topicByteRateName = "topic.$topic.bytes"
-                    val topicByteRate = checkNotNull(metrics.getSensor(topicByteRateName))
+                    val topicByteRate = metrics.getSensor(topicByteRateName)!!
                     topicByteRate.record(batch.estimatedSizeInBytes.toDouble())
 
                     // per-topic compression rate
                     val topicCompressionRateName = "topic.$topic.compression-rate"
-                    val topicCompressionRate =
-                        checkNotNull(metrics.getSensor(topicCompressionRateName))
+                    val topicCompressionRate = metrics.getSensor(topicCompressionRateName)!!
                     topicCompressionRate.record(batch.compressionRatio)
 
                     // global metrics

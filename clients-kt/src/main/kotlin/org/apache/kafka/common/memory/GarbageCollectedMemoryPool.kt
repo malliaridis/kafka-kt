@@ -64,14 +64,11 @@ class GarbageCollectedMemoryPool(
     override fun bufferToBeReturned(justAllocated: ByteBuffer) {
         val ref = BufferReference(justAllocated, garbageCollectedBuffers)
         val metadata = BufferMetadata(justAllocated.capacity())
-        check(
-            buffersInFlight.put(
-                ref,
-                metadata
-            ) == null
-        ) //this is a bug. it means either 2 different co-existing buffers got
-        //the same identity or we failed to register a released/GC'ed buffer
-        { "allocated buffer identity " + ref.hashCode + " already registered as in use?!" }
+        check(buffersInFlight.put(ref, metadata) == null) {
+            //this is a bug. it means either 2 different co-existing buffers got
+            //the same identity or we failed to register a released/GC'ed buffer
+            "allocated buffer identity " + ref.hashCode + " already registered as in use?!"
+        }
         log.trace("allocated buffer of size {} and identity {}", sizeBytes, ref.hashCode)
     }
 
@@ -81,7 +78,7 @@ class GarbageCollectedMemoryPool(
         val metadata = buffersInFlight.remove(ref)
             ?: //its impossible for the buffer to have already been GC'ed (because we have a hard ref to it
             //in the function arg) so this means either a double free or not our buffer.
-            throw IllegalArgumentException("returned buffer " + ref.hashCode + " was never allocated by this pool")
+            throw IllegalArgumentException("returned buffer ${ref.hashCode} was never allocated by this pool")
 
         check(metadata.sizeBytes == justReleased.capacity()) {
             //this is a bug

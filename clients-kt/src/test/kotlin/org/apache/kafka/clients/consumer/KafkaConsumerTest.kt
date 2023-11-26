@@ -116,7 +116,6 @@ import org.apache.kafka.test.TestUtils
 import org.apache.kafka.test.TestUtils.singletonCluster
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.Timeout
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
@@ -191,7 +190,7 @@ class KafkaConsumerTest {
 
     private val singleTopicPartition: Collection<TopicPartition> = setOf(TopicPartition(topic, 0))
 
-    private val time: Time = MockTime()
+    private val time: Time = MockTime(10)
 
     private val subscription = SubscriptionState(LogContext(), OffsetResetStrategy.EARLIEST)
 

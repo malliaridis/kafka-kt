@@ -1565,7 +1565,7 @@ class MetadataTest {
             // currentTimeMillis is always larger than the metadataExpireMs or refreshBackoffMs.
             // It won't be a problem practically since all usages of Metadata calls first update()
             // immediately after it's construction.
-            require(!(metadataExpireMs > now || refreshBackoffMs > now)) {
+            require(metadataExpireMs <= now && refreshBackoffMs <= now) {
                 "metadataExpireMs and refreshBackoffMs must be smaller than 'now'"
             }
             val largerOfBackoffAndExpire =

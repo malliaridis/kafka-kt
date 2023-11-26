@@ -64,7 +64,7 @@ class OAuthBearerSaslClientCallbackHandler : AuthenticateCallbackHandler {
         jaasConfigEntries: List<AppConfigurationEntry>
     ) {
         require(OAuthBearerLoginModule.OAUTHBEARER_MECHANISM == saslMechanism) {
-            String.format("Unexpected SASL mechanism: %s", saslMechanism)
+            "Unexpected SASL mechanism: $saslMechanism"
         }
         configured = true
     }

@@ -343,12 +343,9 @@ class NetworkClient(
             // will be slightly different for some internal requests (for
             // example, ApiVersionsRequests can be sent prior to being in
             // READY state.)
-            check(
-                canSendRequest(
-                    nodeId,
-                    now
-                )
-            ) { "Attempt to send a request to node $nodeId which is not ready." }
+            check(canSendRequest(nodeId, now)) {
+                "Attempt to send a request to node $nodeId which is not ready."
+            }
         }
         val builder = clientRequest.requestBuilder()
         try {

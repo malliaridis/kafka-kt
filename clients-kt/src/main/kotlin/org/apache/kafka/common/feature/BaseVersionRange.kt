@@ -121,7 +121,7 @@ open class BaseVersionRange protected constructor(
             versionRangeMap: Map<String, Short>
         ): Short {
             return requireNotNull(versionRangeMap[key]) {
-                String.format("%s absent in [%s]", key, mapToString(versionRangeMap))
+                "$key absent in [${mapToString(versionRangeMap)}]"
             }
         }
     }

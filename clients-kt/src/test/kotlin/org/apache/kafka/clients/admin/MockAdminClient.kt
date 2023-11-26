@@ -136,9 +136,7 @@ class MockAdminClient private constructor(
         configs: Map<String, String?>?,
         usesTopicId: Boolean = true,
     ) {
-        require(!allTopics.containsKey(name)) {
-            String.format("Topic %s was already added.", name)
-        }
+        require(!allTopics.containsKey(name)) { "Topic $name was already added." }
         partitions.forEach { partition ->
             require(brokers.contains(partition.leader)) { "Leader broker unknown" }
             require(brokers.containsAll(partition.replicas)) { "Unknown brokers in replica list" }
@@ -168,7 +166,7 @@ class MockAdminClient private constructor(
 
     @Synchronized
     fun markTopicForDeletion(name: String) {
-        require(allTopics.containsKey(name)) { String.format("Topic %s did not exist.", name) }
+        require(allTopics.containsKey(name)) { "Topic $name did not exist." }
         allTopics[name]!!.markedForDeletion = true
     }
 
@@ -223,7 +221,7 @@ class MockAdminClient private constructor(
             val future = KafkaFutureImpl<TopicMetadataAndConfig>()
             val topicName = newTopic.name
             if (allTopics.containsKey(topicName)) {
-                future.completeExceptionally(TopicExistsException(String.format("Topic %s exists already.", topicName)))
+                future.completeExceptionally(TopicExistsException("Topic $topicName exists already."))
                 createTopicResult[topicName] = future
                 continue
             }

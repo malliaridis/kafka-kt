@@ -241,7 +241,7 @@ open class KafkaChannel(
                 }
             }
         }
-        check(stateChanged) { "Cannot transition from " + muteState.name + " for " + event.name }
+        check(stateChanged) { "Cannot transition from ${muteState.name} for ${event.name}" }
     }
 
     @Deprecated(

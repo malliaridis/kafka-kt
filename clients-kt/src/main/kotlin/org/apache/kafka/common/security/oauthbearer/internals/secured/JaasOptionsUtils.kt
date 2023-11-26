@@ -106,10 +106,7 @@ class JaasOptionsUtils(private val options: Map<String, Any>) {
             jaasConfigEntries: List<AppConfigurationEntry>
         ): Map<String, Any> {
             require(OAuthBearerLoginModule.OAUTHBEARER_MECHANISM == saslMechanism) {
-                String.format(
-                    "Unexpected SASL mechanism: %s",
-                    saslMechanism
-                )
+                "Unexpected SASL mechanism: $saslMechanism"
             }
             require(jaasConfigEntries.size == 1) {
                 String.format(

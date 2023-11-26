@@ -387,12 +387,8 @@ open class KafkaProducer<K, V> : Producer<K, V> {
                     Serializer::class.java
                 ) as Serializer<K>
                 this.keySerializer.configure(
-                    config.originals(
-                        Collections.singletonMap<String, Any>(
-                            ProducerConfig.CLIENT_ID_CONFIG,
-                            clientId
-                        )
-                    ), true
+                    configs = config.originals(mapOf(ProducerConfig.CLIENT_ID_CONFIG to clientId)),
+                    isKey = true,
                 )
             } else {
                 config.ignore(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG)
@@ -404,12 +400,9 @@ open class KafkaProducer<K, V> : Producer<K, V> {
                     Serializer::class.java
                 ) as Serializer<V>
                 this.valueSerializer.configure(
-                    config.originals(
-                        Collections.singletonMap<String, Any>(
-                            ProducerConfig.CLIENT_ID_CONFIG,
-                            clientId
-                        )
-                    ), false
+                    configs = config.originals(
+                        mapOf(ProducerConfig.CLIENT_ID_CONFIG to clientId)),
+                    isKey = false,
                 )
             } else {
                 config.ignore(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG)

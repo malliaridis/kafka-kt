@@ -855,7 +855,7 @@ class SubscriptionState(
             if (nextState == newState) {
                 fetchState = nextState
                 runIfTransitioned.run()
-                check(!(position == null && nextState.requiresPosition())) {
+                check(position != null || !nextState.requiresPosition()) {
                     "Transitioned subscription state to $nextState, but position is null"
                 }
                 if (!nextState.requiresPosition()) position = null

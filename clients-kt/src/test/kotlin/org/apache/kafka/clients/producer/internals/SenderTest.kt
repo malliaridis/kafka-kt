@@ -4460,17 +4460,18 @@ class SenderTest {
         assertEquals(expected = expectedMessage, actual = cause.message)
     }
 
-    internal inner class AssertEndTxnRequestMatcher(private val requiredResult: TransactionResult) :
-        RequestMatcher {
+    internal inner class AssertEndTxnRequestMatcher(
+        private val requiredResult: TransactionResult,
+    ) : RequestMatcher {
+
         var matched = false
+
         override fun matches(body: AbstractRequest?): Boolean {
             return if (body is EndTxnRequest) {
                 assertSame(requiredResult, body.result)
                 matched = true
                 true
-            } else {
-                false
-            }
+            } else false
         }
     }
 

@@ -30,6 +30,7 @@ import org.apache.kafka.common.security.TestSecurityConfig
 import org.apache.kafka.test.MockConsumerInterceptor
 import org.junit.jupiter.api.Test
 import java.util.*
+import org.apache.kafka.common.utils.Utils
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
@@ -655,11 +656,7 @@ class AbstractConfigTest {
 
     private class TestConfig(props: Map<String, Any?>) : AbstractConfig(CONFIG, props) {
 
-        constructor(props: Properties) : this(
-            props = props.asSequence()
-                .map { it.key.toString() to it.value }
-                .toMap()
-        )
+        constructor(props: Properties) : this(props = Utils.propsToMap(props))
 
         companion object {
 

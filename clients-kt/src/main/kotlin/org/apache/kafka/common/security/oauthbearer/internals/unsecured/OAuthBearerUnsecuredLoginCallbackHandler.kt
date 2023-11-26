@@ -117,7 +117,7 @@ class OAuthBearerUnsecuredLoginCallbackHandler : AuthenticateCallbackHandler {
         jaasConfigEntries: List<AppConfigurationEntry>
     ) {
         require(OAuthBearerLoginModule.OAUTHBEARER_MECHANISM == saslMechanism) {
-            String.format("Unexpected SASL mechanism: %s", saslMechanism)
+            "Unexpected SASL mechanism: $saslMechanism"
         }
         require(jaasConfigEntries.size == 1) {
             String.format(
@@ -320,7 +320,7 @@ class OAuthBearerUnsecuredLoginCallbackHandler : AuthenticateCallbackHandler {
         require(
             escapedClaimValue.startsWith("[")
                     && escapedClaimValue.endsWith("]")
-        ) { String.format("Illegal JSON array: %s", escapedClaimValue) }
+        ) { "Illegal JSON array: $escapedClaimValue" }
 
         return QUOTE + escape(claimName) + QUOTE + ":" + escapedClaimValue
     }

@@ -321,7 +321,7 @@ open class MockClient(
 
         val copy = mutableListOf<ClientResponse>()
         var response: ClientResponse?
-        while ((responses.poll().also { response = it }) != null) {
+        while (responses.poll().also { response = it } != null) {
             response!!.onComplete()
             copy.add(response!!)
         }
@@ -657,7 +657,7 @@ open class MockClient(
                     "The metadata topics does not match expectation. Expected topics: " +
                             "${update.topics()}, asked topics: ALL"
                 }
-                val requestedTopics: Set<String> = HashSet(builder.topics())
+                val requestedTopics = builder.topics().toSet()
                 check(requestedTopics == update.topics()) {
                     "The metadata topics does not match expectation. Expected topics: " +
                             "${update.topics()}, asked topics: $requestedTopics"

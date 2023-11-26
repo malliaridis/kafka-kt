@@ -287,7 +287,7 @@ object CommonClientConfigs {
         parsedValues: Map<String, Any?>
     ): Map<String, Any?> {
         val rval = HashMap<String, Any?>()
-        val originalConfig: Map<String, Any?> = config.originals()
+        val originalConfig = config.originals()
         if (
             !originalConfig.containsKey(RECONNECT_BACKOFF_MAX_MS_CONFIG)
             && originalConfig.containsKey(RECONNECT_BACKOFF_MS_CONFIG)

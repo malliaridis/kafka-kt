@@ -17,7 +17,7 @@
 
 package org.apache.kafka.common.config
 
-import java.util.*
+import java.util.TreeMap
 import java.util.concurrent.ConcurrentHashMap
 import org.apache.kafka.common.Configurable
 import org.apache.kafka.common.KafkaException
@@ -25,7 +25,6 @@ import org.apache.kafka.common.config.provider.ConfigProvider
 import org.apache.kafka.common.config.types.Password
 import org.apache.kafka.common.utils.Utils
 import org.slf4j.LoggerFactory
-import kotlin.reflect.KClass
 
 /**
  * A convenient base class for configurations to extend.
@@ -86,19 +85,21 @@ open class AbstractConfig(
      * This set must be concurrent modifiable and iterable. It will be modified
      * when directly accessed or as a result of RecordingMap access.
      */
-    private val used: MutableSet<String?> = ConcurrentHashMap.newKeySet()
+    private val used: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
     /* the original values passed in by the user */
-    private val originals: Map<String, Any>
+    private val originals: Map<String, Any?>
 
     /* the parsed values */
-    private val values: MutableMap<String, Any?>
+    private val values: Map<String, *>
 
     init {
-        this.originals = resolveConfigVariables(configProviderProps, originals)
-        values = definition.parse(this.originals).toMutableMap()
+        this.originals = resolveConfigVariables(configProviderProps, originals) as Map<String, Any?>
+
+        val values = definition.parse(this.originals)
         val configUpdates = postProcessParsedConfig(values)
-        for ((key, value) in configUpdates) values[key] = value
+        // for ((key, value) in configUpdates) values[key] = value
+        this.values = values + configUpdates
         definition.parse(values)
         if (doLog) logAll()
     }
@@ -115,7 +116,6 @@ open class AbstractConfig(
         parsedValues: Map<String, Any?>,
     ): Map<String, Any?> = emptyMap()
 
-    @Suppress("UNCHECKED_CAST")
     protected operator fun <T> get(key: String): T? {
         if (!values.containsKey(key)) throw ConfigException("Unknown configuration '$key'")
         used.add(key)
@@ -153,22 +153,21 @@ open class AbstractConfig(
     fun getClass(key: String): Class<*>? = get(key)
 
     fun unused(): Set<String> {
-        val keys = mutableSetOf<String>()
-        keys.removeAll(used)
-
-        return keys
+        return originals.keys - used
     }
 
     fun originals(): MutableMap<String, Any?> {
-        val copy: MutableMap<String, Any?> = RecordingMap()
+        val copy =  RecordingMap<Any?>()
         copy.putAll(originals)
+
         return copy
     }
 
     fun originals(configOverrides: Map<String, Any?>): Map<String, Any?> {
-        val copy: MutableMap<String, Any?> = RecordingMap()
+        val copy = RecordingMap<Any?>()
         copy.putAll(originals)
         copy.putAll(configOverrides)
+
         return copy
     }
 
@@ -183,7 +182,7 @@ open class AbstractConfig(
 
         originals.forEach { (key, value) ->
             if (value !is String) throw ClassCastException(
-                "Non-string value found in original settings for key $key: " + value.javaClass.name
+                "Non-string value found in original settings for key $key: " + value?.javaClass?.name
             )
             copy[key] = value
         }
@@ -198,12 +197,12 @@ open class AbstractConfig(
      * @return a Map containing the settings with the prefix
      */
     fun originalsWithPrefix(prefix: String, strip: Boolean = true): Map<String, Any> {
-        val result: MutableMap<String, Any> = RecordingMap(prefix, false)
+        val result = RecordingMap<Any>(prefix, false)
 
-        originals.forEach { (key, value) ->
+        originals.filterValues { it != null }.forEach { (key, value) ->
             if (key.startsWith(prefix) && key.length > prefix.length) {
-                if (strip) result[key.substring(prefix.length)] = value
-                else result[key] = value
+                if (strip) result[key.substring(prefix.length)] = value!!
+                else result[key] = value!!
             }
         }
         return result
@@ -228,7 +227,7 @@ open class AbstractConfig(
      * This is used to provide per-mechanism configs for a broker listener (e.g sasl.jaas.config).
      */
     fun valuesWithPrefixOverride(prefix: String): Map<String, Any?> {
-        val result: MutableMap<String, Any?> = RecordingMap(values(), prefix, true)
+        val result = RecordingMap(values(), prefix, true)
 
         originals.forEach { (key, value) ->
 
@@ -278,7 +277,7 @@ open class AbstractConfig(
     fun values(): Map<String, Any?> = RecordingMap(values)
 
     fun nonInternalValues(): Map<String, *> {
-        val nonInternalConfigs: MutableMap<String, Any?> = RecordingMap()
+        val nonInternalConfigs = RecordingMap<Any?>()
 
         values.forEach { (key, value) ->
             val configKey = definition.configKeys[key]
@@ -319,7 +318,8 @@ open class AbstractConfig(
         klass: Any?,
         t: Class<T>,
         configPairs: Map<String, Any?>,
-    ): T {
+    ): T? {
+        klass ?: return null
 
         val o: T = when (klass) {
             is String -> {
@@ -332,9 +332,7 @@ open class AbstractConfig(
 
             is Class<*> -> Utils.newInstance(klass as Class<T>)
 
-            else -> throw KafkaException(
-                "Unexpected element of type ${klass?.javaClass?.name}, expected String or Class"
-            )
+            else -> throw KafkaException("Unexpected element of type ${klass.javaClass.name}, expected String or Class")
         }
         try {
             if (!t.isInstance(o)) throw KafkaException("$klass is not an instance of ${t.name}")
@@ -351,8 +349,19 @@ open class AbstractConfig(
     }
 
     /**
-     * Get a configured instance of the give class specified by the given configuration key. If the
-     * object implements [Configurable] configure it using the configuration.
+     * Get a configured instance of the give class specified by the given configuration key. If the object implements
+     * Configurable configure it using the configuration.
+     *
+     * @param key The configuration key for the class
+     * @param t   The interface the class should implement
+     * @return A configured instance of the class
+     */
+    fun <T> getConfiguredInstance(key: String, t: Class<T>): T? =
+        getConfiguredInstance(key, t, emptyMap())
+
+    /**
+     * Get a configured instance of the give class specified by the given configuration key. If the object
+     * implements Configurable configure it using the configuration.
      *
      * @param key The configuration key for the class
      * @param t The interface the class should implement
@@ -362,30 +371,28 @@ open class AbstractConfig(
     fun <T> getConfiguredInstance(
         key: String,
         t: Class<T>,
-        configOverrides: Map<String, Any?> = emptyMap<String, Any>(),
+        configOverrides: Map<String, Any?>,
     ): T? {
         val c = getClass(key)
         return getConfiguredInstance(c, t, originals(configOverrides))
     }
 
     /**
-     * Get a list of configured instances of the given class specified by the given configuration key. The configuration
-     * may specify either null or an empty string to indicate no configured instances. In both cases, this method
-     * returns an empty list to indicate no configured instances.
+     * Get a list of configured instances of the given class specified by the given configuration key.
+     * The configuration may specify either null or an empty string to indicate no configured instances.
+     * In both cases, this method returns an empty list to indicate no configured instances.
      *
      * @param key The configuration key for the class
-     * @param t   The interface the class should implement
+     * @param t The interface the class should implement
      * @return The list of configured instances
      */
-    fun <T> getConfiguredInstances(key: String, t: Class<T>): List<T> {
-        return getConfiguredInstances(key, t, emptyMap())
-    }
+    fun <T> getConfiguredInstances(key: String, t: Class<T>): List<T> =
+        getConfiguredInstances(key, t, emptyMap())
 
     /**
-     * Get a list of configured instances of the given class specified by the given configuration
-     * key. The configuration may specify either null or an empty string to indicate no configured
-     * instances. In both cases, this method returns an empty list to indicate no configured
-     * instances.
+     * Get a list of configured instances of the given class specified by the given configuration key.
+     * The configuration may specify either null or an empty string to indicate no configured instances.
+     * In both cases, this method returns an empty list to indicate no configured instances.
      *
      * @param key The configuration key for the class
      * @param t The interface the class should implement
@@ -396,9 +403,7 @@ open class AbstractConfig(
         key: String,
         t: Class<T>,
         configOverrides: Map<String, Any?>,
-    ): List<T> {
-        return getConfiguredInstances(getList(key), t, configOverrides)
-    }
+    ): List<T> = getConfiguredInstances(getList(key), t, configOverrides)
 
     /**
      * Get a list of configured instances of the given class specified by the given configuration
@@ -412,18 +417,19 @@ open class AbstractConfig(
      * @return The list of configured instances
      */
     fun <T> getConfiguredInstances(
-        classNames: List<String>?,
+        classNames: List<Any>?,
         t: Class<T>,
-        configOverrides: Map<String, Any?>?,
+        configOverrides: Map<String, Any?>,
     ): List<T> {
         val objects: MutableList<T> = ArrayList()
 
         if (classNames == null) return objects
 
-        val configPairs = originals(configOverrides!!)
+        val configPairs = originals()
+        configPairs.putAll(configOverrides)
 
         try {
-            classNames.forEach { klass: Any ->
+            classNames.forEach { klass ->
                 val o: T? = getConfiguredInstance(klass, t, configPairs)
                 objects.add(t.cast(o))
             }
@@ -463,7 +469,7 @@ open class AbstractConfig(
     private fun resolveConfigVariables(
         configProviderProps: Map<String, Any?>?,
         originals: Map<String, Any?>,
-    ): Map<String, Any> {
+    ): Map<Any?, Any?> {
 
         val resolvedOriginals = mutableMapOf<String, Any?>()
         // As variable configs are strings, parse the originals and obtain the potential variable configs.
@@ -582,7 +588,9 @@ open class AbstractConfig(
      * like `Partitioner`.
      */
     private inner class RecordingMap<V> : HashMap<String, V> {
+
         private val prefix: String
+
         private val withIgnoreFallback: Boolean
 
         constructor(
@@ -622,12 +630,12 @@ open class AbstractConfig(
      * mutations are not applied to the originals.
      */
     private class ResolvingMap<V>(
-        resolved: Map<String, V?>,
-        private val originals: Map<String, Any?>,
-    ) : HashMap<String, V>(resolved) {
+        resolved: Map<String, V>?,
+        private val originals: Map<String, *>,
+    ) : HashMap<Any?, V?>(resolved) {
 
-        override operator fun get(key: String): V? {
-            if (originals.containsKey(key)) {
+        override operator fun get(key: Any?): V? {
+            if (key is String && originals.containsKey(key)) {
                 // Intentionally ignore the result; call just to mark the original entry as used
                 originals[key]
             }

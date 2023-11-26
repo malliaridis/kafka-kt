@@ -25,7 +25,7 @@ data class PartitionInfo(
     val leader: Node?,
     val replicas: List<Node>,
     val inSyncReplicas: List<Node>,
-    val offlineReplicas: List<Node> = emptyList()
+    val offlineReplicas: List<Node> = emptyList(),
 ) {
 
     @Deprecated("Use primary constructor instead")
@@ -109,21 +109,18 @@ data class PartitionInfo(
     }
 
     override fun toString(): String {
-        return String.format(
-            "Partition(topic = %s, partition = %d, leader = %s, replicas = %s, isr = %s, offlineReplicas = %s)",
-            topic,
-            partition,
-            leader?.idString() ?: "none",
-            formatNodeIds(replicas),
-            formatNodeIds(inSyncReplicas),
-            formatNodeIds(offlineReplicas)
-        )
+        return "Partition(topic = $topic, " +
+                "partition = $partition, " +
+                "leader = ${leader?.idString() ?: "none"}, " +
+                "replicas = ${formatNodeIds(replicas)}, " +
+                "isr = ${formatNodeIds(inSyncReplicas)}, " +
+                "offlineReplicas = ${formatNodeIds(offlineReplicas)})"
     }
 
     /* Extract the node ids from each item in the array and format for display */
     private fun formatNodeIds(nodes: List<Node>?): String {
         val b = StringBuilder("[")
-        if (nodes != null) b.append(nodes.joinToString(","))
+        if (nodes != null) b.append(nodes.joinToString(",") { it.idString() })
         b.append("]")
         return b.toString()
     }

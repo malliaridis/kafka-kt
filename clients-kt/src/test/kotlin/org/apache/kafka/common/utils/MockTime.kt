@@ -26,7 +26,7 @@ import org.apache.kafka.common.errors.TimeoutException
 /**
  * A clock that you can manually advance by calling sleep
  */
-class MockTime constructor(
+class MockTime(
     private val autoTickMs: Long = 0,
     currentTimeMs: Long = System.currentTimeMillis(),
     currentHighResTimeNs: Long = System.nanoTime(),

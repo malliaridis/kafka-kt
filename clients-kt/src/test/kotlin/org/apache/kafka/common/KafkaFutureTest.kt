@@ -643,8 +643,8 @@ class KafkaFutureTest {
             waiterThreads[i].join()
             assertNull(completerThreads[i].testException)
             if (i == lastIndex) {
-                assertIs<ExecutionException>(waiterThreads[i].testException!!.javaClass)
-                assertIs<RuntimeException>(waiterThreads[i].testException!!.cause!!.javaClass)
+                assertIs<ExecutionException>(waiterThreads[i].testException)
+                assertIs<RuntimeException>(waiterThreads[i].testException!!.cause)
                 assertEquals("Last one failed", waiterThreads[i].testException!!.cause!!.message)
             } else assertNull(waiterThreads[i].testException)
         }
@@ -678,8 +678,9 @@ class KafkaFutureTest {
         if (Java.IS_JAVA9_COMPATIBLE) {
             val completeOnTimeout = CompletableFuture::class.java.getDeclaredMethod(
                 "completeOnTimeout",
-                Any::class.java, java.lang.Long.TYPE,
-                TimeUnit::class.java
+                Any::class.java,
+                Long::class.java,
+                TimeUnit::class.java,
             )
             assertFailsWith<UnsupportedOperationException> {
                 invokeOrThrow(completeOnTimeout, comfut, "", 1L, TimeUnit.MILLISECONDS)

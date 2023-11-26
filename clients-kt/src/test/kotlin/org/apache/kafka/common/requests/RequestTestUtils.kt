@@ -71,22 +71,20 @@ object RequestTestUtils {
         responseVersion: Short = ApiKeys.METADATA.latestVersion(),
     ): MetadataResponse {
         val topics: MutableList<MetadataResponseTopic> = ArrayList()
-        topicMetadataList.forEach { (error, topic, topicId, isInternal, partitionMetadata1, authorizedOperations)->
+        topicMetadataList.forEach { metadata ->
             val metadataResponseTopic = MetadataResponseTopic()
             metadataResponseTopic
-                .setErrorCode(error.code)
-                .setName(topic)
-                .setTopicId(topicId)
-                .setIsInternal(isInternal)
-                .setTopicAuthorizedOperations(authorizedOperations)
-            for (partitionMetadata in partitionMetadata1) {
+                .setErrorCode(metadata.error.code)
+                .setName(metadata.topic)
+                .setTopicId(metadata.topicId)
+                .setIsInternal(metadata.isInternal)
+                .setTopicAuthorizedOperations(metadata.authorizedOperations)
+            for (partitionMetadata in metadata.partitionMetadata) {
                 metadataResponseTopic.partitions += MetadataResponsePartition()
                     .setErrorCode(partitionMetadata.error.code)
                     .setPartitionIndex(partitionMetadata.partition)
                     .setLeaderId(partitionMetadata.leaderId ?: MetadataResponse.NO_LEADER_ID)
-                    .setLeaderEpoch(
-                        partitionMetadata.leaderEpoch ?: RecordBatch.NO_PARTITION_LEADER_EPOCH
-                    )
+                    .setLeaderEpoch(partitionMetadata.leaderEpoch ?: RecordBatch.NO_PARTITION_LEADER_EPOCH)
                     .setReplicaNodes(partitionMetadata.replicaIds.toIntArray())
                     .setIsrNodes(partitionMetadata.inSyncReplicaIds.toIntArray())
                     .setOfflineReplicas(partitionMetadata.offlineReplicaIds.toIntArray())
@@ -94,9 +92,13 @@ object RequestTestUtils {
             topics.add(metadataResponseTopic)
         }
         return MetadataResponse.prepareResponse(
-            responseVersion, throttleTimeMs,
-            brokers!!, clusterId, controllerId,
-            topics, clusterAuthorizedOperations
+            version = responseVersion,
+            throttleTimeMs = throttleTimeMs,
+            brokers = brokers!!,
+            clusterId = clusterId,
+            controllerId = controllerId,
+            topics = topics,
+            clusterAuthorizedOperations = clusterAuthorizedOperations,
         )
     }
 
@@ -105,18 +107,16 @@ object RequestTestUtils {
     numNodes: Int,
     topicPartitionCounts: Map<String, Int>,
     topicIds: Map<String, Uuid>,
-): MetadataResponse {
-        return metadataUpdateWith(
-            clusterId = "kafka-cluster",
-            numNodes = numNodes,
-            topicErrors = emptyMap(),
-            topicPartitionCounts = topicPartitionCounts,
-            epochSupplier = { null },
-            partitionSupplier = SimplePartitionMetadataSupplier,
-            responseVersion = ApiKeys.METADATA.latestVersion(),
-            topicIds = topicIds,
-        )
-    }
+): MetadataResponse = metadataUpdateWith(
+        clusterId = "kafka-cluster",
+        numNodes = numNodes,
+        topicErrors = emptyMap(),
+        topicPartitionCounts = topicPartitionCounts,
+        epochSupplier = { null },
+        partitionSupplier = SimplePartitionMetadataSupplier,
+        responseVersion = ApiKeys.METADATA.latestVersion(),
+        topicIds = topicIds,
+    )
 
     fun metadataUpdateWithIds(
         numNodes: Int,

@@ -236,7 +236,7 @@ class Timer internal constructor(private val time: Time, timeoutMs: Long) {
      * @param durationMs The duration in milliseconds to sleep
      */
     fun sleep(durationMs: Long) {
-        val sleepDurationMs = Math.min(durationMs, remainingMs)
+        val sleepDurationMs = durationMs.coerceAtMost(remainingMs)
         time.sleep(sleepDurationMs)
         update()
     }
