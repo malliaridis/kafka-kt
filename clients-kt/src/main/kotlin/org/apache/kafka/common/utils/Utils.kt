@@ -875,24 +875,22 @@ object Utils {
         if (rootFile == null) return
         Files.walkFileTree(rootFile.toPath(), object : SimpleFileVisitor<Path>() {
             @Throws(IOException::class)
-            override fun visitFileFailed(path: Path, exc: IOException): FileVisitResult {
+            override fun visitFileFailed(path: Path?, exc: IOException): FileVisitResult {
                 // If the root path did not exist, ignore the error; otherwise throw it.
-                if (exc is NoSuchFileException && path.toFile() == rootFile) return FileVisitResult.TERMINATE
+                if (exc is NoSuchFileException && path?.toFile() == rootFile) return FileVisitResult.TERMINATE
                 throw exc
             }
 
             @Throws(IOException::class)
-            override fun visitFile(path: Path, attrs: BasicFileAttributes): FileVisitResult {
+            override fun visitFile(path: Path?, attrs: BasicFileAttributes?): FileVisitResult {
                 Files.delete(path)
                 return FileVisitResult.CONTINUE
             }
 
             @Throws(IOException::class)
-            override fun postVisitDirectory(path: Path, exc: IOException): FileVisitResult {
+            override fun postVisitDirectory(path: Path?, exc: IOException?): FileVisitResult {
                 // KAFKA-8999: if there's an exception thrown previously already, we should throw it
-                if (exc != null) {
-                    throw exc
-                }
+                if (exc != null) throw exc
                 Files.delete(path)
                 return FileVisitResult.CONTINUE
             }
@@ -1279,9 +1277,7 @@ object Utils {
 
     @Deprecated("Use Kotlin operator for list concatenation.")
     fun <T> concatListsUnmodifiable(left: List<T>, right: List<T>): List<T> {
-        return concatLists(
-            left, right
-        ) { list: List<T>? -> Collections.unmodifiableList(list) }
+        return left + right
     }
 
     @Deprecated("Use Kotlin operator for list concatenation.")

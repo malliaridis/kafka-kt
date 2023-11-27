@@ -103,6 +103,7 @@ class JsonConverterGenerator internal constructor(
         struct: StructSpec,
         parentVersions: Versions,
     ) {
+        buffer.printf("@JvmStatic%n")
         headerGenerator.addImport(MessageGenerator.JSON_NODE_CLASS)
         buffer.printf(
             "fun read(node: JsonNode, version: Short): %s {%n",
@@ -317,9 +318,7 @@ class JsonConverterGenerator internal constructor(
                 buffer.printf(
                     "%s%n",
                     target.assignmentStatement(
-                        String.format(
-                            "Uuid.fromString(%s.asText())", target.sourceVariable
-                        )
+                        String.format("Uuid.fromString(%s.asText())", target.sourceVariable)
                     )
                 )
             }
@@ -478,6 +477,7 @@ class JsonConverterGenerator internal constructor(
     }
 
     private fun generateOverloadWrite(className: String) {
+        buffer.printf("@JvmStatic%n")
         buffer.printf(
             "fun write(obj: %s, version: Short): JsonNode {%n",
             className
@@ -493,6 +493,7 @@ class JsonConverterGenerator internal constructor(
         struct: StructSpec,
         parentVersions: Versions,
     ) {
+        buffer.printf("@JvmStatic%n")
         headerGenerator.addImport(MessageGenerator.JSON_NODE_CLASS)
         buffer.printf(
             "fun write(obj: %s, version: Short, serializeRecords: Boolean): JsonNode {%n",

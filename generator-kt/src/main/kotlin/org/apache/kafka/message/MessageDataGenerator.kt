@@ -35,6 +35,7 @@ import org.apache.kafka.message.FieldType.Uint64FieldType
 import org.apache.kafka.message.FieldType.Uint8FieldType
 import org.apache.kafka.message.MessageGenerator.sizeOfUnsignedVarint
 import java.io.BufferedWriter
+import java.nio.ByteBuffer
 import java.util.*
 import kotlin.collections.LinkedHashSet
 
@@ -1602,16 +1603,48 @@ class MessageDataGenerator internal constructor(
                 buffer.printf("hashCode = 31 * hashCode + %s%n", field.prefixedCamelCaseName())
 
             else -> {
-                if (field.type.isBytes) buffer.printf(
-                    "hashCode = 31 * hashCode + %s.hashCode()%n",
-                    field.prefixedCamelCaseName(),
-                )
+                if (field.type.isBytes) {
+                    val s =
+                        if (field.zeroCopy) "hashCode = 31 * hashCode + %s.hashCode()%n" // is a ByteBuffer
+                        else "hashCode = 31 * hashCode + %s.contentHashCode()%n" // is a ByteArray
+                    buffer.printf(s, field.prefixedCamelCaseName())
+                }
                 else if (field.type.isRecords) buffer.printf(
                     // TODO Validate if records can use hashCode()
                     "hashCode = 31 * hashCode + %s.hashCode()%n",
                     field.prefixedCamelCaseName(),
                 )
-                else if (field.type.isStruct || field.type.isArray || field.type.isString)
+                else if (field.type.isArray) {
+                    val arrayType = field.type as FieldType.ArrayType
+                    when (arrayType.elementType) {
+                        is BoolFieldType,
+                        is Int8FieldType,
+                        is Uint8FieldType,
+                        is Int16FieldType,
+                        is Uint16FieldType,
+                        is Int32FieldType,
+                        is Uint32FieldType,
+                        is Int64FieldType,
+                        is Uint64FieldType,
+                        is Float32FieldType,
+                        is Float64FieldType,
+                        -> buffer.printf(
+                            "hashCode = 31 * hashCode + %s%s%s.contentHashCode()%s%n",
+                            if (field.type.isNullable) "(" else "",
+                            field.prefixedCamelCaseName(),
+                            if (field.type.isNullable) "?" else "",
+                            if (field.type.isNullable) " ?: 0)" else "",
+                        )
+                        else -> buffer.printf(
+                            "hashCode = 31 * hashCode + %s%s%s.hashCode()%s%n",
+                            if (field.type.isNullable) "(" else "",
+                            field.prefixedCamelCaseName(),
+                            if (field.type.isNullable) "?" else "",
+                            if (field.type.isNullable) " ?: 0)" else "",
+                        )
+                    }
+                }
+                else if (field.type.isStruct || field.type.isString)
                 // TODO Consider moving nullable logic to all hashcode and equals calls
                     buffer.printf(
                         "hashCode = 31 * hashCode + %s%s%s.hashCode()%s%n",
@@ -1792,7 +1825,7 @@ class MessageDataGenerator internal constructor(
             )
         } else if (field.type.isString) {
             if (field.type.isNullable) buffer.printf(
-                "\"%s%s=\" + if (%s == null) \"null\" else \"'\$%s'\" +%n",
+                "\"%s%s=\" + (if (%s == null) \"null\" else \"'\$%s'\") +%n",
                 prefix,
                 field.camelCaseName(),
                 field.camelCaseName(),
@@ -1804,20 +1837,19 @@ class MessageDataGenerator internal constructor(
                 field.camelCaseName(),
             )
         } else if (field.type.isBytes) {
-            if (field.zeroCopy) buffer.printf(
+            if (field.zeroCopy) buffer.printf( // ByteBuffer
                 "\"%s%s=\" + %s +%n",
                 prefix,
                 field.camelCaseName(),
                 field.camelCaseName(),
             )
-            else {
-                buffer.printf(
-                    "\"%s%s=\" + %s.toString() +%n",
-                    prefix,
-                    field.camelCaseName(),
-                    field.camelCaseName(),
-                )
-            }
+            else buffer.printf( // ByteArray
+                "\"%s%s=\" + %s.contentToString() +%n",
+                prefix,
+                field.camelCaseName(),
+                field.camelCaseName(),
+            )
+            String(ByteBuffer.allocate(0).array())
         } else if (field.type.isRecords) buffer.printf(
             "\"%s%s=\" + %s +%n",
             prefix,

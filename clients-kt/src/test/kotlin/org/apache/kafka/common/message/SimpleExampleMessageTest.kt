@@ -73,7 +73,7 @@ class SimpleExampleMessageTest {
         val out = SimpleExampleMessageData()
         assertEquals(Uuid.fromString("AAAAAAAAAAAAAAAAAAAAAA"), out.processId)
         assertEquals(ByteUtils.EMPTY_BUF, out.zeroCopyByteBuffer)
-        assertEquals(ByteUtils.EMPTY_BUF, out.nullableZeroCopyByteBuffer)
+        assertEquals(null, out.nullableZeroCopyByteBuffer)
     }
 
     @Test
@@ -93,7 +93,7 @@ class SimpleExampleMessageTest {
         
         assertEquals(uuid, inputData.processId)
         assertEquals(buf, inputData.zeroCopyByteBuffer)
-        assertEquals(ByteUtils.EMPTY_BUF, inputData.nullableZeroCopyByteBuffer)
+        assertEquals(null, inputData.nullableZeroCopyByteBuffer)
     }
 
     @Test
@@ -152,13 +152,13 @@ class SimpleExampleMessageTest {
         // Verify that the tagged int array reads as empty when not set.
         testRoundTrip(
             message = SimpleExampleMessageData(),
-            validator = { message -> assertEquals(intArrayOf(), message.myTaggedIntArray) },
+            validator = { message -> assertContentEquals(intArrayOf(), message.myTaggedIntArray) },
         )
 
         // Verify that we can set a tagged array of ints.
         testRoundTrip(
             message = SimpleExampleMessageData().setMyTaggedIntArray(intArrayOf(1, 2, 3)),
-            validator = { message -> assertEquals(intArrayOf(1, 2, 3), message.myTaggedIntArray) },
+            validator = { message -> assertContentEquals(intArrayOf(1, 2, 3), message.myTaggedIntArray) },
         )
     }
 
@@ -249,7 +249,7 @@ class SimpleExampleMessageTest {
         // Verify that the tagged field reads as empty when not set.
         testRoundTrip(
             message = SimpleExampleMessageData(),
-            validator = { message -> assertContentEquals(ByteArray(0), message.myBytes) },
+            validator = { message -> assertContentEquals(null, message.myBytes) },
         )
         testRoundTrip(
             message = SimpleExampleMessageData().setMyBytes(byteArrayOf(0x43, 0x66)),
@@ -424,11 +424,11 @@ class SimpleExampleMessageTest {
                     "myNullableString=null, " +
                     "myInt16=123, myFloat64=1.0, " +
                     "myString='', " +
-                    "myBytes=[], " +
+                    "myBytes=null, " +
                     "taggedUuid=x7D3Ck_ZRA22-dzIvu_pnQ, " +
                     "taggedLong=914172222550880202, " +
                     "zeroCopyByteBuffer=java.nio.HeapByteBuffer[pos=0 lim=0 cap=0], " +
-                    "nullableZeroCopyByteBuffer=java.nio.HeapByteBuffer[pos=0 lim=0 cap=0], " +
+                    "nullableZeroCopyByteBuffer=null, " +
                     "myStruct=MyStruct(structId=0, arrayInStruct=[]), " +
                     "myTaggedStruct=TaggedStruct(structId=''), " +
                     "taggedLongFlexibleVersionSubset=0, " +

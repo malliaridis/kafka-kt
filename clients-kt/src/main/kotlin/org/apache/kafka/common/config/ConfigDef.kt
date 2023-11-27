@@ -631,8 +631,8 @@ class ConfigDef {
         val validString: ValidString = ValidString(validStrings)
 
         override fun ensureValid(name: String, value: Any?) {
-            val values = value as List<String>
-            for (string: String in values) {
+            val values = value as List<String?>
+            for (string: String? in values) {
                 validString.ensureValid(name, string)
             }
         }
@@ -649,10 +649,10 @@ class ConfigDef {
         }
     }
 
-    class ValidString internal constructor(val validStrings: List<String>) : Validator {
+    class ValidString internal constructor(val validStrings: List<String?>) : Validator {
 
         override fun ensureValid(name: String, value: Any?) {
-            val s = value as String
+            val s = value as String?
 
             if (!validStrings.contains(s)) throw ConfigException(
                 name = name,
