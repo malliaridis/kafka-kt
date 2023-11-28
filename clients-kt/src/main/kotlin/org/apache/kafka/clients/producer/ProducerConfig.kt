@@ -903,13 +903,13 @@ class ProducerConfig : AbstractConfig {
         }
 
         fun appendSerializerToConfig(
-            configs: Map<String, Any?>?,
+            configs: Map<String, Any?>,
             keySerializer: Serializer<*>?,
             valueSerializer: Serializer<*>?,
         ): Map<String, Any?> {
             // validate serializer configuration, if the passed serializer instance is null, the
             // user must explicitly set a valid serializer configuration value
-            val newConfigs: MutableMap<String, Any?> = HashMap(configs)
+            val newConfigs = configs.toMutableMap()
             if (keySerializer != null)
                 newConfigs[KEY_SERIALIZER_CLASS_CONFIG] = keySerializer.javaClass
             else if (newConfigs[KEY_SERIALIZER_CLASS_CONFIG] == null)

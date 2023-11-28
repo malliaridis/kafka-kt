@@ -561,7 +561,7 @@ data class Struct(
             val thisField: Any? = this[f]
             val otherField: Any? = other[f]
             val result = if (f.def.type.isArray)
-                (thisField as Array<Any?>?) == (otherField as Array<Any?>?)
+                (thisField as Array<Any?>?) contentEquals (otherField as Array<Any?>?)
             else thisField == otherField
 
             if (!result) return false

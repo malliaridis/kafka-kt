@@ -24,7 +24,6 @@ import java.net.ServerSocket
 import java.net.Socket
 import java.util.Collections
 import java.util.concurrent.atomic.AtomicBoolean
-import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocket
 import org.apache.kafka.common.security.auth.SecurityProtocol
 import org.apache.kafka.common.security.ssl.DefaultSslEngineFactory
@@ -33,14 +32,14 @@ import org.apache.kafka.common.security.ssl.SslFactory
 /**
  * A simple server that takes size delimited byte arrays and just echos them back to the sender.
  */
-class EchoServer(
+class EchoServer @Throws(Exception::class) constructor(
     securityProtocol: SecurityProtocol,
     configs: Map<String, *>,
 ) : Thread() {
 
     val port: Int
 
-    private var serverSocket: ServerSocket? = null
+    private val serverSocket: ServerSocket
 
     private val threads: MutableList<Thread>
 
@@ -56,11 +55,9 @@ class EchoServer(
     init {
         when (securityProtocol) {
             SecurityProtocol.SSL -> {
-                val sslContext: SSLContext
-                sslFactory = SslFactory(Mode.SERVER).apply {
-                    configure(configs)
-                    sslContext = (sslEngineFactory as DefaultSslEngineFactory).sslContext()!!
-                }
+                sslFactory = SslFactory(Mode.SERVER)
+                sslFactory!!.configure(configs)
+                val sslContext = (sslFactory!!.sslEngineFactory as DefaultSslEngineFactory).sslContext()!!
                 serverSocket = sslContext.serverSocketFactory.createServerSocket(0)
             }
 
@@ -71,7 +68,7 @@ class EchoServer(
 
             else -> throw IllegalArgumentException("Unsupported securityProtocol $securityProtocol")
         }
-        port = serverSocket!!.getLocalPort()
+        port = serverSocket.getLocalPort()
         threads = Collections.synchronizedList(ArrayList())
         sockets = Collections.synchronizedList(ArrayList())
     }
@@ -83,7 +80,7 @@ class EchoServer(
     override fun run() {
         try {
             while (!closing) {
-                val socket = serverSocket!!.accept()
+                val socket = serverSocket.accept()
                 var broken = false
                 synchronized(sockets) {
                     if (closing) {
@@ -106,7 +103,7 @@ class EchoServer(
         }
     }
 
-    private fun processSocket(socket: Socket) = socket.use {
+    private fun processSocket(socket: Socket) {
         try {
             val input = DataInputStream(socket.getInputStream())
             val output = DataOutputStream(socket.getOutputStream())
@@ -124,6 +121,12 @@ class EchoServer(
             }
         } catch (e: IOException) {
             // ignore
+        } finally {
+            try {
+                socket.close()
+            } catch (e: IOException) {
+                // ignore
+            }
         }
     }
 
@@ -135,7 +138,7 @@ class EchoServer(
     @Throws(IOException::class, InterruptedException::class)
     fun close() {
         closing = true
-        serverSocket?.close()
+        serverSocket.close()
         closeConnections()
         for (t in threads) t.join()
         join()

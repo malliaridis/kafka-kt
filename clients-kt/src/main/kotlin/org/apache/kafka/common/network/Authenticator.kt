@@ -30,8 +30,7 @@ interface Authenticator : Closeable {
      * @throws IOException if read/write fails due to an I/O error
      */
     @Throws(IOException::class)
-    fun handleAuthenticationFailure() {
-    }
+    fun handleAuthenticationFailure() = Unit
 
     /**
      * Returns Principal using PrincipalBuilder

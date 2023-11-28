@@ -59,20 +59,24 @@ class CopyOnWriteMap<K, V>(map: Map<K, V> = emptyMap()) : ConcurrentMap<K, V> {
 
     @Synchronized
     override fun put(key: K, value: V): V? {
-        val prev = map[key]
-        map = map + (key to value)
+        val copy = map.toMutableMap()
+        val prev = copy.put(key, value)
+        map = copy.toMap()
         return prev
     }
 
     @Synchronized
     override fun putAll(from: Map<out K, V>) {
-        map = map + from
+        val copy = map.toMutableMap()
+        copy.putAll(from)
+        map = copy.toMap()
     }
 
     @Synchronized
     override fun remove(key: K): V? {
-        val prev = map[key]
-        map = map - key
+        val copy = map.toMutableMap()
+        val prev = copy.remove(key)
+        map = copy.toMap()
         return prev
     }
 

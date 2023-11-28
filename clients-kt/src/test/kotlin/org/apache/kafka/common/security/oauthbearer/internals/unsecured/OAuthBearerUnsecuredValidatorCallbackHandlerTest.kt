@@ -35,15 +35,16 @@ class OAuthBearerUnsecuredValidatorCallbackHandlerTest {
     @Test
     fun validToken() {
         for (includeOptionalIssuedAtClaim in booleanArrayOf(true, false)) {
-            val claimsJson = "{" + PRINCIPAL_CLAIM_TEXT + comma(EXPIRATION_TIME_CLAIM_TEXT) +
-                    (if (includeOptionalIssuedAtClaim) comma(ISSUED_AT_CLAIM_TEXT) else "") + "}"
+            val claimsJson = "{$PRINCIPAL_CLAIM_TEXT,$EXPIRATION_TIME_CLAIM_TEXT${
+                if (includeOptionalIssuedAtClaim) ",$ISSUED_AT_CLAIM_TEXT" else ""
+            }}"
             val validationResult = validationResult(
                 headerJson = UNSECURED_JWT_HEADER_JSON,
                 claimsJson = claimsJson,
                 moduleOptionsMap = MODULE_OPTIONS_MAP_NO_SCOPE_REQUIRED,
             )
             assertIs<OAuthBearerValidatorCallback>(validationResult)
-            assertIs<OAuthBearerUnsecuredJws>((validationResult).token)
+            assertIs<OAuthBearerUnsecuredJws>(validationResult.token)
         }
     }
 
@@ -51,8 +52,7 @@ class OAuthBearerUnsecuredValidatorCallbackHandlerTest {
     @Throws(IOException::class, UnsupportedCallbackException::class)
     fun badOrMissingPrincipal() {
         for (exists in booleanArrayOf(true, false)) {
-            val claimsJson = ("{" + EXPIRATION_TIME_CLAIM_TEXT +
-                    (if (exists) comma(BAD_PRINCIPAL_CLAIM_TEXT) else "") + "}")
+            val claimsJson = "{$EXPIRATION_TIME_CLAIM_TEXT${if (exists) ",$BAD_PRINCIPAL_CLAIM_TEXT" else ""}}"
             confirmFailsValidation(
                 headerJson = UNSECURED_JWT_HEADER_JSON,
                 claimsJson = claimsJson,

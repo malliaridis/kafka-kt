@@ -221,7 +221,7 @@ abstract class SslSelectorTest : SelectorTest() {
     @Test
     @Throws(Exception::class)
     fun testBytesBufferedChannelAfterMute() {
-        verifyNoUnnecessaryPollWithBytesBuffered { key: SelectionKey -> (key.attachment() as KafkaChannel).mute() }
+        verifyNoUnnecessaryPollWithBytesBuffered { key -> (key.attachment() as KafkaChannel).mute() }
     }
 
     @Throws(Exception::class)
@@ -247,8 +247,8 @@ abstract class SslSelectorTest : SelectorTest() {
                 currentTimeNanos: Long,
             ) {
                 for (key in selectionKeys) {
-                    val channel = key!!.attachment() as KafkaChannel
-                    if (channel.id == node1) node1Polls.incrementAndGet()
+                    val channel = key!!.attachment() as KafkaChannel?
+                    if (channel?.id == node1) node1Polls.incrementAndGet()
                 }
                 super.pollSelectionKeys(selectionKeys, isImmediatelyConnected, currentTimeNanos)
             }

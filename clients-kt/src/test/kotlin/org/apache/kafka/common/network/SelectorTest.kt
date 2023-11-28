@@ -831,6 +831,7 @@ open class SelectorTest {
             channelY.configureBlocking(false)
             selector.register("clientX", channelX)
             selector.register("clientY", channelY)
+
             var completed: Collection<NetworkReceive> = emptyList()
             var deadline = System.currentTimeMillis() + 5000
             while (System.currentTimeMillis() < deadline && completed.isEmpty()) {

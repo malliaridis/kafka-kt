@@ -25,7 +25,6 @@ import org.apache.kafka.common.MetricName
 import org.apache.kafka.common.metrics.stats.TokenBucket
 import org.apache.kafka.common.utils.Time
 import kotlin.concurrent.withLock
-import kotlin.math.max
 
 /**
  * A sensor applies a continuous sequence of numerical values to a set of associated metrics. For

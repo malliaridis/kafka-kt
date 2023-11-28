@@ -87,7 +87,7 @@ class ConfigTransformer(private val configProviders: Map<String, ConfigProvider>
         }
 
         // Perform the transformations by performing variable replacements
-        val data: MutableMap<String, String> = HashMap(configs)
+        val data = configs.toMutableMap()
         configs.forEach { (key, value) ->
             data[key] = replace(lookupsByProvider, value, DEFAULT_PATTERN)
         }

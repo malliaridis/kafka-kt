@@ -443,11 +443,11 @@ class ScramMessagesTest {
     @Throws(SaslException::class)
     private inline fun <reified T : AbstractScramMessage?> createScramMessage(message: String): T {
         val bytes = message.toByteArray()
-        return when {
-            T::class == ClientFirstMessage::class.java -> ClientFirstMessage(bytes) as T
-            T::class == ServerFirstMessage::class.java -> ServerFirstMessage(bytes) as T
-            T::class == ClientFinalMessage::class.java -> ClientFinalMessage(bytes) as T
-            T::class == ServerFinalMessage::class.java -> ServerFinalMessage(bytes) as T
+        return when (T::class.java) {
+            ClientFirstMessage::class.java -> ClientFirstMessage(bytes) as T
+            ServerFirstMessage::class.java -> ServerFirstMessage(bytes) as T
+            ClientFinalMessage::class.java -> ClientFinalMessage(bytes) as T
+            ServerFinalMessage::class.java -> ServerFinalMessage(bytes) as T
             else -> throw IllegalArgumentException("Unknown message type: ${T::class}")
         }
     }

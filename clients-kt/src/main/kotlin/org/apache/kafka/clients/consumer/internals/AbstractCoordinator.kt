@@ -72,10 +72,8 @@ import org.apache.kafka.common.utils.Utils
 import org.slf4j.Logger
 import java.io.Closeable
 import java.nio.ByteBuffer
-import java.util.*
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
-import java.util.concurrent.locks.ReentrantLock
 import kotlin.math.max
 
 /**

@@ -35,15 +35,20 @@ open class SimpleMemoryPool(
     oomPeriodSensor: Sensor?
 ) : MemoryPool {
 
-    protected val log = LoggerFactory.getLogger(javaClass) //subclass-friendly
-    protected val sizeBytes: Long
-    protected val strict: Boolean
-    protected val availableMemory: AtomicLong
-    protected val maxSingleAllocationSize: Int
-    protected val startOfNoMemPeriod = AtomicLong() //nanoseconds
+    internal val log = LoggerFactory.getLogger(javaClass) //subclass-friendly
+
+    internal val sizeBytes: Long
+
+    internal val strict: Boolean
+
+    internal val availableMemory: AtomicLong
+
+    internal val maxSingleAllocationSize: Int
+
+    internal val startOfNoMemPeriod = AtomicLong() //nanoseconds
 
     @Volatile
-    protected var oomTimeSensor: Sensor?
+    internal var oomTimeSensor: Sensor?
 
     init {
         require(sizeInBytes > 0 && maxSingleAllocationBytes > 0 && maxSingleAllocationBytes <= sizeInBytes) {
@@ -115,12 +120,12 @@ open class SimpleMemoryPool(
         return "SimpleMemoryPool{${formatBytes(allocated)}/${formatBytes(sizeBytes)} used}"
     }
 
-    protected fun maybeRecordEndOfDrySpell() {
-        if (oomTimeSensor != null) {
+    internal fun maybeRecordEndOfDrySpell() {
+        oomTimeSensor?.let { oomTimeSensor ->
             val startOfDrySpell = startOfNoMemPeriod.getAndSet(0)
             if (startOfDrySpell != 0L) {
                 //how long were we refusing allocation requests for
-                oomTimeSensor!!.record((System.nanoTime() - startOfDrySpell) / 1000000.0) //fractional (double) millis
+                oomTimeSensor.record((System.nanoTime() - startOfDrySpell) / 1000000.0) //fractional (double) millis
             }
         }
     }

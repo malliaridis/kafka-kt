@@ -28,7 +28,7 @@ class RackAwareReplicaSelector : ReplicaSelector {
     override fun select(
         topicPartition: TopicPartition,
         clientMetadata: ClientMetadata,
-        partitionView: PartitionView
+        partitionView: PartitionView,
     ): ReplicaView {
         return if (clientMetadata.rackId().isNotEmpty()) {
             val sameRackReplicas = partitionView.replicas()

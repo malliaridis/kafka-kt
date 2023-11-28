@@ -144,7 +144,13 @@ class ConsumerNetworkClient(
      */
     fun awaitMetadataUpdate(timer: Timer): Boolean {
         val version = metadata.requestUpdate()
-        do poll(timer)
+        do {
+            println("" + metadata.updateVersion() + " " + version)
+            println("" + timer.currentTimeMs + " " + timer.elapsedMs)
+            poll(timer)
+            println(timer.isNotExpired)
+            println("" + metadata.updateVersion() + " " + version)
+        }
         while (metadata.updateVersion() == version && timer.isNotExpired)
         return metadata.updateVersion() > version
     }
@@ -195,7 +201,6 @@ class ConsumerNetworkClient(
      * `false`
      * @throws InterruptException if the calling thread is interrupted
      */
-    @JvmOverloads
     fun poll(future: RequestFuture<*>, timer: Timer, disableWakeup: Boolean = false): Boolean {
         do poll(timer, future, disableWakeup)
         while (!future.isDone && timer.isNotExpired)
@@ -212,7 +217,6 @@ class ConsumerNetworkClient(
      * @throws WakeupException if [wakeup] is called from another thread
      * @throws InterruptException if the calling thread is interrupted
      */
-    @JvmOverloads
     fun poll(timer: Timer, pollCondition: PollCondition? = null, disableWakeup: Boolean = false) {
         // there may be handlers which need to be invoked if we woke up the previous call to poll
         firePendingCompletedRequests()

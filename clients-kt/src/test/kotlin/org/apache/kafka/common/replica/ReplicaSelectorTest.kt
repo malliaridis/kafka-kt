@@ -35,21 +35,21 @@ class ReplicaSelectorTest {
         val tp = TopicPartition("test", 0)
         val replicaViewSet = replicaInfoSet()
         val leader = replicaViewSet[0]
-        val partitionView = partitionInfo(HashSet(replicaViewSet), leader)
+        val partitionView = partitionInfo(replicaViewSet.toSet(), leader)
         val selector: ReplicaSelector = RackAwareReplicaSelector()
-        var selected: ReplicaView? = selector.select(tp, metadata("rack-b"), partitionView)
+        var selected = selector.select(tp, metadata("rack-b"), partitionView)
         assertNullable(selected) { replicaInfo ->
-            assertEquals(replicaInfo.endpoint().rack, "rack-b", "Expect replica to be in rack-b")
-            assertEquals(replicaInfo.endpoint().id, 3, "Expected replica 3 since it is more caught-up")
+            assertEquals("rack-b", replicaInfo.endpoint().rack, "Expect replica to be in rack-b")
+            assertEquals(3, replicaInfo.endpoint().id, "Expected replica 3 since it is more caught-up")
         }
         selected = selector.select(tp, metadata("not-a-rack"), partitionView)
         assertNullable(selected) { replicaInfo ->
-            assertEquals(replicaInfo, leader, "Expect leader when we can't find any nodes in given rack")
+            assertEquals(leader, replicaInfo, "Expect leader when we can't find any nodes in given rack")
         }
         selected = selector.select(tp, metadata("rack-a"), partitionView)
         assertNullable(selected) { replicaInfo ->
-            assertEquals(replicaInfo.endpoint().rack, "rack-a", "Expect replica to be in rack-a")
-            assertEquals(replicaInfo, leader, "Expect the leader since it's in rack-a")
+            assertEquals("rack-a", replicaInfo.endpoint().rack, "Expect replica to be in rack-a")
+            assertEquals(leader, replicaInfo, "Expect the leader since it's in rack-a")
         }
     }
 

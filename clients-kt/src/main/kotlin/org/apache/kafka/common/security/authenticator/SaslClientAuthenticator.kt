@@ -41,29 +41,29 @@ import org.apache.kafka.common.requests.SaslHandshakeResponse
 import org.apache.kafka.common.security.auth.AuthenticateCallbackHandler
 import org.apache.kafka.common.security.auth.KafkaPrincipal
 import org.apache.kafka.common.security.auth.KafkaPrincipalSerde
+import org.apache.kafka.common.security.authenticator.SaslClientAuthenticator.SaslState
 import org.apache.kafka.common.security.kerberos.KerberosError
 import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.Time
-import org.apache.kafka.common.utils.Utils
 import org.slf4j.Logger
 import kotlin.math.roundToLong
 import kotlin.random.Random
 
 open class SaslClientAuthenticator(
     private val configs: Map<String, *>,
-    private val callbackHandler: AuthenticateCallbackHandler,
+    private val callbackHandler: AuthenticateCallbackHandler?,
     private val node: String,
-    private val subject: Subject,
-    private val servicePrincipal: String,
-    private val host: String,
+    private val subject: Subject?,
+    private val servicePrincipal: String?,
+    private val host: String?,
     private val mechanism: String,
     handshakeRequestEnable: Boolean,
-    private val transportLayer: TransportLayer,
-    private val time: Time,
-    logContext: LogContext
+    private val transportLayer: TransportLayer?,
+    private val time: Time?,
+    logContext: LogContext,
 ) : Authenticator {
 
-    private val saslClient: SaslClient
+    private val saslClient: SaslClient?
 
     private var clientPrincipalName: String? = null
 
@@ -121,7 +121,7 @@ open class SaslClientAuthenticator(
             // and SCRAM) is used as authorization id. Hence the principal is not specified for
             // creating the SaslClient.
             clientPrincipalName =
-                if (mechanism == SaslConfigs.GSSAPI_MECHANISM) firstPrincipal(subject)
+                if (mechanism == SaslConfigs.GSSAPI_MECHANISM) firstPrincipal(subject!!)
                 else null
 
             saslClient = createSaslClient()
@@ -131,7 +131,7 @@ open class SaslClientAuthenticator(
     }
 
     // visible for testing
-    internal open fun createSaslClient(): SaslClient = try {
+    internal open fun createSaslClient(): SaslClient? = try {
         Subject.doAs(
             subject,
             PrivilegedExceptionAction {
@@ -174,11 +174,11 @@ open class SaslClientAuthenticator(
             SaslState.SEND_APIVERSIONS_REQUEST -> {
                 // Always use version 0 request since brokers treat requests with schema exceptions
                 // as GSSAPI tokens
-                val apiVersionsRequest = ApiVersionsRequest.Builder().build(0.toShort())
+                val apiVersionsRequest = ApiVersionsRequest.Builder().build(version = 0)
                 send(apiVersionsRequest.toSend(
                     nextRequestHeader(
-                        ApiKeys.API_VERSIONS,
-                        apiVersionsRequest.version
+                        apiKey = ApiKeys.API_VERSIONS,
+                        version = apiVersionsRequest.version,
                     )))
                 setSaslState(SaslState.RECEIVE_APIVERSIONS_RESPONSE)
             }
@@ -187,7 +187,7 @@ open class SaslClientAuthenticator(
                 val apiVersionsResponse = receiveKafkaResponse() as ApiVersionsResponse? ?: return
 
                 setSaslAuthenticateAndHandshakeVersions(apiVersionsResponse)
-                reauthInfo.apiVersionsResponseFromBroker = apiVersionsResponse
+                reauthInfo.apiVersionsResponseReceivedFromBroker = apiVersionsResponse
                 setSaslState(SaslState.SEND_HANDSHAKE_REQUEST)
 
                 // Send handshake request with the latest supported version
@@ -217,7 +217,7 @@ open class SaslClientAuthenticator(
             }
 
             SaslState.REAUTH_PROCESS_ORIG_APIVERSIONS_RESPONSE -> {
-                setSaslAuthenticateAndHandshakeVersions(reauthInfo.apiVersionsResponseFromAuth!!)
+                setSaslAuthenticateAndHandshakeVersions(reauthInfo.apiVersionsResponseFromOriginalAuthentication!!)
                 setSaslState(SaslState.REAUTH_SEND_HANDSHAKE_REQUEST) // Will set immediately
 
                 // Send handshake request with the latest supported version
@@ -259,7 +259,7 @@ open class SaslClientAuthenticator(
                 // For versions without SASL_AUTHENTICATE header, SASL exchange may be complete
                 // after a token is sent to server. For versions with SASL_AUTHENTICATE header,
                 // server always sends a response to each SASL_AUTHENTICATE request.
-                if (saslClient.isComplete) {
+                if (saslClient!!.isComplete) {
                     if (saslAuthenticateVersion == DISABLE_KAFKA_SASL_AUTHENTICATE_HEADER || noResponsesPending)
                         setSaslState(SaslState.COMPLETE)
                     else setSaslState(SaslState.CLIENT_COMPLETE)
@@ -296,15 +296,15 @@ open class SaslClientAuthenticator(
 
     @Throws(IOException::class)
     override fun reauthenticate(reauthenticationContext: ReauthenticationContext) {
-        with(reauthenticationContext.previousAuthenticator as SaslClientAuthenticator) {
-            val apiVersionsResponseFromAuth = reauthInfo.apiVersionsResponse
-            close()
+        val previousSaslClientAuthenticator = reauthenticationContext.previousAuthenticator as SaslClientAuthenticator
+        val apiVersionsResponseFromOriginalAuthentication =
+            previousSaslClientAuthenticator.reauthInfo.apiVersionsResponse
+        previousSaslClientAuthenticator.close()
 
-            reauthInfo.reauthenticating(
-                apiVersionsResponseFromAuth,
-                reauthenticationContext.reauthenticationBeginNanos
-            )
-        }
+        reauthInfo.reauthenticating(
+            apiVersionsResponseFromOriginalAuthentication!!,
+            reauthenticationContext.reauthenticationBeginNanos,
+        )
         val netInBufferFromChannel = reauthenticationContext.networkReceive
         netInBuffer = netInBufferFromChannel
         setSaslState(SaslState.REAUTH_PROCESS_ORIG_APIVERSIONS_RESPONSE) // Will set immediately
@@ -315,7 +315,7 @@ open class SaslClientAuthenticator(
         reauthInfo.pollResponseReceivedDuringReauthentication()
 
     override fun clientSessionReauthenticationTimeNanos(): Long? =
-        reauthInfo.clientSessionReauthenticationTime
+        reauthInfo.clientSessionReauthenticationTimeNanos
 
     override fun reauthenticationLatencyMs(): Long? = reauthInfo.reauthenticationLatencyMs()
 
@@ -343,7 +343,7 @@ open class SaslClientAuthenticator(
     // Visible to override for testing
     protected open fun createSaslHandshakeRequest(version: Short): SaslHandshakeRequest {
         return SaslHandshakeRequest.Builder(
-            SaslHandshakeRequestData().setMechanism(mechanism)
+            SaslHandshakeRequestData().setMechanism(mechanism!!)
         ).build(version)
     }
 
@@ -362,18 +362,19 @@ open class SaslClientAuthenticator(
     }
 
     private fun setSaslState(saslState: SaslState) {
-        if (netOutBuffer != null && !netOutBuffer!!.completed()) pendingSaslState = saslState else {
+        if (netOutBuffer?.completed() == false) pendingSaslState = saslState
+        else {
             pendingSaslState = null
             this.saslState = saslState
             log.debug("Set SASL client state to {}", saslState)
             if (saslState == SaslState.COMPLETE) {
-                reauthInfo.setAuthenticationEndAndSessionReauthenticationTimes(time.nanoseconds())
-                if (!reauthInfo.isReauthenticating) transportLayer.removeInterestOps(SelectionKey.OP_WRITE)
+                reauthInfo.setAuthenticationEndAndSessionReauthenticationTimes(time!!.nanoseconds())
+                if (!reauthInfo.isReauthenticating) transportLayer!!.removeInterestOps(SelectionKey.OP_WRITE)
                 /*
                  * Re-authentication is triggered by a write, so we have to make sure that
                  * pending write is actually sent.
                  */
-                else transportLayer.addInterestOps(SelectionKey.OP_WRITE)
+                else transportLayer!!.addInterestOps(SelectionKey.OP_WRITE)
             }
         }
     }
@@ -385,18 +386,18 @@ open class SaslClientAuthenticator(
      */
     @Throws(IOException::class)
     private fun sendSaslClientToken(serverToken: ByteArray, isInitial: Boolean): Boolean {
-        return if (!saslClient.isComplete) {
+        return if (!saslClient!!.isComplete) {
             val saslToken = createSaslToken(serverToken, isInitial) ?: return false
             val tokenBuf = ByteBuffer.wrap(saslToken)
 
-            if (saslAuthenticateVersion == DISABLE_KAFKA_SASL_AUTHENTICATE_HEADER)
+            val send = if (saslAuthenticateVersion == DISABLE_KAFKA_SASL_AUTHENTICATE_HEADER)
                 ByteBufferSend.sizePrefixed(tokenBuf)
             else {
-                val data = SaslAuthenticateRequestData()
-                    .setAuthBytes(tokenBuf.array())
+                val data = SaslAuthenticateRequestData().setAuthBytes(tokenBuf.array())
                 val request = SaslAuthenticateRequest.Builder(data).build(saslAuthenticateVersion)
                 request.toSend(nextRequestHeader(ApiKeys.SASL_AUTHENTICATE, saslAuthenticateVersion))
-            }.also { send(it) }
+            }
+            send(send)
             true
         } else false
     }
@@ -416,25 +417,21 @@ open class SaslClientAuthenticator(
     private fun flushNetOutBufferAndUpdateInterestOps(): Boolean {
         val flushedCompletely = flushNetOutBuffer()
         if (flushedCompletely) {
-            transportLayer.removeInterestOps(SelectionKey.OP_WRITE)
+            transportLayer!!.removeInterestOps(SelectionKey.OP_WRITE)
             if (pendingSaslState != null) setSaslState(pendingSaslState!!)
-        } else transportLayer.addInterestOps(SelectionKey.OP_WRITE)
+        } else transportLayer!!.addInterestOps(SelectionKey.OP_WRITE)
         return flushedCompletely
     }
 
     @Throws(IOException::class)
     private fun receiveResponseOrToken(): ByteArray? {
-        val buffer =  netInBuffer ?: NetworkReceive(node)
-        netInBuffer = buffer
-        buffer.readFrom(transportLayer)
+        val buffer =  netInBuffer ?: NetworkReceive(node).also { netInBuffer = it }
+        buffer.readFrom(transportLayer!!)
         var serverPacket: ByteArray? = null
         if (buffer.complete()) {
-            buffer.payload()?.let { payload ->
-                payload.rewind()
-                val packet = ByteArray(payload.remaining())
-                payload[packet, 0, packet.size]
-                serverPacket = packet
-            }
+            buffer.payload()!!.rewind()
+            serverPacket = ByteArray(buffer.payload()!!.remaining())
+            buffer.payload()!![serverPacket, 0, serverPacket.size]
             netInBuffer = null // reset the networkReceive as we read all the data.
         }
         return serverPacket
@@ -452,7 +449,7 @@ open class SaslClientAuthenticator(
 
     @Throws(IOException::class)
     override fun close() {
-        saslClient.dispose()
+        saslClient?.dispose()
     }
 
     @Throws(IOException::class)
@@ -470,7 +467,7 @@ open class SaslClientAuthenticator(
             val sessionLifetimeMs = response.sessionLifetimeMs()
             if (sessionLifetimeMs > 0L) reauthInfo.positiveSessionLifetimeMs = sessionLifetimeMs
             response.saslAuthBytes().copyOf()
-        } ?: run { null }
+        }
     }
 
     @Throws(SaslException::class)
@@ -480,11 +477,13 @@ open class SaslClientAuthenticator(
         )
 
         return try {
-            if (isInitial && !saslClient.hasInitialResponse()) saslToken else Subject.doAs(
+            if (isInitial && !saslClient!!.hasInitialResponse()) saslToken
+            else Subject.doAs(
                 subject,
                 PrivilegedExceptionAction {
-                    saslClient.evaluateChallenge(saslToken)
-                } as PrivilegedExceptionAction<ByteArray>)
+                    saslClient!!.evaluateChallenge(saslToken)
+                } as PrivilegedExceptionAction<ByteArray>
+            )
         } catch (e: PrivilegedActionException) {
             var error = "An error: ($e) occurred when evaluating SASL token received from the Kafka Broker."
 
@@ -504,45 +503,38 @@ open class SaslClientAuthenticator(
             // Treat transient Kerberos errors as non-fatal SaslExceptions that are processed as I/O exceptions
             // and all other failures as fatal SaslAuthenticationException.
             throw if (
-                kerberosError != null
-                && (kerberosError.retriable() || KerberosError.isRetriableClientGssException(e))
+                (kerberosError != null
+                && kerberosError.retriable()) || (kerberosError == null && KerberosError.isRetriableClientGssException(e))
             ) SaslException("$error Kafka Client will retry.", cause)
-            else SaslAuthenticationException(
-                "$error Kafka Client will go to AUTHENTICATION_FAILED state.",
-                cause,
-            )
+            else SaslAuthenticationException("$error Kafka Client will go to AUTHENTICATION_FAILED state.", cause)
         }
     }
 
     @Throws(IOException::class)
     private fun flushNetOutBuffer(): Boolean {
-        val buffer = netOutBuffer ?: return false
-        if (!buffer.completed()) buffer.writeTo(transportLayer)
-        return buffer.completed()
+        if (!netOutBuffer!!.completed()) netOutBuffer!!.writeTo(transportLayer!!)
+        return netOutBuffer!!.completed()
     }
 
     @Throws(IOException::class)
     private fun receiveKafkaResponse(): AbstractResponse? {
-        val receive: NetworkReceive = netInBuffer ?: NetworkReceive(node)
-        netInBuffer = receive
-        return try {
+        val receive = netInBuffer ?: NetworkReceive(node).also { netInBuffer = it }
+        try {
             val responseBytes = receiveResponseOrToken() ?: return null
             val response = NetworkClient.parseResponse(
-                ByteBuffer.wrap(responseBytes),
-                currentRequestHeader!!
+                responseBuffer = ByteBuffer.wrap(responseBytes),
+                requestHeader = currentRequestHeader!!,
             )
             currentRequestHeader = null
-            response
+            return response
         } catch (e: BufferUnderflowException) {
             handleKafkaResponseException(receive, e)
-            return null
         } catch (e: SchemaException) {
             handleKafkaResponseException(receive, e)
-            return null
         } catch (e: IllegalArgumentException) {
             handleKafkaResponseException(receive, e)
-            return null
         }
+        return null
     }
 
     private fun handleKafkaResponseException(receive: NetworkReceive, exception: Exception) {
@@ -590,37 +582,25 @@ open class SaslClientAuthenticator(
      */
     private inner class ReauthInfo {
 
-        /**
-         * API versions response from original authentication.
-         */
-        var apiVersionsResponseFromAuth: ApiVersionsResponse? = null
+        var apiVersionsResponseFromOriginalAuthentication: ApiVersionsResponse? = null
 
-        var reauthenticationBeginNanos: Long = 0
+        var reauthenticationBeginNanos: Long? = null
 
         var pendingAuthenticatedReceives = mutableListOf<NetworkReceive>()
 
-        /**
-         * API versions response received from broker.
-         */
-        var apiVersionsResponseFromBroker: ApiVersionsResponse? = null
+        var apiVersionsResponseReceivedFromBroker: ApiVersionsResponse? = null
 
         var positiveSessionLifetimeMs: Long? = null
 
-        var authenticationEndNanos: Long = 0
+        var authenticationEndNanos: Long? = null
 
-        /**
-         * Client session re-authentication time in nanoseconds.
-         */
-        var clientSessionReauthenticationTime: Long? = null
+        var clientSessionReauthenticationTimeNanos: Long? = null
 
-        /**
-         * @param apiVersionsResponseFromAuth API versions response from original authentication.
-         */
         fun reauthenticating(
-            apiVersionsResponseFromAuth: ApiVersionsResponse?,
-            reauthenticationBeginNanos: Long
+            apiVersionsResponseFromOriginalAuthentication: ApiVersionsResponse,
+            reauthenticationBeginNanos: Long,
         ) {
-            this.apiVersionsResponseFromAuth = apiVersionsResponseFromAuth
+            this.apiVersionsResponseFromOriginalAuthentication = apiVersionsResponseFromOriginalAuthentication
             this.reauthenticationBeginNanos = reauthenticationBeginNanos
         }
 
@@ -631,17 +611,17 @@ open class SaslClientAuthenticator(
         fun reauthenticating(): Boolean = isReauthenticating
 
         val isReauthenticating: Boolean
-            get() = apiVersionsResponseFromAuth != null
+            get() = apiVersionsResponseFromOriginalAuthentication != null
 
         @Deprecated(
             message = "Use property instead",
             replaceWith = ReplaceWith("apiVersionsResponse")
         )
         fun apiVersionsResponse(): ApiVersionsResponse? =
-            apiVersionsResponseFromAuth ?: apiVersionsResponseFromBroker
+            apiVersionsResponseFromOriginalAuthentication ?: apiVersionsResponseReceivedFromBroker
 
         val apiVersionsResponse: ApiVersionsResponse?
-            get() = apiVersionsResponseFromAuth ?: apiVersionsResponseFromBroker
+            get() = apiVersionsResponseFromOriginalAuthentication ?: apiVersionsResponseReceivedFromBroker
 
         /**
          * Return the (always non-null but possibly empty) NetworkReceive response that arrived
@@ -664,7 +644,7 @@ open class SaslClientAuthenticator(
                 // (95%) for session re-authentication
                 val pctToUse = WINDOW_FACTOR_PERCENTAGE + Random.nextDouble() * WINDOW_JITTER_PERCENTAGE
                 val sessionLifetimeMsToUse = (positiveSessionLifetimeMs!! * pctToUse).toLong()
-                clientSessionReauthenticationTime = authenticationEndNanos + 1000 * 1000 * sessionLifetimeMsToUse
+                clientSessionReauthenticationTimeNanos = authenticationEndNanos!! + 1000 * 1000 * sessionLifetimeMsToUse
 
                 log.debug(
                     "Finished {} with session expiration in {} ms and session re-authentication on or after {} ms",
@@ -680,7 +660,7 @@ open class SaslClientAuthenticator(
 
         fun reauthenticationLatencyMs(): Long? =
             if (isReauthenticating)
-                    ((authenticationEndNanos - reauthenticationBeginNanos) / 1000.0 / 1000.0)
+                    ((authenticationEndNanos!! - reauthenticationBeginNanos!!) / 1000.0 / 1000.0)
                         .roundToLong()
             else null
 

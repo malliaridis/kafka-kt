@@ -30,7 +30,11 @@ class CertStores private constructor(
     certBuilder: CertificateBuilder,
     usePem: Boolean,
 ) {
+
+    private lateinit var sslConfig: Map<String, Any?>
+
     val untrustingConfig: Map<String, Any?>
+        get() = sslConfig
 
     constructor(server: Boolean, hostName: String) : this(
         server = server,
@@ -66,11 +70,11 @@ class CertStores private constructor(
         val name = if (server) "server" else "client"
         val mode = if (server) Mode.SERVER else Mode.CLIENT
         val truststoreFile = if (usePem) null else tempFile(name + "TS", ".jks")
-        untrustingConfig = SslConfigsBuilder(mode)
+        sslConfig = SslConfigsBuilder(mode)
             .useClientCert(!server)
             .certAlias(name)
             .cn(commonName)
-            .createNewTrustStore(truststoreFile!!)
+            .createNewTrustStore(truststoreFile)
             .certBuilder(certBuilder)
             .algorithm(keyAlgorithm)
             .usePem(usePem)
@@ -78,7 +82,7 @@ class CertStores private constructor(
     }
 
     fun getTrustingConfig(truststoreConfig: CertStores): Map<String, Any?> {
-        return TRUSTSTORE_PROPS.associateWith { propName -> truststoreConfig.untrustingConfig[propName] }
+        return sslConfig + TRUSTSTORE_PROPS.associateWith { truststoreConfig.sslConfig[it] }
     }
 
     fun keyStoreProps(): Map<String, Any?> {

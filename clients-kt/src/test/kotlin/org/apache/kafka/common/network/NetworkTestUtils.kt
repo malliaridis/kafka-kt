@@ -117,7 +117,7 @@ object NetworkTestUtils {
     @Throws(Exception::class)
     fun checkClientConnection(
         selector: Selector,
-        node: String?,
+        node: String,
         minMessageSize: Int,
         messageCount: Int,
     ) {
@@ -127,7 +127,7 @@ object NetworkTestUtils {
         var responses = 0
         selector.send(
             NetworkSend(
-                destinationId = node!!,
+                destinationId = node,
                 send = ByteBufferSend.sizePrefixed(ByteBuffer.wrap("$prefix-0".toByteArray()))
             )
         )
@@ -178,10 +178,12 @@ object NetworkTestUtils {
     }
 
     @Throws(IOException::class)
-    fun waitForChannelReady(selector: Selector, node: String?) {
+    fun waitForChannelReady(selector: Selector, node: String) {
         // wait for handshake to finish
         var secondsLeft = 30
-        while (!selector.isChannelReady(node!!) && secondsLeft-- > 0) selector.poll(1000L)
+        while (!selector.isChannelReady(node) && secondsLeft-- > 0) {
+            selector.poll(1000L)
+        }
 
         assertTrue(
             actual = selector.isChannelReady(node),

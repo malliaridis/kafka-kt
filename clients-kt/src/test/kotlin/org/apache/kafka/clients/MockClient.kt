@@ -626,7 +626,8 @@ open class MockClient(
 
         private var lastUpdate: MetadataUpdate? = null
 
-        override val isUpdateNeeded: Boolean = metadata.updateRequested()
+        override val isUpdateNeeded: Boolean
+            get() = metadata.updateRequested()
 
         override fun fetchNodes(): List<Node> = metadata.fetch().nodes
 

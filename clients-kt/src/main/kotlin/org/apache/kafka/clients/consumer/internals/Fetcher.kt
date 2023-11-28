@@ -334,7 +334,9 @@ open class Fetcher<K, V>(
         do {
             val future = sendMetadataRequest(request)
             client.poll(future, timer)
+
             if (future.failed() && !future.isRetriable) throw future.exception()
+
             if (future.succeeded()) {
                 val response = future.value().responseBody as MetadataResponse?
                 val cluster = response!!.buildCluster()

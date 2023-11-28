@@ -124,11 +124,12 @@ class Metrics(
         group: String,
         description: String = "",
         tags: Map<String, String?> = emptyMap()
-    ): MetricName {
-        val combinedTag: MutableMap<String, String?> = LinkedHashMap(config.tags)
-        combinedTag.putAll(tags)
-        return MetricName(name, group, description, combinedTag.toMap())
-    }
+    ): MetricName = MetricName(
+        name = name,
+        group = group,
+        description = description,
+        tags = config.tags + tags,
+    )
 
     /**
      * Create a MetricName with the given name, group, description, and keyValue as tags, plus

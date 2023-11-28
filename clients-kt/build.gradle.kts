@@ -64,6 +64,7 @@ tasks.register("createVersionFile") {
 
 tasks.test {
     useJUnitPlatform()
+    maxParallelForks = Runtime.getRuntime().availableProcessors()
 }
 
 tasks.withType<Jar> {

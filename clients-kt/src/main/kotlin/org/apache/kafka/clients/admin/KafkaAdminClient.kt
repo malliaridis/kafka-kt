@@ -1231,8 +1231,7 @@ class KafkaAdminClient internal constructor(
         newTopics: Collection<NewTopic>,
         options: CreateTopicsOptions,
     ): CreateTopicsResult {
-        val topicFutures: MutableMap<String, KafkaFutureImpl<TopicMetadataAndConfig>> =
-            HashMap(newTopics.size)
+        val topicFutures: MutableMap<String, KafkaFutureImpl<TopicMetadataAndConfig>> = HashMap(newTopics.size)
         val topics = CreatableTopicCollection()
         for (newTopic: NewTopic in newTopics) {
             if (topicNameIsUnrepresentable(newTopic.name)) {
@@ -1442,7 +1441,7 @@ class KafkaAdminClient internal constructor(
             )
             runnable.call(call, now)
         }
-        return HashMap<String, KafkaFuture<Unit>>(topicFutures)
+        return topicFutures.toMap()
     }
 
     private fun handleDeleteTopicsUsingIds(
@@ -1465,20 +1464,20 @@ class KafkaAdminClient internal constructor(
                 validTopicIds.add(topicId)
             }
         }
-        if (!validTopicIds.isEmpty()) {
+        if (validTopicIds.isNotEmpty()) {
             val now = time.milliseconds()
             val deadline = calcDeadlineMs(now, options.timeoutMs)
             val call = getDeleteTopicsWithIdsCall(
-                options,
-                topicFutures,
-                validTopicIds,
-                emptyMap(),
-                now,
-                deadline
+                options = options,
+                futures = topicFutures,
+                topicIds = validTopicIds,
+                quotaExceededExceptions = emptyMap(),
+                now = now,
+                deadline = deadline,
             )
             runnable.call(call, now)
         }
-        return HashMap<Uuid, KafkaFuture<Unit>>(topicFutures)
+        return topicFutures.toMap()
     }
 
     private fun getDeleteTopicsCall(
@@ -1712,8 +1711,7 @@ class KafkaAdminClient internal constructor(
         topicNames: Collection<String>,
         options: DescribeTopicsOptions,
     ): Map<String, KafkaFuture<TopicDescription>> {
-        val topicFutures: MutableMap<String, KafkaFutureImpl<TopicDescription>> =
-            HashMap(topicNames.size)
+        val topicFutures: MutableMap<String, KafkaFutureImpl<TopicDescription>> = HashMap(topicNames.size)
         val topicNamesList = mutableListOf<String>()
 
         for (topicName in topicNames) {
@@ -2242,11 +2240,10 @@ class KafkaAdminClient internal constructor(
         }
 
         return DescribeConfigsResult(
-            HashMap<ConfigResource, KafkaFuture<Config>>(
-                brokerFutures.entries
-                    .flatMap { it.value.entries }
-                    .associate { it.key to it.value }
-            )
+            brokerFutures
+                .flatMap { it.value.entries }
+                .associate { it.key to it.value }
+                .toMap()
         )
     }
 
@@ -2308,19 +2305,26 @@ class KafkaAdminClient internal constructor(
         for (resource: ConfigResource in configs.keys) {
             val node = nodeFor(resource)
             if (node != null) {
-                val nodeProvider: NodeProvider = ConstantNodeIdProvider(node)
-                allFutures.putAll(alterConfigs(configs, options, setOf(resource), nodeProvider))
+                val nodeProvider = ConstantNodeIdProvider(node)
+                allFutures.putAll(
+                    alterConfigs(
+                        configs = configs,
+                        options = options,
+                        resources = setOf(resource),
+                        nodeProvider = nodeProvider,
+                    )
+                )
             } else unifiedRequestResources.add(resource)
         }
         if (!unifiedRequestResources.isEmpty()) allFutures.putAll(
             alterConfigs(
-                configs,
-                options,
-                unifiedRequestResources,
-                LeastLoadedNodeProvider()
+                configs = configs,
+                options = options,
+                resources = unifiedRequestResources,
+                nodeProvider = LeastLoadedNodeProvider()
             )
         )
-        return AlterConfigsResult(HashMap(allFutures))
+        return AlterConfigsResult(allFutures.toMap())
     }
 
     private fun alterConfigs(
@@ -2329,11 +2333,10 @@ class KafkaAdminClient internal constructor(
         resources: Collection<ConfigResource>,
         nodeProvider: NodeProvider,
     ): Map<ConfigResource, KafkaFutureImpl<Unit>> {
-        val futures: MutableMap<ConfigResource, KafkaFutureImpl<Unit>> = HashMap()
-        val requestMap: MutableMap<ConfigResource, AlterConfigsRequest.Config> =
-            HashMap(resources.size)
-        for (resource: ConfigResource in resources) {
-            val configEntries: MutableList<AlterConfigsRequest.ConfigEntry> = ArrayList()
+        val futures = mutableMapOf<ConfigResource, KafkaFutureImpl<Unit>>()
+        val requestMap: MutableMap<ConfigResource, AlterConfigsRequest.Config> = HashMap(resources.size)
+        for (resource in resources) {
+            val configEntries = mutableListOf<AlterConfigsRequest.ConfigEntry>()
             for (configEntry in configs[resource]!!.entries()) configEntries.add(
                 AlterConfigsRequest.ConfigEntry(
                     name = configEntry.name,
@@ -2399,7 +2402,7 @@ class KafkaAdminClient internal constructor(
                 nodeProvider = LeastLoadedNodeProvider()
             )
         )
-        return AlterConfigsResult(HashMap<ConfigResource, KafkaFuture<Unit>>(allFutures))
+        return AlterConfigsResult(allFutures.toMap())
     }
 
     private fun incrementalAlterConfigs(
@@ -2564,11 +2567,7 @@ class KafkaAdminClient internal constructor(
                 }
             }, now)
         }
-        return DescribeLogDirsResult(
-            HashMap<Int, KafkaFuture<Map<String, LogDirDescription>>>(
-                futures
-            )
-        )
+        return DescribeLogDirsResult(futures.toMap())
     }
 
     override fun describeReplicaLogDirs(

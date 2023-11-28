@@ -834,7 +834,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
             ) //Will avoid blocking an extended period of time to prevent heartbeat thread starvation
             assignors = ConsumerPartitionAssignor.getAssignorInstances(
                 assignorClasses =
-                config.getList(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG)!!,
+                config.getList(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG),
                 configs = config.originals(mapOf(ConsumerConfig.CLIENT_ID_CONFIG to clientId)),
             )
 
@@ -1573,7 +1573,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
                     offsetAndMetadata = offsetAndMetadata,
                 )
             }
-            if (!coordinator!!.commitOffsetsSync(offsets, time.timer(timeout)))
+            if (!coordinator!!.commitOffsetsSync(offsets.toMap(), time.timer(timeout)))
                 throw TimeoutException(
                     "Timeout of ${timeout.toMillis()}ms expired before successfully committing " +
                             "offsets $offsets"

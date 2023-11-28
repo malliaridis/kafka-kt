@@ -190,7 +190,7 @@ class KafkaConsumerTest {
 
     private val singleTopicPartition: Collection<TopicPartition> = setOf(TopicPartition(topic, 0))
 
-    private val time: Time = MockTime(10)
+    private val time: Time = MockTime()
 
     private val subscription = SubscriptionState(LogContext(), OffsetResetStrategy.EARLIEST)
 

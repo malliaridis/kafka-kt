@@ -75,21 +75,13 @@ open class SslTransportLayer internal constructor(
 
     private var handshakeException: SslAuthenticationException? = null
 
-    private var _netReadBuffer: ByteBuffer? = null
-    private val netReadBuffer: ByteBuffer
-        get() = _netReadBuffer!!
+    private var netReadBuffer: ByteBuffer? = null
 
-    private var _netWriteBuffer: ByteBuffer? = null
-    private val netWriteBuffer: ByteBuffer
-        get() = _netWriteBuffer!!
+    private var netWriteBuffer: ByteBuffer? = null
 
-    private var _appReadBuffer: ByteBuffer? = null
-    private val appReadBuffer: ByteBuffer
-        get() = _appReadBuffer!!
+    private var appReadBuffer: ByteBuffer? = null
 
-    private var _fileChannelBuffer: ByteBuffer? = null
-    private val fileChannelBuffer: ByteBuffer
-        get() = _fileChannelBuffer!!
+    private var fileChannelBuffer: ByteBuffer? = null
 
     private var hasBytesBuffered = false
 
@@ -99,12 +91,10 @@ open class SslTransportLayer internal constructor(
         if (state != State.NOT_INITIALIZED)
             error("startHandshake() can only be called once, state $state")
 
-        _netReadBuffer = ByteBuffer.allocate(netReadBufferSize())
-        _netWriteBuffer = ByteBuffer.allocate(netWriteBufferSize())
-        _appReadBuffer = ByteBuffer.allocate(applicationBufferSize())
+        netReadBuffer = ByteBuffer.allocate(netReadBufferSize()).also { it.limit(0) }
+        netWriteBuffer = ByteBuffer.allocate(netWriteBufferSize()).also { it.limit(0) }
+        appReadBuffer = ByteBuffer.allocate(applicationBufferSize())
 
-        netWriteBuffer.limit(0)
-        netReadBuffer.limit(0)
         state = State.HANDSHAKE
 
         //initiate handshake
@@ -156,12 +146,12 @@ open class SslTransportLayer internal constructor(
         sslEngine.closeOutbound()
         try {
             if (prevState != State.NOT_INITIALIZED && isConnected) {
-                if (!flush(netWriteBuffer)) {
+                if (!flush(netWriteBuffer!!)) {
                     throw IOException("Remaining data in the network buffer, can't send SSL close message.")
                 }
 
                 //prep the buffer for the close message
-                netWriteBuffer.clear()
+                netWriteBuffer!!.clear()
 
                 //perform the close, since we called sslEngine.closeOutbound
                 val wrapResult = sslEngine.wrap(ByteUtils.EMPTY_BUF, netWriteBuffer)
@@ -173,8 +163,8 @@ open class SslTransportLayer internal constructor(
                                 "${wrapResult.status}. Will not send close message to peer."
                     )
                 }
-                netWriteBuffer.flip()
-                flush(netWriteBuffer)
+                netWriteBuffer!!.flip()
+                flush(netWriteBuffer!!)
             }
         } catch (ie: IOException) {
             log.debug("Failed to send SSL Close message", ie)
@@ -182,13 +172,13 @@ open class SslTransportLayer internal constructor(
             socketChannel.socket().close()
             socketChannel.close()
 
-            _netReadBuffer = null
-            _netWriteBuffer = null
-            _appReadBuffer = null
+            netReadBuffer = null
+            netWriteBuffer = null
+            appReadBuffer = null
 
-            _fileChannelBuffer?.let {
+            fileChannelBuffer?.let {
                 unmap("fileChannelBuffer", it)
-                _fileChannelBuffer = null
+                fileChannelBuffer = null
             }
         }
     }
@@ -196,7 +186,7 @@ open class SslTransportLayer internal constructor(
     /**
      * returns true if there are any pending contents in netWriteBuffer
      */
-    override fun hasPendingWrites(): Boolean = netWriteBuffer.hasRemaining()
+    override fun hasPendingWrites(): Boolean = netWriteBuffer!!.hasRemaining()
 
     /**
      * Reads available bytes from socket channel to `netReadBuffer`.
@@ -257,7 +247,7 @@ open class SslTransportLayer internal constructor(
             try {
                 startHandshake()
             } catch (e: SSLException) {
-                maybeProcessHandshakeFailure(e, false, null)
+                maybeProcessHandshakeFailure(sslException = e, flush = false, ioException = null)
             }
         }
 
@@ -319,7 +309,7 @@ open class SslTransportLayer internal constructor(
         val write = key.isWritable
         handshakeStatus = sslEngine.handshakeStatus
 
-        if (!flush(netWriteBuffer)) {
+        if (!flush(netWriteBuffer!!)) {
             key.interestOps(key.interestOps() or SelectionKey.OP_WRITE)
             return
         }
@@ -333,9 +323,9 @@ open class SslTransportLayer internal constructor(
                     "SSLHandshake NEED_TASK channelId {}, appReadBuffer pos {}, netReadBuffer " +
                             "pos {}, netWriteBuffer pos {}",
                     channelId,
-                    appReadBuffer.position(),
-                    netReadBuffer.position(),
-                    netWriteBuffer.position(),
+                    appReadBuffer!!.position(),
+                    netReadBuffer!!.position(),
+                    netWriteBuffer!!.position(),
                 )
                 handshakeStatus = runDelegatedTasks()
             }
@@ -357,9 +347,9 @@ open class SslTransportLayer internal constructor(
             "SSLHandshake NEED_WRAP channelId {}, appReadBuffer pos {}, netReadBuffer " +
                     "pos {}, netWriteBuffer pos {}",
             channelId,
-            appReadBuffer.position(),
-            netReadBuffer.position(),
-            netWriteBuffer.position()
+            appReadBuffer!!.position(),
+            netReadBuffer!!.position(),
+            netWriteBuffer!!.position()
         )
 
         val handshakeResult = handshakeWrap(write).also { this.handshakeResult = it }
@@ -367,11 +357,11 @@ open class SslTransportLayer internal constructor(
         when (handshakeResult.status) {
             SSLEngineResult.Status.BUFFER_OVERFLOW -> {
                 val currentNetWriteBufferSize = netWriteBufferSize()
-                netWriteBuffer.compact()
-                _netWriteBuffer = ensureCapacity((netWriteBuffer), currentNetWriteBufferSize)
-                netWriteBuffer.flip()
-                if (netWriteBuffer.limit() >= currentNetWriteBufferSize) error(
-                    "Buffer overflow when available data size (${netWriteBuffer.limit()}" +
+                netWriteBuffer!!.compact()
+                netWriteBuffer = ensureCapacity(netWriteBuffer!!, currentNetWriteBufferSize)
+                netWriteBuffer!!.flip()
+                if (netWriteBuffer!!.limit() >= currentNetWriteBufferSize) error(
+                    "Buffer overflow when available data size (${netWriteBuffer!!.limit()}" +
                             ") >= network buffer size ($currentNetWriteBufferSize)"
                 )
             }
@@ -388,16 +378,16 @@ open class SslTransportLayer internal constructor(
                     "{}, netReadBuffer pos {}, netWriteBuffer pos {}",
             channelId,
             handshakeResult,
-            appReadBuffer.position(),
-            netReadBuffer.position(),
-            netWriteBuffer.position(),
+            appReadBuffer!!.position(),
+            netReadBuffer!!.position(),
+            netWriteBuffer!!.position(),
         )
 
         //if handshake status is not NEED_UNWRAP or unable to flush netWriteBuffer contents
         //we will break here otherwise we can do need_unwrap in the same call.
         if (
             handshakeStatus != HandshakeStatus.NEED_UNWRAP
-            || !flush(netWriteBuffer)
+            || !flush(netWriteBuffer!!)
         ) {
             key.interestOps(key.interestOps() or SelectionKey.OP_WRITE)
             return false
@@ -410,9 +400,9 @@ open class SslTransportLayer internal constructor(
             "SSLHandshake NEED_UNWRAP channelId {}, appReadBuffer pos {}, netReadBuffer pos {}, " +
                     "netWriteBuffer pos {}",
             channelId,
-            appReadBuffer.position(),
-            netReadBuffer.position(),
-            netWriteBuffer.position(),
+            appReadBuffer!!.position(),
+            netReadBuffer!!.position(),
+            netWriteBuffer!!.position(),
         )
         do {
             val handshakeResult = handshakeUnwrap(read, false).also {
@@ -420,9 +410,9 @@ open class SslTransportLayer internal constructor(
             }
             if (handshakeResult.status == SSLEngineResult.Status.BUFFER_OVERFLOW) {
                 val currentAppBufferSize = applicationBufferSize()
-                _appReadBuffer = ensureCapacity(appReadBuffer, currentAppBufferSize)
-                check(appReadBuffer.position() <= currentAppBufferSize) {
-                    "Buffer underflow when available data size (${appReadBuffer.position()}) " +
+                appReadBuffer = ensureCapacity(appReadBuffer!!, currentAppBufferSize)
+                check(appReadBuffer!!.position() <= currentAppBufferSize) {
+                    "Buffer underflow when available data size (${appReadBuffer!!.position()}) " +
                             "> packet buffer size ($currentAppBufferSize)"
                 }
             }
@@ -430,8 +420,8 @@ open class SslTransportLayer internal constructor(
 
         if (handshakeResult.status == SSLEngineResult.Status.BUFFER_UNDERFLOW) {
             val currentNetReadBufferSize = netReadBufferSize()
-            _netReadBuffer = ensureCapacity(netReadBuffer, currentNetReadBufferSize)
-            check(netReadBuffer.position() < currentNetReadBufferSize) {
+            netReadBuffer = ensureCapacity(netReadBuffer!!, currentNetReadBufferSize)
+            check(netReadBuffer!!.position() < currentNetReadBufferSize) {
                 "Buffer underflow when there is available data"
             }
         } else if (handshakeResult.status == SSLEngineResult.Status.CLOSED)
@@ -442,9 +432,9 @@ open class SslTransportLayer internal constructor(
                     "netReadBuffer pos {}, netWriteBuffer pos {}",
             channelId,
             handshakeResult,
-            appReadBuffer.position(),
-            netReadBuffer.position(),
-            netWriteBuffer.position()
+            appReadBuffer!!.position(),
+            netReadBuffer!!.position(),
+            netWriteBuffer!!.position()
         )
 
         //if handshakeStatus completed than fall-through to finished status.
@@ -479,7 +469,7 @@ open class SslTransportLayer internal constructor(
      */
     private fun runDelegatedTasks(): HandshakeStatus {
         while (true) {
-            val task: Runnable = delegatedTask()
+            val task = delegatedTask() ?: break
             task.run()
         }
         return sslEngine.handshakeStatus
@@ -497,10 +487,8 @@ open class SslTransportLayer internal constructor(
         if (handshakeResult.handshakeStatus == HandshakeStatus.FINISHED) {
             //we are complete if we have delivered the last packet
             //remove OP_WRITE if we are complete, otherwise we still have data to write
-            if (netWriteBuffer.hasRemaining()) key.interestOps(
-                key.interestOps()
-                        or SelectionKey.OP_WRITE
-            ) else {
+            if (netWriteBuffer!!.hasRemaining()) key.interestOps(key.interestOps() or SelectionKey.OP_WRITE)
+            else {
                 val session = sslEngine.session
                 state = if ((session.protocol == TLS13)) State.POST_HANDSHAKE else State.READY
                 key.interestOps(key.interestOps() and SelectionKey.OP_WRITE.inv())
@@ -522,9 +510,9 @@ open class SslTransportLayer internal constructor(
                 "SSLHandshake FINISHED channelId {}, appReadBuffer pos {}, netReadBuffer pos {}, " +
                         "netWriteBuffer pos {} ",
                 channelId,
-                appReadBuffer.position(),
-                netReadBuffer.position(),
-                netWriteBuffer.position(),
+                appReadBuffer!!.position(),
+                netReadBuffer!!.position(),
+                netWriteBuffer!!.position(),
             )
         } else throw IOException("NOT_HANDSHAKING during handshake")
     }
@@ -539,18 +527,18 @@ open class SslTransportLayer internal constructor(
     @Throws(IOException::class)
     private fun handshakeWrap(doWrite: Boolean): SSLEngineResult {
         log.trace("SSLHandshake handshakeWrap {}", channelId)
-        if (netWriteBuffer.hasRemaining())
+        if (netWriteBuffer!!.hasRemaining())
             error("handshakeWrap called with netWriteBuffer not empty")
 
         // this should never be called with a network buffer that contains data, so we can clear it
         // here.
-        netWriteBuffer.clear()
+        netWriteBuffer!!.clear()
         val result: SSLEngineResult
         try {
             result = sslEngine.wrap(ByteUtils.EMPTY_BUF, netWriteBuffer)
         } finally {
             //prepare the results to be written
-            netWriteBuffer.flip()
+            netWriteBuffer!!.flip()
         }
 
         handshakeStatus = result.handshakeStatus
@@ -558,7 +546,7 @@ open class SslTransportLayer internal constructor(
             result.handshakeStatus == HandshakeStatus.NEED_TASK
         ) handshakeStatus = runDelegatedTasks()
 
-        if (doWrite) flush(netWriteBuffer)
+        if (doWrite) flush(netWriteBuffer!!)
         return result
     }
 
@@ -580,10 +568,10 @@ open class SslTransportLayer internal constructor(
         var cont: Boolean
         do {
             //prepare the buffer with the incoming data
-            val position = netReadBuffer.position()
-            netReadBuffer.flip()
+            val position = netReadBuffer!!.position()
+            netReadBuffer!!.flip()
             result = sslEngine.unwrap(netReadBuffer, appReadBuffer)
-            netReadBuffer.compact()
+            netReadBuffer!!.compact()
             handshakeStatus = result.handshakeStatus
             if (result.status == SSLEngineResult.Status.OK &&
                 result.handshakeStatus == HandshakeStatus.NEED_TASK
@@ -592,13 +580,13 @@ open class SslTransportLayer internal constructor(
             }
             cont = (result.status == SSLEngineResult.Status.OK
                     && handshakeStatus == HandshakeStatus.NEED_UNWRAP
-                    ) || (ignoreHandshakeStatus && netReadBuffer.position() != position)
+                    ) || (ignoreHandshakeStatus && netReadBuffer!!.position() != position)
             log.trace(
                 "SSLHandshake handshakeUnwrap: handshakeStatus {} status {}",
                 handshakeStatus,
                 result.status
             )
-        } while (netReadBuffer.position() != 0 && cont)
+        } while (netReadBuffer!!.position() != 0 && cont)
 
         // Throw EOF exception for failed read after processing already received data
         // so that handshake failures are reported correctly
@@ -621,7 +609,7 @@ open class SslTransportLayer internal constructor(
 
         //if we have unread decrypted data in appReadBuffer read that into dst buffer.
         var read = 0
-        if (appReadBuffer.position() > 0) {
+        if (appReadBuffer!!.position() > 0) {
             read = readFromAppBuffer(dst)
         }
         var readFromNetwork = false
@@ -629,18 +617,18 @@ open class SslTransportLayer internal constructor(
         // Each loop reads at most once from the socket.
         while (dst.remaining() > 0) {
             var netread = 0
-            _netReadBuffer = ensureCapacity((netReadBuffer), netReadBufferSize())
-            if (netReadBuffer.remaining() > 0) {
+            netReadBuffer = ensureCapacity((netReadBuffer!!), netReadBufferSize())
+            if (netReadBuffer!!.remaining() > 0) {
                 netread = readFromSocketChannel()
                 if (netread > 0) readFromNetwork = true
             }
 
-            while (netReadBuffer.position() > 0) {
-                netReadBuffer.flip()
+            while (netReadBuffer!!.position() > 0) {
+                netReadBuffer!!.flip()
                 var unwrapResult: SSLEngineResult
                 try {
                     unwrapResult = sslEngine.unwrap(netReadBuffer, appReadBuffer)
-                    if (state == State.POST_HANDSHAKE && appReadBuffer.position() != 0) {
+                    if (state == State.POST_HANDSHAKE && appReadBuffer!!.position() != 0) {
                         // For TLSv1.3, we have finished processing post-handshake messages since we are now processing data
                         state = State.READY
                     }
@@ -654,7 +642,7 @@ open class SslTransportLayer internal constructor(
                         )
                     } else throw e
                 }
-                netReadBuffer.compact()
+                netReadBuffer!!.compact()
 
                 // reject renegotiation if TLS < 1.3, key updates for TLS 1.3 are allowed
                 if (
@@ -668,9 +656,9 @@ open class SslTransportLayer internal constructor(
                                 "appReadBuffer pos {}, netReadBuffer pos {}, netWriteBuffer pos " +
                                 "{} handshakeStatus {}",
                         channelId,
-                        appReadBuffer.position(),
-                        netReadBuffer.position(),
-                        netWriteBuffer.position(),
+                        appReadBuffer!!.position(),
+                        netReadBuffer!!.position(),
+                        netWriteBuffer!!.position(),
                         unwrapResult.handshakeStatus
                     )
                     throw renegotiationException()
@@ -678,12 +666,10 @@ open class SslTransportLayer internal constructor(
                 if (unwrapResult.status == SSLEngineResult.Status.OK) read += readFromAppBuffer(dst)
                 else if (unwrapResult.status == SSLEngineResult.Status.BUFFER_OVERFLOW) {
                     val currentApplicationBufferSize = applicationBufferSize()
-                    _appReadBuffer = ensureCapacity((appReadBuffer), currentApplicationBufferSize)
-                    if (appReadBuffer.position() >= currentApplicationBufferSize) {
-                        throw IllegalStateException(
-                            ("Buffer overflow when available data size (" + appReadBuffer.position() +
-                                    ") >= application buffer size (" + currentApplicationBufferSize + ")")
-                        )
+                    appReadBuffer = ensureCapacity((appReadBuffer!!), currentApplicationBufferSize)
+                    check(appReadBuffer!!.position() < currentApplicationBufferSize) {
+                        "Buffer overflow when available data size (${appReadBuffer!!.position()}) >= application " +
+                                "buffer size ($currentApplicationBufferSize)"
                     }
 
                     // appReadBuffer will extended upto currentApplicationBufferSize
@@ -693,15 +679,15 @@ open class SslTransportLayer internal constructor(
                     else break
                 } else if (unwrapResult.status == SSLEngineResult.Status.BUFFER_UNDERFLOW) {
                     val currentNetReadBufferSize = netReadBufferSize()
-                    _netReadBuffer = ensureCapacity(netReadBuffer, currentNetReadBufferSize)
-                    if (netReadBuffer.position() >= currentNetReadBufferSize) error(
-                        "Buffer underflow when available data size (${netReadBuffer.position()}) " +
+                    netReadBuffer = ensureCapacity(netReadBuffer!!, currentNetReadBufferSize)
+                    if (netReadBuffer!!.position() >= currentNetReadBufferSize) error(
+                        "Buffer underflow when available data size (${netReadBuffer!!.position()}) " +
                                 "> packet buffer size (" + currentNetReadBufferSize + ")"
                     )
                     break
                 } else if (unwrapResult.status == SSLEngineResult.Status.CLOSED) {
                     // If data has been read and unwrapped, return the data. Close will be handled on the next poll.
-                    if (appReadBuffer.position() == 0 && read == 0) throw EOFException()
+                    if (appReadBuffer!!.position() == 0 && read == 0) throw EOFException()
                     else {
                         isClosed = true
                         break
@@ -775,10 +761,10 @@ open class SslTransportLayer internal constructor(
         if (!ready()) return 0
         var written = 0
 
-        while (flush(netWriteBuffer) && src.hasRemaining()) {
-            netWriteBuffer.clear()
+        while (flush(netWriteBuffer!!) && src.hasRemaining()) {
+            netWriteBuffer!!.clear()
             val wrapResult = sslEngine.wrap(src, netWriteBuffer)
-            netWriteBuffer.flip()
+            netWriteBuffer!!.flip()
 
             // reject renegotiation if TLS < 1.3, key updates for TLS 1.3 are allowed
             if (((wrapResult.handshakeStatus != HandshakeStatus.NOT_HANDSHAKING) && (
@@ -791,8 +777,8 @@ open class SslTransportLayer internal constructor(
                 SSLEngineResult.Status.OK -> written += wrapResult.bytesConsumed()
                 SSLEngineResult.Status.BUFFER_OVERFLOW -> {
                     // BUFFER_OVERFLOW means that the last `wrap` call had no effect, so we expand the buffer and try again
-                    _netWriteBuffer = ensureCapacity((netWriteBuffer), netWriteBufferSize())
-                    netWriteBuffer.position(netWriteBuffer.limit())
+                    netWriteBuffer = ensureCapacity((netWriteBuffer!!), netWriteBufferSize())
+                    netWriteBuffer!!.position(netWriteBuffer!!.limit())
                 }
 
                 SSLEngineResult.Status.BUFFER_UNDERFLOW ->
@@ -895,22 +881,22 @@ open class SslTransportLayer internal constructor(
     /**
      * Returns delegatedTask for the SSLEngine.
      */
-    protected fun delegatedTask(): Runnable = sslEngine.delegatedTask
+    internal fun delegatedTask(): Runnable? = sslEngine.delegatedTask
 
     /**
      * transfers appReadBuffer contents (decrypted data) into dst bytebuffer
      * @param dst ByteBuffer
      */
     private fun readFromAppBuffer(dst: ByteBuffer): Int {
-        appReadBuffer.flip()
-        val remaining = min(appReadBuffer.remaining(), dst.remaining())
+        appReadBuffer!!.flip()
+        val remaining = min(appReadBuffer!!.remaining(), dst.remaining())
         if (remaining > 0) {
-            val limit = appReadBuffer.limit()
-            appReadBuffer.limit(appReadBuffer.position() + remaining)
+            val limit = appReadBuffer!!.limit()
+            appReadBuffer!!.limit(appReadBuffer!!.position() + remaining)
             dst.put(appReadBuffer)
-            appReadBuffer.limit(limit)
+            appReadBuffer!!.limit(limit)
         }
-        appReadBuffer.compact()
+        appReadBuffer!!.compact()
         return remaining
     }
 
@@ -920,10 +906,10 @@ open class SslTransportLayer internal constructor(
 
     protected open fun applicationBufferSize(): Int = sslEngine.session.applicationBufferSize
 
-    protected fun netReadBuffer(): ByteBuffer? = _netReadBuffer
+    protected fun netReadBuffer(): ByteBuffer? = netReadBuffer
 
     // Visibility for testing
-    protected fun appReadBuffer(): ByteBuffer? = _appReadBuffer
+    protected fun appReadBuffer(): ByteBuffer? = appReadBuffer
 
     /**
      * SSL exceptions are propagated as authentication failures so that clients can avoid
@@ -949,7 +935,7 @@ open class SslTransportLayer internal constructor(
             if (!flush || handshakeWrapAfterFailure(flush)) throw it
             else log.debug(
                 "Delay propagation of handshake exception till {} bytes remaining are flushed",
-                netWriteBuffer.remaining()
+                netWriteBuffer!!.remaining()
             )
         }
     }
@@ -1013,7 +999,7 @@ open class SslTransportLayer internal constructor(
             log.trace("handshakeWrapAfterFailure status {} doWrite {}", handshakeStatus, doWrite)
             while (
                 handshakeStatus == HandshakeStatus.NEED_WRAP
-                && (!doWrite || flush(netWriteBuffer))
+                && (!doWrite || flush(netWriteBuffer!!))
             ) {
                 if (!doWrite) clearWriteBuffer()
                 handshakeWrap(doWrite)
@@ -1023,15 +1009,15 @@ open class SslTransportLayer internal constructor(
             clearWriteBuffer()
         }
         if (!doWrite) clearWriteBuffer()
-        return !netWriteBuffer.hasRemaining()
+        return !netWriteBuffer!!.hasRemaining()
     }
 
     private fun clearWriteBuffer() {
-        if (netWriteBuffer.hasRemaining())
+        if (netWriteBuffer!!.hasRemaining())
             log.debug("Discarding write buffer {} since peer has disconnected", netWriteBuffer)
 
-        netWriteBuffer.position(0)
-        netWriteBuffer.limit(0)
+        netWriteBuffer!!.position(0)
+        netWriteBuffer!!.limit(0)
     }
 
     override val isMute: Boolean
@@ -1047,7 +1033,7 @@ open class SslTransportLayer internal constructor(
     // can be made until more data is available to read from the network.
     private fun updateBytesBuffered(madeProgress: Boolean) {
         hasBytesBuffered =
-            if (madeProgress) netReadBuffer.position() != 0 || appReadBuffer.position() != 0
+            if (madeProgress) netReadBuffer!!.position() != 0 || appReadBuffer!!.position() != 0
             else false
     }
 
@@ -1055,14 +1041,14 @@ open class SslTransportLayer internal constructor(
     override fun transferFrom(fileChannel: FileChannel, position: Long, count: Long): Long {
         if (state == State.CLOSING) throw closingException()
         if (state != State.READY) return 0
-        if (!flush(netWriteBuffer)) return 0
+        if (!flush(netWriteBuffer!!)) return 0
         val channelSize = fileChannel.size()
         if (position > channelSize) return 0
 
         val totalBytesToWrite: Int =
             min(count, channelSize - position).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
 
-        if (_fileChannelBuffer == null) {
+        if (fileChannelBuffer == null) {
 
             // Pick a size that allows for reasonably efficient disk reads, keeps the memory
             // overhead per connection manageable and can typically be drained in a single `write`
@@ -1074,11 +1060,11 @@ open class SslTransportLayer internal constructor(
             // source buffer (fileChannelBuffer) to the destination buffer (netWriteBuffer) and then
             // encrypts in-place. FileChannel.read() to a heap buffer requires a copy from a direct
             // buffer to a heap buffer, which is not useful here.
-            _fileChannelBuffer = ByteBuffer.allocateDirect(transferSize)
+            fileChannelBuffer = ByteBuffer.allocateDirect(transferSize)
 
             // The loop below drains any remaining bytes from the buffer before reading from
             // disk, so we ensure there are no remaining bytes in the empty buffer
-        fileChannelBuffer.position(fileChannelBuffer.limit())
+            fileChannelBuffer!!.position(fileChannelBuffer!!.limit())
         }
 
         var totalBytesWritten = 0
@@ -1086,23 +1072,23 @@ open class SslTransportLayer internal constructor(
 
         try {
             while (totalBytesWritten < totalBytesToWrite) {
-                if (!fileChannelBuffer.hasRemaining()) {
-                    fileChannelBuffer.clear()
+                if (!fileChannelBuffer!!.hasRemaining()) {
+                    fileChannelBuffer!!.clear()
                     val bytesRemaining = totalBytesToWrite - totalBytesWritten
-                    if (bytesRemaining < fileChannelBuffer.limit())
-                        fileChannelBuffer.limit(bytesRemaining)
+                    if (bytesRemaining < fileChannelBuffer!!.limit())
+                        fileChannelBuffer!!.limit(bytesRemaining)
                     val bytesRead = fileChannel.read(fileChannelBuffer, pos)
                     if (bytesRead <= 0) break
-                    fileChannelBuffer.flip()
+                    fileChannelBuffer!!.flip()
                 }
 
-                val networkBytesWritten = write(fileChannelBuffer)
+                val networkBytesWritten = write(fileChannelBuffer!!)
                 totalBytesWritten += networkBytesWritten
                 // In the case of a partial write we only return the written bytes to the caller. As a result, the
                 // `position` passed in the next `transferFrom` call won't include the bytes remaining in
                 // `fileChannelBuffer`. By draining `fileChannelBuffer` first, we ensure we update `pos` before
                 // we invoke `fileChannel.read`.
-                if (fileChannelBuffer.hasRemaining()) break
+                if (fileChannelBuffer!!.hasRemaining()) break
                 pos += networkBytesWritten.toLong()
             }
             return totalBytesWritten.toLong()

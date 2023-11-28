@@ -228,7 +228,7 @@ class ScramSaslClient(
         @Throws(SaslException::class)
         override fun createSaslClient(
             mechanisms: Array<String>,
-            authorizationId: String,
+            authorizationId: String?,
             protocol: String,
             serverName: String,
             props: Map<String, *>,
@@ -241,11 +241,8 @@ class ScramSaslClient(
             }
 
             if (mechanism == null) throw SaslException(
-                String.format(
-                    "Requested mechanisms '%s' not supported. Supported mechanisms are '%s'.",
-                    mechanisms.toList(),
-                    ScramMechanism.mechanismNames
-                )
+                "Requested mechanisms '${mechanisms.toList()}' not supported. " +
+                        "Supported mechanisms are '${ScramMechanism.mechanismNames}'."
             )
             return try {
                 ScramSaslClient(mechanism, cbh)

@@ -251,7 +251,7 @@ class ScramSaslServer(
                 serverFirstMessage = serverFirstMessage,
                 clientFinalMessage = clientFinalMessage
             )
-            val computedStoredKey = formatter.storedKey(clientSignature, clientFinalMessage.proof)
+            val computedStoredKey = formatter.storedKey(clientSignature, clientFinalMessage.proof!!)
 
             if (!MessageDigest.isEqual(computedStoredKey, expectedStoredKey))
                 throw SaslException("Invalid client credentials")

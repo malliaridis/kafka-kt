@@ -58,13 +58,13 @@ class SslFactory(
 
     private var endpointIdentification: String? = null
 
-    lateinit var sslEngineFactory: SslEngineFactory
+    var sslEngineFactory: SslEngineFactory? = null
 
     private var sslEngineFactoryConfig: Map<String, Any?>? = null
 
     @Throws(KafkaException::class)
     override fun configure(configs: Map<String, Any?>) {
-        check(!this::sslEngineFactory.isInitialized) { "SslFactory was already configured." }
+        check(sslEngineFactory == null) { "SslFactory was already configured." }
 
         endpointIdentification = configs[SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG] as String?
 
@@ -89,7 +89,7 @@ class SslFactory(
     }
 
     override fun reconfigurableConfigs(): Set<String> {
-        return sslEngineFactory.reconfigurableConfigs()
+        return sslEngineFactory!!.reconfigurableConfigs()
     }
 
     override fun validateReconfiguration(configs: Map<String, *>) {
@@ -100,13 +100,14 @@ class SslFactory(
     override fun reconfigure(configs: Map<String, *>) {
         val newSslEngineFactory = createNewSslEngineFactory(configs)
 
-        if (newSslEngineFactory !== sslEngineFactory) {
+        if (newSslEngineFactory != sslEngineFactory) {
             closeQuietly(sslEngineFactory, "close stale ssl engine factory")
             sslEngineFactory = newSslEngineFactory
             log.info(
                 "Created new {} SSL engine builder with keystore {} truststore {}",
                 mode,
-                newSslEngineFactory.keystore(), newSslEngineFactory.truststore()
+                newSslEngineFactory.keystore(),
+                newSslEngineFactory.truststore(),
             )
         }
     }
@@ -125,9 +126,9 @@ class SslFactory(
     }
 
     private fun createNewSslEngineFactory(newConfigs: Map<String, *>): SslEngineFactory {
-        check(this::sslEngineFactory.isInitialized) { "SslFactory has not been configured." }
+        val sslEngineFactory = checkNotNull(sslEngineFactory) { "SslFactory has not been configured." }
 
-        val nextConfigs: MutableMap<String, Any?> = HashMap(sslEngineFactoryConfig)
+        val nextConfigs = sslEngineFactoryConfig!!.toMutableMap()
         copyMapEntries(nextConfigs, newConfigs, reconfigurableConfigs())
 
         if (clientAuthConfigOverride != null) {
@@ -180,13 +181,14 @@ class SslFactory(
      * avoid reverse DNS resolution in the computation of `peerHost`.
      */
     fun createSslEngine(peerHost: String, peerPort: Int): SSLEngine {
-        check(this::sslEngineFactory.isInitialized) { "SslFactory has not been configured." }
+        val sslEngineFactory = sslEngineFactory
+        check(sslEngineFactory != null) { "SslFactory has not been configured." }
 
         return when(mode) {
             Mode.CLIENT -> sslEngineFactory.createClientSslEngine(
-                peerHost,
-                peerPort,
-                endpointIdentification!!
+                peerHost = peerHost,
+                peerPort = peerPort,
+                endpointIdentification = endpointIdentification,
             )
             Mode.SERVER -> sslEngineFactory.createServerSslEngine(peerHost, peerPort)
         }

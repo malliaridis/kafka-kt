@@ -2209,58 +2209,18 @@ class SaslAuthenticatorTest {
     fun testCorrelationId() {
         val authenticator = object : SaslClientAuthenticator(
             configs = emptyMap<String, Any?>(),
-            callbackHandler = object : AuthenticateCallbackHandler {
-                override fun configure(
-                    configs: Map<String, *>,
-                    saslMechanism: String,
-                    jaasConfigEntries: List<AppConfigurationEntry>,
-                ) = Unit
-                override fun close() = Unit
-                override fun handle(callbacks: Array<out Callback>?) = Unit
-            },
+            callbackHandler = null,
             node = "node",
-            subject = Subject(),
-            servicePrincipal = "servicePrincipal",
-            host = "",
+            subject = null,
+            servicePrincipal = null,
+            host = null,
             mechanism = "plain",
             handshakeRequestEnable = false,
-            transportLayer = object : TransportLayer {
-                override fun ready(): Boolean = false
-                override fun finishConnect(): Boolean = false
-                override fun disconnect() = Unit
-                override val isConnected: Boolean = false
-                override fun socketChannel(): SocketChannel? = null
-                override fun selectionKey(): SelectionKey = error("Should not be called")
-                override fun handshake() = Unit
-                override fun peerPrincipal(): Principal? = null
-                override fun addInterestOps(ops: Int) = Unit
-                override fun removeInterestOps(ops: Int) = Unit
-                override val isMute: Boolean = false
-                override fun hasBytesBuffered(): Boolean = false
-                override fun close() = Unit
-                override fun isOpen(): Boolean = false
-                override fun read(dsts: Array<out ByteBuffer>?, offset: Int, length: Int): Long = -1
-                override fun read(dsts: Array<out ByteBuffer>?): Long = -1
-                override fun read(dst: ByteBuffer?): Int = -1
-                override fun hasPendingWrites(): Boolean = false
-                override fun transferFrom(fileChannel: FileChannel, position: Long, count: Long): Long = -1
-                override fun write(srcs: Array<out ByteBuffer>?, offset: Int, length: Int): Long = -1
-                override fun write(srcs: Array<out ByteBuffer>?): Long = -1
-                override fun write(src: ByteBuffer?): Int = -1
-            },
-            time = MockTime(),
+            transportLayer = null,
+            time = null,
             logContext = LogContext(),
         ) {
-            override fun createSaslClient(): SaslClient = object : SaslClient {
-                override fun getMechanismName(): String = "plain"
-                override fun hasInitialResponse(): Boolean = false
-                override fun evaluateChallenge(challenge: ByteArray?): ByteArray = challenge!!
-                override fun isComplete(): Boolean = false
-                override fun unwrap(incoming: ByteArray?, offset: Int, len: Int): ByteArray = incoming!!
-                override fun wrap(outgoing: ByteArray?, offset: Int, len: Int): ByteArray = outgoing!!
-                override fun getNegotiatedProperty(propName: String?): Any = Unit
-                override fun dispose() = Unit
-            }
+            override fun createSaslClient(): SaslClient? = null
         }
         val count =
             (SaslClientAuthenticator.MAX_RESERVED_CORRELATION_ID - SaslClientAuthenticator.MIN_RESERVED_CORRELATION_ID) * 2

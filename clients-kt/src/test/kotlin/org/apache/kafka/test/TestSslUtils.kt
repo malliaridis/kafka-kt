@@ -638,12 +638,15 @@ object TestSslUtils {
     }
 
     class TestSslEngineFactory : SslEngineFactory {
+
         var closed = false
+
         var defaultSslEngineFactory = DefaultSslEngineFactory()
+
         override fun createClientSslEngine(
             peerHost: String,
             peerPort: Int,
-            endpointIdentification: String
+            endpointIdentification: String?
         ): SSLEngine {
             return defaultSslEngineFactory.createClientSslEngine(
                 peerHost,

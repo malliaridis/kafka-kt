@@ -299,7 +299,6 @@ open class Metadata(
         isPartialUpdate: Boolean,
         nowMs: Long
     ) {
-        Objects.requireNonNull(response, "Metadata response cannot be null")
         check(!isClosed) { "Update requested after metadata close" }
         needPartialUpdate = requestVersion < this.requestVersion
         lastRefreshMs = nowMs
@@ -571,9 +570,7 @@ open class Metadata(
      * @return The current metadata updateVersion
      */
     @Synchronized
-    fun updateVersion(): Int {
-        return updateVersion
-    }
+    fun updateVersion(): Int = updateVersion
 
     /**
      * The last time metadata was successfully updated.

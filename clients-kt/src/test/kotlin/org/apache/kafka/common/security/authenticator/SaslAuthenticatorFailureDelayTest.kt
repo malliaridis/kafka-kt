@@ -296,9 +296,9 @@ abstract class SaslAuthenticatorFailureDelayTest(private val failedAuthenticatio
     ): ChannelState {
         createClientConnection(securityProtocol, node)
         val finalState = NetworkTestUtils.waitForChannelClose(
-            selector!!,
-            node,
-            ChannelState.State.AUTHENTICATION_FAILED,
+            selector = selector!!,
+            node = node,
+            channelState = ChannelState.State.AUTHENTICATION_FAILED,
         )
         selector!!.close()
         selector = null

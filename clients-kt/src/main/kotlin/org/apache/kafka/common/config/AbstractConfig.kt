@@ -91,15 +91,15 @@ open class AbstractConfig(
     private val originals: Map<String, Any?>
 
     /* the parsed values */
-    private val values: Map<String, *>
+    private val values: MutableMap<String, *>
 
     init {
         this.originals = resolveConfigVariables(configProviderProps, originals) as Map<String, Any?>
 
-        val values = definition.parse(this.originals)
+        values = definition.parse(this.originals).toMutableMap()
         val configUpdates = postProcessParsedConfig(values)
-        // for ((key, value) in configUpdates) values[key] = value
-        this.values = values + configUpdates
+        for ((key, value) in configUpdates) values[key] = value
+
         definition.parse(values)
         if (doLog) logAll()
     }
@@ -226,7 +226,7 @@ open class AbstractConfig(
      *
      * This is used to provide per-mechanism configs for a broker listener (e.g sasl.jaas.config).
      */
-    fun valuesWithPrefixOverride(prefix: String): Map<String, Any?> {
+    fun valuesWithPrefixOverride(prefix: String): MutableMap<String, Any?> {
         val result = RecordingMap(values(), prefix, true)
 
         originals.forEach { (key, value) ->
@@ -274,7 +274,7 @@ open class AbstractConfig(
         }
     }
 
-    fun values(): Map<String, Any?> = RecordingMap(values)
+    fun values(): MutableMap<String, Any?> = RecordingMap(values)
 
     fun nonInternalValues(): Map<String, *> {
         val nonInternalConfigs = RecordingMap<Any?>()

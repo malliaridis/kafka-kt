@@ -45,10 +45,12 @@ class StopReplicaResponse(
         // Minor optimization since the top-level error applies to all partitions
             return mapOf(error() to data.partitionErrors.size + 1)
 
-        val errors = errorCounts(data.partitionErrors.map { Errors.forCode(it.errorCode) })
+        val errors = errorCounts(
+            data.partitionErrors.map { Errors.forCode(it.errorCode) }
+        ).toMutableMap()
 
         updateErrorCounts(
-            errorCounts = errors.toMutableMap(),
+            errorCounts = errors,
             error = Errors.forCode(data.errorCode) // top level error
         )
 

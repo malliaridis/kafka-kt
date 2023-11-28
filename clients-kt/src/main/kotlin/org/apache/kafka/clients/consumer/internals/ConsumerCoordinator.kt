@@ -1143,9 +1143,8 @@ class ConsumerCoordinator(
         invokeCompletedOffsetCommitCallbacks()
         if (offsets.isEmpty()) return true
         do {
-            if (coordinatorUnknownAndUnreadySync(timer)) {
-                return false
-            }
+            if (coordinatorUnknownAndUnreadySync(timer)) return false
+
             val future = sendOffsetCommitRequest(offsets)
             client.poll(future, timer)
 
@@ -1153,13 +1152,17 @@ class ConsumerCoordinator(
             // ensure that the corresponding callbacks are invoked prior to returning in order to
             // preserve the order that the offset commits were applied.
             invokeCompletedOffsetCommitCallbacks()
+
             if (future.succeeded()) {
                 interceptors?.onCommit(offsets)
                 return true
             }
+
             if (future.failed() && !future.isRetriable) throw future.exception()
+
             timer.sleep(rebalanceConfig.retryBackoffMs!!)
         } while (timer.isNotExpired)
+
         return false
     }
 

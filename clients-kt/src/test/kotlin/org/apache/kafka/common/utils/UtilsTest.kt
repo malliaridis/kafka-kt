@@ -816,12 +816,7 @@ class UtilsTest {
         val count = AtomicInteger(0)
         val c0 = AutoCloseable { throw RuntimeException(msg) }
         val c1 = AutoCloseable { count.incrementAndGet() }
-        closeAllQuietly(
-            exception,
-            "test",
-            c0,
-            c1,
-        )
+        closeAllQuietly(exception, "test", c0, c1)
         assertEquals(msg, exception.get()!!.message)
         assertEquals(1, count.get())
     }

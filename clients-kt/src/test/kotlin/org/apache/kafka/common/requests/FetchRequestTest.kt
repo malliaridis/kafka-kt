@@ -160,7 +160,11 @@ class FetchRequestTest {
             val expectedName = if (fetchRequestUsesTopicIds) topicNames[tidp.topicId] else tidp.topic
             val tpKey = TopicIdPartition(
                 topicId = tidp.topicId,
-                topicPartition = TopicPartition(topic = expectedName!!, partition = tidp.partition),
+                topicPartition = TopicPartition(
+                    // Kotlin Migration: Use empty string to avoid nullable topic name
+                    topic = expectedName ?: "",
+                    partition = tidp.partition
+                ),
             )
             // logStartOffset was not a valid field in versions 4 and earlier.
             val logStartOffset = if (version > 4) 0 else -1
@@ -240,8 +244,8 @@ class FetchRequestTest {
             // For fetch request version 13+ we expect topic names to be filled in for all topics in the topicNames map.
             // Otherwise, the topic name should be null.
             // For earlier request versions, we expect topic names and zero Uuids.
-            // Build the list of expected TopicIdPartitions. These are different from the earlier expected topicIdPartitions
-            // as empty strings are converted to nulls.
+            // Build the list of expected TopicIdPartitions. These are different from the earlier expected
+            // topicIdPartitions as empty strings are converted to nulls.
             assertEquals(expectedForgottenTopicData.size, forgottenTopics!!.size)
             val expectedForgottenTopics = expectedForgottenTopicData.map { tidp ->
                 val expectedName = if (fetchRequestUsesTopicIds) topicNames[tidp.topicId] else tidp.topic
@@ -249,7 +253,8 @@ class FetchRequestTest {
                 TopicIdPartition(
                     topicId = tidp.topicId,
                     topicPartition = TopicPartition(
-                        topic = expectedName!!,
+                        // Kotlin Migration: Use empty string to avoid nullable topic name
+                        topic = expectedName ?: "",
                         partition = tidp.partition,
                     )
                 )

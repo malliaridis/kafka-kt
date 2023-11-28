@@ -1133,8 +1133,8 @@ class SslTransportLayerTest {
             val message = randomString(1024 * 1024)
             waitForChannelReady(selector, node)
             val channel = assertNotNull(selector.channel(node))
-            assertTrue(channel.andResetNetworkThreadTimeNanos > 0, "SSL handshake time not recorded")
-            assertEquals(0, channel.andResetNetworkThreadTimeNanos, "Time not reset")
+            assertTrue(channel.getAndResetNetworkThreadTimeNanos() > 0, "SSL handshake time not recorded")
+            assertEquals(0, channel.getAndResetNetworkThreadTimeNanos(), "Time not reset")
             selector.mute(node)
             selector.send(
                 NetworkSend(
@@ -1143,10 +1143,10 @@ class SslTransportLayerTest {
                 )
             )
             while (selector.completedSends().isEmpty()) selector.poll(100L)
-            val sendTimeNanos = channel.andResetNetworkThreadTimeNanos
+            val sendTimeNanos = channel.getAndResetNetworkThreadTimeNanos()
             
             assertTrue(sendTimeNanos > 0, "Send time not recorded: $sendTimeNanos")
-            assertEquals(0, channel.andResetNetworkThreadTimeNanos, "Time not reset")
+            assertEquals(0, channel.getAndResetNetworkThreadTimeNanos(), "Time not reset")
             assertFalse(channel.hasBytesBuffered(), "Unexpected bytes buffered")
             assertEquals(0, selector.completedReceives().size)
             
@@ -1163,7 +1163,7 @@ class SslTransportLayerTest {
                 },
                 conditionDetails = "Timed out waiting for a message to receive from echo server",
             )
-            val receiveTimeNanos = channel.andResetNetworkThreadTimeNanos
+            val receiveTimeNanos = channel.getAndResetNetworkThreadTimeNanos()
             assertTrue(receiveTimeNanos > 0, "Receive time not recorded: $receiveTimeNanos")
         }
     }
@@ -1751,7 +1751,12 @@ class SslTransportLayerTest {
         // Verify that client with matching keystore can authenticate, send and receive
         val oldNode = "0"
         val oldClientSelector = createSelector(args.sslClientConfigs)
-        oldClientSelector.connect(oldNode, addr, BUFFER_SIZE, BUFFER_SIZE)
+        oldClientSelector.connect(
+            id = oldNode,
+            address = addr,
+            sendBufferSize = BUFFER_SIZE,
+            receiveBufferSize = BUFFER_SIZE,
+        )
         checkClientConnection(
             selector = selector,
             node = oldNode,
@@ -1803,7 +1808,12 @@ class SslTransportLayerTest {
         )
 
         // Verify that old client continues to work
-        checkClientConnection(oldClientSelector, oldNode, 100, 10)
+        checkClientConnection(
+            selector = oldClientSelector,
+            node = oldNode,
+            minMessageSize = 100,
+            messageCount = 10
+        )
         val invalidConfigs = newTruststoreConfigs + (SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG to "INVALID_TYPE")
         verifyInvalidReconfigure(
             reconfigurable = reconfigurableBuilder,
@@ -2128,11 +2138,11 @@ class SslTransportLayerTest {
             metadataRegistry = DefaultChannelMetadataRegistry(),
         ) {
             
-            private val netReadBufSize = ResizeableBufferSize(netReadBufSizeOverride!!)
+            private val netReadBufSize = ResizeableBufferSize(netReadBufSizeOverride)
 
-            private val netWriteBufSize = ResizeableBufferSize(netWriteBufSizeOverride!!)
+            private val netWriteBufSize = ResizeableBufferSize(netWriteBufSizeOverride)
 
-            private val appBufSize = ResizeableBufferSize(appBufSizeOverride!!)
+            private val appBufSize = ResizeableBufferSize(appBufSizeOverride)
 
             private val numReadsRemaining = AtomicLong(failureIndex)
 

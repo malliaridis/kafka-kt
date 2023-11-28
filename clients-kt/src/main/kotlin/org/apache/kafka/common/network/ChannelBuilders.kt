@@ -146,7 +146,7 @@ object ChannelBuilders {
         apiVersionSupplier: Supplier<ApiVersionsResponse>? = null,
     ): ChannelBuilder {
         val configs = channelBuilderConfigs(config, listenerName)
-        val channelBuilder: ChannelBuilder = when (securityProtocol) {
+        val channelBuilder = when (securityProtocol) {
             SecurityProtocol.SSL -> SslChannelBuilder(
                 mode = mode,
                 listenerName = listenerName,
@@ -231,7 +231,7 @@ object ChannelBuilders {
                     securityProtocol = securityProtocol,
                     listenerName = listenerName,
                     isInterBrokerListener = isInterBrokerListener,
-                    clientSaslMechanism = clientSaslMechanism!!,
+                    clientSaslMechanism = clientSaslMechanism,
                     handshakeRequestEnable = saslHandshakeRequestEnable,
                     credentialCache = credentialCache,
                     tokenCache = tokenCache,
@@ -256,23 +256,26 @@ object ChannelBuilders {
         config: AbstractConfig,
         listenerName: ListenerName?
     ): Map<String, Any?> {
-        val parsedConfigs = listenerName?.let {
+        val parsedConfigs: MutableMap<String, Any?> = listenerName?.let {
             config.valuesWithPrefixOverride(listenerName.configPrefix())
         } ?: config.values()
 
-        return parsedConfigs + config.originals().filter { (key, _) ->
-            // exclude already parsed configs
-            !parsedConfigs.containsKey(key)
-        }.filterNot { e: Map.Entry<String, Any?> ->
-            // exclude already parsed listener prefix configs
-            (listenerName != null) && e.key.startsWith(listenerName.configPrefix())
-                    && parsedConfigs.containsKey(e.key.substring(listenerName.configPrefix().length))
-        }.filterNot { e: Map.Entry<String, Any?> ->
-            // exclude keys like `{mechanism}.some.prop` if "listener.name." prefix is present and
-            // key `some.prop` exists in parsed configs.
-            listenerName != null && parsedConfigs
-                .containsKey(e.key.substring(e.key.indexOf('.') + 1))
-        }
+        parsedConfigs.putAll(
+            config.originals().filter { (key, _) ->
+                // exclude already parsed configs
+                !parsedConfigs.containsKey(key)
+            }.filterNot { e: Map.Entry<String, Any?> ->
+                // exclude already parsed listener prefix configs
+                (listenerName != null) && e.key.startsWith(listenerName.configPrefix())
+                        && parsedConfigs.containsKey(e.key.substring(listenerName.configPrefix().length))
+            }.filterNot { e: Map.Entry<String, Any?> ->
+                // exclude keys like `{mechanism}.some.prop` if "listener.name." prefix is present and
+                // key `some.prop` exists in parsed configs.
+                listenerName != null && parsedConfigs
+                    .containsKey(e.key.substring(e.key.indexOf('.') + 1))
+            }
+        )
+        return parsedConfigs
     }
 
     @Deprecated("There is no need for null-check for this case in Kotlin")
@@ -290,7 +293,7 @@ object ChannelBuilders {
         val builder: KafkaPrincipalBuilder = if (
             principalBuilderClass == null
             || principalBuilderClass == DefaultKafkaPrincipalBuilder::class.java
-        ) DefaultKafkaPrincipalBuilder(kerberosShortNamer!!, sslPrincipalMapper!!)
+        ) DefaultKafkaPrincipalBuilder(kerberosShortNamer, sslPrincipalMapper)
         else if (KafkaPrincipalBuilder::class.java.isAssignableFrom(principalBuilderClass))
             newInstance(principalBuilderClass) as KafkaPrincipalBuilder
         else throw InvalidConfigurationException(

@@ -73,7 +73,7 @@ open class SaslChannelBuilder(
     private val securityProtocol: SecurityProtocol,
     private val listenerName: ListenerName?,
     private val isInterBrokerListener: Boolean,
-    private val clientSaslMechanism: String,
+    private val clientSaslMechanism: String?,
     private val handshakeRequestEnable: Boolean,
     private val credentialCache: CredentialCache?,
     private val tokenCache: DelegationTokenCache?,
@@ -239,7 +239,7 @@ open class SaslChannelBuilder(
 
     // Visible to override for testing
     @Throws(IOException::class)
-    internal fun buildTransportLayer(
+    internal open fun buildTransportLayer(
         id: String,
         key: SelectionKey,
         socketChannel: SocketChannel,
@@ -293,7 +293,7 @@ open class SaslChannelBuilder(
         subject = subject,
         servicePrincipal = servicePrincipal,
         host = serverHost,
-        mechanism = clientSaslMechanism,
+        mechanism = clientSaslMechanism!!,
         handshakeRequestEnable = handshakeRequestEnable,
         transportLayer = transportLayer,
         time = time,
@@ -310,7 +310,7 @@ open class SaslChannelBuilder(
             configs[SaslConfigs.SASL_CLIENT_CALLBACK_HANDLER_CLASS] as? Class<out AuthenticateCallbackHandler>
             ?: clientCallbackHandlerClass()
 
-        saslCallbackHandlers[clientSaslMechanism] = newInstance(callbackHandlerClass)
+        saslCallbackHandlers[clientSaslMechanism!!] = newInstance(callbackHandlerClass)
     }
 
     private fun createServerCallbackHandlers(configs: Map<String, *>) {

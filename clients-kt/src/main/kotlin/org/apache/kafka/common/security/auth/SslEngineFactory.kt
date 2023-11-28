@@ -43,7 +43,7 @@ interface SslEngineFactory : Configurable, Closeable {
     fun createClientSslEngine(
         peerHost: String,
         peerPort: Int,
-        endpointIdentification: String
+        endpointIdentification: String?
     ): SSLEngine
 
     /**

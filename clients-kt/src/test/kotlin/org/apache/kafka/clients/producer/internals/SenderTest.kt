@@ -4755,8 +4755,10 @@ class SenderTest {
 
     private fun createMockClientWithMaxFlightOneMetadataPending() {
         client = object : MockClient(time, metadata) {
+
             @Volatile
             var canSendMore = true
+
             override fun leastLoadedNode(now: Long): Node? {
                 for (node in metadata.fetch().nodes) {
                     if (isReady(node, now) && canSendMore) return node

@@ -1006,8 +1006,7 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
         // create a deep copy of the current assignment, so we can revert to it if we do not get a
         // more balanced assignment later
         val preBalanceAssignment = deepCopy(currentAssignment)
-        val preBalancePartitionConsumers: Map<TopicPartition, String> =
-            currentPartitionConsumer.toMap()
+        val preBalancePartitionConsumers = currentPartitionConsumer.toMap()
 
         // if we don't already need to revoke something due to subscription changes, first try to
         // balance by only moving newly added partitions

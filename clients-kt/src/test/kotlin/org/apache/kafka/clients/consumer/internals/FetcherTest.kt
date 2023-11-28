@@ -19,6 +19,17 @@
 
 package org.apache.kafka.clients.consumer.internals
 
+import java.io.DataOutputStream
+import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets
+import java.time.Duration
+import java.util.Collections
+import java.util.concurrent.Callable
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import org.apache.kafka.clients.ApiVersions
 import org.apache.kafka.clients.ClientDnsLookup
 import org.apache.kafka.clients.ClientUtils.parseAndValidateAddresses
@@ -116,17 +127,6 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
-import java.io.DataOutputStream
-import java.nio.ByteBuffer
-import java.nio.charset.StandardCharsets
-import java.time.Duration
-import java.util.concurrent.Callable
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.function.Function
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -2344,11 +2344,11 @@ class FetcherTest {
                 error = Errors.NONE,
                 throttleTimeMs = 0,
                 sessionId = FetchMetadata.INVALID_SESSION_ID,
-                responseData = LinkedHashMap(partitions),
+                responseData = partitions.toMap(),
             )
         )
         consumerClient.poll(time.timer(0))
-        val allFetchedRecords: MutableList<ConsumerRecord<ByteArray, ByteArray>> = ArrayList()
+        val allFetchedRecords = mutableListOf<ConsumerRecord<ByteArray, ByteArray>>()
         fetchRecordsInto(allFetchedRecords)
 
         assertEquals(1, subscriptions.position(tp0)!!.offset)
@@ -2411,7 +2411,7 @@ class FetcherTest {
                 error = Errors.NONE,
                 throttleTimeMs = 0,
                 sessionId = FetchMetadata.INVALID_SESSION_ID,
-                responseData = LinkedHashMap(partitions),
+                responseData = partitions.toMap(),
             )
         )
         consumerClient.poll(time.timer(0))
@@ -2510,7 +2510,7 @@ class FetcherTest {
                 error = Errors.NONE,
                 throttleTimeMs = 0,
                 sessionId = FetchMetadata.INVALID_SESSION_ID,
-                responseData = LinkedHashMap(partitions),
+                responseData = partitions.toMap(),
             )
         )
         consumerClient.poll(time.timer(0))
@@ -3868,7 +3868,7 @@ class FetcherTest {
                 error = Errors.NONE,
                 throttleTimeMs = 0,
                 sessionId = FetchMetadata.INVALID_SESSION_ID,
-                responseData = LinkedHashMap(partitions),
+                responseData = partitions.toMap(),
             )
         )
         consumerClient.poll(time.timer(0))
@@ -3936,7 +3936,7 @@ class FetcherTest {
                 error = Errors.NONE,
                 throttleTimeMs = 0,
                 sessionId = FetchMetadata.INVALID_SESSION_ID,
-                responseData = LinkedHashMap(partitions),
+                responseData = partitions.toMap(),
             ),
         )
         consumerClient.poll(time.timer(0))
@@ -7457,7 +7457,7 @@ class FetcherTest {
             error = error,
             throttleTimeMs = throttleTime,
             sessionId = FetchMetadata.INVALID_SESSION_ID,
-            responseData = LinkedHashMap(partitions),
+            responseData = partitions.toMap(),
         )
     }
 
@@ -7483,7 +7483,7 @@ class FetcherTest {
             error = Errors.NONE,
             throttleTimeMs = throttleTime,
             sessionId = FetchMetadata.INVALID_SESSION_ID,
-            responseData = LinkedHashMap(partitions),
+            responseData = partitions.toMap(),
         )
     }
 
@@ -7510,7 +7510,7 @@ class FetcherTest {
             error = Errors.NONE,
             throttleTimeMs = throttleTime,
             sessionId = sessionId,
-            responseData = LinkedHashMap(partitions),
+            responseData = partitions.toMap(),
         )
     }
 
@@ -7537,7 +7537,7 @@ class FetcherTest {
             error = Errors.NONE,
             throttleTimeMs = throttleTime,
             sessionId = FetchMetadata.INVALID_SESSION_ID,
-            responseData = LinkedHashMap(partitions),
+            responseData = partitions.toMap(),
         )
     }
 

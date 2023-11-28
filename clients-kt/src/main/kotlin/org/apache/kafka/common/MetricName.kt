@@ -85,25 +85,19 @@ data class MetricName(
         message = "Use property instead.",
         replaceWith = ReplaceWith("name")
     )
-    fun name(): String {
-        return name
-    }
+    fun name(): String = name
 
     @Deprecated(
         message = "Use property instead.",
         replaceWith = ReplaceWith("group")
     )
-    fun group(): String {
-        return group
-    }
+    fun group(): String = group
 
     @Deprecated(
         message = "Use property instead.",
         replaceWith = ReplaceWith("tags")
     )
-    fun tags(): Map<String, String?> {
-        return tags
-    }
+    fun tags(): Map<String, String?> = tags
 
     @Deprecated(
         message = "Use property instead.",
@@ -112,6 +106,8 @@ data class MetricName(
     fun description(): String {
         return description
     }
+
+
 
     override fun toString(): String {
         return "MetricName [" +
@@ -122,5 +118,24 @@ data class MetricName(
                 "]"
 
     }
-}
 
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as MetricName
+
+        if (name != other.name) return false
+        if (group != other.group) return false
+        if (tags != other.tags) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = name.hashCode()
+        result = 31 * result + group.hashCode()
+        result = 31 * result + tags.hashCode()
+        return result
+    }
+}

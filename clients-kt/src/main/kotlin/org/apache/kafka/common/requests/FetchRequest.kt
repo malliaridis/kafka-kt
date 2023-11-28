@@ -105,7 +105,8 @@ class FetchRequest(
 
                     data.topics.forEach { fetchTopic ->
                         val name: String = if (version < 13) fetchTopic.topic // can't be null
-                        else topicNames[fetchTopic.topicId]!!
+                        // Kotlin Migration: Use empty string to avoid nullable topic IDs
+                        else topicNames[fetchTopic.topicId] ?: ""
 
                         fetchTopic.partitions.forEach { fetchPartition ->
                             // Topic name may be null here if the topic name was unable to be
@@ -148,9 +149,10 @@ class FetchRequest(
                         ArrayList()
 
                     data.forgottenTopicsData.forEach { forgottenTopic ->
-                        val name: String =
+                        val name =
                             if (version < 13) forgottenTopic.topic // can't be null
-                            else topicNames[forgottenTopic.topicId]!!
+                            // Kotlin Migration: Use empty string to avoid nullable topic IDs
+                            else topicNames[forgottenTopic.topicId] ?: ""
 
                         // Topic name may be null here if the topic name was unable to be
                         // resolved using the topicNames map.

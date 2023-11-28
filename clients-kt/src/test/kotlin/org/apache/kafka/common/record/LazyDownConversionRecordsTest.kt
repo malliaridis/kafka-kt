@@ -163,8 +163,8 @@ class LazyDownConversionRecordsTest {
             val arguments: MutableList<Arguments> = ArrayList()
             for (toMagic in RecordBatch.MAGIC_VALUE_V0..RecordBatch.CURRENT_MAGIC_VALUE) {
                 listOf(true, false).forEach { overflow ->
-                    arguments.add(Arguments.of(CompressionType.NONE, toMagic, overflow))
-                    arguments.add(Arguments.of(CompressionType.GZIP, toMagic, overflow))
+                    arguments.add(Arguments.of(CompressionType.NONE, toMagic.toByte(), overflow))
+                    arguments.add(Arguments.of(CompressionType.GZIP, toMagic.toByte(), overflow))
                 }
             }
             return arguments

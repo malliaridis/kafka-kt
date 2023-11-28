@@ -101,8 +101,8 @@ class ConfigDef {
     }
 
     constructor(base: ConfigDef) {
-        configKeys = LinkedHashMap(base.configKeys)
-        groups = LinkedList(base.groups)
+        configKeys = base.configKeys.toMutableMap()
+        groups = base.groups.toMutableList()
         // It is not safe to copy this from the parent because we may subsequently add to the set of
         // configs and invalidate this
     }
