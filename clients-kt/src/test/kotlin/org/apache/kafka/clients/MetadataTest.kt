@@ -1310,7 +1310,7 @@ class MetadataTest {
     fun testMetadataMerge() {
         val time = MockTime()
         val topicIds = mutableMapOf<String, Uuid>()
-        val retainTopics = AtomicReference<Set<String>>(HashSet())
+        val retainTopics = AtomicReference<Set<String>>(hashSetOf())
         metadata = object : Metadata(
             refreshBackoffMs = refreshBackoffMs,
             metadataExpireMs = metadataExpireMs,

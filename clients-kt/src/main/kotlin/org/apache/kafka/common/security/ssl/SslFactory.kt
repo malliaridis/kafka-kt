@@ -239,7 +239,7 @@ class SslFactory(
             subjectPrincipal = cert.subjectX500Principal
             val altNames = cert.subjectAlternativeNames
             // use a set for comparison
-            subjectAltNames = altNames?.let { HashSet(altNames) } ?: emptySet()
+            subjectAltNames = altNames?.let { altNames.toHashSet() } ?: emptySet()
         }
 
         override fun hashCode(): Int {

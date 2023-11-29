@@ -391,7 +391,7 @@ class ConfigDef {
     }
 
     private fun undefinedDependentConfigs(): List<String> {
-        val undefinedConfigKeys: MutableSet<String> = HashSet()
+        val undefinedConfigKeys: MutableSet<String> = hashSetOf()
 
         configKeys.values.forEach { configKey ->
             configKey.dependents.forEach { dependent ->
@@ -413,7 +413,7 @@ class ConfigDef {
             configsWithParent.addAll(configKey.dependents)
         }
 
-        val configs: MutableSet<String> = HashSet(configKeys.keys)
+        val configs: MutableSet<String> = configKeys.keys.toHashSet()
 
         configs.removeAll(configsWithParent)
         configsWithNoParent = configs
@@ -475,7 +475,7 @@ class ConfigDef {
                 val originalRecommendedValues = value.recommendedValues
 
                 if (originalRecommendedValues.isNotEmpty()) {
-                    val originalRecommendedValueSet: Set<Any> = HashSet(originalRecommendedValues)
+                    val originalRecommendedValueSet = originalRecommendedValues.toHashSet()
                     recommendedValues.filter { originalRecommendedValueSet.contains(it) }
                 }
 

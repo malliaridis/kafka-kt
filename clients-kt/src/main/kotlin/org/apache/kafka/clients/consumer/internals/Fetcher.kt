@@ -150,7 +150,7 @@ open class Fetcher<K, V>(
     private val offsetsForLeaderEpochClient: OffsetsForLeaderEpochClient =
         OffsetsForLeaderEpochClient(client, logContext)
 
-    private val nodesWithPendingFetchRequests: MutableSet<Int> = HashSet()
+    private val nodesWithPendingFetchRequests: MutableSet<Int> = hashSetOf()
 
     private val metadataUpdateVersion = AtomicInteger(-1)
 

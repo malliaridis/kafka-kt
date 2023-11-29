@@ -1300,7 +1300,7 @@ object Utils {
     }
 
     fun from32BitField(intValue: Int): Set<Byte> {
-        val result: MutableSet<Byte> = HashSet()
+        val result: MutableSet<Byte> = hashSetOf()
         var itr = intValue
         var count = 0
         while (itr != 0) {

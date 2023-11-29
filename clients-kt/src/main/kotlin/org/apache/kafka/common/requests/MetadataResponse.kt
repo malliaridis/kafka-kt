@@ -114,7 +114,7 @@ class MetadataResponse internal constructor(
      * Returns the set of topics with the specified error
      */
     fun topicsByError(error: Errors): Set<String> {
-        val errorTopics: MutableSet<String> = HashSet()
+        val errorTopics: MutableSet<String> = hashSetOf()
         for (metadata in data.topics)
             if (metadata.errorCode == error.code) errorTopics.add(metadata.name!!)
 
@@ -126,7 +126,7 @@ class MetadataResponse internal constructor(
      * @return the cluster snapshot
      */
     fun buildCluster(): Cluster {
-        val internalTopics: MutableSet<String> = HashSet()
+        val internalTopics: MutableSet<String> = hashSetOf()
         val partitions: MutableList<PartitionInfo> = ArrayList()
         val topicIds: MutableMap<String, Uuid> = mutableMapOf()
         for (metadata in topicMetadata())

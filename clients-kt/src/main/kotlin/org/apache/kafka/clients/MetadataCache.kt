@@ -207,7 +207,7 @@ class MetadataCache private constructor(
          * @param predicate tested against the fill set to determine whether elements should be added to the base set
          */
         private fun <T> fillSet(baseSet: Set<T>, fillSet: Set<T>, predicate: (T) -> Boolean): Set<T> {
-            val result: MutableSet<T> = HashSet(baseSet)
+            val result: MutableSet<T> = baseSet.toHashSet()
             fillSet.forEach { element -> if (predicate(element)) result.add(element) }
             return result
         }

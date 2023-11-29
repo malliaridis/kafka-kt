@@ -154,9 +154,8 @@ open class KafkaChannel(
         //we need to grab remoteAddr before finishConnect() is called otherwise
         //it becomes inaccessible if the connection was refused.
         val socketChannel = transportLayer.socketChannel()
-        if (socketChannel != null) {
-            remoteAddress = socketChannel.remoteAddress
-        }
+        if (socketChannel != null) remoteAddress = socketChannel.remoteAddress
+
         val connected = transportLayer.finishConnect()
         if (connected) {
             state = if (ready()) ChannelState.READY
@@ -380,7 +379,7 @@ open class KafkaChannel(
         } catch (exception: SslAuthenticationException) {
             // With TLSv1.3, post-handshake messages may throw SSLExceptions, which are
             // handled as authentication failures
-            val remoteDesc = if (remoteAddress != null) remoteAddress.toString() else null
+            val remoteDesc = remoteAddress?.toString()
             state = ChannelState(
                 state = ChannelState.State.AUTHENTICATION_FAILED,
                 remoteAddress = remoteDesc,

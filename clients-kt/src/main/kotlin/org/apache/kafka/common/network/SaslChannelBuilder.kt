@@ -325,7 +325,7 @@ open class SaslChannelBuilder(
                 else if (mechanism == PlainSaslServer.PLAIN_MECHANISM) PlainServerCallbackHandler()
                 else if (ScramMechanism.isScram(mechanism)) ScramServerCallbackHandler(
                     credentialCache = credentialCache!!.cache(mechanism, ScramCredential::class.java)!!,
-                    tokenCache = tokenCache!!,
+                    tokenCache = tokenCache,
                 ) else if (mechanism == OAuthBearerLoginModule.OAUTHBEARER_MECHANISM)
                     OAuthBearerUnsecuredValidatorCallbackHandler()
                 else SaslServerCallbackHandler()
@@ -395,16 +395,9 @@ open class SaslChannelBuilder(
                     GSSContext.INDEFINITE_LIFETIME, krb5Mechanism, GSSCredential.ACCEPT_ONLY
                 )
                 subject.privateCredentials.add(cred)
-                log.info(
-                    "Configured native GSSAPI private credentials for {}@{}",
-                    serviceHostname,
-                    serviceHostname
-                )
+                log.info("Configured native GSSAPI private credentials for {}@{}", serviceHostname, serviceHostname)
             } catch (ex: GSSException) {
-                log.warn(
-                    "Cannot add private credential to subject; clients authentication may fail",
-                    ex
-                )
+                log.warn("Cannot add private credential to subject; clients authentication may fail", ex)
             }
         }
     }

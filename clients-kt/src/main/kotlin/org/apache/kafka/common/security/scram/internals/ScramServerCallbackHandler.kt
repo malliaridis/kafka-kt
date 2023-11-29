@@ -30,7 +30,7 @@ import org.apache.kafka.common.security.token.delegation.internals.DelegationTok
 
 class ScramServerCallbackHandler(
     private val credentialCache: CredentialCache.Cache<ScramCredential>,
-    private val tokenCache: DelegationTokenCache,
+    private val tokenCache: DelegationTokenCache?,
 ) : AuthenticateCallbackHandler {
 
     private lateinit var saslMechanism: String
@@ -52,7 +52,7 @@ class ScramServerCallbackHandler(
             if (callback is NameCallback) username = callback.defaultName
             else if (callback is DelegationTokenCredentialCallback) {
 
-                callback.scramCredential = tokenCache.credential(saslMechanism, username)
+                callback.scramCredential = tokenCache!!.credential(saslMechanism, username)
                 callback.tokenOwner = tokenCache.owner(username)
                 val tokenInfo = tokenCache.token(username)
 

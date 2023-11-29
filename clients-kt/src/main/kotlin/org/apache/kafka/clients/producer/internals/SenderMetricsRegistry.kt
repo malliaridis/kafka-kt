@@ -31,6 +31,8 @@ class SenderMetricsRegistry(private val metrics: Metrics) {
     /* Client level  */
     /* * * * * * * * */
 
+    private val tags: Set<String> = metrics.config.tags.keys
+
     val batchSizeAvg: MetricName = createMetricName(
         name = "batch-size-avg",
         description = "The average number of bytes sent per partition per-request.",
@@ -141,8 +143,6 @@ class SenderMetricsRegistry(private val metrics: Metrics) {
         name = "batch-split-total",
         description = "The total number of batch splits",
     )
-
-    private val tags: Set<String> = metrics.config.tags.keys
 
     /* * * * * * * */
     /* Topic level */
@@ -263,7 +263,12 @@ class SenderMetricsRegistry(private val metrics: Metrics) {
         description: String,
         tags: Set<String>,
     ): MetricNameTemplate {
-        val template = MetricNameTemplate(name, group, description, tags)
+        val template = MetricNameTemplate(
+            name = name,
+            group = group,
+            description = description,
+            tagsNames = tags
+        )
         allTemplates.add(template)
         return template
     }

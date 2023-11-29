@@ -179,7 +179,7 @@ class SubscriptionState(
     @Synchronized
     fun groupSubscribe(topics: Collection<String>): Boolean {
         check(hasAutoAssignedPartitions()) { SUBSCRIPTION_EXCEPTION_MESSAGE }
-        groupSubscription = HashSet(topics)
+        groupSubscription = topics.toHashSet()
         return !subscription.containsAll(groupSubscription)
     }
 
@@ -326,7 +326,7 @@ class SubscriptionState(
         else {
             // When subscription changes `groupSubscription` may be outdated, ensure that new
             // subscription topics are returned.
-            val topics: MutableSet<String> = HashSet(groupSubscription)
+            val topics: MutableSet<String> = groupSubscription.toHashSet()
             topics.addAll(subscription)
             topics
         }
@@ -380,7 +380,7 @@ class SubscriptionState(
      */
     @Synchronized
     fun assignedPartitions(): Set<TopicPartition> {
-        return HashSet(assignment.partitionSet())
+        return assignment.partitionSet().toHashSet()
     }
 
     /**

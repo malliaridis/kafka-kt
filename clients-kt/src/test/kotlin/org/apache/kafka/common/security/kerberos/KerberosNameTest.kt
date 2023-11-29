@@ -34,16 +34,19 @@ class KerberosNameTest {
             "DEFAULT",
         )
         val shortNamer = KerberosShortNamer.fromUnparsedRules("REALM.COM", rules)
+
         var name = KerberosName.parse("App.service-name/example.com@REALM.COM")
         assertEquals("App.service-name", name.serviceName)
         assertEquals("example.com", name.hostName)
         assertEquals("REALM.COM", name.realm)
         assertEquals("service-name", shortNamer.shortName(name))
+
         name = KerberosName.parse("App.service-name@REALM.COM")
         assertEquals("App.service-name", name.serviceName)
         assertNull(name.hostName)
         assertEquals("REALM.COM", name.realm)
         assertEquals("service-name", shortNamer.shortName(name))
+
         name = KerberosName.parse("user/host@REALM.COM")
         assertEquals("user", name.serviceName)
         assertEquals("host", name.hostName)
@@ -63,14 +66,19 @@ class KerberosNameTest {
             "DEFAULT"
         )
         val shortNamer = KerberosShortNamer.fromUnparsedRules("REALM.COM", rules)
+
         var name = KerberosName.parse("User@REALM.COM")
         assertEquals("user", shortNamer.shortName(name))
+
         name = KerberosName.parse("TestABC/host@FOO.COM")
         assertEquals("test", shortNamer.shortName(name))
+
         name = KerberosName.parse("ABC_User_ABC/host@FOO.COM")
         assertEquals("xyz_user_xyz", shortNamer.shortName(name))
+
         name = KerberosName.parse("App.SERVICE-name/example.com@REALM.COM")
         assertEquals("service-name", shortNamer.shortName(name))
+
         name = KerberosName.parse("User/root@REALM.COM")
         assertEquals("user", shortNamer.shortName(name))
     }
@@ -87,14 +95,19 @@ class KerberosNameTest {
             "DEFAULT",
         )
         val shortNamer = KerberosShortNamer.fromUnparsedRules("REALM.COM", rules)
+
         var name = KerberosName.parse("User@REALM.COM")
         assertEquals("USER", shortNamer.shortName(name))
+
         name = KerberosName.parse("TestABC/host@FOO.COM")
         assertEquals("TEST", shortNamer.shortName(name))
+
         name = KerberosName.parse("ABC_User_ABC/host@FOO.COM")
         assertEquals("XYZ_USER_XYZ", shortNamer.shortName(name))
+
         name = KerberosName.parse("App.SERVICE-name/example.com@REALM.COM")
         assertEquals("SERVICE-NAME", shortNamer.shortName(name))
+
         name = KerberosName.parse("User/root@REALM.COM")
         assertEquals("USER", shortNamer.shortName(name))
     }

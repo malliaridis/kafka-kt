@@ -23,7 +23,6 @@ import java.io.DataOutputStream
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.time.Duration
-import java.util.Collections
 import java.util.concurrent.Callable
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -823,7 +822,7 @@ class FetcherTest {
             timestampType = TimestampType.CREATE_TIME,
             baseOffset = 0L,
             logAppendTime = System.currentTimeMillis(),
-            producerId = RecordBatch.NO_PARTITION_LEADER_EPOCH.toLong(),
+            partitionLeaderEpoch = RecordBatch.NO_PARTITION_LEADER_EPOCH,
         )
         builder.append(timestamp = 0L, key = "key".toByteArray(), value = "1".toByteArray())
         builder.append(timestamp = 0L, key = "key".toByteArray(), value = "2".toByteArray())
@@ -861,7 +860,7 @@ class FetcherTest {
             timestampType = TimestampType.CREATE_TIME,
             baseOffset = 0L,
             logAppendTime = System.currentTimeMillis(),
-            producerId = partitionLeaderEpoch.toLong(),
+            partitionLeaderEpoch = partitionLeaderEpoch,
         )
         builder.append(
             timestamp = 0L,
@@ -882,7 +881,7 @@ class FetcherTest {
             timestampType = TimestampType.CREATE_TIME,
             baseOffset = 2L,
             logAppendTime = System.currentTimeMillis(),
-            producerId = partitionLeaderEpoch.toLong(),
+            partitionLeaderEpoch = partitionLeaderEpoch,
         )
         builder.append(
             timestamp = 0L,
@@ -898,7 +897,7 @@ class FetcherTest {
             timestampType = TimestampType.CREATE_TIME,
             baseOffset = 3L,
             logAppendTime = System.currentTimeMillis(),
-            producerId = partitionLeaderEpoch.toLong(),
+            partitionLeaderEpoch = partitionLeaderEpoch,
         )
         builder.append(
             timestamp = 0L,
@@ -960,7 +959,7 @@ class FetcherTest {
         )
         consumerClient.poll(time.timer(0))
         assertTrue(fetcher.hasCompletedFetches())
-        val newAssignedTopicPartitions: MutableSet<TopicPartition> = HashSet()
+        val newAssignedTopicPartitions: MutableSet<TopicPartition> = hashSetOf()
         newAssignedTopicPartitions.add(tp1)
         fetcher.clearBufferedDataForUnassignedPartitions(newAssignedTopicPartitions)
         assertFalse(fetcher.hasCompletedFetches())
@@ -2174,11 +2173,11 @@ class FetcherTest {
         val matcher = RequestMatcher { body ->
             assertIs<FetchRequest>(body, "Should have seen FetchRequest")
 
-            body.fetchData(topicNames)!!.values.forEach { (_, _, _, _, currentLeaderEpoch) ->
-                assertNotNull(currentLeaderEpoch, "Expected Fetcher to set leader epoch in request")
+            body.fetchData(topicNames)!!.values.forEach { partitionData ->
+                assertNotNull(partitionData.currentLeaderEpoch, "Expected Fetcher to set leader epoch in request")
                 assertEquals(
                     expected = 99,
-                    actual = currentLeaderEpoch,
+                    actual = partitionData.currentLeaderEpoch,
                     message = "Expected leader epoch to match epoch from metadata update",
                 )
             }
@@ -4252,13 +4251,13 @@ class FetcherTest {
                                 .setPartitions(
                                     listOf(
                                         ListOffsetsPartition()
-                                            .setPartitionIndex(tp1.partition)
+                                            .setPartitionIndex(tp0.partition)
                                             .setTimestamp(fetchTimestamp)
                                             .setCurrentLeaderEpoch(ListOffsetsResponse.UNKNOWN_EPOCH),
                                         ListOffsetsPartition()
-                                            .setPartitionIndex(tp0.partition)
+                                            .setPartitionIndex(tp1.partition)
                                             .setTimestamp(fetchTimestamp)
-                                            .setCurrentLeaderEpoch(ListOffsetsResponse.UNKNOWN_EPOCH)
+                                            .setCurrentLeaderEpoch(ListOffsetsResponse.UNKNOWN_EPOCH),
                                     )
                                 )
                         )
@@ -7430,13 +7429,10 @@ class FetcherTest {
                     .setLeaderEpoch(leaderEpoch)
             )
         }
-        val topics = mutableListOf<ListOffsetsTopicResponse>()
-        for ((key, value) in responses) {
-            topics.add(
-                ListOffsetsTopicResponse()
-                    .setName(key)
-                    .setPartitions(value)
-            )
+        val topics = responses.map { (key, value) ->
+            ListOffsetsTopicResponse()
+                .setName(key)
+                .setPartitions(value)
         }
         val data = ListOffsetsResponseData().setTopics(topics)
         return ListOffsetsResponse(data)

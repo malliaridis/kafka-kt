@@ -175,11 +175,14 @@ open class SaslClientAuthenticator(
                 // Always use version 0 request since brokers treat requests with schema exceptions
                 // as GSSAPI tokens
                 val apiVersionsRequest = ApiVersionsRequest.Builder().build(version = 0)
-                send(apiVersionsRequest.toSend(
-                    nextRequestHeader(
-                        apiKey = ApiKeys.API_VERSIONS,
-                        version = apiVersionsRequest.version,
-                    )))
+                send(
+                    apiVersionsRequest.toSend(
+                        nextRequestHeader(
+                            apiKey = ApiKeys.API_VERSIONS,
+                            version = apiVersionsRequest.version,
+                        )
+                    )
+                )
                 setSaslState(SaslState.RECEIVE_APIVERSIONS_RESPONSE)
             }
 
@@ -335,15 +338,13 @@ open class SaslClientAuthenticator(
                     .setClientId(clientId)
                     .setCorrelationId(nextCorrelationId()),
                 apiKey.requestHeaderVersion(version)
-            ).apply {
-            currentRequestHeader = this
-        }
+            ).apply { currentRequestHeader = this }
     }
 
     // Visible to override for testing
     protected open fun createSaslHandshakeRequest(version: Short): SaslHandshakeRequest {
         return SaslHandshakeRequest.Builder(
-            SaslHandshakeRequestData().setMechanism(mechanism!!)
+            SaslHandshakeRequestData().setMechanism(mechanism)
         ).build(version)
     }
 

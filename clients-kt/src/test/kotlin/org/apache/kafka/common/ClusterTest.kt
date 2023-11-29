@@ -40,7 +40,7 @@ class ClusterTest {
             )
         )
         val expectedHosts = mkSet(ipAddress, hostName)
-        val actualHosts: MutableSet<String> = HashSet()
+        val actualHosts: MutableSet<String> = hashSetOf()
         for ((_, host) in cluster.nodes) actualHosts.add(host)
         assertEquals(expectedHosts, actualHosts)
     }

@@ -423,7 +423,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
             maxRequestSize = config.getInt(ProducerConfig.MAX_REQUEST_SIZE_CONFIG)!!
             totalMemorySize = config.getLong(ProducerConfig.BUFFER_MEMORY_CONFIG)!!
             compressionType =
-                CompressionType.forName(config.getString(ProducerConfig.COMPRESSION_TYPE_CONFIG)!!)
+                CompressionType.forName(config.getString(ProducerConfig.COMPRESSION_TYPE_CONFIG))
             maxBlockTimeMs = config.getLong(ProducerConfig.MAX_BLOCK_MS_CONFIG)!!
             val deliveryTimeoutMs = configureDeliveryTimeout(config, log)
             apiVersions = ApiVersions()
@@ -520,7 +520,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
         maxRequestSize = config.getInt(ProducerConfig.MAX_REQUEST_SIZE_CONFIG)!!
         totalMemorySize = config.getLong(ProducerConfig.BUFFER_MEMORY_CONFIG)!!
         compressionType =
-            CompressionType.forName(config.getString(ProducerConfig.COMPRESSION_TYPE_CONFIG)!!)
+            CompressionType.forName(config.getString(ProducerConfig.COMPRESSION_TYPE_CONFIG))
         maxBlockTimeMs = config.getLong(ProducerConfig.MAX_BLOCK_MS_CONFIG)!!
         partitionerIgnoreKeys = config.getBoolean(ProducerConfig.PARTITIONER_IGNORE_KEYS_CONFIG)!!
         apiVersions = ApiVersions()
@@ -621,7 +621,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
     ): TransactionManager? {
         var transactionManager: TransactionManager? = null
         if (config.getBoolean(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG)!!) {
-            val transactionalId = config.getString(ProducerConfig.TRANSACTIONAL_ID_CONFIG)!!
+            val transactionalId = config.getString(ProducerConfig.TRANSACTIONAL_ID_CONFIG)
             val transactionTimeoutMs = config.getInt(ProducerConfig.TRANSACTION_TIMEOUT_CONFIG)!!
             val retryBackoffMs = config.getLong(ProducerConfig.RETRY_BACKOFF_MS_CONFIG)!!
             transactionManager = TransactionManager(

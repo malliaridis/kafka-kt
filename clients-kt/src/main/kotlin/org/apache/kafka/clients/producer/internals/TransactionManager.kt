@@ -153,13 +153,12 @@ class TransactionManager(
     private var epochBumpRequired = false
 
     @Synchronized
-    fun initializeTransactions(): TransactionalRequestResult =
-        initializeTransactions(ProducerIdAndEpoch.NONE)
+    fun initializeTransactions(): TransactionalRequestResult = initializeTransactions(ProducerIdAndEpoch.NONE)
 
     @Synchronized
-    fun initializeTransactions(producerIdAndEpoch: ProducerIdAndEpoch): TransactionalRequestResult {
+    internal fun initializeTransactions(producerIdAndEpoch: ProducerIdAndEpoch): TransactionalRequestResult {
         maybeFailWithError()
-        val isEpochBump = producerIdAndEpoch !== ProducerIdAndEpoch.NONE
+        val isEpochBump = producerIdAndEpoch != ProducerIdAndEpoch.NONE
         return handleCachedTransactionRequestResult(
             transactionalRequestResultSupplier = {
 
@@ -1209,11 +1208,11 @@ class TransactionManager(
         ensureTransactional()
         pendingTransition?.let {
             if (it.result.isAcked) pendingTransition = null
-            else if (nextState != pendingTransition!!.state) error(
+            else if (nextState != it.state) error(
                 "Cannot attempt operation `$operation` because the previous call to " +
-                        "`${pendingTransition!!.operation}` timed out and must be retried"
+                        "`${it.operation}` timed out and must be retried"
             )
-            else it.result
+            else return it.result
         }
         val result = transactionalRequestResultSupplier()
         pendingTransition = PendingStateTransition(result, nextState, operation)
@@ -1408,7 +1407,7 @@ class TransactionManager(
             val addPartitionsToTxnResponse = responseBody as AddPartitionsToTxnResponse
             val errors = addPartitionsToTxnResponse.errors()
             var hasPartitionErrors = false
-            val unauthorizedTopics: MutableSet<String> = HashSet()
+            val unauthorizedTopics: MutableSet<String> = hashSetOf()
             retryBackoffMs = this@TransactionManager.retryBackoffMs
 
             for ((topicPartition, error) in errors) {

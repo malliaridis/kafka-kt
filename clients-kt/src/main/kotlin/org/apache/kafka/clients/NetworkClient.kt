@@ -626,13 +626,14 @@ class NetworkClient(
         connectionStates.disconnected(nodeId, now)
         apiVersions.remove(nodeId)
         nodesNeedingApiVersionsFetch.remove(nodeId)
-        when (disconnectState.state()) {
+        when (disconnectState.state) {
             ChannelState.State.AUTHENTICATION_FAILED -> {
-                val exception = disconnectState.exception()
+                val exception = disconnectState.exception
                 connectionStates.authenticationFailed(nodeId, now, exception)
                 log.error(
-                    "Connection to node {} ({}) failed authentication due to: {}", nodeId,
-                    disconnectState.remoteAddress(),
+                    "Connection to node {} ({}) failed authentication due to: {}",
+                    nodeId,
+                    disconnectState.remoteAddress,
                     exception?.message
                 )
             }
@@ -643,19 +644,19 @@ class NetworkClient(
                         "credentials with brokers older than 1.0.0, (2) Firewall blocking Kafka TLS " +
                         "traffic (eg it may only allow HTTPS traffic), (3) Transient network issue.",
                 nodeId,
-                disconnectState.remoteAddress()
+                disconnectState.remoteAddress
             )
 
             ChannelState.State.NOT_CONNECTED -> log.warn(
                 "Connection to node {} ({}) could not be established. Broker may not be available.",
                 nodeId,
-                disconnectState.remoteAddress()
+                disconnectState.remoteAddress
             )
 
             else -> {}
         }
         cancelInFlightRequests(nodeId, now, responses)
-        metadataUpdater.handleServerDisconnect(now, nodeId, disconnectState.exception())
+        metadataUpdater.handleServerDisconnect(now, nodeId, disconnectState.exception)
     }
 
     /**

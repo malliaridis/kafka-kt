@@ -61,10 +61,10 @@ class ListTransactionsResultTest {
         assertEquals(broker2Listings, resultBrokerFutures[2]!!.get())
         assertEquals(broker1Listings, result.allByBrokerId().get()[1])
         assertEquals(broker2Listings, result.allByBrokerId().get()[2])
-        val allExpected: MutableSet<TransactionListing> = HashSet()
+        val allExpected: MutableSet<TransactionListing> = hashSetOf()
         allExpected.addAll(broker1Listings)
         allExpected.addAll(broker2Listings)
-        assertEquals(allExpected, HashSet(result.all().get()))
+        assertEquals(allExpected, result.all().get().toHashSet())
     }
 
     @Test

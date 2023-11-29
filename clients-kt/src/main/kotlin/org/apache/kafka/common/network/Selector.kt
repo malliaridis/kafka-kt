@@ -75,7 +75,7 @@ open class Selector private constructor(
 
     private val channels: MutableMap<String, KafkaChannel> = HashMap()
 
-    private val explicitlyMutedChannels: MutableSet<KafkaChannel?> = HashSet()
+    private val explicitlyMutedChannels: MutableSet<KafkaChannel?> = hashSetOf()
 
     //package-private for testing
     internal var isOutOfMemory: Boolean = false
@@ -85,13 +85,13 @@ open class Selector private constructor(
 
     private val completedReceives: LinkedHashMap<String, NetworkReceive> = LinkedHashMap()
 
-    private val immediatelyConnectedKeys: MutableSet<SelectionKey?> = HashSet()
+    private val immediatelyConnectedKeys: MutableSet<SelectionKey?> = hashSetOf()
 
-    private val closingChannels: MutableMap<String?, KafkaChannel> = HashMap()
+    private val closingChannels: MutableMap<String?, KafkaChannel> = hashMapOf()
 
-    private var keysWithBufferedRead: MutableSet<SelectionKey?> = HashSet()
+    private var keysWithBufferedRead: MutableSet<SelectionKey?> = hashSetOf()
 
-    private val disconnected: MutableMap<String, ChannelState> = HashMap()
+    private val disconnected: MutableMap<String, ChannelState> = hashMapOf()
 
     private val connected: MutableList<String> = ArrayList()
 
@@ -444,7 +444,7 @@ open class Selector private constructor(
             if (dataInBuffers) {
                 keysWithBufferedRead.removeAll(readyKeys) //so no channel gets polled twice
                 val toPoll = keysWithBufferedRead
-                keysWithBufferedRead = HashSet() //poll() calls will repopulate if needed
+                keysWithBufferedRead = hashSetOf() //poll() calls will repopulate if needed
                 pollSelectionKeys(
                     selectionKeys = toPoll,
                     isImmediatelyConnected = false,
@@ -682,7 +682,7 @@ open class Selector private constructor(
     }
 
     private fun maybeReadFromClosingChannel(channel: KafkaChannel): Boolean {
-        val hasPending = if (channel.state.state() !== ChannelState.State.READY) false
+        val hasPending = if (channel.state.state !== ChannelState.State.READY) false
         else if (explicitlyMutedChannels.contains(channel) || hasCompletedReceive(channel)) true
         else {
             try {
@@ -1005,7 +1005,7 @@ open class Selector private constructor(
 
     // only for testing
     fun keys(): MutableSet<SelectionKey> {
-        return HashSet(nioSelector.keys())
+        return nioSelector.keys().toHashSet()
     }
 
     internal inner class SelectorChannelMetadataRegistry : ChannelMetadataRegistry {

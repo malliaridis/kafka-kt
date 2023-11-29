@@ -257,16 +257,13 @@ open class SaslServerAuthenticator(
             // allocate on heap (as opposed to any socket server memory pool)
             if (netInBuffer == null) netInBuffer = NetworkReceive(
                 maxSize = saslAuthRequestMaxReceiveSize,
-                source = connectionId
+                source = connectionId,
             )
 
             try {
                 netInBuffer!!.readFrom(transportLayer)
             } catch (e: InvalidReceiveException) {
-                throw SaslAuthenticationException(
-                    "Failing SASL authentication due to invalid receive size",
-                    e
-                )
+                throw SaslAuthenticationException("Failing SASL authentication due to invalid receive size", e)
             }
 
             if (!netInBuffer!!.complete()) return
@@ -763,13 +760,9 @@ open class SaslServerAuthenticator(
         fun ensurePrincipalUnchanged(reauthenticatedKafkaPrincipal: KafkaPrincipal?) {
             if (previousKafkaPrincipal != reauthenticatedKafkaPrincipal) {
                 throw SaslAuthenticationException(
-                    String.format(
-                        "Cannot change principals during re-authentication from %s.%s: %s.%s",
-                        previousKafkaPrincipal!!.principalType,
-                        previousKafkaPrincipal!!.name,
-                        reauthenticatedKafkaPrincipal!!.principalType,
-                        reauthenticatedKafkaPrincipal.name
-                    )
+                    "Cannot change principals during re-authentication from " +
+                            "${previousKafkaPrincipal!!.principalType}.${previousKafkaPrincipal!!.name}: " +
+                            "${reauthenticatedKafkaPrincipal!!.principalType}.${reauthenticatedKafkaPrincipal.name}"
                 )
             }
         }

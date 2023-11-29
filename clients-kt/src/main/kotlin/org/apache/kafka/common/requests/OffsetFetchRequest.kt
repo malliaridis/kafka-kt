@@ -135,7 +135,9 @@ class OffsetFetchRequest private constructor(
             partitions: List<TopicPartition>?,
             throwOnFetchStableOffsetsUnsupported: Boolean,
         ) : super(ApiKeys.OFFSET_FETCH) {
-            val topics: List<OffsetFetchRequestTopic>
+
+            val topics: List<OffsetFetchRequestTopic>?
+
             if (partitions != null) {
                 val offsetFetchRequestTopicMap = mutableMapOf<String, OffsetFetchRequestTopic>()
 
@@ -147,7 +149,7 @@ class OffsetFetchRequest private constructor(
                     topic.partitionIndexes += topicPartition.partition
                     offsetFetchRequestTopicMap[topicName] = topic
                 }
-                topics = ArrayList(offsetFetchRequestTopicMap.values)
+                topics = offsetFetchRequestTopicMap.values.toList()
             } else {
                 // If passed in partition list is empty (before migration nul), it is requesting
                 // offsets for all topic partitions.
@@ -173,7 +175,8 @@ class OffsetFetchRequest private constructor(
             for (entry in groupIdToTopicPartitionMap) {
                 val groupName = entry.key
                 val tpList = entry.value
-                val topics: List<OffsetFetchRequestTopics>
+                val topics: List<OffsetFetchRequestTopics>?
+
                 if (tpList != null) {
                     val offsetFetchRequestTopicMap =
                         mutableMapOf<String, OffsetFetchRequestTopics>()
@@ -305,9 +308,9 @@ class OffsetFetchRequest private constructor(
 
         private val log = LoggerFactory.getLogger(OffsetFetchRequest::class.java)
 
-        private val ALL_TOPIC_PARTITIONS: List<OffsetFetchRequestTopic> = emptyList()
+        private val ALL_TOPIC_PARTITIONS: List<OffsetFetchRequestTopic>? = null
 
-        private val ALL_TOPIC_PARTITIONS_BATCH: List<OffsetFetchRequestTopics> = emptyList()
+        private val ALL_TOPIC_PARTITIONS_BATCH: List<OffsetFetchRequestTopics>? = null
 
         fun parse(buffer: ByteBuffer, version: Short): OffsetFetchRequest =
             OffsetFetchRequest(OffsetFetchRequestData(ByteBufferAccessor(buffer), version), version)

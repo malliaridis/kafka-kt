@@ -1130,8 +1130,8 @@ class RequestResponseTest {
         assertEquals(1, createHeartBeatResponse().errorCounts()[Errors.NONE])
         assertEquals(1, createIncrementalAlterConfigsResponse().errorCounts()[Errors.NONE])
         assertEquals(1, createJoinGroupResponse(ApiKeys.JOIN_GROUP.latestVersion()).errorCounts()[Errors.NONE])
-        assertEquals(2, createLeaderAndIsrResponse(4.toShort()).errorCounts()[Errors.NONE])
-        assertEquals(2, createLeaderAndIsrResponse(5.toShort()).errorCounts()[Errors.NONE])
+        assertEquals(2, createLeaderAndIsrResponse(4).errorCounts()[Errors.NONE])
+        assertEquals(2, createLeaderAndIsrResponse(5).errorCounts()[Errors.NONE])
         assertEquals(3, createLeaderEpochResponse().errorCounts()[Errors.NONE])
         assertEquals(1, createLeaveGroupResponse().errorCounts()[Errors.NONE])
         assertEquals(1, createListGroupsResponse(ApiKeys.LIST_GROUPS.latestVersion()).errorCounts()[Errors.NONE])
@@ -2822,9 +2822,10 @@ class RequestResponseTest {
                     .setErrorCode(Errors.NONE.code)
             )
             return LeaderAndIsrResponse(
-                LeaderAndIsrResponseData()
+                data = LeaderAndIsrResponseData()
                     .setErrorCode(Errors.NONE.code)
-                    .setPartitionErrors(partitions), version
+                    .setPartitionErrors(partitions),
+                version = version,
             )
         } else {
             val partition = listOf(

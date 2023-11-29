@@ -649,7 +649,7 @@ class ProducerConfig : AbstractConfig {
             ).define(
                 name = COMPRESSION_TYPE_CONFIG,
                 type = ConfigDef.Type.STRING,
-                defaultValue = CompressionType.NONE.name,
+                defaultValue = CompressionType.NONE.altName,
                 validator = `in`(*enumOptions(CompressionType::class.java)),
                 importance = Importance.HIGH,
                 documentation = COMPRESSION_TYPE_DOC,

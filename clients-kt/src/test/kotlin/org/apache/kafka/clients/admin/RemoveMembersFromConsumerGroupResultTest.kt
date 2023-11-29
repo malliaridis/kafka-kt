@@ -47,7 +47,7 @@ class RemoveMembersFromConsumerGroupResultTest {
     @BeforeEach
     fun setUp() {
         memberFutures = KafkaFutureImpl()
-        membersToRemove = HashSet()
+        membersToRemove = hashSetOf()
         membersToRemove.add(instanceOne)
         membersToRemove.add(instanceTwo)
         errorsMap = HashMap()

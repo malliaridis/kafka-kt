@@ -823,7 +823,7 @@ class KafkaAdminClient internal constructor(
                                 "Disconnecting from {} and revoking {} node assignment(s) " +
                                         "because the node is taking too long to become ready.",
                                 node.idString(),
-                                calls.size
+                                calls.size,
                             )
                             transitionToPendingAndClearList(calls)
                             client.disconnect(node.idString())

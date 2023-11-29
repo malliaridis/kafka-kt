@@ -144,13 +144,7 @@ class ConsumerNetworkClient(
      */
     fun awaitMetadataUpdate(timer: Timer): Boolean {
         val version = metadata.requestUpdate()
-        do {
-            println("" + metadata.updateVersion() + " " + version)
-            println("" + timer.currentTimeMs + " " + timer.elapsedMs)
-            poll(timer)
-            println(timer.isNotExpired)
-            println("" + metadata.updateVersion() + " " + version)
-        }
+        do poll(timer)
         while (metadata.updateVersion() == version && timer.isNotExpired)
         return metadata.updateVersion() > version
     }
@@ -415,7 +409,7 @@ class ConsumerNetworkClient(
                             receivedTimeMs = now,
                             disconnected = true,
                             versionMismatch = null,
-                            authenticationException = authenticationException!!,
+                            authenticationException = authenticationException,
                             responseBody = null
                         )
                     )

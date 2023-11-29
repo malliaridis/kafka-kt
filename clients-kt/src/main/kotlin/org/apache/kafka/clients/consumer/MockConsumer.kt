@@ -98,7 +98,7 @@ class MockConsumer<K, V>(offsetResetStrategy: OffsetResetStrategy) : Consumer<K,
         ensureNotClosed()
         committed.clear()
         subscriptions.subscribe(pattern, callback)
-        val topicsToSubscribe: MutableSet<String> = HashSet()
+        val topicsToSubscribe: MutableSet<String> = hashSetOf()
         for (topic in partitions.keys) if (
             pattern.matcher(topic).matches()
             && !subscriptions.subscription().contains(topic)
@@ -106,7 +106,7 @@ class MockConsumer<K, V>(offsetResetStrategy: OffsetResetStrategy) : Consumer<K,
 
         ensureNotClosed()
         subscriptions.subscribeFromPattern(topicsToSubscribe)
-        val assignedPartitions: MutableSet<TopicPartition> = HashSet()
+        val assignedPartitions: MutableSet<TopicPartition> = hashSetOf()
 
         for (topic in topicsToSubscribe)
             for ((_, partition) in partitions[topic]!!)
@@ -124,14 +124,14 @@ class MockConsumer<K, V>(offsetResetStrategy: OffsetResetStrategy) : Consumer<K,
     override fun subscribe(topics: Collection<String>, callback: ConsumerRebalanceListener) {
         ensureNotClosed()
         committed.clear()
-        subscriptions.subscribe(HashSet(topics), callback)
+        subscriptions.subscribe(topics.toHashSet(), callback)
     }
 
     @Synchronized
     override fun assign(partitions: Collection<TopicPartition>) {
         ensureNotClosed()
         committed.clear()
-        subscriptions.assignFromUser(HashSet(partitions))
+        subscriptions.assignFromUser(partitions.toHashSet())
     }
 
     @Synchronized

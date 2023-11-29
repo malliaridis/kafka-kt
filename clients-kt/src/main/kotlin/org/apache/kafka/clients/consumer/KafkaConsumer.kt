@@ -911,7 +911,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
     internal constructor(
         logContext: LogContext,
         clientId: String?,
-        coordinator: ConsumerCoordinator,
+        coordinator: ConsumerCoordinator?,
         keyDeserializer: Deserializer<K>,
         valueDeserializer: Deserializer<V>,
         fetcher: Fetcher<K, V>,
@@ -978,7 +978,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
     override fun subscription(): Set<String> {
         acquireAndEnsureOpen()
         try {
-            return Collections.unmodifiableSet(HashSet(subscriptions.subscription()))
+            return Collections.unmodifiableSet(subscriptions.subscription().toHashSet())
         } finally {
             release()
         }

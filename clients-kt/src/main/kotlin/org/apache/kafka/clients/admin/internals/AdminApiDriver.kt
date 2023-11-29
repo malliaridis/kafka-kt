@@ -264,7 +264,7 @@ class AdminApiDriver<K, V>(
             if (requestState.hasInflight()) return@forEach
 
             // Copy the keys to avoid exposing the underlying mutable set
-            val copyKeys = Collections.unmodifiableSet(HashSet(keys))
+            val copyKeys = Collections.unmodifiableSet(keys.toHashSet())
             val newRequests = buildRequest.apply(copyKeys, scope)
             if (newRequests.isEmpty()) return
 
@@ -381,7 +381,7 @@ class AdminApiDriver<K, V>(
         fun put(key: K, value: V) {
             remove(value)
             reverseMap[value] = key
-            map.computeIfAbsent(key) { _: K -> HashSet() }.add(value)
+            map.computeIfAbsent(key) { _: K -> hashSetOf() }.add(value)
         }
 
         fun remove(value: V) {

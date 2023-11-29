@@ -89,7 +89,7 @@ class LogContext(logPrefix: String? = "") {
             )
         }
 
-        override fun trace(format: String, arg: Any) {
+        override fun trace(format: String, arg: Any?) {
             if (logger.isTraceEnabled) writeLog(
                 level = LocationAwareLogger.TRACE_INT,
                 format = format,
@@ -97,7 +97,7 @@ class LogContext(logPrefix: String? = "") {
             )
         }
 
-        override fun trace(format: String, arg1: Any, arg2: Any) {
+        override fun trace(format: String, arg1: Any?, arg2: Any?) {
             if (logger.isTraceEnabled) writeLog(
                 level = LocationAwareLogger.TRACE_INT,
                 format = format,
@@ -105,7 +105,7 @@ class LogContext(logPrefix: String? = "") {
             )
         }
 
-        override fun trace(format: String, vararg args: Any) {
+        override fun trace(format: String, vararg args: Any?) {
             if (logger.isTraceEnabled) writeLog(
                 level = LocationAwareLogger.TRACE_INT,
                 format = format,
@@ -129,7 +129,7 @@ class LogContext(logPrefix: String? = "") {
             )
         }
 
-        override fun trace(marker: Marker, format: String, arg: Any) {
+        override fun trace(marker: Marker, format: String, arg: Any?) {
             if (logger.isTraceEnabled) writeLog(
                 marker = marker,
                 level = LocationAwareLogger.TRACE_INT,
@@ -138,7 +138,7 @@ class LogContext(logPrefix: String? = "") {
             )
         }
 
-        override fun trace(marker: Marker, format: String, arg1: Any, arg2: Any) {
+        override fun trace(marker: Marker, format: String, arg1: Any?, arg2: Any?) {
             if (logger.isTraceEnabled) writeLog(
                 marker = marker,
                 level = LocationAwareLogger.TRACE_INT,
@@ -147,7 +147,7 @@ class LogContext(logPrefix: String? = "") {
             )
         }
 
-        override fun trace(marker: Marker, format: String, vararg argArray: Any) {
+        override fun trace(marker: Marker, format: String, vararg argArray: Any?) {
             if (logger.isTraceEnabled) writeLog(
                 marker = marker,
                 level = LocationAwareLogger.TRACE_INT,
@@ -172,7 +172,7 @@ class LogContext(logPrefix: String? = "") {
             )
         }
 
-        override fun debug(format: String, arg: Any) {
+        override fun debug(format: String, arg: Any?) {
             if (logger.isDebugEnabled) writeLog(
                 level = LocationAwareLogger.DEBUG_INT,
                 format = format,
@@ -180,7 +180,7 @@ class LogContext(logPrefix: String? = "") {
             )
         }
 
-        override fun debug(format: String, arg1: Any, arg2: Any) {
+        override fun debug(format: String, arg1: Any?, arg2: Any?) {
             if (logger.isDebugEnabled) writeLog(
                 level = LocationAwareLogger.DEBUG_INT,
                 format = format,
@@ -188,7 +188,7 @@ class LogContext(logPrefix: String? = "") {
             )
         }
 
-        override fun debug(format: String, vararg args: Any) {
+        override fun debug(format: String, vararg args: Any?) {
             if (logger.isDebugEnabled) writeLog(
                 level = LocationAwareLogger.DEBUG_INT,
                 format = format,
@@ -212,7 +212,7 @@ class LogContext(logPrefix: String? = "") {
             )
         }
 
-        override fun debug(marker: Marker, format: String, arg: Any) {
+        override fun debug(marker: Marker, format: String, arg: Any?) {
             if (logger.isDebugEnabled) writeLog(
                 marker = marker,
                 level = LocationAwareLogger.DEBUG_INT,
@@ -221,7 +221,7 @@ class LogContext(logPrefix: String? = "") {
             )
         }
 
-        override fun debug(marker: Marker, format: String, arg1: Any, arg2: Any) {
+        override fun debug(marker: Marker, format: String, arg1: Any?, arg2: Any?) {
             if (logger.isDebugEnabled) writeLog(
                 marker = marker,
                 level = LocationAwareLogger.DEBUG_INT,
@@ -230,7 +230,7 @@ class LogContext(logPrefix: String? = "") {
             )
         }
 
-        override fun debug(marker: Marker, format: String, vararg arguments: Any) {
+        override fun debug(marker: Marker, format: String, vararg arguments: Any?) {
             if (logger.isDebugEnabled) writeLog(
                 marker = marker,
                 level = LocationAwareLogger.DEBUG_INT,
@@ -253,19 +253,19 @@ class LogContext(logPrefix: String? = "") {
             format = message,
         )
 
-        override fun warn(format: String, arg: Any) = writeLog(
+        override fun warn(format: String, arg: Any?) = writeLog(
             level = LocationAwareLogger.WARN_INT,
             format = format,
             args = arrayOf(arg),
         )
 
-        override fun warn(message: String, arg1: Any, arg2: Any) = writeLog(
+        override fun warn(message: String, arg1: Any?, arg2: Any?) = writeLog(
             level = LocationAwareLogger.WARN_INT,
             format = message,
             args = arrayOf(arg1, arg2),
         )
 
-        override fun warn(format: String, vararg args: Any) = writeLog(
+        override fun warn(format: String, vararg args: Any?) = writeLog(
             level = LocationAwareLogger.WARN_INT,
             format = format,
             args = arrayOf(*args),
@@ -283,21 +283,21 @@ class LogContext(logPrefix: String? = "") {
             message,
         )
 
-        override fun warn(marker: Marker, format: String, arg: Any) = writeLog(
+        override fun warn(marker: Marker, format: String, arg: Any?) = writeLog(
             marker = marker,
             level = LocationAwareLogger.WARN_INT,
             format = format,
             args = arrayOf(arg),
         )
 
-        override fun warn(marker: Marker, format: String, arg1: Any, arg2: Any) = writeLog(
+        override fun warn(marker: Marker, format: String, arg1: Any?, arg2: Any?) = writeLog(
             marker = marker,
             level = LocationAwareLogger.WARN_INT,
             format = format,
             args = arrayOf(arg1, arg2),
         )
 
-        override fun warn(marker: Marker, format: String, vararg arguments: Any) = writeLog(
+        override fun warn(marker: Marker, format: String, vararg arguments: Any?) = writeLog(
             marker = marker,
             level = LocationAwareLogger.WARN_INT,
             format = format,
@@ -316,19 +316,19 @@ class LogContext(logPrefix: String? = "") {
             format = message,
         )
 
-        override fun error(format: String, arg: Any) = writeLog(
+        override fun error(format: String, arg: Any?) = writeLog(
             level = LocationAwareLogger.ERROR_INT,
             format = format,
             args = arrayOf(arg),
         )
 
-        override fun error(format: String, arg1: Any, arg2: Any) = writeLog(
+        override fun error(format: String, arg1: Any?, arg2: Any?) = writeLog(
             level = LocationAwareLogger.ERROR_INT,
             format = format,
             args = arrayOf(arg1, arg2),
         )
 
-        override fun error(format: String, vararg args: Any) = writeLog(
+        override fun error(format: String, vararg args: Any?) = writeLog(
             level = LocationAwareLogger.ERROR_INT,
             format = format,
             args = arrayOf(*args),
@@ -346,21 +346,21 @@ class LogContext(logPrefix: String? = "") {
             format = message,
         )
 
-        override fun error(marker: Marker, format: String, arg: Any) = writeLog(
+        override fun error(marker: Marker, format: String, arg: Any?) = writeLog(
             marker = marker,
             level = LocationAwareLogger.ERROR_INT,
             format = format,
             args = arrayOf(arg),
         )
 
-        override fun error(marker: Marker, format: String, arg1: Any, arg2: Any) = writeLog(
+        override fun error(marker: Marker, format: String, arg1: Any?, arg2: Any?) = writeLog(
             marker = marker,
             level = LocationAwareLogger.ERROR_INT,
             format = format,
             args = arrayOf(arg1, arg2),
         )
 
-        override fun error(marker: Marker, format: String, vararg arguments: Any) = writeLog(
+        override fun error(marker: Marker, format: String, vararg arguments: Any?) = writeLog(
             marker = marker,
             level = LocationAwareLogger.ERROR_INT,
             format = format,
@@ -379,19 +379,19 @@ class LogContext(logPrefix: String? = "") {
             format = message,
         )
 
-        override fun info(format: String, arg: Any) = writeLog(
+        override fun info(format: String, arg: Any?) = writeLog(
             level = LocationAwareLogger.INFO_INT,
             format = format,
             args = arrayOf(arg),
         )
 
-        override fun info(format: String, arg1: Any, arg2: Any) = writeLog(
+        override fun info(format: String, arg1: Any?, arg2: Any?) = writeLog(
             level = LocationAwareLogger.INFO_INT,
             format = format,
             args = arrayOf(arg1, arg2),
         )
 
-        override fun info(format: String, vararg args: Any) = writeLog(
+        override fun info(format: String, vararg args: Any?) = writeLog(
             level = LocationAwareLogger.INFO_INT,
             format = format,
             args = arrayOf(*args),
@@ -409,21 +409,21 @@ class LogContext(logPrefix: String? = "") {
             format = message,
         )
 
-        override fun info(marker: Marker, format: String, arg: Any) = writeLog(
+        override fun info(marker: Marker, format: String, arg: Any?) = writeLog(
             marker = marker,
             level = LocationAwareLogger.INFO_INT,
             format = format,
             args = arrayOf(arg)
         )
 
-        override fun info(marker: Marker, format: String, arg1: Any, arg2: Any) = writeLog(
+        override fun info(marker: Marker, format: String, arg1: Any?, arg2: Any?) = writeLog(
             marker = marker,
             level = LocationAwareLogger.INFO_INT,
             format = format,
             args = arrayOf(arg1, arg2),
         )
 
-        override fun info(marker: Marker, format: String, vararg arguments: Any) = writeLog(
+        override fun info(marker: Marker, format: String, vararg arguments: Any?) = writeLog(
             marker = marker,
             level = LocationAwareLogger.INFO_INT,
             format = format,
@@ -442,7 +442,7 @@ class LogContext(logPrefix: String? = "") {
             marker: Marker? = null,
             level: Int,
             format: String,
-            args: Array<Any>? = null,
+            args: Array<Any?>? = null,
             exception: Throwable? = null
         ) {
             var exception = exception
@@ -488,16 +488,16 @@ class LogContext(logPrefix: String? = "") {
             if (logger.isTraceEnabled) logger.trace(addPrefix(message))
         }
 
-        override fun trace(message: String, arg: Any) {
+        override fun trace(message: String, arg: Any?) {
             if (logger.isTraceEnabled) logger.trace(addPrefix(message), arg)
         }
 
-        override fun trace(message: String, arg1: Any, arg2: Any) {
+        override fun trace(message: String, arg1: Any?, arg2: Any?) {
             if (logger.isTraceEnabled)
                 logger.trace(addPrefix(message), arg1, arg2)
         }
 
-        override fun trace(message: String, vararg args: Any) {
+        override fun trace(message: String, vararg args: Any?) {
             if (logger.isTraceEnabled)
                 logger.trace(addPrefix(message), *args)
         }
@@ -510,15 +510,15 @@ class LogContext(logPrefix: String? = "") {
             if (logger.isTraceEnabled) logger.trace(marker, addPrefix(message))
         }
 
-        override fun trace(marker: Marker, format: String, arg: Any) {
+        override fun trace(marker: Marker, format: String, arg: Any?) {
             if (logger.isTraceEnabled) logger.trace(marker, addPrefix(format), arg)
         }
 
-        override fun trace(marker: Marker, format: String, arg1: Any, arg2: Any) {
+        override fun trace(marker: Marker, format: String, arg1: Any?, arg2: Any?) {
             if (logger.isTraceEnabled) logger.trace(marker, addPrefix(format), arg1, arg2)
         }
 
-        override fun trace(marker: Marker, format: String, vararg argArray: Any) {
+        override fun trace(marker: Marker, format: String, vararg argArray: Any?) {
             if (logger.isTraceEnabled) logger.trace(marker, addPrefix(format), *argArray)
         }
 
@@ -530,15 +530,15 @@ class LogContext(logPrefix: String? = "") {
             if (logger.isDebugEnabled) logger.debug(addPrefix(message))
         }
 
-        override fun debug(message: String, arg: Any) {
+        override fun debug(message: String, arg: Any?) {
             if (logger.isDebugEnabled) logger.debug(addPrefix(message), arg)
         }
 
-        override fun debug(message: String, arg1: Any, arg2: Any) {
+        override fun debug(message: String, arg1: Any?, arg2: Any?) {
             if (logger.isDebugEnabled) logger.debug(addPrefix(message), arg1, arg2)
         }
 
-        override fun debug(message: String, vararg args: Any) {
+        override fun debug(message: String, vararg args: Any?) {
             if (logger.isDebugEnabled) logger.debug(addPrefix(message), *args)
         }
 
@@ -550,15 +550,15 @@ class LogContext(logPrefix: String? = "") {
             if (logger.isDebugEnabled) logger.debug(marker, addPrefix(message))
         }
 
-        override fun debug(marker: Marker, format: String, arg: Any) {
+        override fun debug(marker: Marker, format: String, arg: Any?) {
             if (logger.isDebugEnabled) logger.debug(marker, addPrefix(format), arg)
         }
 
-        override fun debug(marker: Marker, format: String, arg1: Any, arg2: Any) {
+        override fun debug(marker: Marker, format: String, arg1: Any?, arg2: Any?) {
             if (logger.isDebugEnabled) logger.debug(marker, addPrefix(format), arg1, arg2)
         }
 
-        override fun debug(marker: Marker, format: String, vararg arguments: Any) {
+        override fun debug(marker: Marker, format: String, vararg arguments: Any?) {
             if (logger.isDebugEnabled) logger.debug(marker, addPrefix(format), *arguments)
         }
 
@@ -568,12 +568,12 @@ class LogContext(logPrefix: String? = "") {
 
         override fun warn(message: String) = logger.warn(addPrefix(message))
 
-        override fun warn(message: String, arg: Any) = logger.warn(addPrefix(message), arg)
+        override fun warn(message: String, arg: Any?) = logger.warn(addPrefix(message), arg)
 
-        override fun warn(message: String, arg1: Any, arg2: Any) =
+        override fun warn(message: String, arg1: Any?, arg2: Any?) =
             logger.warn(addPrefix(message), arg1, arg2)
 
-        override fun warn(message: String, vararg args: Any) =
+        override fun warn(message: String, vararg args: Any?) =
             logger.warn(addPrefix(message), *args)
 
         override fun warn(message: String, throwable: Throwable) =
@@ -582,13 +582,13 @@ class LogContext(logPrefix: String? = "") {
         override fun warn(marker: Marker, message: String) =
             logger.warn(marker, addPrefix(message))
 
-        override fun warn(marker: Marker, format: String, arg: Any) =
+        override fun warn(marker: Marker, format: String, arg: Any?) =
             logger.warn(marker, addPrefix(format), arg)
 
-        override fun warn(marker: Marker, format: String, arg1: Any, arg2: Any) =
+        override fun warn(marker: Marker, format: String, arg1: Any?, arg2: Any?) =
             logger.warn(marker, addPrefix(format), arg1, arg2)
 
-        override fun warn(marker: Marker, format: String, vararg arguments: Any) =
+        override fun warn(marker: Marker, format: String, vararg arguments: Any?) =
             logger.warn(marker, addPrefix(format), *arguments)
 
         override fun warn(marker: Marker, message: String, throwable: Throwable) =
@@ -596,12 +596,12 @@ class LogContext(logPrefix: String? = "") {
 
         override fun error(message: String) = logger.error(addPrefix(message))
 
-        override fun error(message: String, arg: Any) = logger.error(addPrefix(message), arg)
+        override fun error(message: String, arg: Any?) = logger.error(addPrefix(message), arg)
 
-        override fun error(message: String, arg1: Any, arg2: Any) =
+        override fun error(message: String, arg1: Any?, arg2: Any?) =
             logger.error(addPrefix(message), arg1, arg2)
 
-        override fun error(message: String, vararg args: Any) =
+        override fun error(message: String, vararg args: Any?) =
             logger.error(addPrefix(message), *args)
 
         override fun error(message: String, throwable: Throwable) =
@@ -610,13 +610,13 @@ class LogContext(logPrefix: String? = "") {
         override fun error(marker: Marker, message: String) =
             logger.error(marker, addPrefix(message))
 
-        override fun error(marker: Marker, format: String, arg: Any) =
+        override fun error(marker: Marker, format: String, arg: Any?) =
             logger.error(marker, addPrefix(format), arg)
 
-        override fun error(marker: Marker, format: String, arg1: Any, arg2: Any) =
+        override fun error(marker: Marker, format: String, arg1: Any?, arg2: Any?) =
             logger.error(marker, addPrefix(format), arg1, arg2)
 
-        override fun error(marker: Marker, format: String, vararg arguments: Any) =
+        override fun error(marker: Marker, format: String, vararg arguments: Any?) =
             logger.error(marker, addPrefix(format), *arguments)
 
         override fun error(marker: Marker, message: String, throwable: Throwable) =
@@ -624,12 +624,12 @@ class LogContext(logPrefix: String? = "") {
 
         override fun info(message: String) = logger.info(addPrefix(message))
 
-        override fun info(message: String, arg: Any) = logger.info(addPrefix(message), arg)
+        override fun info(message: String, arg: Any?) = logger.info(addPrefix(message), arg)
 
-        override fun info(message: String, arg1: Any, arg2: Any) =
+        override fun info(message: String, arg1: Any?, arg2: Any?) =
             logger.info(addPrefix(message), arg1, arg2)
 
-        override fun info(message: String, vararg args: Any) =
+        override fun info(message: String, vararg args: Any?) =
             logger.info(addPrefix(message), *args)
 
         override fun info(message: String, throwable: Throwable) =
@@ -638,13 +638,13 @@ class LogContext(logPrefix: String? = "") {
         override fun info(marker: Marker, message: String) =
             logger.info(marker, addPrefix(message))
 
-        override fun info(marker: Marker, format: String, arg: Any) =
+        override fun info(marker: Marker, format: String, arg: Any?) =
             logger.info(marker, addPrefix(format), arg)
 
-        override fun info(marker: Marker, format: String, arg1: Any, arg2: Any) =
+        override fun info(marker: Marker, format: String, arg1: Any?, arg2: Any?) =
             logger.info(marker, addPrefix(format), arg1, arg2)
 
-        override fun info(marker: Marker, format: String, vararg arguments: Any) =
+        override fun info(marker: Marker, format: String, vararg arguments: Any?) =
             logger.info(marker, addPrefix(format), *arguments)
 
         override fun info(marker: Marker, message: String, throwable: Throwable) =

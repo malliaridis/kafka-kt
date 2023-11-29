@@ -46,7 +46,7 @@ abstract class AbstractPartitionAssignor : ConsumerPartitionAssignor {
 
     override fun assign(metadata: Cluster, groupSubscription: GroupSubscription): GroupAssignment {
         val subscriptions = groupSubscription.subscriptions
-        val allSubscribedTopics: MutableSet<String> = HashSet()
+        val allSubscribedTopics: MutableSet<String> = hashSetOf()
         for ((_, value) in subscriptions) allSubscribedTopics.addAll(value.topics)
 
         val partitionsPerTopic: MutableMap<String, Int> = HashMap()

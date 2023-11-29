@@ -40,10 +40,29 @@ import org.apache.kafka.common.errors.AuthenticationException
  *
  */
 class ChannelState(
-    private val state: State?,
-    private val remoteAddress: String? = null,
-    private val exception: AuthenticationException? = null
+    val state: State?,
+    val remoteAddress: String? = null,
+    val exception: AuthenticationException? = null
 ) {
+
+    @Deprecated(
+        message = "Use property instead",
+        replaceWith = ReplaceWith("state")
+    )
+    fun state(): State? = state
+
+    @Deprecated(
+        message = "Use property instead",
+        replaceWith = ReplaceWith("exception")
+    )
+    fun exception(): AuthenticationException? = exception
+
+    @Deprecated(
+        message = "Use property instead",
+        replaceWith = ReplaceWith("remoteAddress")
+    )
+    fun remoteAddress(): String? = remoteAddress
+
     enum class State {
         NOT_CONNECTED,
         AUTHENTICATE,
@@ -52,18 +71,6 @@ class ChannelState(
         FAILED_SEND,
         AUTHENTICATION_FAILED,
         LOCAL_CLOSE
-    }
-
-    fun state(): State? {
-        return state
-    }
-
-    fun exception(): AuthenticationException? {
-        return exception
-    }
-
-    fun remoteAddress(): String? {
-        return remoteAddress
     }
 
     companion object {

@@ -88,15 +88,11 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInfo
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
-import org.mockito.ArgumentMatchers
-import org.mockito.ArgumentMatchers.anyInt
-import org.mockito.ArgumentMatchers.anyLong
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.never
 import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
-import org.mockito.invocation.InvocationOnMock
 import java.lang.management.ManagementFactory
 import java.time.Duration
 import java.util.Properties
@@ -111,6 +107,9 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import javax.management.ObjectName
+import org.mockito.ArgumentMatchers.eq
+import org.mockito.ArgumentMatchers.notNull
+import org.mockito.kotlin.any
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 import kotlin.test.assertContentEquals
@@ -795,19 +794,19 @@ class KafkaProducerTest {
 
         // One request update for each empty cluster returned
         verify(metadata, times(4)).requestUpdateForTopic(topic)
-        verify(metadata, times(4)).awaitUpdate(anyInt(), anyLong())
+        verify(metadata, times(4)).awaitUpdate(any(), any())
         verify(metadata, times(5)).fetch()
 
         // Should not request update for subsequent `send`
         producer.send(record, null)
         verify(metadata, times(4)).requestUpdateForTopic(topic)
-        verify(metadata, times(4)).awaitUpdate(anyInt(), anyLong())
+        verify(metadata, times(4)).awaitUpdate(any(), any())
         verify(metadata, times(6)).fetch()
 
         // Should not request update for subsequent `partitionsFor`
         producer.partitionsFor(topic)
         verify(metadata, times(4)).requestUpdateForTopic(topic)
-        verify(metadata, times(4)).awaitUpdate(anyInt(), anyLong())
+        verify(metadata, times(4)).awaitUpdate(any(), any())
         verify(metadata, times(7)).fetch()
         producer.close(Duration.ofMillis(0))
     }
@@ -829,13 +828,13 @@ class KafkaProducerTest {
 
         // Verify the topic's metadata isn't requested since it's already present.
         verify(metadata, times(0)).requestUpdateForTopic(topic)
-        verify(metadata, times(0)).awaitUpdate(anyInt(), anyLong())
+        verify(metadata, times(0)).awaitUpdate(any(), any())
         verify(metadata, times(1)).fetch()
 
         // The metadata has been expired. Verify the producer requests the topic's metadata.
         producer.send(record, null)
         verify(metadata, times(1)).requestUpdateForTopic(topic)
-        verify(metadata, times(1)).awaitUpdate(anyInt(), anyLong())
+        verify(metadata, times(1)).awaitUpdate(any(), any())
         verify(metadata, times(3)).fetch()
         producer.close(Duration.ofMillis(0))
     }
@@ -871,7 +870,7 @@ class KafkaProducerTest {
         // For idempotence enabled case, the first metadata.fetch will be called in Sender#maybeSendAndPollTransactionalRequest
         val future = producer.send(record)
         verify(metadata, times(4)).requestUpdateForTopic(topic)
-        verify(metadata, times(4)).awaitUpdate(anyInt(), anyLong())
+        verify(metadata, times(4)).awaitUpdate(any(), any())
         verify(metadata, times(5)).fetch()
 
         try {
@@ -907,7 +906,7 @@ class KafkaProducerTest {
         // One request update if metadata is available but outdated for the given record
         producer.send(record)
         verify(metadata, times(2)).requestUpdateForTopic(topic)
-        verify(metadata, times(2)).awaitUpdate(anyInt(), anyLong())
+        verify(metadata, times(2)).awaitUpdate(any(), any())
         verify(metadata, times(3)).fetch()
         producer.close(Duration.ofMillis(0))
     }
@@ -944,7 +943,7 @@ class KafkaProducerTest {
         // before the producer#send and after it finished
         val future = producer.send(record)
         verify(metadata, times(4)).requestUpdateForTopic(topic)
-        verify(metadata, times(4)).awaitUpdate(anyInt(), anyLong())
+        verify(metadata, times(4)).awaitUpdate(any(), any())
         verify(metadata, times(5)).fetch()
         try {
             future.get()
@@ -1118,21 +1117,11 @@ class KafkaProducerTest {
             interceptors = null,
             time = Time.SYSTEM,
         )
-        `when`(
-            keySerializer.serialize(
-                ArgumentMatchers.any(),
-                ArgumentMatchers.any(),
-                ArgumentMatchers.any(),
-            )
-        ).then { invocation -> invocation.getArgument<String>(2).toByteArray() }
+        `when`(keySerializer.serialize(any(), any(), any()))
+            .then { invocation -> invocation.getArgument<String>(2).toByteArray() }
 
-        `when`(
-            valueSerializer.serialize(
-                ArgumentMatchers.any(),
-                ArgumentMatchers.any(),
-                ArgumentMatchers.any(),
-            )
-        ).then { invocation -> invocation.getArgument<String>(2).toByteArray() }
+        `when`(valueSerializer.serialize(any(), any(), any()))
+            .then { invocation -> invocation.getArgument<String>(2).toByteArray() }
 
         val value = "value"
         val key = "key"
@@ -1308,16 +1297,12 @@ class KafkaProducerTest {
             interceptors = interceptors,
             time = Time.SYSTEM,
         )
-        `when`(interceptors.onSend(ArgumentMatchers.any()))
-            .then { invocation: InvocationOnMock -> invocation.getArgument(0) }
+        `when`(interceptors.onSend(any()))
+            .then { invocation -> invocation.getArgument(0) }
         producer.send(record)
         verify(interceptors).onSend(record)
         verify(interceptors)
-            .onSendError(
-                ArgumentMatchers.eq(record),
-                ArgumentMatchers.notNull(),
-                ArgumentMatchers.notNull(),
-            )
+            .onSendError(eq(record), notNull(), notNull())
         producer.close(Duration.ofMillis(0))
     }
 
@@ -2651,13 +2636,7 @@ class KafkaProducerTest {
             time = time,
         ).use { producer ->
             assertFailsWith<IllegalArgumentException> {
-                producer.send(
-                    ProducerRecord(
-                        topic = "topic",
-                        key = "key",
-                        value = "value"
-                    )
-                )
+                producer.send(ProducerRecord(topic = "topic", key = "key", value = "value"))
             }
         }
     }
@@ -2756,17 +2735,17 @@ class KafkaProducerTest {
         ).thenReturn(initialSelectedPartition.partition)
         `when`(
             ctx.accumulator.append(
-                ArgumentMatchers.eq(initialSelectedPartition.topic),  // 0
-                ArgumentMatchers.eq(initialSelectedPartition.partition),  // 1
-                ArgumentMatchers.eq(timestamp),  // 2
-                ArgumentMatchers.eq(serializedKey),  // 3
-                ArgumentMatchers.eq(serializedValue),  // 4
-                ArgumentMatchers.eq(Record.EMPTY_HEADERS),  // 5
-                ArgumentMatchers.any(RecordAccumulator.AppendCallbacks::class.java),  // 6 <--
-                anyLong(),
-                ArgumentMatchers.eq(true),
-                anyLong(),
-                ArgumentMatchers.any()
+                eq(initialSelectedPartition.topic),  // 0
+                eq(initialSelectedPartition.partition),  // 1
+                eq(timestamp),  // 2
+                eq(serializedKey),  // 3
+                eq(serializedValue),  // 4
+                eq(Record.EMPTY_HEADERS),  // 5
+                any<RecordAccumulator.AppendCallbacks>(),  // 6 <--
+                any(),
+                eq(true),
+                any(),
+                any(),
             )
         ).thenAnswer { invocation ->
             val callbacks = invocation.arguments[6] as RecordAccumulator.AppendCallbacks
@@ -2815,17 +2794,17 @@ class KafkaProducerTest {
             .thenReturn(retrySelectedPartition.partition)
         `when`(
             ctx.accumulator.append(
-                ArgumentMatchers.eq(initialSelectedPartition.topic),  // 0
-                ArgumentMatchers.eq(initialSelectedPartition.partition),  // 1
-                ArgumentMatchers.eq(timestamp),  // 2
-                ArgumentMatchers.eq(serializedKey),  // 3
-                ArgumentMatchers.eq(serializedValue),  // 4
-                ArgumentMatchers.eq(Record.EMPTY_HEADERS),  // 5
-                ArgumentMatchers.any(RecordAccumulator.AppendCallbacks::class.java),  // 6 <--
-                anyLong(),
-                ArgumentMatchers.eq(true),  // abortOnNewBatch
-                anyLong(),
-                ArgumentMatchers.any()
+                eq(initialSelectedPartition.topic),  // 0
+                eq(initialSelectedPartition.partition),  // 1
+                eq(timestamp),  // 2
+                eq(serializedKey),  // 3
+                eq(serializedValue),  // 4
+                eq(Record.EMPTY_HEADERS),  // 5
+                any<RecordAccumulator.AppendCallbacks>(),  // 6 <--
+                any(),
+                eq(true),  // abortOnNewBatch
+                any(),
+                any(),
             )
         ).thenAnswer { invocation ->
             val callbacks = invocation.arguments[6] as RecordAccumulator.AppendCallbacks
@@ -2840,17 +2819,17 @@ class KafkaProducerTest {
         }
         `when`(
             ctx.accumulator.append(
-                ArgumentMatchers.eq(retrySelectedPartition.topic),  // 0
-                ArgumentMatchers.eq(retrySelectedPartition.partition),  // 1
-                ArgumentMatchers.eq(timestamp),  // 2
-                ArgumentMatchers.eq(serializedKey),  // 3
-                ArgumentMatchers.eq(serializedValue),  // 4
-                ArgumentMatchers.eq(Record.EMPTY_HEADERS),  // 5
-                ArgumentMatchers.any(RecordAccumulator.AppendCallbacks::class.java),  // 6 <--
-                anyLong(),
-                ArgumentMatchers.eq(false),  // abortOnNewBatch
-                anyLong(),
-                ArgumentMatchers.any()
+                eq(retrySelectedPartition.topic),  // 0
+                eq(retrySelectedPartition.partition),  // 1
+                eq(timestamp),  // 2
+                eq(serializedKey),  // 3
+                eq(serializedValue),  // 4
+                eq(Record.EMPTY_HEADERS),  // 5
+                any<RecordAccumulator.AppendCallbacks>(),  // 6 <--
+                any(),
+                eq(false),  // abortOnNewBatch
+                any(),
+                any(),
             )
         ).thenAnswer { invocation ->
             val callbacks = invocation.arguments[6] as RecordAccumulator.AppendCallbacks
@@ -2871,9 +2850,7 @@ class KafkaProducerTest {
             CLIENT_IDS.add(configs[ProducerConfig.CLIENT_ID_CONFIG].toString())
         }
 
-        override fun serialize(topic: String, data: ByteArray?): ByteArray? {
-            return data
-        }
+        override fun serialize(topic: String, data: ByteArray?): ByteArray? = data
     }
 
     class PartitionerForClientId : Partitioner {

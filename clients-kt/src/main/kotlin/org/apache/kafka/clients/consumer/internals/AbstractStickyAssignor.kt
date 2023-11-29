@@ -221,7 +221,7 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
             consumerToOwnedPartitions,
         )
 
-        val allRevokedPartitions: MutableSet<TopicPartition> = HashSet()
+        val allRevokedPartitions: MutableSet<TopicPartition> = hashSetOf()
 
         // the consumers which may still be assigned one or more partitions to reach expected
         // capacity

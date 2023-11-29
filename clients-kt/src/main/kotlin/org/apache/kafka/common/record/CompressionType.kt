@@ -40,12 +40,12 @@ import java.util.zip.GZIPOutputStream
  */
 enum class CompressionType(
     val id: Int,
-    val _name: String,
+    val altName: String,
     val rate: Float,
 ) {
     NONE(
         id = 0,
-        _name = "none",
+        altName = "none",
         rate = 1.0f
     ) {
         override fun wrapForOutput(
@@ -63,7 +63,7 @@ enum class CompressionType(
     // Shipped with the JDK
     GZIP(
         id = 1,
-        _name = "gzip",
+        altName = "gzip",
         rate = 1.0f
     ) {
         override fun wrapForOutput(
@@ -107,7 +107,7 @@ enum class CompressionType(
     // library code from classes that are only invoked when actual usage happens.
     SNAPPY(
         id = 2,
-        _name = "snappy",
+        altName = "snappy",
         rate = 1.0f
     ) {
         override fun wrapForOutput(
@@ -123,7 +123,7 @@ enum class CompressionType(
     },
     LZ4(
         id = 3,
-        _name = "lz4",
+        altName = "lz4",
         rate = 1.0f
     ) {
         override fun wrapForOutput(
@@ -158,7 +158,7 @@ enum class CompressionType(
     },
     ZSTD(
         id = 4,
-        _name = "zstd",
+        altName = "zstd",
         rate = 1.0f
     ) {
         override fun wrapForOutput(
@@ -205,7 +205,7 @@ enum class CompressionType(
         decompressionBufferSupplier: BufferSupplier
     ): InputStream
 
-    override fun toString(): String = _name
+    override fun toString(): String = altName
 
     companion object {
         
@@ -220,13 +220,13 @@ enum class CompressionType(
             }
         }
 
-        fun forName(name: String): CompressionType {
+        fun forName(name: String?): CompressionType {
             return requireNotNull(
-                if (NONE._name == name) NONE
-                else if (GZIP._name == name) GZIP
-                else if (SNAPPY._name == name) SNAPPY
-                else if (LZ4._name == name) LZ4
-                else if (ZSTD._name == name) ZSTD
+                if (NONE.altName == name) NONE
+                else if (GZIP.altName == name) GZIP
+                else if (SNAPPY.altName == name) SNAPPY
+                else if (LZ4.altName == name) LZ4
+                else if (ZSTD.altName == name) ZSTD
                 else null
             ) { "Unknown compression name: $name" }
         }

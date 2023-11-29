@@ -234,11 +234,11 @@ object TestSslUtils {
     ) {
         var tsPath = sslProps[SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG] as String?
         val tsType = sslProps[SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG] as String?
-        val tsPassword = sslProps.remove(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG) as Password
+        val tsPassword = sslProps.remove(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG) as Password?
         var trustCerts = sslProps.remove(SslConfigs.SSL_TRUSTSTORE_CERTIFICATES_CONFIG) as Password?
 
         if (trustCerts == null && tsPath != null)
-            trustCerts = exportCertificates(tsPath, tsPassword, tsType)
+            trustCerts = exportCertificates(tsPath, tsPassword!!, tsType)
 
         if (trustCerts != null) {
             if (tsPath == null) {

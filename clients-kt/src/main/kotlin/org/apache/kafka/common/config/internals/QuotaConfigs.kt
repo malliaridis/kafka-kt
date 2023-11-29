@@ -58,11 +58,9 @@ object QuotaConfigs {
 
     const val IP_CONNECTION_RATE_DEFAULT = Int.MAX_VALUE
 
-    private val userClientConfigNames: Set<String> = HashSet(
-        listOf(
-            PRODUCER_BYTE_RATE_OVERRIDE_CONFIG, CONSUMER_BYTE_RATE_OVERRIDE_CONFIG,
-            REQUEST_PERCENTAGE_OVERRIDE_CONFIG, CONTROLLER_MUTATION_RATE_OVERRIDE_CONFIG
-        )
+    private val userClientConfigNames: Set<String> = hashSetOf(
+        PRODUCER_BYTE_RATE_OVERRIDE_CONFIG, CONSUMER_BYTE_RATE_OVERRIDE_CONFIG,
+        REQUEST_PERCENTAGE_OVERRIDE_CONFIG, CONTROLLER_MUTATION_RATE_OVERRIDE_CONFIG
     )
 
     private fun buildUserClientQuotaConfigDef(configDef: ConfigDef) {

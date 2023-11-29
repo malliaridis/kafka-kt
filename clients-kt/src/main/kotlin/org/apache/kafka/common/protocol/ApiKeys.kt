@@ -394,7 +394,7 @@ enum class ApiKeys(
             for (key in clientApis()) {
                 b.append("<tr>\n")
                 b.append("<td>")
-                b.append("<a href=\"#The_Messages_" + key.name + "\">" + key.name + "</a>")
+                b.append("<a href=\"#The_Messages_${key.name}\">${key.name}</a>")
                 b.append("</td>")
                 b.append("<td>")
                 b.append(key.id.toInt())

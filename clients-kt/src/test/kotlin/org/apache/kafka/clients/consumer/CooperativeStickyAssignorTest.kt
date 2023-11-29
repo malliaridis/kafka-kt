@@ -56,7 +56,7 @@ class CooperativeStickyAssignorTest : AbstractStickyAssignorTest() {
         )
         return ConsumerPartitionAssignor.Subscription(
             topics = topics,
-            userData = assignor.subscriptionUserData(HashSet(topics)),
+            userData = assignor.subscriptionUserData(topics.toSet()),
             ownedPartitions = partitions,
             generationId = AbstractStickyAssignor.DEFAULT_GENERATION,
             rackId = null,
@@ -70,7 +70,7 @@ class CooperativeStickyAssignorTest : AbstractStickyAssignorTest() {
     ): ConsumerPartitionAssignor.Subscription {
         return ConsumerPartitionAssignor.Subscription(
             topics = topics,
-            userData = assignor.subscriptionUserData(HashSet(topics)),
+            userData = assignor.subscriptionUserData(topics.toHashSet()),
             ownedPartitions = partitions,
             generationId = generationId,
             rackId = null,

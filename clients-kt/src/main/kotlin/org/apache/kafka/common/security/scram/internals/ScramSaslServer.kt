@@ -66,19 +66,13 @@ class ScramSaslServer(
 
     private var username: String? = null
 
-    private var _clientFirstMessage: ClientFirstMessage? = null
-    private val clientFirstMessage: ClientFirstMessage
-        get() = _clientFirstMessage!!
+    private var clientFirstMessage: ClientFirstMessage? = null
 
-    private var _serverFirstMessage: ServerFirstMessage? = null
-    private val serverFirstMessage: ServerFirstMessage
-        get() = _serverFirstMessage!!
+    private var serverFirstMessage: ServerFirstMessage? = null
 
     private lateinit var scramExtensions: ScramExtensions
 
-    private var _scramCredential: ScramCredential? = null
-    private val scramCredential: ScramCredential
-        get() = _scramCredential!!
+    private var scramCredential: ScramCredential? = null
 
     private var authorizationId: String? = null
 
@@ -102,8 +96,7 @@ class ScramSaslServer(
         return try {
             when (state) {
                 State.RECEIVE_CLIENT_FIRST_MESSAGE -> {
-                    _clientFirstMessage = ClientFirstMessage(response)
-                    scramExtensions = clientFirstMessage.extensions
+                    clientFirstMessage = ClientFirstMessage(response).also { scramExtensions = it.extensions }
 
                     if (!SUPPORTED_EXTENSIONS.containsAll(scramExtensions.map().keys)) {
                         log.debug(
@@ -114,7 +107,7 @@ class ScramSaslServer(
 
                     val serverNonce = formatter.secureRandomString()
                     try {
-                        val saslName = clientFirstMessage.saslName
+                        val saslName = clientFirstMessage!!.saslName
                         username = ScramFormatter.username(saslName)
                         val nameCallback = NameCallback("username", username)
                         val credentialCallback: ScramCredentialCallback
@@ -135,32 +128,32 @@ class ScramSaslServer(
                             tokenExpiryTimestamp = null
                         }
 
-                        _scramCredential = credentialCallback.scramCredential ?: throw SaslException(
+                        scramCredential = credentialCallback.scramCredential ?: throw SaslException(
                             "Authentication failed: Invalid user credentials"
                         )
 
-                        val authorizationIdFromClient = clientFirstMessage.authorizationId
+                        val authorizationIdFromClient = clientFirstMessage!!.authorizationId
 
                         if (authorizationIdFromClient.isNotEmpty() && authorizationIdFromClient != username)
                             throw SaslAuthenticationException(
                                 "Authentication failed: Client requested an authorization id that is different from username"
                             )
 
-                        if (scramCredential.iterations < mechanism.minIterations)
+                        if (scramCredential!!.iterations < mechanism.minIterations)
                             throw SaslException(
-                                "Iterations ${scramCredential.iterations} is less than the " +
+                                "Iterations ${scramCredential!!.iterations} is less than the " +
                                         "minimum ${mechanism.minIterations} for $mechanism"
                             )
 
-                        _serverFirstMessage = ServerFirstMessage(
-                            clientNonce = clientFirstMessage.nonce,
+                        serverFirstMessage = ServerFirstMessage(
+                            clientNonce = clientFirstMessage!!.nonce,
                             serverNonce = serverNonce,
-                            salt = scramCredential.salt,
-                            iterations = scramCredential.iterations
+                            salt = scramCredential!!.salt,
+                            iterations = scramCredential!!.iterations
                         )
 
                         setState(State.RECEIVE_CLIENT_FINAL_MESSAGE)
-                        serverFirstMessage.toBytes()
+                        serverFirstMessage!!.toBytes()
                     } catch (e: SaslException) {
                         throw e
                     } catch (e: AuthenticationException) {
@@ -176,11 +169,11 @@ class ScramSaslServer(
                 State.RECEIVE_CLIENT_FINAL_MESSAGE -> try {
                     val clientFinalMessage = ClientFinalMessage(response)
                     verifyClientProof(clientFinalMessage)
-                    val serverKey = scramCredential.serverKey
+                    val serverKey = scramCredential!!.serverKey
                     val serverSignature = formatter.serverSignature(
                         serverKey = serverKey,
-                        clientFirstMessage = clientFirstMessage,
-                        serverFirstMessage = serverFirstMessage,
+                        clientFirstMessage = clientFirstMessage!!,
+                        serverFirstMessage = serverFirstMessage!!,
                         clientFinalMessage = clientFinalMessage
                     )
                     val serverFinalMessage = ServerFinalMessage(null, serverSignature)
@@ -204,9 +197,9 @@ class ScramSaslServer(
         }
     }
 
-    override fun getAuthorizationID(): String {
+    override fun getAuthorizationID(): String? {
         check(isComplete) { "Authentication exchange has not completed" }
-        return authorizationId!!
+        return authorizationId
     }
 
     override fun getMechanismName(): String = mechanism.mechanismName
@@ -244,11 +237,11 @@ class ScramSaslServer(
     @Throws(SaslException::class)
     private fun verifyClientProof(clientFinalMessage: ClientFinalMessage) {
         try {
-            val expectedStoredKey = scramCredential.storedKey
+            val expectedStoredKey = scramCredential!!.storedKey
             val clientSignature = formatter.clientSignature(
                 storedKey = expectedStoredKey,
-                clientFirstMessage = clientFirstMessage,
-                serverFirstMessage = serverFirstMessage,
+                clientFirstMessage = clientFirstMessage!!,
+                serverFirstMessage = serverFirstMessage!!,
                 clientFinalMessage = clientFinalMessage
             )
             val computedStoredKey = formatter.storedKey(clientSignature, clientFinalMessage.proof!!)
@@ -261,9 +254,9 @@ class ScramSaslServer(
     }
 
     private fun clearCredentials() {
-        _scramCredential = null
-        _clientFirstMessage = null
-        _serverFirstMessage = null
+        scramCredential = null
+        clientFirstMessage = null
+        serverFirstMessage = null
     }
 
     class ScramSaslServerFactory : SaslServerFactory {
@@ -297,7 +290,9 @@ class ScramSaslServer(
     }
 
     companion object {
+
         private val log = LoggerFactory.getLogger(ScramSaslServer::class.java)
-        private val SUPPORTED_EXTENSIONS = mkSet(ScramLoginModule.TOKEN_AUTH_CONFIG)
+
+        private val SUPPORTED_EXTENSIONS = setOf(ScramLoginModule.TOKEN_AUTH_CONFIG)
     }
 }

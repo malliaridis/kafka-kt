@@ -335,14 +335,14 @@ open class Metadata(
     private fun checkInvalidTopics(cluster: Cluster) {
         if (cluster.invalidTopics.isNotEmpty()) {
             log.error("Metadata response reported invalid topics {}", cluster.invalidTopics)
-            invalidTopics = HashSet(cluster.invalidTopics)
+            invalidTopics = cluster.invalidTopics.toHashSet()
         }
     }
 
     private fun checkUnauthorizedTopics(cluster: Cluster) {
         if (cluster.unauthorizedTopics.isNotEmpty()) {
             log.error("Topic authorization failed for topics {}", cluster.unauthorizedTopics)
-            unauthorizedTopics = HashSet(cluster.unauthorizedTopics)
+            unauthorizedTopics = cluster.unauthorizedTopics.toHashSet()
         }
     }
 
@@ -358,11 +358,11 @@ open class Metadata(
         val topics: MutableSet<String> = mutableSetOf()
 
         // Retained topics to be passed to the metadata cache.
-        val internalTopics: MutableSet<String> = HashSet()
-        val unauthorizedTopics: MutableSet<String> = HashSet()
-        val invalidTopics: MutableSet<String> = HashSet()
+        val internalTopics: MutableSet<String> = hashSetOf()
+        val unauthorizedTopics: MutableSet<String> = hashSetOf()
+        val invalidTopics: MutableSet<String> = hashSetOf()
         val partitions: MutableList<PartitionMetadata> = ArrayList()
-        val topicIds: MutableMap<String, Uuid> = HashMap()
+        val topicIds: MutableMap<String, Uuid> = hashMapOf()
         val oldTopicIds = cache.topicIds()
         metadataResponse.topicMetadata().forEach { metadata ->
             val topicName = metadata.topic

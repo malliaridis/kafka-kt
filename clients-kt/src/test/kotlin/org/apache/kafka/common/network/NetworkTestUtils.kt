@@ -209,7 +209,7 @@ object NetworkTestUtils {
         }
         assertTrue(closed, "Channel was not closed by timeout")
         val finalState = selector.disconnected()[node]
-        assertEquals(channelState, finalState!!.state())
+        assertEquals(channelState, finalState!!.state)
         return finalState
     }
 

@@ -703,17 +703,11 @@ open class MockClient(
             return now < readyDelayedUntilMs
         }
 
-        fun notThrottled(now: Long): Boolean {
-            return now > throttledUntilMs
-        }
+        fun notThrottled(now: Long): Boolean = now > throttledUntilMs
 
-        fun isBackingOff(now: Long): Boolean {
-            return now < backingOffUntilMs
-        }
+        fun isBackingOff(now: Long): Boolean = now < backingOffUntilMs
 
-        fun isUnreachable(now: Long): Boolean {
-            return now < unreachableUntilMs
-        }
+        fun isUnreachable(now: Long): Boolean = now < unreachableUntilMs
 
         fun disconnect() {
             state = State.DISCONNECTED

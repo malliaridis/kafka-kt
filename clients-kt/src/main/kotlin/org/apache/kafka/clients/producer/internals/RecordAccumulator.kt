@@ -886,7 +886,8 @@ class RecordAccumulator(
         // stats. NOTE: the stats are calculated in place, modifying the queueSizes array.
         topicInfo.builtInPartitioner.updatePartitionLoadStats(
             queueSizes = queueSizes,
-            partitionIds = partitionIds!!, length = queueSizesIndex + 1,
+            partitionIds = partitionIds!!,
+            length = queueSizesIndex + 1,
         )
         return nextReadyCheckDelayMs
     }
@@ -911,9 +912,9 @@ class RecordAccumulator(
      * - The accumulator has been closed
      */
     fun ready(cluster: Cluster, nowMs: Long): ReadyCheckResult {
-        val readyNodes: MutableSet<Node> = HashSet()
+        val readyNodes: MutableSet<Node> = hashSetOf()
         var nextReadyCheckDelayMs = Long.MAX_VALUE
-        val unknownLeaderTopics: MutableSet<String> = HashSet()
+        val unknownLeaderTopics: MutableSet<String> = hashSetOf()
 
         // Go topic by topic so that we can get queue sizes for partitions in a topic and calculate
         // cumulative frequency table (used in partitioner).

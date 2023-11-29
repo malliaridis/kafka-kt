@@ -246,7 +246,7 @@ class SaslAuthenticatorTest {
         waitForChannelClose(
             selector = selector!!,
             node = node2,
-            channelState = ChannelState.READY.state(),
+            channelState = ChannelState.READY.state,
         )
         selector!!.close()
         val node3 = "invalid2"
@@ -269,7 +269,7 @@ class SaslAuthenticatorTest {
         waitForChannelClose(
             selector = selector!!,
             node = node3,
-            channelState = ChannelState.READY.state(),
+            channelState = ChannelState.READY.state,
         )
         server.verifyAuthenticationMetrics(successfulAuthentications = 1, failedAuthentications = 2)
     }
@@ -1215,7 +1215,7 @@ class SaslAuthenticatorTest {
         waitForChannelClose(
             selector = selector!!,
             node = node1,
-            channelState = ChannelState.READY.state(),
+            channelState = ChannelState.READY.state,
         )
         selector!!.close()
 
@@ -1245,7 +1245,7 @@ class SaslAuthenticatorTest {
         waitForChannelClose(
             selector = selector!!,
             node = node1,
-            channelState = ChannelState.READY.state(),
+            channelState = ChannelState.READY.state,
         )
         selector!!.close()
 
@@ -1260,7 +1260,7 @@ class SaslAuthenticatorTest {
         waitForChannelClose(
             selector = selector!!,
             node = node2,
-            channelState = ChannelState.READY.state(),
+            channelState = ChannelState.READY.state,
         )
         selector!!.close()
 
@@ -1297,7 +1297,7 @@ class SaslAuthenticatorTest {
         waitForChannelClose(
             selector = selector!!,
             node = node1,
-            channelState = ChannelState.READY.state(),
+            channelState = ChannelState.READY.state,
         )
         selector!!.close()
 
@@ -1329,7 +1329,7 @@ class SaslAuthenticatorTest {
         waitForChannelClose(
             selector = selector!!,
             node = node1,
-            channelState = ChannelState.READY.state(),
+            channelState = ChannelState.READY.state,
         )
         selector!!.close()
 
@@ -1347,7 +1347,7 @@ class SaslAuthenticatorTest {
         waitForChannelClose(
             selector = selector!!,
             node = node2,
-            channelState = ChannelState.READY.state(),
+            channelState = ChannelState.READY.state,
         )
         selector!!.close()
 
@@ -1383,7 +1383,7 @@ class SaslAuthenticatorTest {
         waitForChannelClose(
             selector = selector!!,
             node = node1,
-            channelState = ChannelState.READY.state(),
+            channelState = ChannelState.READY.state,
         )
         selector!!.close()
 
@@ -1408,7 +1408,7 @@ class SaslAuthenticatorTest {
         waitForChannelClose(
             selector = selector!!,
             node = node2,
-            channelState = ChannelState.READY.state(),
+            channelState = ChannelState.READY.state,
         )
         selector!!.close()
 
@@ -2914,7 +2914,9 @@ class SaslAuthenticatorTest {
                     }
 
                     // Don't set version so that headers are disabled
-                    override fun setSaslAuthenticateAndHandshakeVersions(apiVersionsResponse: ApiVersionsResponse) = Unit
+                    override fun setSaslAuthenticateAndHandshakeVersions(
+                        apiVersionsResponse: ApiVersionsResponse,
+                    ) = Unit
                 }
             }
         }
@@ -3143,8 +3145,8 @@ class SaslAuthenticatorTest {
         expectedErrorMessage: String?,
     ) {
         val finalState = createAndCheckClientConnectionFailure(securityProtocol, node)
-        val exception: Exception? = finalState.exception()
-        assertIs<SaslAuthenticationException>(exception, "Invalid exception class ${exception!!.javaClass}")
+        val exception: Exception? = finalState.exception
+        assertIs<SaslAuthenticationException>(exception, "Invalid exception class ${exception?.javaClass}")
         val expectedExceptionMessage = expectedErrorMessage
             ?: "Authentication failed during authentication due to invalid credentials with SASL mechanism $mechanism"
         assertEquals(expectedExceptionMessage, exception.message)
@@ -3188,7 +3190,7 @@ class SaslAuthenticatorTest {
     @Throws(Exception::class)
     private fun createAndCheckSslAuthenticationFailure(securityProtocol: SecurityProtocol, node: String) {
         val finalState = createAndCheckClientConnectionFailure(securityProtocol, node)
-        val exception = finalState.exception()
+        val exception = finalState.exception
         assertIs<SslAuthenticationException>(exception)
     }
 

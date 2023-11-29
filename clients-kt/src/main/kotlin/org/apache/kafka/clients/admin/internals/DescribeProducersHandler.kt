@@ -204,7 +204,7 @@ class DescribeProducersHandler(
         fun newFuture(
             topicPartitions: Collection<TopicPartition>
         ): SimpleAdminApiFuture<TopicPartition, PartitionProducerState> {
-            return AdminApiFuture.forKeys(HashSet(topicPartitions))
+            return AdminApiFuture.forKeys(topicPartitions.toHashSet())
         }
     }
 }

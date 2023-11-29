@@ -66,7 +66,7 @@ class KerberosShortNamer(private val principalToLocalRules: List<KerberosRule>) 
 
         fun fromUnparsedRules(
             defaultRealm: String,
-            principalToLocalRules: List<String>?
+            principalToLocalRules: List<String>?,
         ): KerberosShortNamer {
             val rules: List<String> = principalToLocalRules ?: listOf("DEFAULT")
             return KerberosShortNamer(parseRules(defaultRealm, rules))
@@ -86,15 +86,15 @@ class KerberosShortNamer(private val principalToLocalRules: List<KerberosRule>) 
                 if (matcher.group(2) != null) result.add(KerberosRule(defaultRealm))
                 else result.add(
                     KerberosRule(
-                        defaultRealm,
-                        matcher.group(5).toInt(),
-                        matcher.group(6),
-                        matcher.group(8),
-                        matcher.group(10),
-                        matcher.group(11),
-                        "g" == matcher.group(12),
-                        "L" == matcher.group(13),
-                        "U" == matcher.group(13)
+                        defaultRealm = defaultRealm,
+                        numOfComponents = matcher.group(5).toInt(),
+                        format = matcher.group(6),
+                        match = matcher.group(8),
+                        fromPattern = matcher.group(10),
+                        toPattern = matcher.group(11),
+                        repeat = "g" == matcher.group(12),
+                        toLowerCase = "L" == matcher.group(13),
+                        toUpperCase = "U" == matcher.group(13),
                     )
                 )
             }

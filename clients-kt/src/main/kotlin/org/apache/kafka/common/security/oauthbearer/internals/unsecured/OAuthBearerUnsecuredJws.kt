@@ -328,7 +328,7 @@ class OAuthBearerUnsecuredJws(
             val scopeClaimValue = claim(scopeClaimName, String::class.java)
 
             return if (scopeClaimValue.isNullOrBlank()) emptySet() else {
-                val retval: MutableSet<String> = HashSet()
+                val retval: MutableSet<String> = hashSetOf()
                 retval.add(scopeClaimValue.trim { it <= ' ' }) // isBlank() checks for null
                 retval.toSet()
             }

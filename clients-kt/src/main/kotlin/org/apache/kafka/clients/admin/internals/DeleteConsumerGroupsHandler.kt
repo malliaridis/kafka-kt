@@ -65,7 +65,7 @@ class DeleteConsumerGroupsHandler(
     ): ApiResult<CoordinatorKey, Unit> {
         val completed: MutableMap<CoordinatorKey, Unit> = HashMap()
         val failed: MutableMap<CoordinatorKey, Throwable> = HashMap()
-        val groupsToUnmap: MutableSet<CoordinatorKey> = HashSet()
+        val groupsToUnmap: MutableSet<CoordinatorKey> = hashSetOf()
         (response as DeleteGroupsResponse).data().results?.forEach { deletedGroup ->
             val groupIdKey = CoordinatorKey.byGroupId(deletedGroup.groupId)
             val error = Errors.forCode(deletedGroup.errorCode)

@@ -363,9 +363,9 @@ object TestUtils {
 
     fun <T> checkEquals(c1: Set<T>, c2: Set<T>, firstDesc: String?, secondDesc: String?) {
         if (c1 != c2) {
-            val missing1: MutableSet<T> = HashSet(c2)
+            val missing1: MutableSet<T> = c2.toHashSet()
             missing1.removeAll(c1)
-            val missing2: MutableSet<T> = HashSet(c1)
+            val missing2: MutableSet<T> = c1.toHashSet()
             missing2.removeAll(c2)
             fail("Sets not equal, missing $firstDesc=$missing1, missing $secondDesc=$missing2")
         }
@@ -398,7 +398,7 @@ object TestUtils {
         numTopic: Int,
         numPartitionPerTopic: Int
     ): Set<TopicPartition> {
-        val tps: MutableSet<TopicPartition> = HashSet()
+        val tps: MutableSet<TopicPartition> = hashSetOf()
         for (i in 0 until numTopic) {
             val topic = randomString(32)
             for (j in 0 until numPartitionPerTopic) tps.add(TopicPartition(topic, j))

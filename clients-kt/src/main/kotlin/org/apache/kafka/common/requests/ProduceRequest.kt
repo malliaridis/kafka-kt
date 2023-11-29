@@ -25,6 +25,7 @@ import org.apache.kafka.common.errors.UnsupportedCompressionTypeException
 import org.apache.kafka.common.message.ProduceRequestData
 import org.apache.kafka.common.message.ProduceResponseData
 import org.apache.kafka.common.message.ProduceResponseData.PartitionProduceResponse
+import org.apache.kafka.common.message.ProduceResponseData.TopicProduceResponse
 import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.protocol.ByteBufferAccessor
 import org.apache.kafka.common.protocol.Errors
@@ -35,7 +36,7 @@ import org.apache.kafka.common.record.Records
 import org.apache.kafka.common.utils.Utils.mkString
 
 class ProduceRequest(
-    data: ProduceRequestData?,
+    data: ProduceRequestData,
     version: Short,
 ) : AbstractRequest(ApiKeys.PRODUCE, version) {
 
@@ -43,28 +44,23 @@ class ProduceRequest(
     // produce request is put in the purgatory (due to client throttling, it can take a while before
     // the response is sent). Care should be taken in methods that use this field.
     @field:Volatile
-    private var _data: ProduceRequestData? = data
-    private val data: ProduceRequestData
-        get() = _data!!
+    private var data: ProduceRequestData? = data
 
     /**
      * We have to copy acks, timeout, transactionalId and partitionSizes from data since data maybe
      * reset to eliminate the reference to ByteBuffer but those metadata are still useful.
      */
-    val acks: Short
-        get() = this.data.acks
+    val acks: Short = data.acks
 
-    val timeout: Int
-        get() = this.data.timeoutMs
+    val timeout: Int = data.timeoutMs
 
-    val transactionalId: String?
-        get() = this.data.transactionalId
+    val transactionalId: String? = data.transactionalId
 
     // the partitionSizes is lazily initialized since it is used by server-side in production.
     val partitionSizes: MutableMap<TopicPartition, Int> by lazy {
         // this method may be called by different thread (see the comment on data)
         val partitionSizes = mutableMapOf<TopicPartition, Int>()
-        this.data.topicData.forEach { topicData ->
+        this.data!!.topicData.forEach { topicData ->
             topicData.partitionData.forEach { partitionData ->
                 partitionSizes.compute(
                     TopicPartition(topicData.name, partitionData.index)
@@ -89,7 +85,7 @@ class ProduceRequest(
      */
     override fun data(): ProduceRequestData {
         // Store it in a local variable to protect against concurrent updates
-        return _data ?: error(
+        return data ?: error(
             "The partition records are no longer available because clearPartitionRecords() has " +
                     "been invoked."
         )
@@ -124,7 +120,10 @@ class ProduceRequest(
         val data = ProduceResponseData().setThrottleTimeMs(throttleTimeMs)
 
         partitionSizes.forEach { (tp, _) ->
-            data.responses.find(tp.topic)!!.partitionResponses += PartitionProduceResponse()
+            val tpr = data.responses.find(tp.topic) ?: run {
+                TopicProduceResponse().setName(tp.topic).also { data.responses.add(it) }
+            }
+            tpr.partitionResponses += PartitionProduceResponse()
                 .setIndex(tp.partition)
                 .setRecordErrors(emptyList())
                 .setBaseOffset(ProduceResponse.INVALID_OFFSET)
@@ -162,7 +161,7 @@ class ProduceRequest(
     fun clearPartitionRecords() {
         // lazily initialize partitionSizes.
         partitionSizes
-        _data = null
+        data = null
     }
 
     class Builder(

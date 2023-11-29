@@ -92,11 +92,13 @@ data class KerberosName(
             val match = NAME_PARSER.matcher(principalName)
 
             return if (!match.matches()) {
-                require(!principalName.contains("@")) {
-                    "Malformed Kerberos name: $principalName"
-                }
+                require(!principalName.contains("@")) { "Malformed Kerberos name: $principalName" }
                 KerberosName(principalName)
-            } else KerberosName(match.group(1), match.group(3), match.group(4))
+            } else KerberosName(
+                serviceName = match.group(1),
+                hostName = match.group(3),
+                realm = match.group(4),
+            )
         }
     }
 }

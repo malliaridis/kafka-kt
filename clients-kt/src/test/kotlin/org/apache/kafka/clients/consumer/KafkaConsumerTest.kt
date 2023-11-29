@@ -834,8 +834,8 @@ class KafkaConsumerTest {
         // The underlying client SHOULD get a fetch request
         val requests = client.requests()
         assertEquals(1, requests.size)
-        val aClass = requests.peek().requestBuilder().javaClass
-        assertIs<FetchRequest.Builder>(aClass)
+        val builder = requests.peek().requestBuilder()
+        assertIs<FetchRequest.Builder>(builder)
     }
 
     @Test
@@ -3623,7 +3623,7 @@ class KafkaConsumerTest {
         return KafkaConsumer(
             logContext = loggerFactory,
             clientId = clientId,
-            coordinator = consumerCoordinator!!,
+            coordinator = consumerCoordinator,
             keyDeserializer = keyDeserializer,
             valueDeserializer = deserializer,
             fetcher = fetcher,

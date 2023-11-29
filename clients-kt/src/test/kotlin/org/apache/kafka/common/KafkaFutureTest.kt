@@ -66,11 +66,11 @@ class KafkaFutureTest {
     /**
      * Asserts that the given future is done, didn't fail and was cancelled.
      */
-    private fun assertIsCancelled(future: KafkaFuture<*>) {
+    private fun <T> assertIsCancelled(future: KafkaFuture<T?>) {
         assertTrue(future.isDone())
         assertTrue(future.isCancelled())
         assertTrue(future.isCompletedExceptionally)
-        assertFailsWith<CancellationException> { future.get() }
+        assertFailsWith<CancellationException> { future.getNow(null) }
         assertFailsWith<CancellationException> { future[0, TimeUnit.MILLISECONDS] }
     }
 
@@ -97,8 +97,8 @@ class KafkaFutureTest {
         }
     }
 
-    private fun awaitAndAssertFailure(
-        future: KafkaFuture<*>,
+    private fun <T> awaitAndAssertFailure(
+        future: KafkaFuture<T>,
         expectedException: Class<out Throwable>,
         expectedMessage: String,
     ): Throwable? {
@@ -180,12 +180,12 @@ class KafkaFutureTest {
 
     @Test
     fun testCompleteFuturesViaCancellation() {
-        val viaCancel = KafkaFutureImpl<Int>()
+        val viaCancel = KafkaFutureImpl<Int?>()
         assertTrue(viaCancel.cancel(true))
         assertIsCancelled(viaCancel)
         awaitAndAssertCancelled(viaCancel, null)
 
-        val viaCancellationException = KafkaFutureImpl<Int>()
+        val viaCancellationException = KafkaFutureImpl<Int?>()
         assertTrue(viaCancellationException.completeExceptionally(CancellationException("We require more vespene gas")))
         assertIsCancelled(viaCancellationException)
         awaitAndAssertCancelled(viaCancellationException, "We require more vespene gas")
@@ -298,7 +298,7 @@ class KafkaFutureTest {
     @Test
     fun testThenApplyOnFailedFuture() {
         val future = KafkaFutureImpl<Int>()
-        val dependantFuture = future.thenApply { integer: Int -> 2 * integer }
+        val dependantFuture = future.thenApply { integer -> 2 * integer }
         future.completeExceptionally(RuntimeException("We require more vespene gas"))
         assertIsFailed(future)
         assertIsFailed(dependantFuture)
@@ -317,7 +317,7 @@ class KafkaFutureTest {
     @Test
     fun testThenApplyOnFailedFutureTricky() {
         val future = KafkaFutureImpl<Int>()
-        val dependantFuture = future.thenApply { integer: Int -> 2 * integer }
+        val dependantFuture = future.thenApply { integer -> 2 * integer }
         future.completeExceptionally(CompletionException(RuntimeException("We require more vespene gas")))
         assertIsFailed(future)
         assertIsFailed(dependantFuture)
@@ -336,7 +336,7 @@ class KafkaFutureTest {
     @Test
     fun testThenApplyOnFailedFutureTricky2() {
         val future = KafkaFutureImpl<Int>()
-        val dependantFuture = future.thenApply { integer: Int -> 2 * integer }
+        val dependantFuture = future.thenApply { integer -> 2 * integer }
         future.completeExceptionally(CompletionException(CancellationException()))
         assertIsFailed(future)
         assertIsFailed(dependantFuture)
@@ -355,7 +355,7 @@ class KafkaFutureTest {
     @Test
     fun testThenApplyOnSucceededFutureAndFunctionThrows() {
         val future = KafkaFutureImpl<Int?>()
-        val dependantFuture = future.thenApply<Int> {
+        val dependantFuture = future.thenApply {
             throw RuntimeException("We require more vespene gas")
         }
         future.complete(21)
@@ -376,7 +376,7 @@ class KafkaFutureTest {
     @Test
     fun testThenApplyOnSucceededFutureAndFunctionThrowsCompletionException() {
         val future = KafkaFutureImpl<Int?>()
-        val dependantFuture = future.thenApply<Int> {
+        val dependantFuture = future.thenApply {
             throw CompletionException(RuntimeException("We require more vespene gas"))
         }
         future.complete(21)
@@ -400,7 +400,7 @@ class KafkaFutureTest {
     fun testThenApplyOnFailedFutureFunctionNotCalled() {
         val future = KafkaFutureImpl<Int>()
         val ran = booleanArrayOf(false)
-        val dependantFuture = future.thenApply<Int?> {
+        val dependantFuture = future.thenApply {
             // Because the top level future failed, this should never be called.
             ran[0] = true
             null
@@ -423,8 +423,8 @@ class KafkaFutureTest {
 
     @Test
     fun testThenApplyOnCancelledFuture() {
-        val future = KafkaFutureImpl<Int>()
-        val dependantFuture = future.thenApply { integer: Int -> 2 * integer }
+        val future = KafkaFutureImpl<Int?>()
+        val dependantFuture: KafkaFuture<Int?> = future.thenApply { integer -> 2 * integer!! }
         future.cancel(true)
         assertIsCancelled(future)
         assertIsCancelled(dependantFuture)

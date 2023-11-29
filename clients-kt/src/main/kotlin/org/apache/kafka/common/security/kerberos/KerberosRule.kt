@@ -18,6 +18,7 @@
 package org.apache.kafka.common.security.kerberos
 
 import java.io.IOException
+import java.util.Locale
 import java.util.regex.Pattern
 
 /**
@@ -67,7 +68,7 @@ class KerberosRule {
         toPattern: String?,
         repeat: Boolean,
         toLowerCase: Boolean,
-        toUpperCase: Boolean
+        toUpperCase: Boolean,
     ) {
         this.defaultRealm = defaultRealm
         this.isDefault = false
@@ -122,8 +123,9 @@ class KerberosRule {
     @Throws(IOException::class)
     fun apply(params: Array<String?>): String? {
         var result: String? = null
-        if (isDefault)
+        if (isDefault) {
             if (defaultRealm == params[0]) result = params[1]
+        }
         else if (params.size - 1 == numOfComponents) {
             val base = replaceParameters(format, params)
             if (match == null || match.matcher(base).matches()) {
@@ -136,8 +138,8 @@ class KerberosRule {
         if (result != null && NON_SIMPLE_PATTERN.matcher(result).find())
             throw NoMatchingRule("Non-simple name $result after auth_to_local rule $this")
 
-        if (toLowerCase && result != null) result = result.lowercase()
-        else if (toUpperCase && result != null) result = result.uppercase()
+        if (toLowerCase && result != null) result = result.lowercase(Locale.ENGLISH)
+        else if (toUpperCase && result != null) result = result.uppercase(Locale.ENGLISH)
 
         return result
     }
@@ -147,7 +149,7 @@ class KerberosRule {
         /**
          * A pattern that matches a string without '$' and then a single parameter with $n.
          */
-        private val PARAMETER_PATTERN = Pattern.compile("([^$]*)(\\$(\\d*))?")
+        private val PARAMETER_PATTERN = Pattern.compile("([^\$]*)(\\\$(\\d*))?")
 
         /**
          * A pattern that recognizes simple/non-simple names.
@@ -166,7 +168,7 @@ class KerberosRule {
         @Throws(BadFormatString::class)
         fun replaceParameters(
             format: String?,
-            params: Array<String?>
+            params: Array<String?>,
         ): String {
             val match = PARAMETER_PATTERN.matcher(format)
             var start = 0

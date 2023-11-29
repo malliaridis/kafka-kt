@@ -1236,7 +1236,7 @@ class SslTransportLayerTest {
                     break
                 }
                 if (selector.disconnected().containsKey(node)) {
-                    val state = selector.disconnected()[node]!!.state()
+                    val state = selector.disconnected()[node]!!.state
                     assertTrue(
                         actual = state == ChannelState.State.AUTHENTICATE || state == ChannelState.State.READY,
                         message = "Unexpected channel state $state",
@@ -1247,7 +1247,7 @@ class SslTransportLayerTest {
             val channel = selector.channel(node)
             if (channel != null) assertTrue(
                 actual = channel.ready(),
-                message = "Channel not ready or disconnected:" + channel.state.state(),
+                message = "Channel not ready or disconnected:" + channel.state.state,
             )
             selector.close()
         }

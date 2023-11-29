@@ -50,7 +50,7 @@ class DeleteConsumerGroupOffsetsResultTest {
     @BeforeEach
     fun setUp() {
         partitionFutures = KafkaFutureImpl()
-        partitions = HashSet()
+        partitions = hashSetOf()
         partitions.add(tpZero)
         partitions.add(tpOne)
         errorsMap = HashMap()

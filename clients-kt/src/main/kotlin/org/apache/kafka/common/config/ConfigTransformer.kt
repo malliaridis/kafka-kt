@@ -66,7 +66,7 @@ class ConfigTransformer(private val configProviders: Map<String, ConfigProvider>
         configs.values.forEach { value ->
             getVars(value, DEFAULT_PATTERN).forEach { configVar ->
                 val keysByPath = keysByProvider.computeIfAbsent(configVar.providerName) { HashMap() }
-                val keys = keysByPath.computeIfAbsent(configVar.path) { HashSet() }
+                val keys = keysByPath.computeIfAbsent(configVar.path) { hashSetOf() }
                 keys.add(configVar.variable)
             }
         }
@@ -77,7 +77,7 @@ class ConfigTransformer(private val configProviders: Map<String, ConfigProvider>
             val provider = configProviders[providerName] ?: return@forEach
 
             keysByPath.forEach { (path, value) ->
-                val keys: Set<String> = HashSet(value)
+                val keys: Set<String> = value.toHashSet()
                 val (data, ttl) = provider[path, keys]
                 if (ttl != null && ttl >= 0) ttls[path] = ttl
 

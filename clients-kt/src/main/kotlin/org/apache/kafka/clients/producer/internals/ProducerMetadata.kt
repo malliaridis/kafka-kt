@@ -47,7 +47,7 @@ class ProducerMetadata(
      */
     private val topics: MutableMap<String, Long?> = HashMap()
 
-    private val newTopics: MutableSet<String> = HashSet()
+    private val newTopics: MutableSet<String> = hashSetOf()
 
     private val log: Logger = logContext.logger(ProducerMetadata::class.java)
 

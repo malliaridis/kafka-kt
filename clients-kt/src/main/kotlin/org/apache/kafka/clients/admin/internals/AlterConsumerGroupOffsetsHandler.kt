@@ -88,9 +88,9 @@ class AlterConsumerGroupOffsetsHandler(
     ): ApiResult<CoordinatorKey, Map<TopicPartition, Errors>> {
         validateKeys(keys)
         response as OffsetCommitResponse
-        val groupsToUnmap: MutableSet<CoordinatorKey> = HashSet()
-        val groupsToRetry: MutableSet<CoordinatorKey> = HashSet()
-        val partitionResults: MutableMap<TopicPartition, Errors> = HashMap()
+        val groupsToUnmap: MutableSet<CoordinatorKey> = hashSetOf()
+        val groupsToRetry: MutableSet<CoordinatorKey> = hashSetOf()
+        val partitionResults: MutableMap<TopicPartition, Errors> = hashMapOf()
         for (topic: OffsetCommitResponseTopic in response.data().topics) {
             for (partition: OffsetCommitResponsePartition in topic.partitions) {
                 val topicPartition = TopicPartition(topic.name, partition.partitionIndex)

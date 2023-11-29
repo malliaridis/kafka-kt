@@ -36,8 +36,7 @@ import org.apache.kafka.message.FieldType.Uint8FieldType
 import org.apache.kafka.message.MessageGenerator.sizeOfUnsignedVarint
 import java.io.BufferedWriter
 import java.nio.ByteBuffer
-import java.util.*
-import kotlin.collections.LinkedHashSet
+import java.util.TreeMap
 
 /**
  * Generates Kafka MessageData classes.
@@ -165,7 +164,7 @@ class MessageDataGenerator internal constructor(
         isTopLevel: Boolean,
         isSetElement: Boolean,
     ) {
-        val implementedInterfaces: MutableSet<String> = HashSet()
+        val implementedInterfaces = mutableSetOf<String>()
         if (isTopLevel) {
             implementedInterfaces.add("ApiMessage")
             headerGenerator.addImport(MessageGenerator.API_MESSAGE_CLASS)
@@ -177,7 +176,7 @@ class MessageDataGenerator internal constructor(
             headerGenerator.addImport(MessageGenerator.IMPLICIT_LINKED_HASH_COLLECTION_CLASS)
             implementedInterfaces.add("ImplicitLinkedHashCollection.Element")
         }
-        val classModifiers: MutableSet<String> = LinkedHashSet()
+        val classModifiers = linkedSetOf<String>()
         // TODO Add data class modifier once properties added to constructor
         // classModifiers.add("data")
         // if (!isTopLevel) classModifiers.add("inner")

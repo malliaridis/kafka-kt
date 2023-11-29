@@ -388,10 +388,10 @@ open class FetchSessionHandler(logContext: LogContext, node: Int) {
         val bld = StringBuilder()
         val extra = findMissing(topicPartitions, sessionPartitions.keys)
         val omitted = findMissing(sessionPartitions.keys, topicPartitions)
-        var extraIds: Set<Uuid> = HashSet()
+        var extraIds: Set<Uuid> = hashSetOf()
 
         if (version >= 13) extraIds = findMissing(ids, sessionTopicNames.keys)
-        if (!omitted.isEmpty()) bld.append("omittedPartitions=(")
+        if (omitted.isNotEmpty()) bld.append("omittedPartitions=(")
             .append(omitted.joinToString(", "))
             .append(", ")
 
@@ -427,7 +427,7 @@ open class FetchSessionHandler(logContext: LogContext, node: Int) {
         ids: Set<Uuid>,
         version: Short,
     ): String? {
-        var extraIds: Set<Uuid> = HashSet()
+        var extraIds: Set<Uuid> = hashSetOf()
         if (version >= 13) extraIds = findMissing(ids, sessionTopicNames.keys)
 
         val extra = findMissing(topicPartitions, sessionPartitions.keys)

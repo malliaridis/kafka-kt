@@ -114,15 +114,15 @@ class CooperativeStickyAssignor : AbstractStickyAssignor() {
         assignments: Map<String, List<TopicPartition>>
     ): Map<TopicPartition, String> {
         val allAddedPartitions: MutableMap<TopicPartition, String> = HashMap()
-        val allRevokedPartitions: MutableSet<TopicPartition> = HashSet()
+        val allRevokedPartitions: MutableSet<TopicPartition> = hashSetOf()
         for ((consumer, assignedPartitions) in assignments) {
             val ownedPartitions = subscriptions[consumer]!!.ownedPartitions
-            val ownedPartitionsSet: Set<TopicPartition> = HashSet(ownedPartitions)
+            val ownedPartitionsSet: Set<TopicPartition> = ownedPartitions.toHashSet()
 
             for (tp in assignedPartitions) {
                 if (!ownedPartitionsSet.contains(tp)) allAddedPartitions[tp] = consumer
             }
-            val assignedPartitionsSet: Set<TopicPartition> = HashSet(assignedPartitions)
+            val assignedPartitionsSet: Set<TopicPartition> = assignedPartitions.toHashSet()
             for (tp in ownedPartitions) {
                 if (!assignedPartitionsSet.contains(tp)) allRevokedPartitions.add(tp)
             }

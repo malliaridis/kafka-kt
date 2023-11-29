@@ -115,7 +115,7 @@ class DescribeTransactionsHandler(
     private fun collectTopicPartitions(
         transactionState: DescribeTransactionsResponseData.TransactionState
     ): Set<TopicPartition> {
-        val res: MutableSet<TopicPartition> = HashSet()
+        val res: MutableSet<TopicPartition> = hashSetOf()
 
         transactionState.topics.forEach { topicData ->
             val topic = topicData.topic

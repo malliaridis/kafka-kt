@@ -61,12 +61,11 @@ class SaslClientCallbackHandler : AuthenticateCallbackHandler {
         callbacks.forEach { callback ->
             when (callback) {
                 is NameCallback -> {
-                    callback.name =
-                        if (
-                            subject != null
-                            && subject.getPublicCredentials(String::class.java).isNotEmpty()
-                        ) subject.getPublicCredentials(String::class.java).first()
-                        else callback.defaultName
+                    callback.name = if (
+                        subject != null
+                        && subject.getPublicCredentials(String::class.java).isNotEmpty()
+                    ) subject.getPublicCredentials(String::class.java).first()
+                    else callback.defaultName
                 }
 
                 is PasswordCallback -> {
@@ -121,8 +120,7 @@ class SaslClientCallbackHandler : AuthenticateCallbackHandler {
                     }
                 }
 
-                else ->
-                    throw UnsupportedCallbackException(callback, "Unrecognized SASL ClientCallback")
+                else -> throw UnsupportedCallbackException(callback, "Unrecognized SASL ClientCallback")
             }
         }
     }

@@ -276,7 +276,7 @@ abstract class SaslAuthenticatorFailureDelayTest(private val failedAuthenticatio
         expectedErrorMessage: String?,
     ) {
         val finalState = createAndCheckClientConnectionFailure(securityProtocol, node)
-        val exception = finalState.exception()
+        val exception = finalState.exception
         assertIs<SaslAuthenticationException>(
             value = exception,
             message = "Invalid exception class ${exception!!.javaClass}",

@@ -135,8 +135,12 @@ object RecordsUtil {
             else RecordBatch.NO_TIMESTAMP
 
         val builder = MemoryRecords.builder(
-            buffer, magic, batch.compressionType(),
-            timestampType, recordBatchAndRecords.baseOffset!!, logAppendTime
+            buffer = buffer,
+            magic = magic,
+            compressionType = batch.compressionType(),
+            timestampType = timestampType,
+            baseOffset = recordBatchAndRecords.baseOffset!!,
+            logAppendTime = logAppendTime
         )
 
         recordBatchAndRecords.records.forEach { record ->

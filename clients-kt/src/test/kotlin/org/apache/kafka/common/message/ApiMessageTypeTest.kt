@@ -49,7 +49,7 @@ class ApiMessageTypeTest {
 
     @Test
     fun testUniqueness() {
-        val ids: MutableSet<Short> = HashSet()
+        val ids: MutableSet<Short> = hashSetOf()
         val requestNames = mutableSetOf<String>()
         val responseNames = mutableSetOf<String>()
         for (type in ApiMessageType.values()) {

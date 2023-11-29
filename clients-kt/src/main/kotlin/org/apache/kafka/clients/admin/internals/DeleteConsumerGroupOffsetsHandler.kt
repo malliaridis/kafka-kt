@@ -95,7 +95,7 @@ class DeleteConsumerGroupOffsetsHandler(
         val error = Errors.forCode(response.data().errorCode)
         if (error !== Errors.NONE) {
             val failed: MutableMap<CoordinatorKey, Throwable> = HashMap()
-            val groupsToUnmap: MutableSet<CoordinatorKey> = HashSet()
+            val groupsToUnmap: MutableSet<CoordinatorKey> = hashSetOf()
 
             handleGroupError(groupId, error, failed, groupsToUnmap)
 
