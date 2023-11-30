@@ -28,12 +28,12 @@ import org.apache.kafka.common.security.kerberos.KerberosShortNamer
 import org.apache.kafka.common.security.scram.internals.ScramMechanism
 import org.apache.kafka.common.security.ssl.SslPrincipalMapper
 import org.junit.jupiter.api.Test
-import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito.`when`
+import org.mockito.kotlin.any
 import org.mockito.kotlin.atLeastOnce
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 import kotlin.test.assertEquals
 
 class DefaultKafkaPrincipalBuilderTest {
@@ -60,7 +60,7 @@ class DefaultKafkaPrincipalBuilderTest {
     @Throws(Exception::class)
     fun testUseSessionPeerPrincipalForSsl() {
         val session = mock<SSLSession>()
-        `when`(session.peerPrincipal).thenReturn(DummyPrincipal("foo"))
+        whenever(session.peerPrincipal).thenReturn(DummyPrincipal("foo"))
         val builder = DefaultKafkaPrincipalBuilder(
             kerberosShortNamer = null,
             sslPrincipalMapper = null,
@@ -81,7 +81,7 @@ class DefaultKafkaPrincipalBuilderTest {
     @Throws(Exception::class)
     fun testPrincipalIfSSLPeerIsNotAuthenticated() {
         val session = mock<SSLSession>()
-        `when`(session.peerPrincipal).thenReturn(KafkaPrincipal.ANONYMOUS)
+        whenever(session.peerPrincipal).thenReturn(KafkaPrincipal.ANONYMOUS)
         val builder = DefaultKafkaPrincipalBuilder(
             kerberosShortNamer = null,
             sslPrincipalMapper = null,
@@ -101,7 +101,7 @@ class DefaultKafkaPrincipalBuilderTest {
     @Throws(Exception::class)
     fun testPrincipalWithSslPrincipalMapper() {
         val session = mock<SSLSession>()
-        `when`(session.peerPrincipal)
+        whenever(session.peerPrincipal)
             .thenReturn(X500Principal("CN=Duke, OU=ServiceUsers, O=Org, C=US"))
             .thenReturn(X500Principal("CN=Duke, OU=SME, O=mycp, L=Fulton, ST=MD, C=US"))
             .thenReturn(X500Principal("CN=duke, OU=JavaSoft, O=Sun Microsystems"))
@@ -138,8 +138,8 @@ class DefaultKafkaPrincipalBuilderTest {
     @Throws(Exception::class)
     fun testPrincipalBuilderScram() {
         val server = mock<SaslServer>()
-        `when`(server.mechanismName).thenReturn(ScramMechanism.SCRAM_SHA_256.mechanismName)
-        `when`(server.authorizationID).thenReturn("foo")
+        whenever(server.mechanismName).thenReturn(ScramMechanism.SCRAM_SHA_256.mechanismName)
+        whenever(server.authorizationID).thenReturn("foo")
         val builder = DefaultKafkaPrincipalBuilder(
             kerberosShortNamer = null,
             sslPrincipalMapper = null,
@@ -163,9 +163,9 @@ class DefaultKafkaPrincipalBuilderTest {
     fun testPrincipalBuilderGssapi() {
         val server = mock<SaslServer>()
         val kerberosShortNamer = mock<KerberosShortNamer>()
-        `when`(server.mechanismName).thenReturn(SaslConfigs.GSSAPI_MECHANISM)
-        `when`(server.authorizationID).thenReturn("foo/host@REALM.COM")
-        `when`(kerberosShortNamer.shortName(any())).thenReturn("foo")
+        whenever(server.mechanismName).thenReturn(SaslConfigs.GSSAPI_MECHANISM)
+        whenever(server.authorizationID).thenReturn("foo/host@REALM.COM")
+        whenever(kerberosShortNamer.shortName(any())).thenReturn("foo")
         val builder = DefaultKafkaPrincipalBuilder(
             kerberosShortNamer = kerberosShortNamer,
             sslPrincipalMapper = null,
@@ -190,9 +190,9 @@ class DefaultKafkaPrincipalBuilderTest {
     fun testPrincipalBuilderSerde() {
         val server = mock<SaslServer>()
         val kerberosShortNamer = mock<KerberosShortNamer>()
-        `when`(server.mechanismName).thenReturn(SaslConfigs.GSSAPI_MECHANISM)
-        `when`(server.authorizationID).thenReturn("foo/host@REALM.COM")
-        `when`(kerberosShortNamer.shortName(any())).thenReturn("foo")
+        whenever(server.mechanismName).thenReturn(SaslConfigs.GSSAPI_MECHANISM)
+        whenever(server.authorizationID).thenReturn("foo/host@REALM.COM")
+        whenever(kerberosShortNamer.shortName(any())).thenReturn("foo")
         val builder = DefaultKafkaPrincipalBuilder(
             kerberosShortNamer = kerberosShortNamer,
             sslPrincipalMapper = null,

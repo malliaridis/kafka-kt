@@ -40,9 +40,7 @@ class KafkaFutureImpl<T> private constructor(
         completableFuture = KafkaCompletableFuture<T>(),
     )
 
-    override fun toCompletionStage(): CompletionStage<T> {
-        return completableFuture
-    }
+    override fun toCompletionStage(): CompletionStage<T> = completableFuture
 
     /**
      * Returns a new KafkaFuture that, when this future completes normally, is executed with this

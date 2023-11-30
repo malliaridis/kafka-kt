@@ -28,7 +28,7 @@ import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.MockTime
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.mockito.Mockito
+import org.mockito.kotlin.mock
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
@@ -54,8 +54,8 @@ class PrototypeAsyncConsumerTest {
     
     @BeforeEach
     fun setup() {
-        subscriptionState = Mockito.mock(SubscriptionState::class.java)
-        eventHandler = Mockito.mock(DefaultEventHandler::class.java)
+        subscriptionState = mock<SubscriptionState>()
+        eventHandler = mock<DefaultEventHandler>()
         logContext = LogContext()
         time = MockTime()
         metrics = Metrics(time = time)

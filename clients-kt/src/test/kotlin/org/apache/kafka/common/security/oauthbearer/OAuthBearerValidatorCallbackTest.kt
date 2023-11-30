@@ -39,7 +39,7 @@ class OAuthBearerValidatorCallbackTest {
 
     @Test
     fun testToken() {
-        val callback = OAuthBearerValidatorCallback(TOKEN.value()!!).apply { token = TOKEN }
+        val callback = OAuthBearerValidatorCallback(TOKEN.value()!!).apply { setToken(TOKEN) }
         assertSame(TOKEN, callback.token)
         assertNull(callback.errorStatus)
         assertNull(callback.errorScope)

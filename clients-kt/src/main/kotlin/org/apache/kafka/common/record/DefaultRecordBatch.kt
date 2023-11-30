@@ -214,7 +214,7 @@ class DefaultRecordBatch internal constructor(
                         baseOffset = baseOffset,
                         baseTimestamp = baseTimestamp,
                         baseSequence = baseSequence,
-                        logAppendTime = logAppendTime
+                        logAppendTime = logAppendTime,
                     )
                 }
             }

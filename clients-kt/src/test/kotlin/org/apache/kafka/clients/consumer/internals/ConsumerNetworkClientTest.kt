@@ -39,14 +39,14 @@ import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.MockTime
 import org.apache.kafka.test.TestUtils.singletonCluster
 import org.junit.jupiter.api.Test
-import org.mockito.ArgumentMatchers.anyLong
-import org.mockito.ArgumentMatchers.eq
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.verify
-import org.mockito.Mockito.`when`
 import java.time.Duration
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import org.mockito.kotlin.any
+import org.mockito.kotlin.eq
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
@@ -193,7 +193,7 @@ class ConsumerNetworkClientTest {
 
         // expect poll, but with no timeout
         consumerClient.poll(time.timer(Long.MAX_VALUE), { false })
-        verify(mockNetworkClient).poll(eq(0L), anyLong())
+        verify(mockNetworkClient).poll(eq(0L), any())
     }
 
     @Test
@@ -210,9 +210,9 @@ class ConsumerNetworkClientTest {
             maxPollTimeoutMs = Int.MAX_VALUE,
         )
 
-        `when`(mockNetworkClient.inFlightRequestCount()).thenReturn(1)
+        whenever(mockNetworkClient.inFlightRequestCount()).thenReturn(1)
         consumerClient.poll(time.timer(timeout), { true })
-        verify(mockNetworkClient).poll(eq(timeout), anyLong())
+        verify(mockNetworkClient).poll(eq(timeout), any())
     }
 
     @Test
@@ -229,9 +229,9 @@ class ConsumerNetworkClientTest {
             maxPollTimeoutMs = Int.MAX_VALUE,
         )
 
-        `when`(mockNetworkClient.inFlightRequestCount()).thenReturn(0)
+        whenever(mockNetworkClient.inFlightRequestCount()).thenReturn(0)
         consumerClient.poll(time.timer(Long.MAX_VALUE), { true })
-        verify(mockNetworkClient).poll(eq(retryBackoffMs), anyLong())
+        verify(mockNetworkClient).poll(eq(retryBackoffMs), any())
     }
 
     @Test

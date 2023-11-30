@@ -114,8 +114,7 @@ class FieldSpec @JsonCreator constructor(
             isNullable = !this.versions.intersect(parsedNullableVersions).isEmpty,
         )
 
-        // Do not add nullable versions for array fields
-        this.nullableVersions = if (parsedType.isArray) Versions.NONE else parsedNullableVersions
+        this.nullableVersions = parsedNullableVersions
         this.type = parsedType
 
         this.entityType = entityType ?: EntityType.UNKNOWN
@@ -241,13 +240,11 @@ class FieldSpec @JsonCreator constructor(
         when {
             (fieldDefault == null) && type.isNullable && !type.isArray -> {
                 // No default value provided, use null if all fields are nullable
-                // Arrays / Lists are never null (only empty)
                 isNullDefaultAllowed()
                 return "null"
             }
-            (fieldDefault == "null") && type.isNullable && !type.isArray -> {
+            (fieldDefault == "null") && type.isNullable -> {
                 // Default value "null" provided, verify that all versions are nullable
-                // Arrays / Lists are never null (only empty)
                 validateNullDefault()
                 return "null"
             }
@@ -265,10 +262,7 @@ class FieldSpec @JsonCreator constructor(
                     try {
                         isNegative = defaultString.toByte(base) < 0
                     } catch (e: NumberFormatException) {
-                        throw RuntimeException(
-                            "Invalid default for int8 field $name: $defaultString",
-                            e,
-                        )
+                        throw RuntimeException("Invalid default for int8 field $name: $defaultString", e)
                     }
                     if (isNegative) "($fieldDefault).toByte()"
                     else "$fieldDefault.toByte()"
@@ -385,14 +379,9 @@ class FieldSpec @JsonCreator constructor(
                     try {
                         val value = defaultString.toULong(base)
                         if (value < 0U || value > ULong.MAX_VALUE)
-                            throw RuntimeException(
-                                "Invalid default for uint64 field $name: out of range."
-                            )
+                            throw RuntimeException("Invalid default for uint64 field $name: out of range.")
                     } catch (e: NumberFormatException) {
-                        throw RuntimeException(
-                            "Invalid default for uint64 field $name: $defaultString",
-                            e,
-                        )
+                        throw RuntimeException("Invalid default for uint64 field $name: $defaultString", e)
                     }
                     "${fieldDefault}uL"
                 }
@@ -421,10 +410,7 @@ class FieldSpec @JsonCreator constructor(
                     try {
                         fieldDefault.toFloat()
                     } catch (e: NumberFormatException) {
-                        throw RuntimeException(
-                            "Invalid default for float32 field $name: $fieldDefault",
-                            e,
-                        )
+                        throw RuntimeException("Invalid default for float32 field $name: $fieldDefault", e)
                     }
                     "\"$fieldDefault\".toFloat()"
                 }
@@ -435,10 +421,7 @@ class FieldSpec @JsonCreator constructor(
                     try {
                         fieldDefault.toDouble()
                     } catch (e: NumberFormatException) {
-                        throw RuntimeException(
-                            "Invalid default for float64 field $name: $fieldDefault",
-                            e,
-                        )
+                        throw RuntimeException("Invalid default for float64 field $name: $fieldDefault", e)
                     }
                     "\"$fieldDefault\".toDouble()"
                 }

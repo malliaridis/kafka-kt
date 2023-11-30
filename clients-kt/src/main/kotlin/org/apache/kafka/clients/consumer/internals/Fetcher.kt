@@ -1812,7 +1812,7 @@ open class Fetcher<K, V>(
             partition: FetchResponseData.PartitionData,
         ): PriorityQueue<AbortedTransaction>? {
             val abortedTransactionsList = partition.abortedTransactions
-            if (abortedTransactionsList.isEmpty()) return null
+            if (abortedTransactionsList.isNullOrEmpty()) return null
 
             val abortedTransactions = PriorityQueue(
                 abortedTransactionsList.size,

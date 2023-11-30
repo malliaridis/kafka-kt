@@ -23,10 +23,10 @@ import org.apache.kafka.common.memory.MemoryPool
 import org.apache.kafka.test.TestUtils.randomBytes
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentCaptor
-import org.mockito.Mockito.any
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.reset
-import org.mockito.Mockito.`when`
+import org.mockito.kotlin.any
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.reset
+import org.mockito.kotlin.whenever
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
@@ -57,17 +57,17 @@ class KafkaChannelTest {
         assertTrue(channel.hasSend())
         assertFailsWith<IllegalStateException> { channel.setSend(networkSend) }
 
-        `when`(transport.write(any<Array<ByteBuffer>>())).thenReturn(4L)
+        whenever(transport.write(any<Array<ByteBuffer>>())).thenReturn(4L)
         assertEquals(4L, channel.write())
         assertEquals(128, send.remaining)
         assertNull(channel.maybeCompleteSend())
 
-        `when`(transport.write(any<Array<ByteBuffer>>())).thenReturn(64L)
+        whenever(transport.write(any<Array<ByteBuffer>>())).thenReturn(64L)
         assertEquals(64, channel.write())
         assertEquals(64, send.remaining)
         assertNull(channel.maybeCompleteSend())
 
-        `when`(transport.write(any<Array<ByteBuffer>>())).thenReturn(64L)
+        whenever(transport.write(any<Array<ByteBuffer>>())).thenReturn(64L)
         assertEquals(64, channel.write())
         assertEquals(0, send.remaining)
         assertEquals(networkSend, channel.maybeCompleteSend())
@@ -82,7 +82,7 @@ class KafkaChannelTest {
         val metadataRegistry = mock<ChannelMetadataRegistry>()
 
         val sizeCaptor = ArgumentCaptor.forClass(Int::class.java)
-        `when`(pool.tryAllocate(sizeCaptor.capture())).thenAnswer {
+        whenever(pool.tryAllocate(sizeCaptor.capture())).thenAnswer {
             ByteBuffer.allocate(sizeCaptor.value)
         }
         val channel = KafkaChannel(
@@ -95,7 +95,7 @@ class KafkaChannelTest {
         )
 
         val bufferCaptor = ArgumentCaptor.forClass(ByteBuffer::class.java)
-        `when`(transport.read(bufferCaptor.capture())).thenAnswer {
+        whenever(transport.read(bufferCaptor.capture())).thenAnswer {
             bufferCaptor.value.putInt(128)
             4
         }.thenReturn(0)
@@ -104,7 +104,7 @@ class KafkaChannelTest {
         assertNull(channel.maybeCompleteReceive())
 
         reset(transport)
-        `when`(transport.read(bufferCaptor.capture())).thenAnswer {
+        whenever(transport.read(bufferCaptor.capture())).thenAnswer {
             bufferCaptor.value.put(randomBytes(64))
             64
         }
@@ -113,7 +113,7 @@ class KafkaChannelTest {
         assertNull(channel.maybeCompleteReceive())
 
         reset(transport)
-        `when`(transport.read(bufferCaptor.capture())).thenAnswer {
+        whenever(transport.read(bufferCaptor.capture())).thenAnswer {
             bufferCaptor.value.put(randomBytes(64))
             64
         }

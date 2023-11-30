@@ -131,7 +131,7 @@ class OAuthBearerSaslServerTest {
                 override fun handle(callbacks: Array<Callback>) {
                     for (callback in callbacks) {
                         when (callback) {
-                            is OAuthBearerValidatorCallback -> callback.token = OAuthBearerTokenMock()
+                            is OAuthBearerValidatorCallback -> callback.setToken(OAuthBearerTokenMock())
                             is OAuthBearerExtensionsValidatorCallback -> {
                                 callback.error("firstKey", "is not valid")
                                 callback.error("secondKey", "is not valid either")
@@ -247,7 +247,7 @@ class OAuthBearerSaslServerTest {
                 override fun handle(callbacks: Array<Callback>) {
                     for (callback in callbacks) {
                         when (callback) {
-                            is OAuthBearerValidatorCallback -> callback.token = OAuthBearerTokenMock()
+                            is OAuthBearerValidatorCallback -> callback.setToken(OAuthBearerTokenMock())
                             is OAuthBearerExtensionsValidatorCallback -> {
                                 callback.valid("firstKey")
                                 callback.valid("secondKey")

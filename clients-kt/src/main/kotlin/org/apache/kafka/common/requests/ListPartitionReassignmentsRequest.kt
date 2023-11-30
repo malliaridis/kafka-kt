@@ -35,7 +35,7 @@ class ListPartitionReassignmentsRequest private constructor(
 
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse {
         val (error, message) = ApiError.fromThrowable(e)
-        val ongoingTopicReassignments = data.topics.map { topic ->
+        val ongoingTopicReassignments = data.topics?.map { topic ->
             OngoingTopicReassignment()
                 .setName(topic.name)
                 .setPartitions(
@@ -43,7 +43,7 @@ class ListPartitionReassignmentsRequest private constructor(
                         OngoingPartitionReassignment().setPartitionIndex(partitionIndex)
                     }
                 )
-        }
+        } ?: emptyList()
 
         val responseData = ListPartitionReassignmentsResponseData()
             .setTopics(ongoingTopicReassignments)

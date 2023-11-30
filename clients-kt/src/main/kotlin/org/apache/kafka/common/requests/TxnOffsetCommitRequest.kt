@@ -39,7 +39,7 @@ class TxnOffsetCommitRequest(
 
     fun offsets(): Map<TopicPartition, CommittedOffset> {
         val topics = data.topics
-        val offsetMap: MutableMap<TopicPartition, CommittedOffset> = HashMap()
+        val offsetMap = mutableMapOf<TopicPartition, CommittedOffset>()
         for (topic: TxnOffsetCommitRequestTopic in topics) {
             for (partition in topic.partitions) {
                 offsetMap[TopicPartition(topic.name, partition.partitionIndex)] =

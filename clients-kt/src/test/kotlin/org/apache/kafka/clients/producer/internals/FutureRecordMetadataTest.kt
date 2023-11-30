@@ -20,14 +20,13 @@ package org.apache.kafka.clients.producer.internals
 import org.apache.kafka.common.record.RecordBatch
 import org.apache.kafka.common.utils.MockTime
 import org.junit.jupiter.api.Test
-import org.mockito.ArgumentMatchers.any
-import org.mockito.ArgumentMatchers.anyLong
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.verify
-import org.mockito.Mockito.`when`
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
+import org.mockito.kotlin.any
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 
 class FutureRecordMetadataTest {
 
@@ -79,9 +78,9 @@ class FutureRecordMetadataTest {
 
     @Throws(InterruptedException::class)
     private fun mockProduceRequestResult(): ProduceRequestResult {
-        val mockProduceRequestResult = mock(ProduceRequestResult::class.java)
+        val mockProduceRequestResult = mock<ProduceRequestResult>()
 
-        `when`(mockProduceRequestResult.await(anyLong(), any())).thenReturn(true)
+        whenever(mockProduceRequestResult.await(any(), any())).thenReturn(true)
 
         return mockProduceRequestResult
     }

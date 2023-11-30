@@ -30,13 +30,14 @@ import org.apache.kafka.common.utils.MockTime
 import org.apache.kafka.common.utils.Timer
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.`when`
 import org.mockito.kotlin.any
 import org.mockito.kotlin.inOrder
 import java.util.Properties
 import java.util.concurrent.BlockingQueue
 import java.util.concurrent.LinkedBlockingQueue
+import org.mockito.kotlin.eq
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -64,13 +65,13 @@ class DefaultBackgroundThreadTest {
     @BeforeEach
     fun setup() {
         time = MockTime()
-        subscriptions = mock(SubscriptionState::class.java)
-        metadata = mock(ConsumerMetadata::class.java)
+        subscriptions = mock<SubscriptionState>()
+        metadata = mock<ConsumerMetadata>()
         context = LogContext()
-        consumerClient = mock(ConsumerNetworkClient::class.java)
-        metrics = mock(Metrics::class.java)
-        applicationEventsQueue = mock(BlockingQueue::class.java) as BlockingQueue<ApplicationEvent>
-        backgroundEventsQueue = mock(BlockingQueue::class.java) as BlockingQueue<BackgroundEvent>
+        consumerClient = mock<ConsumerNetworkClient>()
+        metrics = mock<Metrics>()
+        applicationEventsQueue = mock<BlockingQueue<ApplicationEvent>>()
+        backgroundEventsQueue = mock<BlockingQueue<BackgroundEvent>>()
         properties[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java
         properties[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java
         properties[ConsumerConfig.RETRY_BACKOFF_MS_CONFIG] = REFRESH_BACK_OFF_MS
@@ -131,8 +132,8 @@ class DefaultBackgroundThreadTest {
             requestTimeoutMs = 1000,
             maxPollTimeoutMs = 100,
         )
-        `when`(applicationEventsQueue.isEmpty()).thenReturn(true)
-        `when`(applicationEventsQueue.isEmpty()).thenReturn(true)
+        whenever(applicationEventsQueue.isEmpty()).thenReturn(true)
+        whenever(applicationEventsQueue.isEmpty()).thenReturn(true)
         val runnable = setupMockHandler()
         client.poll(0, time.milliseconds())
         runnable.wakeup()
@@ -147,13 +148,13 @@ class DefaultBackgroundThreadTest {
         time = MockTime(100)
         val runnable = setupMockHandler()
         runnable.runOnce()
-        `when`(applicationEventsQueue.isEmpty()).thenReturn(false)
-        `when`(applicationEventsQueue.poll())
+        whenever(applicationEventsQueue.isEmpty()).thenReturn(false)
+        whenever(applicationEventsQueue.poll())
             .thenReturn(NoopApplicationEvent(backgroundEventsQueue, "nothing"))
         val inOrder = inOrder(applicationEventsQueue, consumerClient)
         assertFalse(inOrder.verify(applicationEventsQueue).isEmpty())
         inOrder.verify(applicationEventsQueue).poll()
-        inOrder.verify(consumerClient).poll(any<Timer>())
+        inOrder.verify(consumerClient).poll(any<Timer>(), eq(null), eq(false))
         runnable.close()
     }
 

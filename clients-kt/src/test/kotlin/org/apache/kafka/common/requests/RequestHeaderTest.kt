@@ -24,7 +24,7 @@ import org.apache.kafka.common.protocol.ByteBufferAccessor
 import org.apache.kafka.common.protocol.ObjectSerializationCache
 import org.apache.kafka.common.requests.RequestTestUtils.serializeRequestHeader
 import org.junit.jupiter.api.Test
-import org.mockito.ArgumentMatchers.any
+import org.mockito.kotlin.any
 import org.mockito.kotlin.spy
 import org.mockito.kotlin.verify
 import kotlin.test.assertEquals
@@ -157,6 +157,6 @@ class RequestHeaderTest {
 
         // verify that size(ObjectSerializationCache) is only called once, i.e. during assertEquals call. This validates
         // that size() method does not calculate the size instead it uses the cached value
-        verify(parsed).size(any(ObjectSerializationCache::class.java))
+        verify(parsed).size(any())
     }
 }

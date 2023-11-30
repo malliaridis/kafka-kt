@@ -88,11 +88,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInfo
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.never
-import org.mockito.Mockito.times
-import org.mockito.Mockito.verify
-import org.mockito.Mockito.`when`
 import java.lang.management.ManagementFactory
 import java.time.Duration
 import java.util.Properties
@@ -107,9 +102,14 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import javax.management.ObjectName
-import org.mockito.ArgumentMatchers.eq
-import org.mockito.ArgumentMatchers.notNull
 import org.mockito.kotlin.any
+import org.mockito.kotlin.eq
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
+import org.mockito.kotlin.notNull
+import org.mockito.kotlin.times
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 import kotlin.test.assertContentEquals
@@ -786,7 +786,7 @@ class KafkaProducerTest {
         val metadata = mock<ProducerMetadata>()
 
         // Return empty cluster 4 times and cluster from then on
-        `when`(metadata.fetch())
+        whenever(metadata.fetch())
             .thenReturn(emptyCluster, emptyCluster, emptyCluster, emptyCluster, onePartitionCluster)
         val producer = producerWithOverrideNewSender(configs, metadata)
         val record = ProducerRecord<String, String>(topic = topic, value = "value")
@@ -820,7 +820,7 @@ class KafkaProducerTest {
             ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG to isIdempotenceEnabled,
         )
         val metadata = mock<ProducerMetadata>()
-        `when`(metadata.fetch())
+        whenever(metadata.fetch())
             .thenReturn(onePartitionCluster, emptyCluster, onePartitionCluster)
         val producer = producerWithOverrideNewSender(configs, metadata)
         val record = ProducerRecord<String, String>(topic = topic, value = "value")
@@ -858,7 +858,7 @@ class KafkaProducerTest {
         val metadata = mock<ProducerMetadata>()
         val mockTime = MockTime()
         val invocationCount = AtomicInteger(0)
-        `when`(metadata.fetch()).then {
+        whenever(metadata.fetch()).then {
             invocationCount.incrementAndGet()
             if (invocationCount.get() == 5) mockTime.setCurrentTimeMs(mockTime.milliseconds() + 70000)
             emptyCluster
@@ -900,7 +900,7 @@ class KafkaProducerTest {
         )
         val metadata = mock<ProducerMetadata>()
         val mockTime = MockTime()
-        `when`(metadata.fetch())
+        whenever(metadata.fetch())
             .thenReturn(onePartitionCluster, onePartitionCluster, threePartitionCluster)
         val producer = producerWithOverrideNewSender(configs, metadata, mockTime)
         // One request update if metadata is available but outdated for the given record
@@ -930,7 +930,7 @@ class KafkaProducerTest {
         val metadata = mock<ProducerMetadata>()
         val mockTime = MockTime()
         val invocationCount = AtomicInteger(0)
-        `when`(metadata.fetch()).then {
+        whenever(metadata.fetch()).then {
             invocationCount.incrementAndGet()
             if (invocationCount.get() == 5) mockTime.setCurrentTimeMs(mockTime.milliseconds() + 70000)
             onePartitionCluster
@@ -1117,10 +1117,10 @@ class KafkaProducerTest {
             interceptors = null,
             time = Time.SYSTEM,
         )
-        `when`(keySerializer.serialize(any(), any(), any()))
+        whenever(keySerializer.serialize(any(), any(), any()))
             .then { invocation -> invocation.getArgument<String>(2).toByteArray() }
 
-        `when`(valueSerializer.serialize(any(), any(), any()))
+        whenever(valueSerializer.serialize(any(), any(), any()))
             .then { invocation -> invocation.getArgument<String>(2).toByteArray() }
 
         val value = "value"
@@ -1297,7 +1297,7 @@ class KafkaProducerTest {
             interceptors = interceptors,
             time = Time.SYSTEM,
         )
-        `when`(interceptors.onSend(any()))
+        whenever(interceptors.onSend(any()))
             .then { invocation -> invocation.getArgument(0) }
         producer.send(record)
         verify(interceptors).onSend(record)
@@ -1612,7 +1612,7 @@ class KafkaProducerTest {
                 error = Errors.NONE,
             )
         )
-        `when`(metadata.fetch()).thenReturn(onePartitionCluster)
+        whenever(metadata.fetch()).thenReturn(onePartitionCluster)
         val largeString = "*".repeat(1000)
         val largeRecord = ProducerRecord(
             topic = topic,
@@ -1656,7 +1656,7 @@ class KafkaProducerTest {
         client.prepareResponse(FindCoordinatorResponse.prepareResponse(Errors.NONE, "some.id", NODE))
         client.prepareResponse(initProducerIdResponse(1L, 5.toShort(), Errors.NONE))
         val invocationCount = AtomicInteger(0)
-        `when`(metadata.fetch()).then {
+        whenever(metadata.fetch()).then {
             invocationCount.incrementAndGet()
             if (invocationCount.get() > 5) mockTime.setCurrentTimeMs(mockTime.milliseconds() + 70000)
             emptyCluster
@@ -1713,7 +1713,7 @@ class KafkaProducerTest {
             ),
         )
         val invocationCount = AtomicInteger(0)
-        `when`(metadata.fetch()).then {
+        whenever(metadata.fetch()).then {
             invocationCount.incrementAndGet()
             if (invocationCount.get() > 5) mockTime.setCurrentTimeMs(mockTime.milliseconds() + 70000)
             onePartitionCluster
@@ -2649,8 +2649,8 @@ class KafkaProducerTest {
         val topic = "foo"
         val topicPartition = TopicPartition(topic, 0)
         val cluster = singletonCluster(topic, 1)
-        `when`(ctx.sender.isRunning).thenReturn(true)
-        `when`(ctx.metadata.fetch()).thenReturn(cluster)
+        whenever(ctx.sender.isRunning).thenReturn(true)
+        whenever(ctx.metadata.fetch()).thenReturn(cluster)
         val timestamp = ctx.time.milliseconds()
         val record = ProducerRecord(
             topic = topic,
@@ -2677,8 +2677,8 @@ class KafkaProducerTest {
         val topicPartition0 = TopicPartition(topic, 0)
         val topicPartition1 = TopicPartition(topic, 1)
         val cluster = singletonCluster(topic, 2)
-        `when`(ctx.sender.isRunning).thenReturn(true)
-        `when`(ctx.metadata.fetch()).thenReturn(cluster)
+        whenever(ctx.sender.isRunning).thenReturn(true)
+        whenever(ctx.metadata.fetch()).thenReturn(cluster)
         val timestamp = ctx.time.milliseconds()
         val record = ProducerRecord(
             topic = topic,
@@ -2723,7 +2723,7 @@ class KafkaProducerTest {
             serializedValueSize = serializedValue!!.size,
             time = ctx.time,
         )
-        `when`(
+        whenever(
             ctx.partitioner.partition(
                 topic = initialSelectedPartition.topic,
                 key = record.key,
@@ -2733,7 +2733,7 @@ class KafkaProducerTest {
                 cluster = cluster
             )
         ).thenReturn(initialSelectedPartition.partition)
-        `when`(
+        whenever(
             ctx.accumulator.append(
                 eq(initialSelectedPartition.topic),  // 0
                 eq(initialSelectedPartition.partition),  // 1
@@ -2781,7 +2781,7 @@ class KafkaProducerTest {
             serializedValueSize = serializedValue!!.size,
             time = ctx.time,
         )
-        `when`(
+        whenever(
             ctx.partitioner.partition(
                 topic = initialSelectedPartition.topic,
                 key = record.key,
@@ -2792,7 +2792,7 @@ class KafkaProducerTest {
             )
         ).thenReturn(initialSelectedPartition.partition)
             .thenReturn(retrySelectedPartition.partition)
-        `when`(
+        whenever(
             ctx.accumulator.append(
                 eq(initialSelectedPartition.topic),  // 0
                 eq(initialSelectedPartition.partition),  // 1
@@ -2817,7 +2817,7 @@ class KafkaProducerTest {
                 appendedBytes = 0
             )
         }
-        `when`(
+        whenever(
             ctx.accumulator.append(
                 eq(retrySelectedPartition.topic),  // 0
                 eq(retrySelectedPartition.partition),  // 1

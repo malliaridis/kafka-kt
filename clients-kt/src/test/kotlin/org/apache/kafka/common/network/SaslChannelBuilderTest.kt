@@ -45,12 +45,11 @@ import org.ietf.jgss.GSSName
 import org.ietf.jgss.Oid
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
-import org.mockito.ArgumentMatchers.anyString
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.times
-import org.mockito.Mockito.verify
-import org.mockito.Mockito.`when`
 import org.mockito.kotlin.any
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.times
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
@@ -118,9 +117,9 @@ class SaslChannelBuilderTest {
         val jaasContexts = mapOf("GSSAPI" to jaasContext)
         val gssManager = mock<GSSManager>()
         val gssName = mock<GSSName>()
-        `when`(gssManager.createName(anyString(), any())).thenAnswer { gssName }
+        whenever(gssManager.createName(any<String>(), any())).thenAnswer { gssName }
         val oid = Oid("1.2.840.113554.1.2.2")
-        `when`(
+        whenever(
             gssManager.createCredential(
                 gssName,
                 GSSContext.INDEFINITE_LIFETIME,

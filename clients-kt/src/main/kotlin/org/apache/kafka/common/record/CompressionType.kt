@@ -17,16 +17,6 @@
 
 package org.apache.kafka.common.record
 
-import org.apache.kafka.common.KafkaException
-import org.apache.kafka.common.compress.KafkaLZ4BlockInputStream
-import org.apache.kafka.common.compress.KafkaLZ4BlockOutputStream
-import org.apache.kafka.common.compress.SnappyFactory.wrapForInput
-import org.apache.kafka.common.compress.SnappyFactory.wrapForOutput
-import org.apache.kafka.common.compress.ZstdFactory
-import org.apache.kafka.common.compress.ZstdFactory.wrapForOutput
-import org.apache.kafka.common.utils.BufferSupplier
-import org.apache.kafka.common.utils.ByteBufferInputStream
-import org.apache.kafka.common.utils.ByteBufferOutputStream
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.InputStream
@@ -34,6 +24,14 @@ import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
+import org.apache.kafka.common.KafkaException
+import org.apache.kafka.common.compress.KafkaLZ4BlockInputStream
+import org.apache.kafka.common.compress.KafkaLZ4BlockOutputStream
+import org.apache.kafka.common.compress.SnappyFactory
+import org.apache.kafka.common.compress.ZstdFactory
+import org.apache.kafka.common.utils.BufferSupplier
+import org.apache.kafka.common.utils.ByteBufferInputStream
+import org.apache.kafka.common.utils.ByteBufferOutputStream
 
 /**
  * The compression type to use
@@ -50,7 +48,7 @@ enum class CompressionType(
     ) {
         override fun wrapForOutput(
             bufferStream: ByteBufferOutputStream,
-            messageVersion: Byte
+            messageVersion: Byte,
         ): OutputStream = bufferStream
 
         override fun wrapForInput(
@@ -112,14 +110,14 @@ enum class CompressionType(
     ) {
         override fun wrapForOutput(
             bufferStream: ByteBufferOutputStream,
-            messageVersion: Byte
-        ): OutputStream = wrapForOutput(bufferStream)
+            messageVersion: Byte,
+        ): OutputStream = SnappyFactory.wrapForOutput(bufferStream)
 
         override fun wrapForInput(
             buffer: ByteBuffer,
             messageVersion: Byte,
             decompressionBufferSupplier: BufferSupplier,
-        ): InputStream = wrapForInput(buffer)
+        ): InputStream = SnappyFactory.wrapForInput(buffer)
     },
     LZ4(
         id = 3,
@@ -128,7 +126,7 @@ enum class CompressionType(
     ) {
         override fun wrapForOutput(
             bufferStream: ByteBufferOutputStream,
-            messageVersion: Byte
+            messageVersion: Byte,
         ): OutputStream {
             return try {
                 KafkaLZ4BlockOutputStream(
@@ -143,7 +141,7 @@ enum class CompressionType(
         override fun wrapForInput(
             buffer: ByteBuffer,
             messageVersion: Byte,
-            decompressionBufferSupplier: BufferSupplier
+            decompressionBufferSupplier: BufferSupplier,
         ): InputStream {
             return try {
                 KafkaLZ4BlockInputStream(
@@ -163,16 +161,17 @@ enum class CompressionType(
     ) {
         override fun wrapForOutput(
             bufferStream: ByteBufferOutputStream,
-            messageVersion: Byte
-        ): OutputStream = wrapForOutput(bufferStream)
+            messageVersion: Byte,
+        ): OutputStream = ZstdFactory.wrapForOutput(bufferStream)
 
         override fun wrapForInput(
             buffer: ByteBuffer,
             messageVersion: Byte,
-            decompressionBufferSupplier: BufferSupplier
+            decompressionBufferSupplier: BufferSupplier,
         ): InputStream = ZstdFactory.wrapForInput(
-            buffer, messageVersion,
-            decompressionBufferSupplier
+            buffer = buffer,
+            messageVersion = messageVersion,
+            decompressionBufferSupplier = decompressionBufferSupplier,
         )
     };
 
@@ -188,7 +187,7 @@ enum class CompressionType(
      */
     abstract fun wrapForOutput(
         bufferStream: ByteBufferOutputStream,
-        messageVersion: Byte
+        messageVersion: Byte,
     ): OutputStream
 
     /**
@@ -202,13 +201,13 @@ enum class CompressionType(
     abstract fun wrapForInput(
         buffer: ByteBuffer,
         messageVersion: Byte,
-        decompressionBufferSupplier: BufferSupplier
+        decompressionBufferSupplier: BufferSupplier,
     ): InputStream
 
     override fun toString(): String = altName
 
     companion object {
-        
+
         fun forId(id: Int): CompressionType {
             return when (id) {
                 0 -> NONE

@@ -45,12 +45,12 @@ import org.apache.kafka.common.utils.ProducerIdAndEpoch
 import org.apache.kafka.common.utils.Time
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.`when`
 import java.nio.ByteBuffer
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.function.Supplier
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 import kotlin.random.Random
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -1623,13 +1623,13 @@ class RecordAccumulatorTest {
             lingerMs = lingerMs
         )
         val producerIdAndEpoch = ProducerIdAndEpoch(12345L, 5.toShort())
-        `when`(transactionManager.producerIdAndEpoch).thenReturn(producerIdAndEpoch)
-        `when`(transactionManager.isSendToPartitionAllowed(tp1)).thenReturn(true)
-        `when`(transactionManager.isPartitionAdded(tp1)).thenReturn(true)
-        `when`(transactionManager.firstInFlightSequence(tp1)).thenReturn(0)
+        whenever(transactionManager.producerIdAndEpoch).thenReturn(producerIdAndEpoch)
+        whenever(transactionManager.isSendToPartitionAllowed(tp1)).thenReturn(true)
+        whenever(transactionManager.isPartitionAdded(tp1)).thenReturn(true)
+        whenever(transactionManager.firstInFlightSequence(tp1)).thenReturn(0)
 
         // Initially, the transaction is still in progress, so we should respect the linger.
-        `when`(transactionManager.isCompleting).thenReturn(false)
+        whenever(transactionManager.isCompleting).thenReturn(false)
         accumulator.append(
             topic = topic,
             partition = partition1,
@@ -1673,7 +1673,7 @@ class RecordAccumulatorTest {
         assertEquals(0, firstDrained.size)
 
         // Once the transaction begins completion, then the batch should be drained immediately.
-        `when`(transactionManager.isCompleting).thenReturn(true)
+        whenever(transactionManager.isCompleting).thenReturn(true)
 
         val secondResult = accumulator.ready(cluster, time.milliseconds())
 
@@ -1698,7 +1698,12 @@ class RecordAccumulatorTest {
     @Throws(ExecutionException::class, InterruptedException::class)
     fun testSplitAndReenqueue() {
         val now = time.milliseconds()
-        val accum = createTestRecordAccumulator(1024, (10 * 1024).toLong(), CompressionType.GZIP, 10)
+        val accum = createTestRecordAccumulator(
+            batchSize = 1024,
+            totalSize = (10 * 1024).toLong(),
+            type = CompressionType.GZIP,
+            lingerMs = 10,
+        )
 
         // Create a big batch
         val buffer = ByteBuffer.allocate(4096)
@@ -2646,45 +2651,12 @@ class RecordAccumulatorTest {
         }
     }
 
-    private fun createTestRecordAccumulator(
-        batchSize: Int,
-        totalSize: Long,
-        type: CompressionType,
-        lingerMs: Int,
-    ): RecordAccumulator {
-        val deliveryTimeoutMs = 3200
-        return createTestRecordAccumulator(
-            deliveryTimeoutMs = deliveryTimeoutMs,
-            batchSize = batchSize,
-            totalSize = totalSize,
-            type = type,
-            lingerMs = lingerMs,
-        )
-    }
-
-    private fun createTestRecordAccumulator(
-        deliveryTimeoutMs: Int,
-        batchSize: Int,
-        totalSize: Long,
-        type: CompressionType,
-        lingerMs: Int,
-    ): RecordAccumulator {
-        return createTestRecordAccumulator(
-            txnManager = null,
-            deliveryTimeoutMs = deliveryTimeoutMs,
-            batchSize = batchSize,
-            totalSize = totalSize,
-            type = type,
-            lingerMs = lingerMs
-        )
-    }
-
     /**
      * Return a test RecordAccumulator instance
      */
     private fun createTestRecordAccumulator(
-        txnManager: TransactionManager?,
-        deliveryTimeoutMs: Int,
+        txnManager: TransactionManager? = null,
+        deliveryTimeoutMs: Int = 3200,
         batchSize: Int,
         totalSize: Long,
         type: CompressionType,

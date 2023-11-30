@@ -40,17 +40,19 @@ class MetadataRequest(
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse {
         val error = Errors.forException(e)
         val responseData = MetadataResponseData()
-        for (topic in data.topics) {
-            // the response does not allow null, so convert to empty string if necessary
-            val topicName = if (topic.name == null) "" else topic.name
-            responseData.topics.add(
-                MetadataResponseTopic()
-                    .setName(topicName)
-                    .setTopicId(topic.topicId)
-                    .setErrorCode(error.code)
-                    .setIsInternal(false)
-                    .setPartitions(emptyList())
-            )
+        data.topics?.let{
+            for (topic in it) {
+                // the response does not allow null, so convert to empty string if necessary
+                val topicName = if (topic.name == null) "" else topic.name
+                responseData.topics.add(
+                    MetadataResponseTopic()
+                        .setName(topicName)
+                        .setTopicId(topic.topicId)
+                        .setErrorCode(error.code)
+                        .setIsInternal(false)
+                        .setPartitions(emptyList())
+                )
+            }
         }
 
         responseData.setThrottleTimeMs(throttleTimeMs)
@@ -60,17 +62,17 @@ class MetadataRequest(
     val isAllTopics: Boolean
         // In version 0, an empty topic list indicates
         // "request metadata for all topics."
-        get() = data.topics.isEmpty() && version.toInt() == 0
+        get() = data.topics == null || (data.topics!!.isEmpty() && version.toInt() == 0)
 
     fun topics(): List<String>? {
         return if (isAllTopics) null // In version 0, we return null for empty topic list
-        else data.topics.map { it.name!! }
+        else data.topics!!.map { it.name!! }
     }
 
     fun topicIds(): List<Uuid> {
         return if (isAllTopics) emptyList()
         else if (version < 10) emptyList()
-        else data.topics.map { it.topicId }
+        else data.topics!!.map { it.topicId }
     }
 
     fun allowAutoTopicCreation(): Boolean = data.allowAutoTopicCreation
@@ -96,9 +98,8 @@ class MetadataRequest(
             maxVersion: Short = ApiKeys.METADATA.latestVersion(),
         ) : super(ApiKeys.METADATA, minVersion, maxVersion) {
             val data = MetadataRequestData()
-            topics?.forEach { topic: String? ->
-                data.topics += MetadataRequestTopic().setName(topic)
-            } ?: data.setTopics(emptyList())
+            topics?.forEach { topic -> data.topics = data.topics!! + MetadataRequestTopic().setName(topic) }
+                ?: data.setTopics(null)
             data.setAllowAutoTopicCreation(allowAutoTopicCreation)
             this.data = data
         }
@@ -110,7 +111,7 @@ class MetadataRequest(
         ) {
             val data = MetadataRequestData()
             topicIds?.forEach { topicId ->
-                data.topics += MetadataRequestTopic().setTopicId(topicId)
+                data.topics = data.topics!! + MetadataRequestTopic().setTopicId(topicId)
             } ?: data.setTopics(emptyList())
 
             // It's impossible to create topic with topicId
@@ -118,12 +119,12 @@ class MetadataRequest(
             this.data = data
         }
 
-        fun emptyTopicList(): Boolean = data.topics.isEmpty()
+        fun emptyTopicList(): Boolean = data.topics!!.isEmpty()
 
         val isAllTopics: Boolean
-            get() = data.topics.isEmpty()
+            get() = data.topics == null
 
-        fun topics(): List<String> = data.topics.map { it.name!! }
+        fun topics(): List<String> = data.topics!!.map { it.name!! }
 
         override fun build(version: Short): MetadataRequest {
             if (version < 1) throw UnsupportedVersionException(
@@ -135,16 +136,14 @@ class MetadataRequest(
                         "allowAutoTopicCreation field"
             )
 
-            if (data.topics != null) {
-                data.topics.forEach { topic ->
-                    if (topic.name == null && version < 12) throw UnsupportedVersionException(
-                        "MetadataRequest version $version does not support null topic names."
+            data.topics?.forEach { topic ->
+                if (topic.name == null && version < 12) throw UnsupportedVersionException(
+                    "MetadataRequest version $version does not support null topic names."
+                )
+                if (Uuid.ZERO_UUID != topic.topicId && version < 12)
+                    throw UnsupportedVersionException(
+                        "MetadataRequest version $version does not support non-zero topic IDs."
                     )
-                    if (Uuid.ZERO_UUID != topic.topicId && version < 12)
-                        throw UnsupportedVersionException(
-                            "MetadataRequest version $version does not support non-zero topic IDs."
-                        )
-                }
             }
 
             return MetadataRequest(data, version)

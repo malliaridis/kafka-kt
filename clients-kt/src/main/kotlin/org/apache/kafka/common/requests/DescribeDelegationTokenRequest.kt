@@ -32,7 +32,7 @@ class DescribeDelegationTokenRequest(
 
     override fun data(): DescribeDelegationTokenRequestData = data
 
-    fun ownersListEmpty(): Boolean = data.owners.isEmpty()
+    fun ownersListEmpty(): Boolean = data.owners?.isEmpty() == true
 
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse =
         DescribeDelegationTokenResponse(

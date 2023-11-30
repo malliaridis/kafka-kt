@@ -29,47 +29,47 @@ import javax.net.ssl.X509ExtendedTrustManager
 
 class TestTrustManagerFactory : TrustManagerFactorySpi() {
 
-    override fun engineInit(keyStore: KeyStore) {}
+    override fun engineInit(keyStore: KeyStore?) = Unit
 
-    override fun engineInit(managerFactoryParameters: ManagerFactoryParameters) {}
+    override fun engineInit(managerFactoryParameters: ManagerFactoryParameters?) = Unit
 
     override fun engineGetTrustManagers(): Array<TrustManager> = arrayOf(TestTrustManager())
 
     class TestTrustManager : X509ExtendedTrustManager() {
         @Throws(CertificateException::class)
-        override fun checkClientTrusted(x509Certificates: Array<X509Certificate>, s: String) = Unit
+        override fun checkClientTrusted(x509Certificates: Array<X509Certificate>?, s: String?) = Unit
 
         @Throws(CertificateException::class)
-        override fun checkServerTrusted(x509Certificates: Array<X509Certificate>, s: String) = Unit
+        override fun checkServerTrusted(x509Certificates: Array<X509Certificate>?, s: String?) = Unit
 
         override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
 
         @Throws(CertificateException::class)
         override fun checkClientTrusted(
-            x509Certificates: Array<X509Certificate>,
-            s: String,
-            socket: Socket,
+            x509Certificates: Array<X509Certificate>?,
+            s: String?,
+            socket: Socket?,
         ) = Unit
 
         @Throws(CertificateException::class)
         override fun checkServerTrusted(
-            x509Certificates: Array<X509Certificate>,
-            s: String,
-            socket: Socket,
+            x509Certificates: Array<X509Certificate>?,
+            s: String?,
+            socket: Socket?,
         ) = Unit
 
         @Throws(CertificateException::class)
         override fun checkClientTrusted(
-            x509Certificates: Array<X509Certificate>,
-            s: String,
-            sslEngine: SSLEngine,
+            x509Certificates: Array<X509Certificate>?,
+            s: String?,
+            sslEngine: SSLEngine?,
         ) = Unit
 
         @Throws(CertificateException::class)
         override fun checkServerTrusted(
-            x509Certificates: Array<X509Certificate>,
-            s: String,
-            sslEngine: SSLEngine,
+            x509Certificates: Array<X509Certificate>?,
+            s: String?,
+            sslEngine: SSLEngine?,
         ) = Unit
 
         companion object {

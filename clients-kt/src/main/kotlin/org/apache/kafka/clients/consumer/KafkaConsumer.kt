@@ -19,7 +19,6 @@ package org.apache.kafka.clients.consumer
 
 import java.time.Duration
 import java.util.Collections
-import java.util.Objects
 import java.util.OptionalLong
 import java.util.Properties
 import java.util.concurrent.atomic.AtomicInteger
@@ -934,7 +933,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
         this.valueDeserializer = valueDeserializer
         this.fetcher = fetcher
         isolationLevel = IsolationLevel.READ_UNCOMMITTED
-        this.interceptors = Objects.requireNonNull(interceptors)
+        this.interceptors = interceptors
         this.time = time
         this.client = client
         this.metrics = metrics

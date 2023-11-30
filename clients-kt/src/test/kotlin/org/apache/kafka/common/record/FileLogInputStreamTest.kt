@@ -379,24 +379,28 @@ class FileLogInputStreamTest {
         val magic = args.magic
         assertEquals(magic, batch!!.magic())
         assertEquals(compression, batch.compressionType())
+
         if (magic == RecordBatch.MAGIC_VALUE_V0) {
             assertEquals(TimestampType.NO_TIMESTAMP_TYPE, batch.timestampType())
         } else {
             assertEquals(TimestampType.CREATE_TIME, batch.timestampType())
             assertEquals(maxTimestamp, batch.maxTimestamp())
         }
+
         assertEquals(baseOffset + records.size - 1, batch.lastOffset())
         if (magic >= RecordBatch.MAGIC_VALUE_V2) assertEquals(records.size, batch.countOrNull())
         assertEquals(baseOffset, batch.baseOffset())
         assertTrue(batch.isValid)
+
         val batchRecords = batch.toList()
-        for (i in records.indices) {
+        records.forEachIndexed { i, record ->
             assertEquals(baseOffset + i, batchRecords[i].offset())
-            assertEquals(records[i].key, batchRecords[i].key())
-            assertEquals(records[i].value, batchRecords[i].value())
+            assertEquals(record.key, batchRecords[i].key())
+            assertEquals(record.value, batchRecords[i].value())
+
             if (magic == RecordBatch.MAGIC_VALUE_V0)
                 assertEquals(RecordBatch.NO_TIMESTAMP, batchRecords[i].timestamp())
-            else assertEquals(records[i].timestamp, batchRecords[i].timestamp())
+            else assertEquals(record.timestamp, batchRecords[i].timestamp())
         }
     }
 

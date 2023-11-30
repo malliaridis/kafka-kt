@@ -62,15 +62,14 @@ import org.apache.kafka.common.utils.Time
 import org.junit.jupiter.api.Test
 import org.mockito.Answers
 import org.mockito.ArgumentCaptor
-import org.mockito.ArgumentMatchers.anyMap
 import org.mockito.MockedStatic
 import org.mockito.Mockito.mockStatic
-import org.mockito.Mockito.`when`
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 import org.mockito.stubbing.Answer
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -92,7 +91,7 @@ class SaslServerAuthenticatorTest {
             mechanism = ScramMechanism.SCRAM_SHA_256.mechanismName,
             metadataRegistry = DefaultChannelMetadataRegistry()
         )
-        `when`(transportLayer.read(any<ByteBuffer>())).then { invocation ->
+        whenever(transportLayer.read(any<ByteBuffer>())).then { invocation ->
             invocation.getArgument<ByteBuffer>(0)
                 .putInt(BrokerSecurityConfigs.DEFAULT_SASL_SERVER_MAX_RECEIVE_SIZE + 1)
             4
@@ -121,7 +120,7 @@ class SaslServerAuthenticatorTest {
             correlationId = 13243,
         )
         val headerBuffer = serializeRequestHeader(header)
-        `when`(transportLayer.read(any<ByteBuffer>())).then { invocation ->
+        whenever(transportLayer.read(any<ByteBuffer>())).then { invocation ->
             invocation.getArgument<ByteBuffer>(0).putInt(headerBuffer.remaining())
             4
         }.then { invocation ->
@@ -175,7 +174,7 @@ class SaslServerAuthenticatorTest {
                     mockRequest(saslHandshakeRequest(mechanism), transportLayer)
                     authenticator.authenticate()
 
-                    `when`(saslServer.isComplete).thenReturn(false).thenReturn(true)
+                    whenever(saslServer.isComplete).thenReturn(false).thenReturn(true)
                     mockRequest(saslAuthenticateRequest(), transportLayer)
                     authenticator.authenticate()
 
@@ -224,7 +223,7 @@ class SaslServerAuthenticatorTest {
                     mockRequest(saslHandshakeRequest(mechanism), transportLayer)
                     authenticator.authenticate()
 
-                    `when`(saslServer.isComplete).thenReturn(false).thenReturn(true)
+                    whenever(saslServer.isComplete).thenReturn(false).thenReturn(true)
                     mockRequest(saslAuthenticateRequest(), transportLayer)
                     authenticator.authenticate()
 
@@ -273,7 +272,7 @@ class SaslServerAuthenticatorTest {
                     mockRequest(saslHandshakeRequest(mechanism), transportLayer)
                     authenticator.authenticate()
 
-                    `when`(saslServer.isComplete).thenReturn(false).thenReturn(true)
+                    whenever(saslServer.isComplete).thenReturn(false).thenReturn(true)
                     mockRequest(saslAuthenticateRequest(), transportLayer)
                     authenticator.authenticate()
 
@@ -315,10 +314,10 @@ class SaslServerAuthenticatorTest {
         time: Time,
         tokenExpirationDuration: Duration,
     ): MockedStatic<*> {
-        `when`(saslServer.mechanismName).thenReturn(mechanism)
-        `when`(saslServer.evaluateResponse(any())).thenReturn(byteArrayOf())
+        whenever(saslServer.mechanismName).thenReturn(mechanism)
+        whenever(saslServer.evaluateResponse(any())).thenReturn(byteArrayOf())
         val millisToExpiration = tokenExpirationDuration.toMillis()
-        `when`(saslServer.getNegotiatedProperty(eq(SaslInternalConfigs.CREDENTIAL_LIFETIME_MS_SASL_NEGOTIATED_PROPERTY_KEY)))
+        whenever(saslServer.getNegotiatedProperty(eq(SaslInternalConfigs.CREDENTIAL_LIFETIME_MS_SASL_NEGOTIATED_PROPERTY_KEY)))
             .thenReturn(time.milliseconds() + millisToExpiration)
         return mockStatic(
             Sasl::class.java,
@@ -328,12 +327,12 @@ class SaslServerAuthenticatorTest {
 
     private fun mockKafkaPrincipal(principalType: String, name: String): MockedStatic<*> {
         val kafkaPrincipalBuilder = mock<KafkaPrincipalBuilder>()
-        `when`(kafkaPrincipalBuilder.build(any())).thenReturn(KafkaPrincipal(principalType, name))
+        whenever(kafkaPrincipalBuilder.build(any())).thenReturn(KafkaPrincipal(principalType, name))
 
         val channelBuilders = mockStatic(ChannelBuilders::class.java, Answers.RETURNS_MOCKS)
-        channelBuilders.`when`<Any> {
+        channelBuilders.`when`<KafkaPrincipalBuilder> {
             createPrincipalBuilder(
-                configs = anyMap<String, Any?>(),
+                configs = any<Map<String, String?>>(),
                 kerberosShortNamer = any<KerberosShortNamer>(),
                 sslPrincipalMapper = any<SslPrincipalMapper>(),
             )
@@ -384,9 +383,9 @@ class SaslServerAuthenticatorTest {
     @Throws(IOException::class)
     private fun mockTransportLayer(): TransportLayer {
         val transportLayer = mock<TransportLayer>(defaultAnswer = Answers.RETURNS_DEEP_STUBS)
-        `when`(transportLayer.socketChannel()!!.socket().getInetAddress())
+        whenever(transportLayer.socketChannel()!!.socket().getInetAddress())
             .thenReturn(InetAddress.getLoopbackAddress())
-        `when`(transportLayer.write(any<Array<ByteBuffer>>())).thenReturn(Long.MAX_VALUE)
+        whenever(transportLayer.write(any<Array<ByteBuffer>>())).thenReturn(Long.MAX_VALUE)
 
         return transportLayer
     }
@@ -410,7 +409,7 @@ class SaslServerAuthenticatorTest {
         val headerBuffer = serializeRequestHeader(header)
         val requestBuffer = request.serialize()
         requestBuffer.rewind()
-        `when`(transportLayer.read(any<ByteBuffer>())).then { invocation ->
+        whenever(transportLayer.read(any<ByteBuffer>())).then { invocation ->
             invocation.getArgument<ByteBuffer>(0)
                 .putInt(headerBuffer.remaining() + requestBuffer.remaining())
             4

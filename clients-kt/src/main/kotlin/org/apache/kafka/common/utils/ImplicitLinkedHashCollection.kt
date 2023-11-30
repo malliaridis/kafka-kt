@@ -149,12 +149,11 @@ open class ImplicitLinkedHashCollection<E : ImplicitLinkedHashCollection.Element
 
         val slot = addInternal(element, elements)
 
-        if (slot >= 0) {
+        return if (slot >= 0) {
             addToListTail(head, elements, slot)
             _size++
-            return true
-        }
-        return false
+            true
+        } else false
     }
 
     fun mustAdd(newElement: E) {
@@ -326,13 +325,13 @@ open class ImplicitLinkedHashCollection<E : ImplicitLinkedHashCollection.Element
      * definition of equality, because the collections are still equal in terms of the order and
      * value of each element.
      *
-     * @param o object to be compared for equality with this collection
+     * @param other object to be compared for equality with this collection
      * @return true is the specified object is equal to this collection
      */
-    override fun equals(o: Any?): Boolean {
-        if (o === this) return true
-        if (o !is ImplicitLinkedHashCollection<*>) return false
-        return valuesList() == o.valuesList()
+    override fun equals(other: Any?): Boolean {
+        if (other === this) return true
+        if (other !is ImplicitLinkedHashCollection<*>) return false
+        return valuesList() == other.valuesList()
     }
 
     /**
@@ -360,7 +359,7 @@ open class ImplicitLinkedHashCollection<E : ImplicitLinkedHashCollection.Element
      *
      * @return a list view of the elements contained in this collection
      */
-    fun valuesList(): List<E> = ImplicitLinkedHashCollectionListView()
+    fun valuesList(): MutableList<E> = ImplicitLinkedHashCollectionListView()
 
     /**
      * Returns a [Set] view of the elements contained in the collection. The set is backed by the
@@ -370,7 +369,7 @@ open class ImplicitLinkedHashCollection<E : ImplicitLinkedHashCollection.Element
      *
      * @return a set view of the elements contained in this collection
      */
-    fun valuesSet(): Set<E> = ImplicitLinkedHashCollectionSetView()
+    fun valuesSet(): MutableSet<E> = ImplicitLinkedHashCollectionSetView()
 
     fun sort(comparator: Comparator<E>) {
         val array = ArrayList<E>(size)

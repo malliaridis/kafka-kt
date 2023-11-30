@@ -1404,7 +1404,6 @@ open class KafkaProducer<K, V> : Producer<K, V> {
      * is called after producer close
      */
     override fun partitionsFor(topic: String): List<PartitionInfo> {
-        Objects.requireNonNull(topic, "topic cannot be null")
         try {
             return waitOnMetadata(
                 topic = topic,

@@ -38,7 +38,7 @@ class DescribeClientQuotasResponse(
         }
 
         val result: Map<ClientQuotaEntity, Map<String, Double>> =
-            data.entries.associate { entry ->
+            data.entries?.associate { entry ->
                 val entityMap = entry.entity.associateBy(
                     keySelector = { it.entityType },
                     valueTransform = { it.entityName },

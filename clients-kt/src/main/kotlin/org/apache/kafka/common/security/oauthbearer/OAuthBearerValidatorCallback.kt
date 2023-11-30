@@ -45,12 +45,7 @@ class OAuthBearerValidatorCallback(val tokenValue: String) : Callback {
      * value. All error values are cleared. When setting the token, value is mandatory.
      */
     var token: OAuthBearerToken? = null
-        set(value) {
-            field = value!!
-            errorStatus = null
-            errorScope = null
-            errorOpenIDConfiguration = null
-        }
+        private set
 
     var errorStatus: String? = null
         private set
@@ -135,7 +130,14 @@ class OAuthBearerValidatorCallback(val tokenValue: String) : Callback {
      */
     @Deprecated("Use property instead")
     fun token(token: OAuthBearerToken) {
+        this.setToken(token)
+    }
+
+    fun setToken(token: OAuthBearerToken) {
         this.token = token
+        errorStatus = null
+        errorScope = null
+        errorOpenIDConfiguration = null
     }
 
     /**
@@ -155,7 +157,7 @@ class OAuthBearerValidatorCallback(val tokenValue: String) : Callback {
         errorOpenIDConfiguration: String? = null
     ) {
         require(errorStatus.isNotEmpty()) { "error status must not be empty" }
-        token = null // set token since error fields are reset by setter.
+        this.token = null // set token since error fields are reset by setter.
         this.errorStatus = errorStatus
         this.errorScope = errorScope
         this.errorOpenIDConfiguration = errorOpenIDConfiguration

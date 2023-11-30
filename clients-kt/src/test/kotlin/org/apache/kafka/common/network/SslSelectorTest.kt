@@ -300,7 +300,7 @@ abstract class SslSelectorTest : SelectorTest() {
         )
         //the initial channel builder is for clients, we need a server one
         val tlsProtocol = "TLSv1.2"
-        val trustStoreFile = tempFile("truststore", ".jks")
+        val trustStoreFile = tempFile(prefix = "truststore", suffix = ".jks")
         val sslServerConfigs: Map<String, Any?> = SslConfigsBuilder(Mode.SERVER)
             .tlsProtocol(tlsProtocol)
             .createNewTrustStore(trustStoreFile)

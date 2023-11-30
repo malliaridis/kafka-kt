@@ -181,7 +181,6 @@ open class Metadata(
      */
     @Synchronized
     fun updateLastSeenEpochIfNewer(topicPartition: TopicPartition, leaderEpoch: Int): Boolean {
-        Objects.requireNonNull(topicPartition, "TopicPartition cannot be null")
         require(leaderEpoch >= 0) { "Invalid leader epoch $leaderEpoch (must be non-negative)" }
         val oldEpoch = lastSeenLeaderEpochs[topicPartition]
         log.trace(

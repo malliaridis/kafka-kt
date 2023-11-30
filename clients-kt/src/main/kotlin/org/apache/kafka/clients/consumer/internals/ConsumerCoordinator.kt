@@ -1242,13 +1242,9 @@ class ConsumerCoordinator(
 
         override fun onComplete(
             offsets: Map<TopicPartition, OffsetAndMetadata>?,
-            exception: Exception?
+            exception: Exception?,
         ) {
-            if (exception != null) log.error(
-                "Offset commit with offsets {} failed",
-                offsets,
-                exception,
-            )
+            if (exception != null) log.error("Offset commit with offsets {} failed", offsets, exception)
         }
     }
 
@@ -1337,9 +1333,9 @@ class ConsumerCoordinator(
 
     private inner class OffsetCommitResponseHandler(
         private val offsets: Map<TopicPartition, OffsetAndMetadata>,
-        generation: Generation
-    ) :
-        CoordinatorResponseHandler<OffsetCommitResponse, Unit>(generation) {
+        generation: Generation,
+    ) : CoordinatorResponseHandler<OffsetCommitResponse, Unit>(generation) {
+
         override fun handle(response: OffsetCommitResponse, future: RequestFuture<Unit>) {
             sensors.commitSensor.record(this.response!!.requestLatencyMs.toDouble())
             val unauthorizedTopics = mutableSetOf<String>()

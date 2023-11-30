@@ -99,10 +99,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
 import kotlin.test.assertTrue
-import org.mockito.AdditionalMatchers.geq
-import org.mockito.ArgumentMatchers
-import org.mockito.ArgumentMatchers.eq
-import org.mockito.Mockito
 import java.nio.ByteBuffer
 import java.util.*
 import java.util.concurrent.ExecutionException
@@ -110,6 +106,14 @@ import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
+import org.mockito.kotlin.any
+import org.mockito.kotlin.argThat
+import org.mockito.kotlin.atLeastOnce
+import org.mockito.kotlin.eq
+import org.mockito.kotlin.inOrder
+import org.mockito.kotlin.spy
+import org.mockito.kotlin.times
+import org.mockito.kotlin.verify
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertEquals
@@ -3828,31 +3832,24 @@ class SenderTest {
     @Test
     @Throws(Exception::class)
     fun testResetNextBatchExpiry() {
-        client = Mockito.spy(MockClient(time, metadata))
+        client = spy(MockClient(time, metadata))
         setupWithTransactionState(transactionManager = null)
         appendToAccumulator(tp0, 0L, "key", "value")
         sender.runOnce()
         sender.runOnce()
         time.setCurrentTimeMs(time.milliseconds() + accumulator.getDeliveryTimeoutMs() + 1)
         sender.runOnce()
-        val inOrder = Mockito.inOrder(client)
-        inOrder.verify(client, Mockito.atLeastOnce())
-            .ready(ArgumentMatchers.any(), ArgumentMatchers.anyLong())
-        inOrder.verify(client, Mockito.atLeastOnce())
-            .newClientRequest(
-                ArgumentMatchers.anyString(),
-                ArgumentMatchers.any(),
-                ArgumentMatchers.anyLong(),
-                ArgumentMatchers.anyBoolean(),
-                ArgumentMatchers.anyInt(),
-                ArgumentMatchers.any()
-            )
-        inOrder.verify(client, Mockito.atLeastOnce())
-            .send(ArgumentMatchers.any(), ArgumentMatchers.anyLong())
-        inOrder.verify(client).poll(eq(0L), ArgumentMatchers.anyLong())
+        val inOrder = inOrder(client)
+        inOrder.verify(client, atLeastOnce())
+            .ready(any(), any())
+        inOrder.verify(client, atLeastOnce())
+            .newClientRequest(any(), any(), any(), any(), any(), any())
+        inOrder.verify(client, atLeastOnce())
+            .send(any(), any())
+        inOrder.verify(client).poll(eq(0L), any())
         inOrder.verify(client)
-            .poll(eq(accumulator.getDeliveryTimeoutMs()), ArgumentMatchers.anyLong())
-        inOrder.verify(client).poll(geq(1L), ArgumentMatchers.anyLong())
+            .poll(eq(accumulator.getDeliveryTimeoutMs()), any())
+        inOrder.verify(client).poll(argThat { this >= 1L }, any())
     }
 
     @Suppress("Deprecation")
@@ -4320,7 +4317,7 @@ class SenderTest {
 
     @Test
     fun testDoNotPollWhenNoRequestSent() {
-        client = Mockito.spy(MockClient(time, metadata))
+        client = spy(MockClient(time, metadata))
         val txnManager =
             TransactionManager(
                 logContext = logContext,
@@ -4334,8 +4331,8 @@ class SenderTest {
         doInitTransactions(txnManager, producerIdAndEpoch)
 
         // doInitTransactions calls sender.doOnce three times, only two requests are sent, so we should only poll twice
-        Mockito.verify(client, Mockito.times(2))
-            .poll(eq(RETRY_BACKOFF_MS), ArgumentMatchers.anyLong())
+        verify(client, times(2))
+            .poll(eq(RETRY_BACKOFF_MS), any())
     }
 
     @Test

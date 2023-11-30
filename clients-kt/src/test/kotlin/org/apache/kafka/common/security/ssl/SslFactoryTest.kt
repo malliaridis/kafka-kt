@@ -284,7 +284,7 @@ abstract class SslFactoryTest(private val tlsProtocol: String) {
             message = "SSL context recreated unnecessarily",
         )
         assertFalse(sslFactory.createSslEngine("localhost", 0).useClientMode)
-        val newTrustStoreFile = tempFile("truststore", ".jks")
+        val newTrustStoreFile = tempFile(prefix = "truststore", suffix = ".jks")
 
         sslConfig = sslConfigsBuilder(Mode.SERVER)
             .createNewTrustStore(newTrustStoreFile)
@@ -412,7 +412,7 @@ abstract class SslFactoryTest(private val tlsProtocol: String) {
     private fun verifyKeystoreVerifiableUsingTruststore(usePem: Boolean, tlsProtocol: String) {
         val trustStoreFile1 = if (usePem) null else tempFile(prefix = "truststore1", suffix = ".jks")
         val sslConfig1 = sslConfigsBuilder(Mode.SERVER)
-            .createNewTrustStore(trustStoreFile1!!)
+            .createNewTrustStore(trustStoreFile1)
             .usePem(usePem)
             .build()
         val sslFactory = SslFactory(
@@ -424,7 +424,7 @@ abstract class SslFactoryTest(private val tlsProtocol: String) {
 
         val trustStoreFile2 = if (usePem) null else tempFile(prefix = "truststore2", suffix = ".jks")
         val sslConfig2 = sslConfigsBuilder(Mode.SERVER)
-            .createNewTrustStore(trustStoreFile2!!)
+            .createNewTrustStore(trustStoreFile2)
             .usePem(usePem)
             .build()
         // Verify that `createSSLContext` fails even if certificate from new keystore is trusted by
@@ -449,16 +449,16 @@ abstract class SslFactoryTest(private val tlsProtocol: String) {
     }
 
     @Throws(Exception::class)
-    private fun verifyCertificateEntriesValidation(usePem: Boolean, tlsProtocol: String) {
+    private fun verifyCertificateEntriesValidation(usePem: Boolean, tlsProtocol: String?) {
         val trustStoreFile = if (usePem) null else tempFile(prefix = "truststore", suffix = ".jks")
         val serverSslConfig = sslConfigsBuilder(Mode.SERVER)
-            .createNewTrustStore(trustStoreFile!!)
+            .createNewTrustStore(trustStoreFile)
             .usePem(usePem)
             .build()
 
         val newTrustStoreFile = if (usePem) null else tempFile(prefix = "truststore", suffix = ".jks")
         val newCnConfig = sslConfigsBuilder(Mode.SERVER)
-            .createNewTrustStore(newTrustStoreFile!!)
+            .createNewTrustStore(newTrustStoreFile)
             .cn("Another CN")
             .usePem(usePem)
             .build()

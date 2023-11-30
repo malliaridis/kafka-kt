@@ -69,7 +69,7 @@ class CertStores private constructor(
     init {
         val name = if (server) "server" else "client"
         val mode = if (server) Mode.SERVER else Mode.CLIENT
-        val truststoreFile = if (usePem) null else tempFile(name + "TS", ".jks")
+        val truststoreFile = if (usePem) null else tempFile(prefix = name + "TS", suffix = ".jks")
         sslConfig = SslConfigsBuilder(mode)
             .useClientCert(!server)
             .certAlias(name)

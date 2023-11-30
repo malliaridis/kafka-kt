@@ -2437,7 +2437,8 @@ class SaslAuthenticatorTest {
          * injected to start re-authentication will be echoed back to the client instead
          * of the data that the client explicitly sent, and then the client will not
          * recognize that data and will throw an assertion error.
-         */saslServerConfigs[BrokerSecurityConfigs.CONNECTIONS_MAX_REAUTH_MS] = 1.1 * 1000L / 0.85.toLong()
+         */
+        saslServerConfigs[BrokerSecurityConfigs.CONNECTIONS_MAX_REAUTH_MS] = (1.1 * 1000L / 0.85).toLong()
         server = createEchoServer(securityProtocol)
         createClientConnection(securityProtocol, node)
         checkClientConnection(node)

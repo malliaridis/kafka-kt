@@ -242,7 +242,7 @@ object TestSslUtils {
 
         if (trustCerts != null) {
             if (tsPath == null) {
-                tsPath = TestUtils.tempFile("truststore", ".pem").path
+                tsPath = TestUtils.tempFile(prefix = "truststore", suffix = ".pem").path
                 sslProps[SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG] = tsPath
             }
             sslProps[SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG] = DefaultSslEngineFactory.PEM_TYPE
@@ -270,7 +270,7 @@ object TestSslUtils {
 
         if (certChain != null) {
             if (ksPath == null) {
-                ksPath = TestUtils.tempFile("keystore", ".pem").path
+                ksPath = TestUtils.tempFile(prefix = "keystore", suffix = ".pem").path
                 sslProps[SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG] = ksPath
             }
             sslProps[SslConfigs.SSL_KEYSTORE_TYPE_CONFIG] = DefaultSslEngineFactory.PEM_TYPE
@@ -557,7 +557,7 @@ object TestSslUtils {
             val certs: MutableMap<String, X509Certificate> = HashMap()
             var keyStoreFile: File? = null
             if (mode === Mode.CLIENT && useClientCert) {
-                keyStoreFile = TestUtils.tempFile("clientKS", ".jks")
+                keyStoreFile = TestUtils.tempFile(prefix = "clientKS", suffix = ".jks")
                 val cKP = generateKeyPair(algorithm)
                 val cCert = certBuilder.generate("CN=$cn, O=A client", cKP)
                 createKeyStore(
@@ -570,7 +570,7 @@ object TestSslUtils {
                 )
                 certs[certAlias] = cCert
             } else if (mode === Mode.SERVER) {
-                keyStoreFile = TestUtils.tempFile("serverKS", ".jks")
+                keyStoreFile = TestUtils.tempFile(prefix = "serverKS", suffix = ".jks")
                 val sKP = generateKeyPair(algorithm)
                 val sCert = certBuilder.generate("CN=$cn, O=A server", sKP)
                 createKeyStore(

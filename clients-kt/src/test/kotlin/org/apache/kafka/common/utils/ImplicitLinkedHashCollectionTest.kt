@@ -35,15 +35,15 @@ import kotlin.test.assertTrue
  */
 @Timeout(120)
 class ImplicitLinkedHashCollectionTest {
-    
+
     class TestElement : ImplicitLinkedHashCollection.Element {
-        
+
         private var prev = ImplicitLinkedHashCollection.INVALID_INDEX
-        
+
         private var next = ImplicitLinkedHashCollection.INVALID_INDEX
-        
+
         internal val key: Int
-        
+
         internal val value: Int
 
         constructor(key: Int) {
@@ -71,10 +71,7 @@ class ImplicitLinkedHashCollectionTest {
         override fun elementKeysAreEqual(other: Any?): Boolean {
             return if (this === other) true
             else if (other == null || other.javaClass != TestElement::class.java) false
-            else {
-                val that = other as TestElement
-                key == that.key
-            }
+            else key == (other as TestElement).key
         }
 
         override fun equals(other: Any?): Boolean {
@@ -171,7 +168,7 @@ class ImplicitLinkedHashCollectionTest {
         coll.add(TestElement(3))
 
         // Removal from set is reflected in collection
-        val set = coll.valuesSet().toMutableSet()
+        val set = coll.valuesSet()
         set.remove(TestElement(1))
         assertFalse(coll.contains(TestElement(1)))
         assertEquals(2, coll.size)
@@ -220,7 +217,7 @@ class ImplicitLinkedHashCollectionTest {
         coll.add(TestElement(3))
 
         // Removal from list is reflected in collection
-        val list = coll.valuesList().toMutableList()
+        val list = coll.valuesList()
         list.removeAt(1)
         assertTrue(coll.contains(TestElement(1)))
         assertFalse(coll.contains(TestElement(2)))
@@ -487,24 +484,27 @@ class ImplicitLinkedHashCollectionTest {
     }
 
     private fun addRandomElement(
-        random: Random, existing: LinkedHashSet<Int>,
+        random: Random,
+        existing: LinkedHashSet<Int>,
         set: ImplicitLinkedHashCollection<TestElement>,
     ) {
         var next: Int
-        do { next = random.nextInt() }
-        while (existing.contains(next))
+        do {
+            next = random.nextInt()
+        } while (existing.contains(next))
+
         existing.add(next)
         set.add(TestElement(next))
     }
 
-    private fun removeRandomElement(random: Random, existing: MutableCollection<Int>) {
+    private fun removeRandomElement(random: Random, existing: MutableCollection<*>) {
         val removeIdx = random.nextInt(existing.size)
         val iter = existing.iterator()
         var element: Int? = null
         for (i in 0..removeIdx) {
-            element = iter.next()
+            element = iter.next() as Int
         }
-        existing.remove(element!!)
+        existing.remove(TestElement(element!!))
     }
 
     @Test

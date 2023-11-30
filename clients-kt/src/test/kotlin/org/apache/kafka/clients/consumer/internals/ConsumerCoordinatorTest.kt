@@ -70,7 +70,6 @@ import org.apache.kafka.common.protocol.types.Schema
 import org.apache.kafka.common.protocol.types.Struct
 import org.apache.kafka.common.protocol.types.Type
 import org.apache.kafka.common.record.RecordBatch
-import org.apache.kafka.common.requests.AbstractRequest
 import org.apache.kafka.common.requests.FindCoordinatorResponse
 import org.apache.kafka.common.requests.HeartbeatResponse
 import org.apache.kafka.common.requests.JoinGroupRequest
@@ -95,7 +94,6 @@ import org.apache.kafka.common.utils.Utils.mkSet
 import org.apache.kafka.test.TestUtils
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
-import org.mockito.Mockito
 import org.mockito.kotlin.argumentCaptor
 import java.nio.ByteBuffer
 import java.util.*
@@ -111,9 +109,17 @@ import kotlin.collections.HashMap
 import kotlin.collections.HashSet
 import kotlin.math.min
 import org.junit.jupiter.api.Test
+import org.mockito.kotlin.any
+import org.mockito.kotlin.clearInvocations
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
+import org.mockito.kotlin.times
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -303,7 +309,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
     @Test
     fun testPerformAssignmentShouldUpdateGroupSubscriptionAfterAssignmentIfNeeded() {
-        val mockSubscriptionState = Mockito.mock(SubscriptionState::class.java)
+        val mockSubscriptionState = mock<SubscriptionState>()
 
         // the consumer only subscribed to "topic1"
         val memberSubscriptions = mapOf(consumerId to listOf(topic1))
@@ -331,7 +337,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             val topicsCaptor = argumentCaptor<Collection<String>>()
             // groupSubscribe should be only called 1 time, which is before assignment,
             // because the assigned topics are the same as the subscribed topics
-            Mockito.verify(mockSubscriptionState, Mockito.times(1))
+            verify(mockSubscriptionState, times(1))
                 .groupSubscribe(topicsCaptor.capture())
             val capturedTopics: List<Collection<String>> = topicsCaptor.allValues
 
@@ -339,7 +345,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             val expectedTopicsGotCalled = HashSet(listOf(topic1))
             assertEquals(expectedTopicsGotCalled, capturedTopics[0])
         }
-        Mockito.clearInvocations(mockSubscriptionState)
+        clearInvocations(mockSubscriptionState)
 
         // unsubscribed topic partition assigned case: the assignment result will have partitions for
         // (1) subscribed topic: "topic1" and
@@ -358,7 +364,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             // val topicsCaptor = ArgumentCaptor.forClass<Collection<String>, Collection<String>>(MutableCollection::class.java)
             // groupSubscribe should be called 2 times, once before assignment, once after assignment
             // (because the assigned topics are not the same as the subscribed topics)
-            Mockito.verify(mockSubscriptionState, Mockito.times(2))
+            verify(mockSubscriptionState, times(2))
                 .groupSubscribe(topicsCaptor.capture())
 
             val capturedTopics: List<Collection<String>> = topicsCaptor.allValues
@@ -413,9 +419,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
     @Test
     fun testPerformAssignmentShouldValidateCooperativeAssignment() {
-        val mockSubscriptionState = Mockito.mock(
-            SubscriptionState::class.java
-        )
+        val mockSubscriptionState = mock<SubscriptionState>()
         val metadata = validateCooperativeAssignmentTestSetup()
 
         // simulate the custom cooperative assignor didn't revoke the partition first before assign to other consumer
@@ -452,19 +456,11 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
     @Test
     fun testOnLeaderElectedShouldSkipAssignment() {
-        val mockSubscriptionState = Mockito.mock(
-            SubscriptionState::class.java
-        )
-        val assignor = Mockito.mock(
-            ConsumerPartitionAssignor::class.java
-        )
+        val mockSubscriptionState = mock<SubscriptionState>()
+        val assignor = mock<ConsumerPartitionAssignor>()
         val assignorName = "mock-assignor"
-        Mockito.`when`(assignor.name()).thenReturn(assignorName)
-        Mockito.`when`(assignor.supportedProtocols()).thenReturn(
-            listOf(
-                protocol
-            )
-        )
+        whenever(assignor.name()).thenReturn(assignorName)
+        whenever(assignor.supportedProtocols()).thenReturn(listOf(protocol))
         val memberSubscriptions = mapOf(consumerId to listOf(topic1))
         val metadata: MutableList<JoinGroupResponseMember> = ArrayList()
         for (subscriptionEntry: Map.Entry<String, List<String>> in memberSubscriptions.entries) {
@@ -494,12 +490,12 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             )
             assertTrue(coordinator.isLeader)
         }
-        Mockito.verify(assignor, Mockito.never()).assign(Mockito.any(), Mockito.any())
+        verify(assignor, never()).assign(any(), any())
     }
 
     @Test
     fun testPerformAssignmentShouldSkipValidateCooperativeAssignmentForBuiltInCooperativeStickyAssignor() {
-        val mockSubscriptionState = Mockito.mock(SubscriptionState::class.java)
+        val mockSubscriptionState = mock<SubscriptionState>()
         val metadata = validateCooperativeAssignmentTestSetup()
         val assignorsWithCooperativeStickyAssignor = ArrayList(assignors)
         // create a mockPartitionAssignor with the same name as cooperative sticky assignor
@@ -714,9 +710,9 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
                 callback = { _, exception ->
                     responses.incrementAndGet()
                     val cause = exception!!.cause
-                    assertTrue(
-                        actual = cause is DisconnectException,
-                        message = "Unexpected exception cause type: ${if (cause == null) null else cause.javaClass}",
+                    assertIs<DisconnectException>(
+                        value = cause,
+                        message = "Unexpected exception cause type: ${cause?.javaClass}",
                     )
                 },
             )
@@ -760,10 +756,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             object : RequestFutureAdapter<ClientResponse, Any>() {
                 override fun onSuccess(value: ClientResponse, future: RequestFuture<Any>) = Unit
                 override fun onFailure(exception: RuntimeException, future: RequestFuture<Any>) {
-                    assertTrue(
-                        actual = exception is DisconnectException,
-                        message = "Unexpected exception type: ${exception.javaClass}"
-                    )
+                    assertIs<DisconnectException>(exception, "Unexpected exception type: ${exception.javaClass}")
                     assertTrue(coordinator.coordinatorUnknown())
                     asyncCallbackInvoked.set(true)
                 }
@@ -1042,7 +1035,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         consumerClient.poll(time.timer(0))
         assertTrue(future.isDone)
         assertTrue(future.failed())
-        assertTrue(future.exception() is DisconnectException)
+        assertIs<DisconnectException>(future.exception())
         assertTrue(coordinator.coordinatorUnknown())
     }
 
@@ -2694,8 +2687,8 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         consumerClient.pollNoWakeup() // second poll since coordinator disconnect is async
         coordinator.invokeCompletedOffsetCommitCallbacks()
         assertTrue(coordinator.coordinatorUnknown())
-        assertTrue(firstCommitCallback.exception is RetriableCommitFailedException)
-        assertTrue(secondCommitCallback.exception is RetriableCommitFailedException)
+        assertIs<RetriableCommitFailedException>(firstCommitCallback.exception)
+        assertIs<RetriableCommitFailedException>(secondCommitCallback.exception)
     }
 
     @Test
@@ -2932,8 +2925,8 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
         prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.NONE)
         coordinator.commitOffsetsAsync(
-            mapOf(t1p to OffsetAndMetadata(100L)),
-            mockOffsetCommitCallback
+            offsets = mapOf(t1p to OffsetAndMetadata(100L)),
+            callback = mockOffsetCommitCallback,
         )
         coordinator.invokeCompletedOffsetCommitCallbacks()
         assertEquals(invokedBeforeTest + 1, mockOffsetCommitCallback.invoked)
@@ -2965,8 +2958,8 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         )
         val success = AtomicBoolean(false)
         coordinator.commitOffsetsAsync(
-            mapOf(t1p to OffsetAndMetadata(100L)),
-            callback(success)
+            offsets = mapOf(t1p to OffsetAndMetadata(100L)),
+            callback = callback(success),
         )
         coordinator.invokeCompletedOffsetCommitCallbacks()
         assertTrue(success.get())
@@ -2987,7 +2980,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         )
         coordinator.invokeCompletedOffsetCommitCallbacks()
         assertEquals(invokedBeforeTest + 1, mockOffsetCommitCallback.invoked)
-        assertTrue(mockOffsetCommitCallback.exception is RetriableCommitFailedException)
+        assertIs<RetriableCommitFailedException>(mockOffsetCommitCallback.exception)
     }
 
     @Test
@@ -3005,7 +2998,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         coordinator.invokeCompletedOffsetCommitCallbacks()
         assertTrue(coordinator.coordinatorUnknown())
         assertEquals(1, cb.invoked)
-        assertTrue(cb.exception is RetriableCommitFailedException)
+        assertIs<RetriableCommitFailedException>(cb.exception)
     }
 
     @Test
@@ -3020,7 +3013,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         coordinator.invokeCompletedOffsetCommitCallbacks()
         assertTrue(coordinator.coordinatorUnknown())
         assertEquals(1, cb.invoked)
-        assertTrue(cb.exception is RetriableCommitFailedException)
+        assertIs<RetriableCommitFailedException>(cb.exception)
     }
 
     @Test
@@ -3035,7 +3028,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         coordinator.invokeCompletedOffsetCommitCallbacks()
         assertTrue(coordinator.coordinatorUnknown())
         assertEquals(1, cb.invoked)
-        assertTrue(cb.exception is RetriableCommitFailedException)
+        assertIs<RetriableCommitFailedException>(cb.exception)
     }
 
     @Test
@@ -4880,8 +4873,11 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
     }
 
     private class MockCommitCallback : OffsetCommitCallback {
+
         var invoked = 0
+
         var exception: Exception? = null
+
         override fun onComplete(
             offsets: Map<TopicPartition, OffsetAndMetadata>?,
             exception: Exception?,

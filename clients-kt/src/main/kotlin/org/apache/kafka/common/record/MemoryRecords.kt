@@ -685,14 +685,13 @@ class MemoryRecords private constructor(private val buffer: ByteBuffer) : Abstra
         ): MemoryRecords {
             if (records.isEmpty()) return EMPTY
             val sizeEstimate = estimateSizeInBytes(
-                magic,
-                (compressionType)!!,
-                listOf(*records),
+                magic = magic,
+                compressionType = compressionType!!,
+                records = records.toList(),
             )
             val bufferStream = ByteBufferOutputStream(sizeEstimate)
             var logAppendTime = RecordBatch.NO_TIMESTAMP
-            if (timestampType == TimestampType.LOG_APPEND_TIME) logAppendTime =
-                System.currentTimeMillis()
+            if (timestampType == TimestampType.LOG_APPEND_TIME) logAppendTime = System.currentTimeMillis()
             val builder = MemoryRecordsBuilder(
                 bufferStream = bufferStream,
                 magic = magic,
@@ -708,7 +707,7 @@ class MemoryRecords private constructor(private val buffer: ByteBuffer) : Abstra
                 partitionLeaderEpoch = partitionLeaderEpoch,
                 writeLimit = sizeEstimate,
             )
-            for (record: SimpleRecord in records) builder.append(record)
+            records.forEach { record -> builder.append(record) }
             return builder.build()
         }
 

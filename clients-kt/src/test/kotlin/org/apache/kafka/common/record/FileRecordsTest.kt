@@ -37,14 +37,13 @@ import org.apache.kafka.test.TestUtils.tempFile
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.mockito.ArgumentMatchers.any
-import org.mockito.ArgumentMatchers.anyLong
-import org.mockito.ArgumentMatchers.eq
-import org.mockito.Mockito.`when`
+import org.mockito.kotlin.any
 import org.mockito.kotlin.atLeastOnce
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.random.Random
@@ -57,17 +56,17 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class FileRecordsTest {
-    
+
     private val values = arrayOf(
         "abcd".toByteArray(),
         "efgh".toByteArray(),
         "ijkl".toByteArray(),
     )
-    
+
     private lateinit var fileRecords: FileRecords
-    
+
     private lateinit var time: Time
-    
+
     @BeforeEach
     @Throws(IOException::class)
     fun setup() {
@@ -86,7 +85,7 @@ class FileRecordsTest {
     fun testAppendProtectsFromOverflow() {
         val fileMock = mock<File>()
         val fileChannelMock = mock<FileChannel>()
-        `when`(fileChannelMock.size()).thenReturn(Int.MAX_VALUE.toLong())
+        whenever(fileChannelMock.size()).thenReturn(Int.MAX_VALUE.toLong())
         val records = FileRecords(
             file = fileMock,
             channel = fileChannelMock,
@@ -102,7 +101,7 @@ class FileRecordsTest {
     fun testOpenOversizeFile() {
         val fileMock = mock<File>()
         val fileChannelMock = mock<FileChannel>()
-        `when`(fileChannelMock.size()).thenReturn(Int.MAX_VALUE + 5L)
+        whenever(fileChannelMock.size()).thenReturn(Int.MAX_VALUE + 5L)
         assertFailsWith<KafkaException> {
             FileRecords(
                 file = fileMock,
@@ -338,8 +337,8 @@ class FileRecordsTest {
     @Throws(IOException::class)
     fun testTruncateNotCalledIfSizeIsSameAsTargetSize() {
         val channelMock = mock<FileChannel>()
-        `when`(channelMock.size()).thenReturn(42L)
-        `when`(channelMock.position(42L)).thenReturn(null)
+        whenever(channelMock.size()).thenReturn(42L)
+        whenever(channelMock.position(42L)).thenReturn(null)
         val fileRecords = FileRecords(
             file = tempFile(),
             channel = channelMock,
@@ -349,7 +348,7 @@ class FileRecordsTest {
         )
         fileRecords.truncateTo(42)
         verify(channelMock, atLeastOnce()).size()
-        verify(channelMock, times(0)).truncate(anyLong())
+        verify(channelMock, times(0)).truncate(any())
     }
 
     /**
@@ -360,7 +359,7 @@ class FileRecordsTest {
     @Throws(IOException::class)
     fun testTruncateNotCalledIfSizeIsBiggerThanTargetSize() {
         val channelMock = mock<FileChannel>()
-        `when`(channelMock.size()).thenReturn(42L)
+        whenever(channelMock.size()).thenReturn(42L)
         val fileRecords = FileRecords(
             file = tempFile(),
             channel = channelMock,
@@ -381,8 +380,8 @@ class FileRecordsTest {
     @Throws(IOException::class)
     fun testTruncateIfSizeIsDifferentToTargetSize() {
         val channelMock = mock<FileChannel>()
-        `when`(channelMock.size()).thenReturn(42L)
-        `when`(channelMock.truncate(anyLong())).thenReturn(channelMock)
+        whenever(channelMock.size()).thenReturn(42L)
+        whenever(channelMock.truncate(any())).thenReturn(channelMock)
         val fileRecords = FileRecords(
             file = tempFile(),
             channel = channelMock,
@@ -696,13 +695,13 @@ class FileRecordsTest {
 
         // Firstly we wrote some of the data
         fileRecords.writeTo(channel, 0, firstWritten.toInt())
-        verify(channel).transferFrom(any(), anyLong(), eq(firstWritten))
+        verify(channel).transferFrom(any(), any(), eq(firstWritten))
 
         // Ensure (length > size - firstWritten)
         val secondWrittenLength = size - firstWritten.toInt() + 1
         fileRecords.writeTo(channel, firstWritten, secondWrittenLength)
         // But we still only write (size - firstWritten), which is not fulfilled in the old version
-        verify(channel).transferFrom(any(), anyLong(), eq(size - firstWritten))
+        verify(channel).transferFrom(any(), any(), eq(size - firstWritten))
     }
 
     @Throws(IOException::class)

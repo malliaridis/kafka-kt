@@ -17,6 +17,10 @@
 
 package org.apache.kafka.clients.consumer.internals
 
+import java.io.Closeable
+import java.nio.ByteBuffer
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 import org.apache.kafka.clients.ClientResponse
 import org.apache.kafka.clients.GroupRebalanceConfig
 import org.apache.kafka.common.KafkaException
@@ -70,10 +74,6 @@ import org.apache.kafka.common.utils.Time
 import org.apache.kafka.common.utils.Timer
 import org.apache.kafka.common.utils.Utils
 import org.slf4j.Logger
-import java.io.Closeable
-import java.nio.ByteBuffer
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.max
 
 /**
@@ -145,10 +145,6 @@ abstract class AbstractCoordinator(
     private var lastTimeOfConnectionMs = -1L
 
     protected var state = MemberState.UNJOINED
-
-    // Kotlin migration note: obj is a workaround for synchronization (until coroutines are
-    // introduced)
-    val obj = Object()
 
     init {
         requireNotNull(rebalanceConfig.groupId) {
@@ -238,8 +234,9 @@ abstract class AbstractCoordinator(
      * @param timer Timer bounding how long this method can block
      * @return `true` If coordinator discovery and initial connection succeeded, `false` otherwise
      */
-    fun ensureCoordinatorReady(timer: Timer): Boolean = synchronized(obj) {
-        ensureCoordinatorReady(timer, false)
+    @Synchronized
+    fun ensureCoordinatorReady(timer: Timer): Boolean {
+        return ensureCoordinatorReady(timer, false)
     }
 
     /**
@@ -249,50 +246,52 @@ abstract class AbstractCoordinator(
      *
      * @return `true` if coordinator discovery and initial connection succeeded, `false` otherwise
      */
-    fun ensureCoordinatorReadyAsync(): Boolean = synchronized(obj) {
-        ensureCoordinatorReady(time.timer(0), true)
+    @Synchronized
+    fun ensureCoordinatorReadyAsync(): Boolean {
+        return ensureCoordinatorReady(time.timer(0), true)
     }
 
-    private fun ensureCoordinatorReady(timer: Timer, disableWakeup: Boolean): Boolean =
-        synchronized(obj) {
-            if (!coordinatorUnknown()) return true
-            do {
-                fatalFindCoordinatorException?.let { exception ->
-                    fatalFindCoordinatorException = null
-                    throw exception
-                }
+    @Synchronized
+    private fun ensureCoordinatorReady(timer: Timer, disableWakeup: Boolean): Boolean {
+        if (!coordinatorUnknown()) return true
+        do {
+            fatalFindCoordinatorException?.let { exception ->
+                fatalFindCoordinatorException = null
+                throw exception
+            }
 
-                val future = lookupCoordinator()
-                client.poll(future, timer, disableWakeup)
-                if (!future.isDone) {
-                    // ran out of time
-                    break
+            val future = lookupCoordinator()
+            client.poll(future, timer, disableWakeup)
+            if (!future.isDone) {
+                // ran out of time
+                break
+            }
+            var fatalException: RuntimeException? = null
+            if (future.failed()) {
+                if (future.isRetriable) {
+                    log.debug(
+                        "Coordinator discovery failed, refreshing metadata",
+                        future.exception()
+                    )
+                    client.awaitMetadataUpdate(timer)
+                } else {
+                    fatalException = future.exception()
+                    log.info("FindCoordinator request hit fatal exception", fatalException)
                 }
-                var fatalException: RuntimeException? = null
-                if (future.failed()) {
-                    if (future.isRetriable) {
-                        log.debug(
-                            "Coordinator discovery failed, refreshing metadata",
-                            future.exception()
-                        )
-                        client.awaitMetadataUpdate(timer)
-                    } else {
-                        fatalException = future.exception()
-                        log.info("FindCoordinator request hit fatal exception", fatalException)
-                    }
-                } else if (coordinator?.let { client.isUnavailable(it) } == true) {
-                    // we found the coordinator, but the connection has failed, so mark it dead and
-                    // backoff before retrying discovery
-                    markCoordinatorUnknown("coordinator unavailable")
-                    timer.sleep(rebalanceConfig.retryBackoffMs!!)
-                }
-                clearFindCoordinatorFuture()
-                if (fatalException != null) throw fatalException
-            } while (coordinatorUnknown() && timer.isNotExpired)
-            return !coordinatorUnknown()
-        }
+            } else if (coordinator?.let { client.isUnavailable(it) } == true) {
+                // we found the coordinator, but the connection has failed, so mark it dead and
+                // backoff before retrying discovery
+                markCoordinatorUnknown("coordinator unavailable")
+                timer.sleep(rebalanceConfig.retryBackoffMs!!)
+            }
+            clearFindCoordinatorFuture()
+            if (fatalException != null) throw fatalException
+        } while (coordinatorUnknown() && timer.isNotExpired)
+        return !coordinatorUnknown()
+    }
 
-    fun lookupCoordinator(): RequestFuture<Unit> = synchronized(obj) {
+    @Synchronized
+    fun lookupCoordinator(): RequestFuture<Unit> {
         if (findCoordinatorFuture == null) {
             // find a node to ask about the coordinator
             val node = client.leastLoadedNode()
@@ -304,7 +303,8 @@ abstract class AbstractCoordinator(
         return findCoordinatorFuture!!
     }
 
-    private fun clearFindCoordinatorFuture() = synchronized(obj) {
+    @Synchronized
+    private fun clearFindCoordinatorFuture() {
         findCoordinatorFuture = null
     }
 
@@ -314,7 +314,8 @@ abstract class AbstractCoordinator(
      *
      * @return `true` if it should, `false` otherwise
      */
-    open fun rejoinNeededOrPending(): Boolean = synchronized(obj) {
+    @Synchronized
+    open fun rejoinNeededOrPending(): Boolean {
         // if there's a pending joinFuture, we should try to complete handling it.
         return rejoinNeeded || joinFuture != null
     }
@@ -329,7 +330,8 @@ abstract class AbstractCoordinator(
      * @param now current time in milliseconds
      * @throws RuntimeException for unexpected errors raised from the heartbeat thread
      */
-    fun pollHeartbeat(now: Long) = synchronized(obj) {
+    @Synchronized
+    fun pollHeartbeat(now: Long) {
         heartbeatThread?.let { thread ->
             if (thread.hasFailed()) {
                 // set the heartbeat thread to null and raise an exception. If the user catches it,
@@ -338,12 +340,13 @@ abstract class AbstractCoordinator(
                 throw thread.failureCause()!!
             }
             // Awake the heartbeat thread if needed
-            if (heartbeat.shouldHeartbeat(now)) obj.notify()
+            if (heartbeat.shouldHeartbeat(now)) (this as Object).notify()
             heartbeat.poll(now)
         }
     }
 
-    protected fun timeToNextHeartbeat(now: Long): Long = synchronized(obj) {
+    @Synchronized
+    protected fun timeToNextHeartbeat(now: Long): Long {
         // if we have not joined the group or we are preparing rebalance, we don't need to send
         // heartbeats
         return if (state.hasNotJoinedGroup()) Long.MAX_VALUE
@@ -374,13 +377,14 @@ abstract class AbstractCoordinator(
         return joinGroupIfNeeded(timer)
     }
 
-    private fun startHeartbeatThreadIfNeeded() = synchronized(obj) {
+    @Synchronized
+    private fun startHeartbeatThreadIfNeeded() {
         if (heartbeatThread == null) heartbeatThread = HeartbeatThread().apply { start() }
     }
 
     private fun closeHeartbeatThread() {
         var thread: HeartbeatThread
-        synchronized(obj) {
+        synchronized(this) {
             val hbThread = heartbeatThread ?: return
             hbThread.close()
             thread = hbThread
@@ -448,7 +452,7 @@ abstract class AbstractCoordinator(
                 // synchronized for [onJoinComplete], because it can be long enough and
                 // shouldn't block heartbeat thread.
                 // See [PlaintextConsumerTest.testMaxPollIntervalMsDelayInAssignment]
-                synchronized(obj) {
+                synchronized(this@AbstractCoordinator) {
                     generationSnapshot = generation
                     stateSnapshot = state
                 }
@@ -480,7 +484,7 @@ abstract class AbstractCoordinator(
             } else {
                 val exception = future.exception()
                 resetJoinGroupFuture()
-                synchronized(obj) {
+                synchronized(this@AbstractCoordinator) {
                     val simpleName: String = exception.javaClass.simpleName
                     requestRejoin(
                         shortReason = "rebalance failed due to $$simpleName",
@@ -501,11 +505,13 @@ abstract class AbstractCoordinator(
         return true
     }
 
-    private fun resetJoinGroupFuture() = synchronized(obj) {
+    @Synchronized
+    private fun resetJoinGroupFuture() {
         joinFuture = null
     }
 
-    private fun initiateJoinGroup(): RequestFuture<ByteBuffer> = synchronized(obj) {
+    @Synchronized
+    private fun initiateJoinGroup(): RequestFuture<ByteBuffer> {
         // we store the join future in case we are woken up by the user after beginning the
         // rebalance in the call to poll below. This ensures that we do not mistakenly attempt to
         // rejoin before the pending rebalance has completed.
@@ -525,7 +531,7 @@ abstract class AbstractCoordinator(
                         // completes after having been woken up, the exception is ignored and we
                         // will rejoin; this can be triggered when either join or sync request
                         // failed
-                        synchronized(obj) { sensors.failedRebalanceSensor.record() }
+                        synchronized(this@AbstractCoordinator) { sensors.failedRebalanceSensor.record() }
                     }
                 })
                 joinFuture = this
@@ -588,7 +594,7 @@ abstract class AbstractCoordinator(
                     log.debug("Received successful JoinGroup response: {}", response)
                     sensors.joinSensor.record(this.response!!.requestLatencyMs.toDouble())
 
-                    synchronized(obj) {
+                    synchronized(this@AbstractCoordinator) {
                         if (state != MemberState.PREPARING_REBALANCE) {
                             // if the consumer was woken up before a rebalance completes, we may
                             // have already left the group. In this case, we do not want to continue
@@ -690,7 +696,7 @@ abstract class AbstractCoordinator(
                     memberId,
                     sentGeneration,
                 )
-                synchronized(obj) {
+                synchronized(this@AbstractCoordinator) {
                     generation = Generation(
                         OffsetCommitRequest.DEFAULT_GENERATION_ID,
                         memberId,
@@ -796,7 +802,7 @@ abstract class AbstractCoordinator(
                     } else {
                         log.debug("Received successful SyncGroup response: {}", response)
                         sensors.syncSensor.record(this.response!!.requestLatencyMs.toDouble())
-                        synchronized(obj) {
+                        synchronized(this@AbstractCoordinator) {
                             if (
                                 !hasGenerationReset(sentGeneration)
                                 && state == MemberState.COMPLETING_REBALANCE
@@ -943,7 +949,7 @@ abstract class AbstractCoordinator(
             val coordinatorData = coordinators[0]
             val error = Errors.forCode(coordinatorData.errorCode)
             if (error === Errors.NONE) {
-                synchronized(obj) {
+                synchronized(this@AbstractCoordinator) {
 
                     // use MAX_VALUE - node.id as the coordinator id to allow separate connections
                     // for the coordinator in the underlying network client layer
@@ -992,7 +998,8 @@ abstract class AbstractCoordinator(
      *
      * @return the current coordinator or `null` if it is unknown
      */
-    fun checkAndGetCoordinator(): Node? = synchronized(obj) {
+    @Synchronized
+    fun checkAndGetCoordinator(): Node? {
         coordinator?.let {
             if (client.isUnavailable(it)) markCoordinatorUnknown(
                 isDisconnected = true,
@@ -1002,16 +1009,19 @@ abstract class AbstractCoordinator(
         return coordinator
     }
 
-    private fun coordinator(): Node? = synchronized(obj) { coordinator }
+    @Synchronized
+    private fun coordinator(): Node? = coordinator
 
-    protected fun markCoordinatorUnknown(error: Errors) = synchronized(obj) {
+    @Synchronized
+    protected fun markCoordinatorUnknown(error: Errors) {
         markCoordinatorUnknown(
             isDisconnected = false,
             cause = "error response " + error.name,
         )
     }
 
-    fun markCoordinatorUnknown(cause: String?) = synchronized(obj) {
+    @Synchronized
+    fun markCoordinatorUnknown(cause: String?) {
         markCoordinatorUnknown(
             isDisconnected = false,
             cause = cause,
@@ -1019,7 +1029,7 @@ abstract class AbstractCoordinator(
     }
 
     protected fun markCoordinatorUnknown(isDisconnected: Boolean, cause: String?) =
-        synchronized(obj) {
+        synchronized(this@AbstractCoordinator) {
             coordinator?.let { oldCoordinator ->
                 log.info(
                     "Group coordinator {} is unavailable or invalid due to cause: {}. " +
@@ -1058,7 +1068,8 @@ abstract class AbstractCoordinator(
      *
      * @return the current generation
      */
-    fun generation(): Generation = synchronized(obj) { generation }
+    @Synchronized
+    fun generation(): Generation = generation
 
     /**
      * Get the current generation state if the group is stable, otherwise return `null`.
@@ -1069,27 +1080,31 @@ abstract class AbstractCoordinator(
         message = "User property instead",
         replaceWith = ReplaceWith("generationIfStable"),
     )
-    fun generationIfStable(): Generation? = synchronized(obj) {
-        if (state != MemberState.STABLE) null else generation
+    @Synchronized
+    fun generationIfStable(): Generation? {
+        return if (state != MemberState.STABLE) null else generation
     }
 
     /**
      * The current generation state if the group is stable, otherwise `null`.
      */
     internal val generationIfStable: Generation?
-        get() = synchronized(obj) { if (state != MemberState.STABLE) null else generation }
+        @Synchronized
+        get() = if (state != MemberState.STABLE) null else generation
 
     @Deprecated(
         message = "User property instead",
         replaceWith = ReplaceWith("rebalanceInProgress"),
     )
-    protected fun rebalanceInProgress(): Boolean = synchronized(obj) {
-        state == MemberState.PREPARING_REBALANCE || state == MemberState.COMPLETING_REBALANCE
+    @Synchronized
+    protected fun rebalanceInProgress(): Boolean {
+        return state == MemberState.PREPARING_REBALANCE || state == MemberState.COMPLETING_REBALANCE
     }
 
     internal val rebalanceInProgress: Boolean
-        get() = synchronized(obj) {
-            state == MemberState.PREPARING_REBALANCE || state == MemberState.COMPLETING_REBALANCE
+        @Synchronized
+        get() {
+            return state == MemberState.PREPARING_REBALANCE || state == MemberState.COMPLETING_REBALANCE
         }
 
 
@@ -1097,13 +1112,15 @@ abstract class AbstractCoordinator(
         message = "User property instead",
         replaceWith = ReplaceWith("memberId"),
     )
-    protected fun memberId(): String = synchronized(obj) { generation.memberId }
+    @Synchronized
+    protected fun memberId(): String = generation.memberId
 
     internal val memberId: String
-        get() = synchronized(obj) { generation.memberId }
+        @Synchronized
+        get() = generation.memberId
 
     private fun resetStateAndGeneration(reason: String, shouldResetMemberId: Boolean) =
-        synchronized(obj) {
+        synchronized(this@AbstractCoordinator) {
             log.info(
                 "Resetting generation {}due to: {}",
                 if (shouldResetMemberId) "and member id " else "",
@@ -1123,39 +1140,35 @@ abstract class AbstractCoordinator(
         }
 
     private fun resetStateAndRejoin(reason: String, shouldResetMemberId: Boolean) =
-        synchronized(obj) {
+        synchronized(this@AbstractCoordinator) {
             resetStateAndGeneration(reason, shouldResetMemberId)
             requestRejoin(reason)
             needsJoinPrepare = true
         }
 
+    @Synchronized
     fun resetStateOnResponseError(
         api: ApiKeys?,
         error: Errors?,
         shouldResetMemberId: Boolean,
-    ) = synchronized(obj) {
+    ) {
         resetStateAndRejoin(
             reason = "encountered $error from $api response",
             shouldResetMemberId = shouldResetMemberId,
         )
     }
 
-    fun resetGenerationOnLeaveGroup() = synchronized(obj) {
+    @Synchronized
+    fun resetGenerationOnLeaveGroup() {
         resetStateAndRejoin(
             reason = "consumer pro-actively leaving the group",
             shouldResetMemberId = true,
         )
     }
 
-    fun requestRejoinIfNecessary(shortReason: String, fullReason: String?) = synchronized(obj) {
+    @Synchronized
+    fun requestRejoinIfNecessary(shortReason: String, fullReason: String) {
         if (!rejoinNeeded) requestRejoin(shortReason, fullReason)
-    }
-
-    fun requestRejoin(shortReason: String) = synchronized(obj) {
-        requestRejoin(
-            shortReason,
-            shortReason
-        )
     }
 
     /**
@@ -1165,7 +1178,8 @@ abstract class AbstractCoordinator(
      * reasonably small.
      * @param fullReason This is the reason logged locally.
      */
-    fun requestRejoin(shortReason: String, fullReason: String?) = synchronized(obj) {
+    @Synchronized
+    fun requestRejoin(shortReason: String, fullReason: String = shortReason) {
         log.info("Request joining group due to: {}", fullReason)
         rejoinReason = shortReason
         rejoinNeeded = true
@@ -1189,7 +1203,7 @@ abstract class AbstractCoordinator(
         } finally {
             // Synchronize after closing the heartbeat thread since heartbeat thread
             // needs this lock to complete and terminate after close flag is set.
-            synchronized(obj) {
+            synchronized(this) {
                 if (rebalanceConfig.leaveGroupOnClose == true) {
                     onLeavePrepare()
                     maybeLeaveGroup("the consumer is being closed")
@@ -1219,7 +1233,8 @@ abstract class AbstractCoordinator(
      * @param leaveReason the reason to leave the group for logging
      * @throws KafkaException if the rebalance callback throws exception
      */
-    fun maybeLeaveGroup(leaveReason: String): RequestFuture<Unit>? = synchronized(obj) {
+    @Synchronized
+    fun maybeLeaveGroup(leaveReason: String): RequestFuture<Unit>? {
         var future: RequestFuture<Unit>? = null
 
         // Starting from 2.3, only dynamic members will send LeaveGroupRequest to the broker,
@@ -1293,7 +1308,8 @@ abstract class AbstractCoordinator(
     }
 
     // visible for testing
-    fun sendHeartbeatRequest(): RequestFuture<Unit> = synchronized(obj) {
+    @Synchronized
+    internal fun sendHeartbeatRequest(): RequestFuture<Unit> {
         log.debug(
             "Sending Heartbeat request with generation {} and member id {} to coordinator {}",
             generation.generationId,
@@ -1333,7 +1349,7 @@ abstract class AbstractCoordinator(
             } else if (error === Errors.REBALANCE_IN_PROGRESS) {
                 // since we may be sending the request during rebalance, we should check
                 // this case and ignore the REBALANCE_IN_PROGRESS error
-                synchronized(obj) {
+                synchronized(this@AbstractCoordinator) {
                     if (state == MemberState.STABLE) {
                         requestRejoin("group is already rebalancing")
                         future.raise(error)
@@ -1379,7 +1395,7 @@ abstract class AbstractCoordinator(
     }
 
     protected abstract inner class CoordinatorResponseHandler<R, T> internal constructor(
-        val sentGeneration: Generation
+        val sentGeneration: Generation,
     ) : RequestFutureAdapter<ClientResponse, T>() {
 
         var response: ClientResponse? = null
@@ -1404,7 +1420,7 @@ abstract class AbstractCoordinator(
             }
         }
 
-        fun generationUnchanged(): Boolean = synchronized(obj) {
+        fun generationUnchanged(): Boolean = synchronized(this@AbstractCoordinator) {
             return generation == sentGeneration
         }
     }
@@ -1629,21 +1645,21 @@ abstract class AbstractCoordinator(
 
         private val failed = AtomicReference<RuntimeException?>(null)
 
-        fun enable() = synchronized(obj) {
+        fun enable() = synchronized(this@AbstractCoordinator) {
             log.debug("Enabling heartbeat thread")
             enabled = true
             heartbeat.resetTimeouts()
-            obj.notify()
+            (this@AbstractCoordinator as Object).notify()
         }
 
-        fun disable() = synchronized(obj) {
+        fun disable() = synchronized(this@AbstractCoordinator) {
             log.debug("Disabling heartbeat thread")
             enabled = false
         }
 
-        override fun close() = synchronized(obj) {
+        override fun close() = synchronized(this@AbstractCoordinator) {
             closed = true
-            obj.notify()
+            (this@AbstractCoordinator as Object).notify()
         }
 
         fun hasFailed(): Boolean = failed.get() != null
@@ -1654,10 +1670,10 @@ abstract class AbstractCoordinator(
             try {
                 log.debug("Heartbeat thread started")
                 while (true) {
-                    synchronized(obj) {
+                    synchronized(this@AbstractCoordinator) {
                         if (closed) return
                         if (!enabled) {
-                            obj.wait()
+                            (this@AbstractCoordinator as Object).wait()
                             return@synchronized
                         }
 
@@ -1680,7 +1696,7 @@ abstract class AbstractCoordinator(
                             } else lookupCoordinator()
 
                             // backoff properly
-                            obj.wait(rebalanceConfig.retryBackoffMs!!)
+                            (this@AbstractCoordinator as Object).wait(rebalanceConfig.retryBackoffMs!!)
                         } else if (heartbeat.sessionTimeoutExpired(now)) {
                             // the session timeout has expired without seeing a successful
                             // heartbeat, so we should probably make sure the coordinator is still
@@ -1705,16 +1721,18 @@ abstract class AbstractCoordinator(
                         } else if (!heartbeat.shouldHeartbeat(now)) {
                             // poll again after waiting for the retry backoff in case the heartbeat
                             // failed or the coordinator disconnected
-                            obj.wait(rebalanceConfig.retryBackoffMs!!)
+                            (this@AbstractCoordinator as Object).wait(rebalanceConfig.retryBackoffMs!!)
                         } else {
                             heartbeat.sentHeartbeat(now)
                             val heartbeatFuture = sendHeartbeatRequest()
                             heartbeatFuture.addListener(object : RequestFutureListener<Unit> {
-                                override fun onSuccess(value: Unit) =
-                                    synchronized(obj) { heartbeat.receiveHeartbeat() }
+
+                                override fun onSuccess(value: Unit) = synchronized(this@AbstractCoordinator) {
+                                    heartbeat.receiveHeartbeat()
+                                }
 
                                 override fun onFailure(e: RuntimeException) =
-                                    synchronized(obj) {
+                                    synchronized(this@AbstractCoordinator) {
                                         when (e) {
                                             is RebalanceInProgressException -> {
                                                 // it is valid to continue heartbeating while the
@@ -1739,7 +1757,7 @@ abstract class AbstractCoordinator(
                                                 heartbeat.failHeartbeat()
                                                 // wake up the thread if it's sleeping to reschedule
                                                 // the heartbeat
-                                                obj.notify()
+                                                (this@AbstractCoordinator as Object).notify()
                                             }
                                         }
                                     }
@@ -1801,7 +1819,8 @@ abstract class AbstractCoordinator(
 
     fun rejoinReason(): String = rejoinReason
 
-    fun setLastRebalanceTime(timestamp: Long) = synchronized(obj) {
+    @Synchronized
+    fun setLastRebalanceTime(timestamp: Long) {
         lastRebalanceEndMs = timestamp
     }
 
@@ -1821,11 +1840,13 @@ abstract class AbstractCoordinator(
      */
     fun hasValidMemberId(): Boolean = !hasUnknownGeneration() && generation.hasMemberId()
 
-    fun setNewGeneration(generation: Generation) = synchronized(obj) {
+    @Synchronized
+    fun setNewGeneration(generation: Generation) {
         this.generation = generation
     }
 
-    fun setNewState(state: MemberState) = synchronized(obj) {
+    @Synchronized
+    fun setNewState(state: MemberState) {
         this.state = state
     }
 

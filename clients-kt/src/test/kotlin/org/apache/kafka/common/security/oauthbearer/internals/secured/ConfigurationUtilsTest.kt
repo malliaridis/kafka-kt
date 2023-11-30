@@ -104,7 +104,7 @@ class ConfigurationUtilsTest : OAuthBearerTest() {
     @Test
     @Throws(IOException::class)
     fun testFile() {
-        val file = tempFile("some contents!")
+        val file = tempFile(contents = "some contents!")
         testFile(file.toURI().toURL().toString())
     }
 

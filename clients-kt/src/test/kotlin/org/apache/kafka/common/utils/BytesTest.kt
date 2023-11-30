@@ -31,7 +31,7 @@ class BytesTest {
         val input = byteArrayOf(0xAB.toByte(), 0xCD.toByte(), 0xFF.toByte())
         val expected = byteArrayOf(0xAB.toByte(), 0xCE.toByte(), 0x00.toByte())
         val output = Bytes.increment(Bytes.wrap(input)!!)
-        assertContentEquals(output!!.get(), expected)
+        assertContentEquals(expected, output!!.get())
     }
 
     @Test

@@ -165,7 +165,7 @@ class DefaultSslEngineFactoryTest {
     }
 
     @Throws(Exception::class)
-    private fun pemFilePath(pem: String): String = tempFile(pem).absolutePath
+    private fun pemFilePath(pem: String): String = tempFile(contents = pem).absolutePath
 
     private fun pemAsConfigValue(vararg pemValues: String): Password {
         val builder = StringBuilder()

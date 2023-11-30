@@ -518,13 +518,8 @@ interface FieldType {
 
     class ArrayType internal constructor(
         val elementType: FieldType,
+        override val isNullable: Boolean = false,
     ) : FieldType {
-
-        init {
-            require(!elementType.isPrimitive || !elementType.isNullable) {
-                "Nullable element types of primitive type arrays are not supported."
-            }
-        }
 
         override fun serializationIsDifferentInFlexibleVersions(): Boolean = true
 
@@ -595,16 +590,14 @@ interface FieldType {
                 else RecordsFieldType.INSTANCE
             else -> if (trimmed.startsWith(ARRAY_PREFIX)) {
                 val elementTypeString = trimmed.substring(ARRAY_PREFIX.length)
-                if (elementTypeString.isEmpty()) throw RuntimeException(
-                    "Can't parse array type $trimmed. No element type found."
-                )
+                if (elementTypeString.isEmpty())
+                    throw RuntimeException("Can't parse array type $trimmed. No element type found.")
 
                 val elementType = parse(elementTypeString)
                 if (elementType.isArray) throw RuntimeException(
-                    "Can't have an array of arrays. Use an array of structs containing an " +
-                            "array instead."
+                    "Can't have an array of arrays. Use an array of structs containing an array instead."
                 )
-                ArrayType(elementType)
+                ArrayType(elementType, isNullable)
 
             } else if (MessageGenerator.firstIsCapitalized(trimmed)) StructType(trimmed, isNullable)
             else throw RuntimeException("Can't parse type $trimmed")

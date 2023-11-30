@@ -3877,11 +3877,11 @@ class KafkaAdminClientTest {
             )
             assertEquals(
                 expected = listOf("A"),
-                actual = data.groups[0].topics.map(OffsetFetchRequestTopics::name),
+                actual = data.groups[0].topics!!.map(OffsetFetchRequestTopics::name),
             )
             assertContentEquals(
                 expected = intArrayOf(0),
-                actual = data.groups[0].topics[0].partitionIndexes,
+                actual = data.groups[0].topics!![0].partitionIndexes,
             )
         }
     }

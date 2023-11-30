@@ -26,9 +26,9 @@ import java.io.OutputStream
 import java.net.HttpURLConnection
 import java.util.Base64
 import org.junit.jupiter.api.Test
-import org.mockito.Mockito.`when`
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 import kotlin.random.Random
 import kotlin.test.assertContains
 import kotlin.test.assertContentEquals
@@ -72,7 +72,7 @@ class HttpAccessTokenRetrieverTest : OAuthBearerTest() {
     @Throws(IOException::class)
     fun testErrorReadingResponse() {
         val mockedCon = createHttpURLConnection("dummy")
-        `when`(mockedCon.inputStream).thenThrow(IOException("Can't read"))
+        whenever(mockedCon.inputStream).thenThrow(IOException("Can't read"))
         assertFailsWith<IOException> {
             HttpAccessTokenRetriever.post(
                 connection = mockedCon,
@@ -88,13 +88,13 @@ class HttpAccessTokenRetrieverTest : OAuthBearerTest() {
     @Throws(IOException::class)
     fun testErrorResponseUnretryableCode() {
         val mockedCon = createHttpURLConnection("dummy")
-        `when`(mockedCon.inputStream).thenThrow(IOException("Can't read"))
-        `when`(mockedCon.errorStream).thenReturn(
+        whenever(mockedCon.inputStream).thenThrow(IOException("Can't read"))
+        whenever(mockedCon.errorStream).thenReturn(
             ByteArrayInputStream(
                 """{"error":"some_arg", "error_description":"some problem with arg"}""".toByteArray()
             )
         )
-        `when`(mockedCon.getResponseCode()).thenReturn(HttpURLConnection.HTTP_BAD_REQUEST)
+        whenever(mockedCon.getResponseCode()).thenReturn(HttpURLConnection.HTTP_BAD_REQUEST)
         val ioe = assertFailsWith<UnretryableException> {
             HttpAccessTokenRetriever.post(
                 connection = mockedCon,
@@ -112,13 +112,13 @@ class HttpAccessTokenRetrieverTest : OAuthBearerTest() {
     @Throws(IOException::class)
     fun testErrorResponseRetryableCode() {
         val mockedCon = createHttpURLConnection("dummy")
-        `when`(mockedCon.inputStream).thenThrow(IOException("Can't read"))
-        `when`(mockedCon.errorStream).thenReturn(
+        whenever(mockedCon.inputStream).thenThrow(IOException("Can't read"))
+        whenever(mockedCon.errorStream).thenReturn(
             ByteArrayInputStream(
                 """{"error":"some_arg", "error_description":"some problem with arg"}""".toByteArray()
             )
         )
-        `when`(mockedCon.getResponseCode()).thenReturn(HttpURLConnection.HTTP_INTERNAL_ERROR)
+        whenever(mockedCon.getResponseCode()).thenReturn(HttpURLConnection.HTTP_INTERNAL_ERROR)
         var ioe = assertFailsWith<IOException> {
             HttpAccessTokenRetriever.post(
                 connection = mockedCon,
@@ -131,7 +131,7 @@ class HttpAccessTokenRetrieverTest : OAuthBearerTest() {
         assertContains(ioe.message!!, """{"some_arg" - "some problem with arg"}""")
 
         // error response body has different keys
-        `when`(mockedCon.errorStream).thenReturn(
+        whenever(mockedCon.errorStream).thenReturn(
             ByteArrayInputStream(
                 """{"errorCode":"some_arg", "errorSummary":"some problem with arg"}""".toByteArray()
             )
@@ -148,7 +148,7 @@ class HttpAccessTokenRetrieverTest : OAuthBearerTest() {
         assertContains(ioe.message!!, """{"some_arg" - "some problem with arg"}""")
 
         // error response is valid json but unknown keys
-        `when`(mockedCon.errorStream).thenReturn(
+        whenever(mockedCon.errorStream).thenReturn(
             ByteArrayInputStream(
                 """{"err":"some_arg", "err_des":"some problem with arg"}""".toByteArray()
             )
@@ -169,11 +169,11 @@ class HttpAccessTokenRetrieverTest : OAuthBearerTest() {
     @Throws(IOException::class)
     fun testErrorResponseIsInvalidJson() {
         val mockedCon = createHttpURLConnection("dummy")
-        `when`(mockedCon.inputStream).thenThrow(IOException("Can't read"))
-        `when`(mockedCon.errorStream).thenReturn(
+        whenever(mockedCon.inputStream).thenThrow(IOException("Can't read"))
+        whenever(mockedCon.errorStream).thenReturn(
             ByteArrayInputStream("non json error output".toByteArray())
         )
-        `when`(mockedCon.getResponseCode()).thenReturn(HttpURLConnection.HTTP_INTERNAL_ERROR)
+        whenever(mockedCon.getResponseCode()).thenReturn(HttpURLConnection.HTTP_INTERNAL_ERROR)
         val ioe = assertFailsWith<IOException> {
             HttpAccessTokenRetriever.post(
                 connection = mockedCon,
@@ -202,7 +202,7 @@ class HttpAccessTokenRetrieverTest : OAuthBearerTest() {
     fun testCopyError() {
         val mockedIn = mock<InputStream>()
         val out: OutputStream = ByteArrayOutputStream()
-        `when`(mockedIn.read(any<ByteArray>())).thenThrow(IOException())
+        whenever(mockedIn.read(any<ByteArray>())).thenThrow(IOException())
         assertFailsWith<IOException> { HttpAccessTokenRetriever.copy(mockedIn, out) }
     }
 

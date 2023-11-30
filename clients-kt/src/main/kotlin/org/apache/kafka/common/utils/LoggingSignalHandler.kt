@@ -59,7 +59,7 @@ class LoggingSignalHandler {
         val jvmSignalHandlers: MutableMap<String, Any> = ConcurrentHashMap()
         SIGNALS.forEach { signal -> register(signal, jvmSignalHandlers) }
 
-        log.info("Registered signal handlers for " + java.lang.String.join(", ", SIGNALS))
+        log.info("Registered signal handlers for " + SIGNALS.joinToString())
     }
 
     private fun createSignalHandler(jvmSignalHandlers: Map<String, Any>): Any {
@@ -110,6 +110,6 @@ class LoggingSignalHandler {
 
         private val log = LoggerFactory.getLogger(LoggingSignalHandler::class.java)
 
-        private val SIGNALS: List<String> = mutableListOf("TERM", "INT", "HUP")
+        private val SIGNALS: List<String> = listOf("TERM", "INT", "HUP")
     }
 }

@@ -25,10 +25,6 @@ import org.apache.kafka.common.utils.Time
 import org.apache.kafka.test.TestUtils
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
-import org.mockito.ArgumentMatchers
-import org.mockito.Mockito.doThrow
-import org.mockito.Mockito.spy
-import org.mockito.Mockito.verify
 import java.nio.ByteBuffer
 import java.util.concurrent.Callable
 import java.util.concurrent.CountDownLatch
@@ -36,6 +32,10 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import org.mockito.kotlin.any
+import org.mockito.kotlin.doThrow
+import org.mockito.kotlin.spy
+import org.mockito.kotlin.verify
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotEquals
@@ -334,7 +334,7 @@ class BufferPoolTest {
 
         doThrow(OutOfMemoryError())
             .`when`(bufferPool)
-            .recordWaitTime(ArgumentMatchers.anyLong())
+            .recordWaitTime(any())
 
         bufferPool.allocate(1, 0)
 
@@ -348,7 +348,7 @@ class BufferPoolTest {
         //This shouldn't timeout
         bufferPool.allocate(1, 0)
 
-        verify(bufferPool).recordWaitTime(ArgumentMatchers.anyLong())
+        verify(bufferPool).recordWaitTime(any())
     }
 
     private class BufferPoolAllocator internal constructor(var pool: BufferPool, var maxBlockTimeMs: Long) :

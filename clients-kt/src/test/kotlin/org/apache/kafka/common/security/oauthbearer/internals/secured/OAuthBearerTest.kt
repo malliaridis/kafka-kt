@@ -39,7 +39,8 @@ import org.jose4j.jwk.RsaJwkGenerator
 import org.jose4j.lang.JoseException
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.function.Executable
-import org.mockito.Mockito
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import kotlin.test.assertTrue
@@ -133,11 +134,11 @@ abstract class OAuthBearerTest {
 
     @Throws(IOException::class)
     protected fun createHttpURLConnection(response: String): HttpURLConnection {
-        val mockedCon = Mockito.mock(HttpURLConnection::class.java)
-        Mockito.`when`(mockedCon.url).thenReturn(URL("https://www.example.com"))
-        Mockito.`when`(mockedCon.getResponseCode()).thenReturn(200)
-        Mockito.`when`(mockedCon.outputStream).thenReturn(ByteArrayOutputStream())
-        Mockito.`when`(mockedCon.inputStream).thenReturn(
+        val mockedCon = mock<HttpURLConnection>()
+        whenever(mockedCon.url).thenReturn(URL("https://www.example.com"))
+        whenever(mockedCon.getResponseCode()).thenReturn(200)
+        whenever(mockedCon.outputStream).thenReturn(ByteArrayOutputStream())
+        whenever(mockedCon.inputStream).thenReturn(
             ByteArrayInputStream(response.toByteArray())
         )
         return mockedCon

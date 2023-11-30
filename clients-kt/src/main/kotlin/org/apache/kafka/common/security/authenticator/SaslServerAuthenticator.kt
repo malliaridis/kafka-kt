@@ -370,7 +370,7 @@ open class SaslServerAuthenticator(
             reauthenticationContext.previousAuthenticator as SaslServerAuthenticator
         reauthInfo.reauthenticating(
             previousSaslServerAuthenticator.saslMechanism,
-            previousSaslServerAuthenticator.principal(),
+            previousSaslServerAuthenticator.principal()!!,
             reauthenticationContext.reauthenticationBeginNanos
         )
         previousSaslServerAuthenticator.close()
@@ -740,11 +740,12 @@ open class SaslServerAuthenticator(
         var badMechanismErrorMessage: String? = null
 
         fun reauthenticating(
-            previousSaslMechanism: String?, previousKafkaPrincipal: KafkaPrincipal?,
+            previousSaslMechanism: String,
+            previousKafkaPrincipal: KafkaPrincipal,
             reauthenticationBeginNanos: Long
         ) {
-            this.previousSaslMechanism = Objects.requireNonNull(previousSaslMechanism)
-            this.previousKafkaPrincipal = Objects.requireNonNull(previousKafkaPrincipal)
+            this.previousSaslMechanism = previousSaslMechanism
+            this.previousKafkaPrincipal = previousKafkaPrincipal
             this.reauthenticationBeginNanos = reauthenticationBeginNanos
         }
 

@@ -269,7 +269,7 @@ class DefaultSslEngineFactory : SslEngineFactory {
         ) else if (path != null && password == null) throw InvalidConfigurationException(
             "SSL key store is specified, but key store password is not specified."
         ) else if (path != null && password != null) FileBasedStore(
-            type = type,
+            type = type!!,
             path = path,
             password = password,
             keyPassword = keyPassword,
@@ -288,7 +288,7 @@ class DefaultSslEngineFactory : SslEngineFactory {
 
     // package access for testing
     internal open class FileBasedStore(
-        type: String?,
+        type: String,
         path: String,
         password: Password? = null,
         keyPassword: Password? = null,
@@ -308,7 +308,6 @@ class DefaultSslEngineFactory : SslEngineFactory {
         private val keyStore: KeyStore
 
         init {
-            Objects.requireNonNull(type, "type must not be null")
             this.type = type
             this.path = path
             this.password = password
@@ -625,7 +624,7 @@ class DefaultSslEngineFactory : SslEngineFactory {
             } else if (path == null && password != null) throw InvalidConfigurationException(
                 "SSL trust store is not specified, but trust store password is specified."
             ) else if (path != null) FileBasedStore(
-                type = type,
+                type = type!!,
                 path = path,
                 password = password,
                 isKeyStore = false

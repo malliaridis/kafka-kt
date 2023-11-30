@@ -154,7 +154,7 @@ class RefreshingHttpsJwksTest : OAuthBearerTest() {
      * make sure it *doesn't* do that when we call our getJsonWebKeys() method on
      * [RefreshingHttpsJwks].
      */
-    private fun spyHttpsJwks(): HttpsJwks {
+    internal fun spyHttpsJwks(): HttpsJwks {
         val httpsJwks = HttpsJwks("https://www.example.com")
         val simpleResponse: SimpleResponse = object : SimpleResponse {
             override fun getStatusCode(): Int = 200

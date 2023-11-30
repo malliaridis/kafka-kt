@@ -38,7 +38,6 @@ class RecordHeaders private constructor(
 
     @Throws(IllegalStateException::class)
     override fun add(header: Header): Headers {
-        Objects.requireNonNull(header, "Header cannot be null.")
         canWrite()
         headers.add(header)
         return this

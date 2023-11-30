@@ -83,12 +83,12 @@ import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
 import org.junit.jupiter.api.function.Executable
-import org.mockito.ArgumentMatchers.any
-import org.mockito.ArgumentMatchers.anyLong
-import org.mockito.Mockito.`when`
+import org.mockito.kotlin.any
 import org.mockito.kotlin.atLeastOnce
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
+import kotlin.math.absoluteValue
 import kotlin.random.Random
 import kotlin.test.assertContains
 import kotlin.test.assertContentEquals
@@ -400,7 +400,7 @@ class UtilsTest {
 
         // Create a temporary name for named pipe
         var n = Random.nextLong()
-        n = if (n == Long.MIN_VALUE) 0 else kotlin.math.abs(n.toDouble()).toLong()
+        n = if (n == Long.MIN_VALUE) 0 else n.absoluteValue
 
         // Use the name to create a FIFO in tmp directory
         val tmpDir = System.getProperty("java.io.tmpdir")
@@ -539,7 +539,7 @@ class UtilsTest {
             message = "The buffer should be populated correctly",
         )
         assertFalse(buffer.hasRemaining(), "The buffer should be filled")
-        verify(channelMock, atLeastOnce()).read(any(), anyLong())
+        verify(channelMock, atLeastOnce()).read(any(), any())
     }
 
     /**
@@ -560,7 +560,7 @@ class UtilsTest {
             message = "The buffer should be populated correctly.",
         )
         assertFalse(buffer.hasRemaining(), "The buffer should be filled")
-        verify(channelMock, atLeastOnce()).read(any(), anyLong())
+        verify(channelMock, atLeastOnce()).read(any(), any())
     }
 
     @Test
@@ -570,7 +570,7 @@ class UtilsTest {
         val bufferSize = 100
         val fileChannelContent = "abcdefghkl"
         val buffer = ByteBuffer.allocate(bufferSize)
-        `when`(channelMock.read(any(), anyLong())).then { invocation ->
+        whenever(channelMock.read(any(), any())).then { invocation ->
             val bufferArg = invocation.getArgument<ByteBuffer>(0)
             bufferArg.put(fileChannelContent.toByteArray())
             -1
@@ -579,7 +579,7 @@ class UtilsTest {
         assertEquals("abcdefghkl", String(buffer.array(), 0, buffer.position()))
         assertEquals(fileChannelContent.length, buffer.position())
         assertTrue(buffer.hasRemaining())
-        verify(channelMock, atLeastOnce()).read(any(), anyLong())
+        verify(channelMock, atLeastOnce()).read(any(), any())
     }
 
     @Test
@@ -619,14 +619,14 @@ class UtilsTest {
     ): String {
         val step = 20
         var remainingBytes = bufferSize
-        var `when` = `when`(channelMock.read(any(), anyLong()))
+        var whenever = whenever(channelMock.read(any(), any()))
         val expectedBufferContent = StringBuilder()
         while (remainingBytes > 0) {
             val bytesRead = if (remainingBytes < step) remainingBytes else Random.nextInt(step)
             val stringRead = IntStream.range(0, bytesRead).mapToObj { "a" }
                 .collect(Collectors.joining())
             expectedBufferContent.append(stringRead)
-            `when` = `when`.then { invocation ->
+            whenever = whenever.then { invocation ->
                 val buffer = invocation.getArgument<ByteBuffer>(0)
                 buffer.put(stringRead.toByteArray())
                 bytesRead

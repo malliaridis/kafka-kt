@@ -86,9 +86,9 @@ class ListConsumerGroupOffsetsHandlerTest {
         val request = handler.buildBatchedRequest(coordinatorKeys(groupZero)).build()
 
         assertEquals(groupZero, request.data().groups[0].groupId)
-        assertEquals(2, request.data().groups[0].topics.size)
-        assertEquals(2, request.data().groups[0].topics[0].partitionIndexes.size)
-        assertEquals(2, request.data().groups[0].topics[1].partitionIndexes.size)
+        assertEquals(2, request.data().groups[0].topics!!.size)
+        assertEquals(2, request.data().groups[0].topics!![0].partitionIndexes.size)
+        assertEquals(2, request.data().groups[0].topics!![1].partitionIndexes.size)
     }
 
     @Test

@@ -193,7 +193,7 @@ open class OAuthBearerUnsecuredValidatorCallbackHandler : AuthenticateCallbackHa
             "Successfully validated token with principal {}: {}", unsecuredJwt.principalName(),
             unsecuredJwt.claims
         )
-        callback.token = unsecuredJwt
+        callback.setToken(unsecuredJwt)
     }
 
     private fun principalClaimName(): String {

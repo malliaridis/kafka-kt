@@ -37,7 +37,7 @@ class DescribeUserScramCredentialsRequest private constructor(
             .setErrorCode(error.code)
             .setErrorMessage(message)
 
-        response.results += data.users.map {
+        response.results += data.users!!.map {
             DescribeUserScramCredentialsResponseData.DescribeUserScramCredentialsResult()
                 .setErrorCode(error.code)
                 .setErrorMessage(message)

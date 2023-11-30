@@ -162,7 +162,6 @@ class SslTransportTls12Tls13Test {
             SslConfigs.DEFAULT_SSL_ENABLED_PROTOCOLS
                 .split(",".toRegex())
                 .dropLastWhile { it.isEmpty() }
-                .toTypedArray()
         sslServerConfigs[SslConfigs.SSL_CIPHER_SUITES_CONFIG] = listOf(cipherSuite)
         server = createEchoServer(
             listenerName = ListenerName.forSecurityProtocol(SecurityProtocol.SSL),
@@ -175,7 +174,6 @@ class SslTransportTls12Tls13Test {
             SslConfigs.DEFAULT_SSL_ENABLED_PROTOCOLS
                 .split(",".toRegex())
                 .dropLastWhile { it.isEmpty() }
-                .toTypedArray()
         sslClientConfigs[SslConfigs.SSL_CIPHER_SUITES_CONFIG] = listOf(cipherSuite)
         checkAuthenticationSucceed()
     }

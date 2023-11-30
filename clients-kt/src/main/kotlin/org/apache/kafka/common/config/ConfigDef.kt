@@ -162,7 +162,7 @@ class ConfigDef {
         width: Width? = Width.NONE,
         displayName: String? = name,
         dependents: List<String> = emptyList(),
-        recommender: Recommender? = null
+        recommender: Recommender? = null,
     ): ConfigDef {
         return define(
             ConfigKey(
@@ -198,7 +198,7 @@ class ConfigDef {
         name: String,
         type: Type,
         defaultValue: Any?,
-        importance: Importance
+        importance: Importance,
     ): ConfigDef {
         return define(
             ConfigKey(
@@ -236,7 +236,7 @@ class ConfigDef {
         defaultValue: Any?,
         validator: Validator?,
         importance: Importance,
-        documentation: String?
+        documentation: String?,
     ): ConfigDef {
         return define(
             ConfigKey(
@@ -325,7 +325,7 @@ class ConfigDef {
     fun parseValue(key: ConfigKey, value: Any?, isSet: Boolean): Any? {
 
         val parsedValue = if (isSet) parseType(key.name, value, key.type)
-            // props map doesn't contain setting, the key is required because no default value specified - its an error
+        // props map doesn't contain setting, the key is required because no default value specified - its an error
         else if (NO_DEFAULT_VALUE == key.defaultValue) throw ConfigException(
             "Missing required configuration \"${key.name}\" which has no default value."
         )
@@ -366,7 +366,7 @@ class ConfigDef {
     // package accessible for testing
     fun parseForValidate(
         props: Map<String, String?>,
-        configValues: Map<String, ConfigValue?>
+        configValues: Map<String, ConfigValue?>,
     ): Map<String, Any?> {
         val parsed: MutableMap<String, Any?> = HashMap()
         val configsWithNoParent = getConfigsWithNoParent()
@@ -379,7 +379,7 @@ class ConfigDef {
 
     private fun validate(
         parsed: Map<String, Any?>,
-        configValues: MutableMap<String, ConfigValue?>
+        configValues: MutableMap<String, ConfigValue?>,
     ): Map<String, ConfigValue?> {
         val configsWithNoParent = getConfigsWithNoParent()
 
@@ -425,7 +425,7 @@ class ConfigDef {
         name: String,
         props: Map<String, String?>,
         parsed: MutableMap<String, Any?>,
-        configs: Map<String, ConfigValue?>
+        configs: Map<String, ConfigValue?>,
     ) {
         if (!configKeys.containsKey(name)) return
 
@@ -462,7 +462,7 @@ class ConfigDef {
     private fun validate(
         name: String,
         parsed: Map<String, Any?>,
-        configs: MutableMap<String, ConfigValue?>
+        configs: MutableMap<String, ConfigValue?>,
     ) {
         if (!configKeys.containsKey(name)) return
 
@@ -870,7 +870,7 @@ class ConfigDef {
         val displayName: String?,
         val dependents: List<String>,
         val recommender: Recommender?,
-        val internalConfig: Boolean
+        val internalConfig: Boolean,
     ) {
         val defaultValue: Any?
 
@@ -1030,14 +1030,13 @@ class ConfigDef {
     private fun getConfigKeyRst(key: ConfigKey, b: StringBuilder) {
         b.append("``").append(key.name).append("``").append("\n")
         if (key.documentation != null) key.documentation.split("\n".toRegex())
-                .dropLastWhile { it.isEmpty() }
-                .toTypedArray()
-                .forEach { docLine ->
-                    if (docLine.isEmpty()) return@forEach
-                    b.append("  ")
-                        .append(docLine)
-                        .append("\n\n")
-                }
+            .dropLastWhile { it.isEmpty() }
+            .forEach { docLine ->
+                if (docLine.isEmpty()) return@forEach
+                b.append("  ")
+                    .append(docLine)
+                    .append("\n\n")
+            }
         else b.append("\n")
 
         b.append("  * Type: ")
@@ -1148,7 +1147,7 @@ class ConfigDef {
     fun toHtml(
         headerDepth: Int,
         idGenerator: Function<String, String>,
-        dynamicUpdateModes: Map<String, String> = emptyMap()
+        dynamicUpdateModes: Map<String, String> = emptyMap(),
     ): String {
         val hasUpdateModes = dynamicUpdateModes.isNotEmpty()
         val configs = sortedConfigs()
@@ -1267,8 +1266,8 @@ class ConfigDef {
                     }
 
                     Type.LONG -> {
-                        if (value is Int) return value.toLong()
                         return when (value) {
+                            is Int -> value.toLong()
                             is Long -> value
                             is String -> trimmed!!.toLong()
                             else -> throw ConfigException(
@@ -1291,15 +1290,19 @@ class ConfigDef {
                         )
                     }
 
-                    Type.LIST -> return if (value is List<*>) value
-                    else if (value is String)
-                        if (trimmed!!.isEmpty()) emptyList<Any>()
-                        else listOf(*COMMA_WITH_WHITESPACE.split(trimmed, -1))
-                    else throw ConfigException(
-                        name = name,
-                        value = value,
-                        message = "Expected a comma separated list."
-                    )
+                    Type.LIST -> return when (value) {
+                        is List<*> -> value
+                        is String -> {
+                            if (trimmed!!.isEmpty()) emptyList<Any>()
+                            else COMMA_WITH_WHITESPACE.split(trimmed, -1).toList()
+                        }
+
+                        else -> throw ConfigException(
+                            name = name,
+                            value = value,
+                            message = "Expected a comma separated list."
+                        )
+                    }
 
                     Type.CLASS -> return when (value) {
                         is Class<*> -> value
@@ -1341,7 +1344,9 @@ class ConfigDef {
                 Type.LONG,
                 Type.DOUBLE,
                 Type.STRING,
-                Type.PASSWORD -> parsedValue.toString()
+                Type.PASSWORD,
+                -> parsedValue.toString()
+
                 Type.LIST -> {
                     val valueList = parsedValue as List<*>
                     valueList.joinToString(",")
@@ -1438,7 +1443,7 @@ class ConfigDef {
          */
         private fun embeddedDependents(
             keyPrefix: String,
-            dependents: List<String>
+            dependents: List<String>,
         ): List<String> = dependents.map { keyPrefix + it }
 
         /**

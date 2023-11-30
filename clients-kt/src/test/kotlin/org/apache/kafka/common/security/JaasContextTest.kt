@@ -46,7 +46,7 @@ class JaasContextTest {
     @BeforeEach
     @Throws(IOException::class)
     fun setUp() {
-        jaasConfigFile = tempFile("jaas", ".conf")
+        jaasConfigFile = tempFile(prefix = "jaas", suffix = ".conf")
         System.setProperty(JaasUtils.JAVA_LOGIN_CONFIG_PARAM, jaasConfigFile.toString())
         Configuration.setConfiguration(null)
     }

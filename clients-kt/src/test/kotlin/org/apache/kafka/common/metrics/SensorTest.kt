@@ -28,13 +28,14 @@ import org.apache.kafka.common.utils.MockTime
 import org.apache.kafka.common.utils.SystemTime
 import org.apache.kafka.common.utils.Time
 import org.junit.jupiter.api.Test
-import org.mockito.Mockito
 import java.util.concurrent.Callable
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.verify
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
@@ -387,24 +388,24 @@ class SensorTest {
         val time: Time = MockTime(0, System.currentTimeMillis(), 0)
         val metrics = Metrics(time = time)
         val sensor = metrics.sensor("sensor")
-        val stat1 = Mockito.mock(MeasurableStat::class.java)
+        val stat1 = mock<MeasurableStat>()
         val stat1Name = metrics.metricName("stat1", "test-group")
         val stat1Config = MetricConfig().apply {
             quota = Quota.upperBound(5.0)
         }
         sensor.add(stat1Name, stat1, stat1Config)
-        val stat2 = Mockito.mock(MeasurableStat::class.java)
+        val stat2 = mock<MeasurableStat>()
         val stat2Name = metrics.metricName("stat2", "test-group")
         val stat2Config = MetricConfig().apply {
             quota = Quota.upperBound(10.0)
         }
         sensor.add(stat2Name, stat2, stat2Config)
         sensor.record(10.0, 1)
-        Mockito.verify(stat1).record(stat1Config, 10.0, 1)
-        Mockito.verify(stat2).record(stat2Config, 10.0, 1)
+        verify(stat1).record(stat1Config, 10.0, 1)
+        verify(stat2).record(stat2Config, 10.0, 1)
         sensor.checkQuotas(2)
-        Mockito.verify(stat1).measure(stat1Config, 2)
-        Mockito.verify(stat2).measure(stat2Config, 2)
+        verify(stat1).measure(stat1Config, 2)
+        verify(stat2).measure(stat2Config, 2)
         metrics.close()
     }
 
@@ -413,16 +414,16 @@ class SensorTest {
         val time: Time = MockTime(0, System.currentTimeMillis(), 0)
         val metrics = Metrics(time = time)
         val sensor = metrics.sensor("sensor")
-        val stat = Mockito.mock(MeasurableStat::class.java)
+        val stat = mock<MeasurableStat>()
         val statName = metrics.metricName("stat", "test-group")
         val statConfig = MetricConfig().apply {
             quota = Quota.upperBound(5.0)
         }
         sensor.add(statName, stat, statConfig)
         sensor.record(10.0, 1)
-        Mockito.verify(stat).record(statConfig, 10.0, 1)
+        verify(stat).record(statConfig, 10.0, 1)
         sensor.checkQuotas(2)
-        Mockito.verify(stat).measure(statConfig, 2)
+        verify(stat).measure(statConfig, 2)
 
         // Update the config of the KafkaMetric
         val newConfig = MetricConfig().apply {
@@ -430,9 +431,9 @@ class SensorTest {
         }
         metrics.metric(statName)!!.config(newConfig)
         sensor.record(10.0, 3)
-        Mockito.verify(stat).record(newConfig, 10.0, 3)
+        verify(stat).record(newConfig, 10.0, 3)
         sensor.checkQuotas(4)
-        Mockito.verify(stat).measure(newConfig, 4)
+        verify(stat).measure(newConfig, 4)
         metrics.close()
     }
 

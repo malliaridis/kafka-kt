@@ -18,7 +18,6 @@
 package org.apache.kafka.common.security.oauthbearer.internals.expiring
 
 import java.util.Date
-import java.util.Objects
 import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
 import javax.security.auth.Subject
@@ -36,11 +35,11 @@ import org.apache.kafka.common.utils.MockScheduler
 import org.apache.kafka.common.utils.MockTime
 import org.apache.kafka.common.utils.Time
 import org.junit.jupiter.api.Test
-import org.mockito.Mockito.inOrder
-import org.mockito.Mockito.`when`
 import org.mockito.internal.util.MockUtil.isMock
 import org.mockito.kotlin.doNothing
+import org.mockito.kotlin.inOrder
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -75,7 +74,7 @@ class ExpiringCredentialRefreshingLoginTest {
         },
         mandatoryClassToSynchronizeOnPriorToRefresh = TestExpiringCredentialRefreshingLogin::class.java,
         loginContextFactory = loginContextFactory!!,
-        time = Objects.requireNonNull(time),
+        time = time,
     ) {
 
         private var expiringCredential: ExpiringCredential? = null
@@ -239,7 +238,7 @@ class ExpiringCredentialRefreshingLoginTest {
                 val subject = Subject()
                 val mockLoginContext = mock<LoginContext>()
 
-                `when`(mockLoginContext.getSubject()).thenReturn(subject)
+                whenever(mockLoginContext.getSubject()).thenReturn(subject)
                 val mockTime = MockTime()
                 val startMs = mockTime.milliseconds()
 
@@ -326,7 +325,7 @@ class ExpiringCredentialRefreshingLoginTest {
         val clientReloginAllowedBeforeLogout = true
         val mockLoginContext = mock<LoginContext>()
         val subject = Subject()
-        `when`(mockLoginContext.getSubject()).thenReturn(subject)
+        whenever(mockLoginContext.getSubject()).thenReturn(subject)
         val mockTime = MockTime()
         val startMs = mockTime.milliseconds()
 
@@ -404,7 +403,7 @@ class ExpiringCredentialRefreshingLoginTest {
         val clientReloginAllowedBeforeLogout = true
         val mockLoginContext = mock<LoginContext>()
         val subject = Subject()
-        `when`(mockLoginContext.getSubject()).thenReturn(subject)
+        whenever(mockLoginContext.getSubject()).thenReturn(subject)
         val mockTime = MockTime()
         val startMs = mockTime.milliseconds()
 
@@ -480,7 +479,7 @@ class ExpiringCredentialRefreshingLoginTest {
         val clientReloginAllowedBeforeLogout = true
         val subject = Subject()
         val mockLoginContext = mock<LoginContext>()
-        `when`(mockLoginContext.getSubject()).thenReturn(subject)
+        whenever(mockLoginContext.getSubject()).thenReturn(subject)
         val mockTime = MockTime()
         val startMs = mockTime.milliseconds()
 
@@ -562,7 +561,7 @@ class ExpiringCredentialRefreshingLoginTest {
         val clientReloginAllowedBeforeLogout = true
         val subject = Subject()
         val mockLoginContext = mock<LoginContext>()
-        `when`(mockLoginContext.getSubject()).thenReturn(subject)
+        whenever(mockLoginContext.getSubject()).thenReturn(subject)
         val mockTime = MockTime()
         val startMs = mockTime.milliseconds()
 
@@ -645,8 +644,8 @@ class ExpiringCredentialRefreshingLoginTest {
         val clientReloginAllowedBeforeLogout = true
         val subject = Subject()
         val mockLoginContext = mock<LoginContext>()
-        `when`(mockLoginContext.getSubject()).thenReturn(subject)
-        doNothing().doThrow(LoginException()).doNothing().`when`(mockLoginContext).login()
+        whenever(mockLoginContext.getSubject()).thenReturn(subject)
+        doNothing().doThrow(LoginException()).doNothing().whenever(mockLoginContext).login()
         val mockTime = MockTime()
         val startMs = mockTime.milliseconds()
 

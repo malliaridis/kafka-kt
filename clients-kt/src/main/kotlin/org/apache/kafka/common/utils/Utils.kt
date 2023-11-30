@@ -48,10 +48,8 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.AbstractMap
-import java.util.Collections
 import java.util.EnumSet
 import java.util.Locale
-import java.util.Objects
 import java.util.Properties
 import java.util.SortedSet
 import java.util.TreeSet
@@ -603,7 +601,6 @@ object Utils {
      */
     @Deprecated("Use Kotlin collection operator.")
     fun <T> join(collection: Collection<T>, separator: String): String {
-        Objects.requireNonNull(collection)
         return mkString(collection.stream(), "", "", separator)
     }
 
@@ -613,7 +610,6 @@ object Utils {
      * @return The string representation.
      */
     fun <T> mkString(stream: Stream<T>, begin: String, end: String, separator: String): String {
-        Objects.requireNonNull(stream)
         val sb = StringBuilder()
         sb.append(begin)
         val iter = stream.iterator()

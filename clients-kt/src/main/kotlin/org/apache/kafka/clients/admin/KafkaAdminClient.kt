@@ -2585,14 +2585,14 @@ class KafkaAdminClient internal constructor(
             val requestData = partitionsByBroker.computeIfAbsent(replica.brokerId) {
                 DescribeLogDirsRequestData()
             }
-            var describableLogDirTopic = requestData.topics.find(replica.topic)
+            var describableLogDirTopic = requestData.topics?.find(replica.topic)
             if (describableLogDirTopic == null) {
                 val partitions = mutableListOf<Int>()
                 partitions.add(replica.partition)
                 describableLogDirTopic = DescribableLogDirTopic()
                     .setTopic(replica.topic)
                     .setPartitions(partitions.toIntArray())
-                requestData.topics += describableLogDirTopic
+                requestData.topics!!.add(describableLogDirTopic)
             } else describableLogDirTopic.partitions += replica.partition
         }
 
@@ -2600,7 +2600,7 @@ class KafkaAdminClient internal constructor(
         partitionsByBroker.forEach { (brokerId, topicPartitions) ->
             val replicaDirInfoByPartition = mutableMapOf<TopicPartition, ReplicaLogDirInfo>()
 
-            topicPartitions.topics.forEach { topicPartition ->
+            topicPartitions.topics!!.forEach { topicPartition ->
                 topicPartition.partitions.forEach { partitionId ->
                     replicaDirInfoByPartition[
                         TopicPartition(

@@ -236,7 +236,7 @@ open class JmxReporter : MetricsReporter {
             )
         }
 
-        override fun invoke(name: String, params: Array<Any>, sig: Array<String>): Any =
+        override fun invoke(name: String, params: Array<Any>?, sig: Array<String>?): Any =
             throw UnsupportedOperationException("Set not allowed.")
 
         override fun setAttribute(attribute: Attribute) =

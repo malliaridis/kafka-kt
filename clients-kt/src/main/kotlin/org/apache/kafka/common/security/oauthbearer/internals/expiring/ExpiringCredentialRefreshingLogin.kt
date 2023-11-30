@@ -140,10 +140,8 @@ abstract class ExpiringCredentialRefreshingLogin(
 
         // Re-login periodically. How often is determined by the expiration date of the credential
         // and refresh-related configuration values.
-        refresherThread = KafkaThread.daemon(
-            String.format("kafka-expiring-relogin-thread-%s", principalName),
-            Refresher(),
-        ).also { it.start() }
+        refresherThread = KafkaThread.daemon("kafka-expiring-relogin-thread-$principalName", Refresher())
+            .also { it.start() }
 
         loginContextFactory.refresherThreadStarted()
         return loginContext

@@ -38,9 +38,9 @@ import org.apache.kafka.test.TestUtils.tempFile
 
 class TestKeyManagerFactory : KeyManagerFactorySpi() {
 
-    override fun engineInit(keyStore: KeyStore, chars: CharArray) = Unit
+    override fun engineInit(keyStore: KeyStore?, chars: CharArray?) = Unit
 
-    override fun engineInit(managerFactoryParameters: ManagerFactoryParameters) = Unit
+    override fun engineInit(managerFactoryParameters: ManagerFactoryParameters?) = Unit
 
     override fun engineGetKeyManagers(): Array<KeyManager> = arrayOf(TestKeyManager())
 
@@ -56,7 +56,7 @@ class TestKeyManagerFactory : KeyManagerFactorySpi() {
                 val certBuilder = CertificateBuilder()
                 certificate = certBuilder.generate("CN=$CN, O=A server", keyPair)
                 val certificates = mapOf(ALIAS to certificate)
-                val trustStoreFile = tempFile("testTrustStore", ".jks")
+                val trustStoreFile = tempFile(prefix = "testTrustStore", suffix = ".jks")
                 mockTrustStoreFile = trustStoreFile.path
                 createTrustStore(
                     filename = mockTrustStoreFile,
@@ -71,30 +71,30 @@ class TestKeyManagerFactory : KeyManagerFactorySpi() {
         }
 
         override fun getClientAliases(
-            s: String,
-            principals: Array<Principal>,
+            s: String?,
+            principals: Array<Principal>?,
         ): Array<String> = arrayOf(ALIAS)
 
         override fun chooseClientAlias(
-            strings: Array<String>,
-            principals: Array<Principal>,
-            socket: Socket,
+            strings: Array<String>?,
+            principals: Array<Principal>?,
+            socket: Socket?,
         ): String = ALIAS
 
         override fun getServerAliases(
-            s: String,
-            principals: Array<Principal>,
+            s: String?,
+            principals: Array<Principal>?,
         ): Array<String> = arrayOf(ALIAS)
 
         override fun chooseServerAlias(
-            s: String,
-            principals: Array<Principal>,
-            socket: Socket,
+            s: String?,
+            principals: Array<Principal>?,
+            socket: Socket?,
         ): String = ALIAS
 
-        override fun getCertificateChain(s: String): Array<X509Certificate> = arrayOf(certificate)
+        override fun getCertificateChain(s: String?): Array<X509Certificate> = arrayOf(certificate)
 
-        override fun getPrivateKey(s: String): PrivateKey = keyPair.private
+        override fun getPrivateKey(s: String?): PrivateKey = keyPair.private
 
         companion object {
 

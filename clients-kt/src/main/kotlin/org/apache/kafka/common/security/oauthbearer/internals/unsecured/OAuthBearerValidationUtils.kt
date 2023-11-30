@@ -119,7 +119,7 @@ object OAuthBearerValidationUtils {
         allowableClockSkewMs: Int
     ): OAuthBearerValidationResult {
         val value: Number = try {
-            Objects.requireNonNull(jwt).expirationTime
+            jwt.expirationTime
         } catch (e: OAuthBearerIllegalTokenException) {
             return e.reason
         } ?: return doesNotExistResult(true, "exp")

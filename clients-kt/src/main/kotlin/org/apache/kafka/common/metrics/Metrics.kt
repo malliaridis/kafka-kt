@@ -277,8 +277,8 @@ class Metrics(
     ) {
         val metric = KafkaMetric(
             lock = ReentrantLock(),
-            metricName = Objects.requireNonNull(metricName),
-            metricValueProvider = Objects.requireNonNull(metricValueProvider),
+            metricName = metricName,
+            metricValueProvider = metricValueProvider,
             config = config,
             time = time,
         )
