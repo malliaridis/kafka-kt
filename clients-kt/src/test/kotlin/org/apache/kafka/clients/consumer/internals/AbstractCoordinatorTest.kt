@@ -614,10 +614,7 @@ class AbstractCoordinatorTest {
         assertEquals("", coordinator.rejoinReason())
     }
 
-    private fun ensureActiveGroup(
-        generation: Int,
-        memberId: String,
-    ) {
+    private fun ensureActiveGroup(generation: Int, memberId: String) {
         coordinator.ensureActiveGroup()
         assertEquals(generation, coordinator.generation().generationId)
         assertEquals(memberId, coordinator.generation().memberId)

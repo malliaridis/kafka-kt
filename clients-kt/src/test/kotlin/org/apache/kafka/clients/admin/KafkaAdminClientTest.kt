@@ -550,10 +550,9 @@ class KafkaAdminClientTest {
                 env.cluster.nodeById(0)!!,
                 TimeUnit.DAYS.toMillis(1)
             )
-            env.mockClient
-                .prepareResponse(
-                    response = prepareCreateTopicsResponse("myTopic", Errors.NONE),
-                )
+            env.mockClient.prepareResponse(
+                response = prepareCreateTopicsResponse("myTopic", Errors.NONE),
+            )
             val future = env.adminClient.createTopics(
                 newTopics = setOf(
                     NewTopic(

@@ -335,18 +335,18 @@ class RoundRobinAssignorTest {
         }
         consumers[consumer4] = Subscription(topics = listOf(topic1, topic2))
         val expectedAssignment = mutableMapOf(
-            consumer1 to listOf(
+            consumer1 to mutableListOf(
                 TopicPartition(topic = topic1, partition = 0),
                 TopicPartition( topic = topic2, partition = 1),
             ),
-            consumer2 to listOf(
+            consumer2 to mutableListOf(
                 TopicPartition(topic = topic1, partition = 1),
                 TopicPartition( topic = topic2, partition = 2),
             ),
-            consumer3 to listOf(
+            consumer3 to mutableListOf(
                 TopicPartition(topic = topic1, partition = 2),
             ),
-            consumer4 to listOf(
+            consumer4 to mutableListOf(
                 TopicPartition(topic = topic2, partition = 0),
             ),
         )
@@ -359,7 +359,7 @@ class RoundRobinAssignorTest {
         val consumer5 = "consumer5"
         consumers[consumer5] = Subscription(topics = listOf(topic1, topic2))
         expectedAssignment.remove(consumer4)
-        expectedAssignment[consumer5] = listOf(TopicPartition(topic = topic2, partition = 0))
+        expectedAssignment[consumer5] = mutableListOf(TopicPartition(topic = topic2, partition = 0))
         assignment = assignor.assign(partitionsPerTopic, consumers)
         assertEquals(expectedAssignment, assignment)
     }

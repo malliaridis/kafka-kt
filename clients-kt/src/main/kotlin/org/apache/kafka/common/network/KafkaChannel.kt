@@ -340,9 +340,10 @@ open class KafkaChannel(
     fun maybeCompleteReceive(): NetworkReceive? {
         receive?.let {
             if (it.complete()) {
-                it.payload()?.rewind()
+                it.payload()!!.rewind()
+                val result = it
                 receive = null
-                return it
+                return result
             }
         }
         return null

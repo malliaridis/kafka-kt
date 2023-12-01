@@ -42,7 +42,7 @@ abstract class AbstractPartitionAssignor : ConsumerPartitionAssignor {
     abstract fun assign(
         partitionsPerTopic: Map<String, Int>,
         subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>,
-    ): Map<String, List<TopicPartition>>
+    ): MutableMap<String, MutableList<TopicPartition>>
 
     override fun assign(metadata: Cluster, groupSubscription: GroupSubscription): GroupAssignment {
         val subscriptions = groupSubscription.subscriptions

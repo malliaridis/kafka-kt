@@ -343,20 +343,20 @@ class RangeAssignorTest {
         val expectedAssignment = mutableMapOf(
             // Have 3 static members instance1, instance2, instance3 to be persistent
             // across generations. Their assignment shall be the same.
-            consumer1 to listOf(
+            consumer1 to mutableListOf(
                 TopicPartition(topic = topic1, partition = 0),
                 TopicPartition(topic = topic1, partition = 1),
                 TopicPartition(topic = topic2, partition = 0),
             ),
-            consumer2 to listOf(
+            consumer2 to mutableListOf(
                 TopicPartition(topic = topic1, partition = 2),
                 TopicPartition(topic = topic2, partition = 1),
             ),
-            consumer3 to listOf(
+            consumer3 to mutableListOf(
                 TopicPartition(topic = topic1, partition = 3),
                 TopicPartition(topic = topic2, partition = 2),
             ),
-            consumer4 to listOf(
+            consumer4 to mutableListOf(
                 TopicPartition(topic = topic1, partition = 4),
                 TopicPartition(topic = topic2, partition = 3),
             ),
@@ -370,7 +370,7 @@ class RangeAssignorTest {
         val consumer5 = "consumer5"
         consumers[consumer5] = Subscription(topics = listOf(topic1, topic2))
         expectedAssignment.remove(consumer4)
-        expectedAssignment[consumer5] = listOf(
+        expectedAssignment[consumer5] = mutableListOf(
             TopicPartition(topic = topic1, partition = 4),
             TopicPartition(topic = topic2, partition = 3),
         )

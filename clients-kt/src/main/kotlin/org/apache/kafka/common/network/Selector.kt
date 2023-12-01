@@ -674,11 +674,8 @@ open class Selector private constructor(
             val receive = channel.maybeCompleteReceive()
             receive?.let { addToCompletedReceives(channel, it, currentTimeMs) }
         }
-        if (channel.isMuted) {
-            isOutOfMemory = true //channel has muted itself due to memory pressure.
-        } else {
-            isMadeReadProgressLastPoll = true
-        }
+        if (channel.isMuted) isOutOfMemory = true //channel has muted itself due to memory pressure.
+        else isMadeReadProgressLastPoll = true
     }
 
     private fun maybeReadFromClosingChannel(channel: KafkaChannel): Boolean {

@@ -32,7 +32,7 @@ class ThrowOnAssignmentAssignor internal constructor(
 ) : MockPartitionAssignor(supportedProtocols) {
 
     override fun onAssignment(
-        assignment: Assignment,
+        assignment: Assignment?,
         metadata: ConsumerGroupMetadata?,
     ) {
         super.onAssignment(assignment, metadata)

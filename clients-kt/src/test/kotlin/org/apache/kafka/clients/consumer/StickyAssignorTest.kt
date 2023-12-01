@@ -155,18 +155,18 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
         )
         val assignment = assignor.assign(partitionsPerTopic, subscriptions)
         assertEquals(
-            expected = listOf(
+            expected = mutableListOf(
                 TopicPartition(topic = topic, partition = 1),
                 TopicPartition(topic = topic, partition = 3),
             ),
             actual = assignment[consumer1],
         )
         assertEquals(
-            expected = listOf(TopicPartition(topic = topic, partition = 2)),
+            expected = mutableListOf(TopicPartition(topic = topic, partition = 2)),
             actual = assignment[consumer2],
         )
         assertEquals(
-            expected = listOf(TopicPartition(topic = topic, partition = 0)),
+            expected = mutableListOf(TopicPartition(topic = topic, partition = 0)),
             actual = assignment[consumer3],
         )
         verifyValidityAndBalance(subscriptions, assignment, partitionsPerTopic)
@@ -450,15 +450,15 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
         )
         val assignment = assignor.assign(partitionsPerTopic, subscriptions)
         assertEquals(
-            expected = listOf(TopicPartition(topic =topic1, partition = 0)),
+            expected = mutableListOf(TopicPartition(topic =topic1, partition = 0)),
             actual = assignment[consumer1],
         )
         assertEquals(
-            expected = listOf(TopicPartition(topic =topic1, partition = 1)),
+            expected = mutableListOf(TopicPartition(topic =topic1, partition = 1)),
             actual = assignment[consumer2],
         )
         assertEquals(
-            expected = listOf(TopicPartition(topic =topic1, partition = 2)),
+            expected = mutableListOf(TopicPartition(topic =topic1, partition = 2)),
             actual = assignment[consumer3],
         )
         verifyValidityAndBalance(subscriptions, assignment, partitionsPerTopic)

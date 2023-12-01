@@ -325,7 +325,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         }
 
         // normal case: the assignment result will have partitions for only the subscribed topic: "topic1"
-        partitionAssignor.prepare(mapOf(consumerId to listOf(t1p)))
+        partitionAssignor.prepare(mutableMapOf(consumerId to mutableListOf(t1p)))
         buildCoordinator(
             rebalanceConfig = rebalanceConfig,
             metrics = Metrics(),
@@ -350,7 +350,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         // unsubscribed topic partition assigned case: the assignment result will have partitions for
         // (1) subscribed topic: "topic1" and
         // (2) the additional unsubscribed topic: "topic2". We should add "topic2" into group subscription list
-        partitionAssignor.prepare(mapOf(consumerId to listOf(t1p, t2p)))
+        partitionAssignor.prepare(mutableMapOf(consumerId to mutableListOf(t1p, t2p)))
         buildCoordinator(
             rebalanceConfig = rebalanceConfig,
             metrics = Metrics(),
@@ -423,9 +423,9 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         val metadata = validateCooperativeAssignmentTestSetup()
 
         // simulate the custom cooperative assignor didn't revoke the partition first before assign to other consumer
-        val assignment: MutableMap<String, List<TopicPartition>> = HashMap()
-        assignment[consumerId] = listOf(t1p)
-        assignment[consumerId2] = listOf(t2p)
+        val assignment: MutableMap<String, MutableList<TopicPartition>> = HashMap()
+        assignment[consumerId] = mutableListOf(t1p)
+        assignment[consumerId2] = mutableListOf(t2p)
         partitionAssignor.prepare(assignment)
         buildCoordinator(
             rebalanceConfig,
@@ -505,9 +505,9 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         assignorsWithCooperativeStickyAssignor.add(mockCooperativeStickyAssignor)
 
         // simulate the cooperative sticky assignor do the assignment with out-of-date ownedPartition
-        val assignment = mapOf(
-            consumerId to listOf(t1p),
-            consumerId2 to listOf(t2p),
+        val assignment = mutableMapOf(
+            consumerId to mutableListOf(t1p),
+            consumerId2 to mutableListOf(t2p),
         )
         mockCooperativeStickyAssignor.prepare(assignment)
         buildCoordinator(
@@ -1064,7 +1064,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         val consumerId = "leader"
         val subscription = setOf(topic1)
         val owned = emptyList<TopicPartition>()
-        val assigned = listOf(t1p)
+        val assigned = mutableListOf(t1p)
         subscriptions.subscribe(setOf(topic1), rebalanceListener)
 
         // ensure metadata is up-to-date for leader
@@ -1074,7 +1074,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
         // normal join group
         val memberSubscriptions = mapOf(consumerId to listOf(topic1))
-        partitionAssignor.prepare(mapOf(consumerId to assigned))
+        partitionAssignor.prepare(mutableMapOf(consumerId to assigned))
         client.prepareResponse(
             joinGroupLeaderResponse(
                 generationId = 1,
@@ -1109,13 +1109,13 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         val oldSubscription = listOf(topic2)
         val oldAssignment = listOf(t2p)
         val newSubscription = listOf(topic1)
-        val newAssignment = listOf(t1p)
+        val newAssignment = mutableListOf(t1p)
         subscriptions.subscribe(oldSubscription.toSet(), rebalanceListener)
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
 
         // Test coordinator returning unsubscribed partitions
-        partitionAssignor.prepare(mapOf(consumerId to newAssignment))
+        partitionAssignor.prepare(mutableMapOf(consumerId to newAssignment))
 
         // First incorrect assignment for subscription
         client.prepareResponse(
@@ -1178,9 +1178,9 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
     fun testMetadataTopicsDuringSubscriptionChange() {
         val consumerId = "subscription_change"
         val oldSubscription = listOf(topic1)
-        val oldAssignment = listOf(t1p)
-        val newSubscription = listOf(topic2)
-        val newAssignment = listOf(t2p)
+        val oldAssignment = mutableListOf(t1p)
+        val newSubscription = mutableListOf(topic2)
+        val newAssignment = mutableListOf(t2p)
         subscriptions.subscribe(oldSubscription.toSet(), rebalanceListener)
         assertEquals(oldSubscription.toSet(), subscriptions.metadataTopics())
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
@@ -1200,7 +1200,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
     @Test
     fun testPatternJoinGroupLeader() {
         val consumerId = "leader"
-        val assigned = listOf(t1p, t2p)
+        val assigned = mutableListOf(t1p, t2p)
         val owned = emptyList<TopicPartition>()
         subscriptions.subscribe(Pattern.compile("test.*"), rebalanceListener)
 
@@ -1217,7 +1217,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
         // normal join group
         val memberSubscriptions = mapOf(consumerId to listOf(topic1))
-        partitionAssignor.prepare(mapOf(consumerId to assigned))
+        partitionAssignor.prepare(mutableMapOf(consumerId to assigned))
         client.prepareResponse(
             joinGroupLeaderResponse(
                 generationId = 1,
@@ -1253,7 +1253,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
     fun testMetadataRefreshDuringRebalance() {
         val consumerId = "leader"
         val owned = emptyList<TopicPartition>()
-        val oldAssigned = listOf(t1p)
+        val oldAssigned = mutableListOf(t1p)
         subscriptions.subscribe(Pattern.compile(".*"), rebalanceListener)
         client.updateMetadata(
             metadataUpdateWith(
@@ -1266,7 +1266,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
         val initialSubscription = mapOf(consumerId to listOf(topic1))
-        partitionAssignor.prepare(mapOf(consumerId to oldAssigned))
+        partitionAssignor.prepare(mutableMapOf(consumerId to oldAssigned))
 
         // the metadata will be updated in flight with a new topic added
         val updatedSubscription = listOf(topic1, topic2)
@@ -1303,10 +1303,10 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         assertNull(rebalanceListener.revoked)
         assertEquals(1, rebalanceListener.assignedCount)
         assertEquals(getAdded(owned, oldAssigned), rebalanceListener.assigned)
-        val newAssigned = listOf(t1p, t2p)
+        val newAssigned = mutableListOf(t1p, t2p)
         val updatedSubscriptions =
             mapOf(consumerId to listOf(topic1, topic2))
-        partitionAssignor.prepare(mapOf(consumerId to newAssigned))
+        partitionAssignor.prepare(mutableMapOf(consumerId to newAssigned))
 
         // we expect to see a second rebalance with the new-found topics
         client.prepareResponse(
@@ -1350,7 +1350,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         assertEquals(getAdded(oldAssigned, newAssigned), rebalanceListener.assigned)
 
         // we expect to see a third rebalance with the new-found topics
-        partitionAssignor.prepare(mapOf(consumerId to oldAssigned))
+        partitionAssignor.prepare(mutableMapOf(consumerId to oldAssigned))
         client.prepareResponse(
             matcher = { body ->
                 val join = body as JoinGroupRequest
@@ -1418,7 +1418,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             },
             response = syncGroupResponse(listOf(t1p), Errors.NONE),
         )
-        partitionAssignor.prepare(mapOf(consumerId to listOf(t1p)))
+        partitionAssignor.prepare(mutableMapOf(consumerId to mutableListOf(t1p)))
 
         // This will trigger rebalance.
         coordinator.poll(time.timer(Long.MAX_VALUE))
@@ -1480,7 +1480,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
                 },
                 response = syncGroupResponse(listOf(t1p), Errors.NONE),
             )
-            partitionAssignor.prepare(mapOf(consumerId to listOf(t1p)))
+            partitionAssignor.prepare(mutableMapOf(consumerId to mutableListOf(t1p)))
 
             // This will trigger rebalance.
             coordinator.poll(time.timer(Long.MAX_VALUE))
@@ -1658,7 +1658,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
     fun testRebalanceWithMetadataChange() {
         val consumerId = "leader"
         val topics = listOf(topic1, topic2)
-        val partitions = listOf(t1p, t2p)
+        val partitions = mutableListOf(t1p, t2p)
         subscriptions.subscribe(topics.toSet(), rebalanceListener)
         client.updateMetadata(
             metadataUpdateWith(
@@ -1670,7 +1670,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
         val initialSubscription = mapOf(consumerId to topics)
-        partitionAssignor.prepare(mapOf(consumerId to partitions))
+        partitionAssignor.prepare(mutableMapOf(consumerId to partitions))
         client.prepareResponse(
             joinGroupLeaderResponse(
                 generationId = 1,
@@ -1720,8 +1720,8 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         assertTrue(coordinator.rejoinNeededOrPending())
         client.respond(
             matcher = { request ->
-                if (request !is JoinGroupRequest) return@respond false
-                else return@respond (consumerId == request.data().memberId)
+                if (request !is JoinGroupRequest) false
+                else (consumerId == request.data().memberId)
             },
             response = joinGroupLeaderResponse(
                 generationId = 2,
@@ -1752,7 +1752,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
     fun testWakeupDuringJoin() {
         val consumerId = "leader"
         val owned = emptyList<TopicPartition>()
-        val assigned = listOf(t1p)
+        val assigned = mutableListOf(t1p)
         subscriptions.subscribe(setOf(topic1), rebalanceListener)
 
         // ensure metadata is up-to-date for leader
@@ -1760,7 +1760,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
         val memberSubscriptions = mapOf(consumerId to listOf(topic1))
-        partitionAssignor.prepare(mapOf(consumerId to assigned))
+        partitionAssignor.prepare(mutableMapOf(consumerId to assigned))
 
         // prepare only the first half of the join and then trigger the wakeup
         client.prepareResponse(
@@ -2116,7 +2116,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
         val memberSubscriptions = mapOf(consumerId to listOf(topic1))
-        partitionAssignor.prepare(mapOf(consumerId to listOf(t1p)))
+        partitionAssignor.prepare(mutableMapOf(consumerId to mutableListOf(t1p)))
 
         // the leader is responsible for picking up metadata changes and forcing a group rebalance
         client.prepareResponse(
@@ -2253,7 +2253,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
         // prepare initial rebalance
         val memberSubscriptions = mapOf(consumerId to topics)
-        partitionAssignor.prepare(mapOf(consumerId to listOf(tp1)))
+        partitionAssignor.prepare(mutableMapOf(consumerId to mutableListOf(tp1)))
         client.prepareResponse(
             joinGroupLeaderResponse(
                 generationId = 1,
@@ -2351,7 +2351,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             )
         )
         val memberSubscriptions = mapOf(consumerId to listOf(topic1))
-        partitionAssignor.prepare(mapOf(consumerId to listOf(t1p)))
+        partitionAssignor.prepare(mutableMapOf(consumerId to mutableListOf(t1p)))
         client.prepareResponse(
             joinGroupLeaderResponse(
                 generationId = 1,
@@ -2392,7 +2392,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
 
         // prepare initial rebalance
-        partitionAssignor.prepare(mapOf(consumerId to listOf(partition)))
+        partitionAssignor.prepare(mutableMapOf(consumerId to mutableListOf(partition)))
         client.prepareResponse(
             joinGroupFollowerResponse(
                 generationId = 1,
@@ -2450,7 +2450,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
         val memberSubscriptions = mapOf(consumerId to listOf(topic1))
-        partitionAssignor.prepare(emptyMap())
+        partitionAssignor.prepare(mutableMapOf())
         client.prepareResponse(
             joinGroupLeaderResponse(
                 generationId = 1,
@@ -3431,7 +3431,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
         // normal join group
         val memberSubscriptions = mapOf(consumerId to listOf(topic1))
-        partitionAssignor.prepare(mapOf(consumerId to listOf(t1p)))
+        partitionAssignor.prepare(mutableMapOf(consumerId to mutableListOf(t1p)))
         coordinator.ensureActiveGroup(time.timer(0L))
         assertTrue(coordinator.rejoinNeededOrPending())
         assertNull(coordinator.generationIfStable)
@@ -4367,7 +4367,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
         val memberSubscriptions = mapOf(consumerId to listOf(topic1))
-        assignor.prepare(mapOf(consumerId to listOf(t1p)))
+        assignor.prepare(mutableMapOf(consumerId to mutableListOf(t1p)))
         client.prepareResponse(
             joinGroupLeaderResponse(
                 generationId = 1,
@@ -4803,9 +4803,9 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         consumerId: String,
         generation: Int,
         subscription: List<String>,
-        assignment: List<TopicPartition>,
+        assignment: MutableList<TopicPartition>,
     ) {
-        partitionAssignor.prepare(mapOf(consumerId to assignment))
+        partitionAssignor.prepare(mutableMapOf(consumerId to assignment))
         client.prepareResponse(
             joinGroupLeaderResponse(
                 generationId = generation,
@@ -4892,7 +4892,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         override fun assign(
             partitionsPerTopic: Map<String, Int>,
             subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>,
-        ): Map<String, List<TopicPartition>> {
+        ): MutableMap<String, MutableList<TopicPartition>> {
             subscriptions.forEach { (consumer: String, subscription: ConsumerPartitionAssignor.Subscription) ->
                 check(subscription.rackId != null) {
                     "Rack id not provided in subscription for $consumer"

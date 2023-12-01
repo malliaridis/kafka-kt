@@ -28,12 +28,12 @@ open class MockPartitionAssignor internal constructor(
 
     private var numAssignment = 0
 
-    private var result: Map<String, List<TopicPartition>>? = null
+    private var result: MutableMap<String, MutableList<TopicPartition>>? = null
 
     override fun assign(
         partitionsPerTopic: Map<String, Int>,
         subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>,
-    ): Map<String, List<TopicPartition>> {
+    ): MutableMap<String, MutableList<TopicPartition>> {
         return checkNotNull(result) { "Call to assign with no result prepared" }
     }
 
@@ -45,11 +45,11 @@ open class MockPartitionAssignor internal constructor(
         result = null
     }
 
-    fun prepare(result: Map<String, List<TopicPartition>>?) {
+    fun prepare(result: MutableMap<String, MutableList<TopicPartition>>?) {
         this.result = result
     }
 
-    override fun onAssignment(assignment: ConsumerPartitionAssignor.Assignment, metadata: ConsumerGroupMetadata?) {
+    override fun onAssignment(assignment: ConsumerPartitionAssignor.Assignment?, metadata: ConsumerGroupMetadata?) {
         numAssignment += 1
     }
 

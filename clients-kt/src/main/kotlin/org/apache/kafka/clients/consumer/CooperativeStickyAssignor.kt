@@ -17,6 +17,7 @@
 
 package org.apache.kafka.clients.consumer
 
+import java.nio.ByteBuffer
 import org.apache.kafka.clients.consumer.ConsumerPartitionAssignor.RebalanceProtocol
 import org.apache.kafka.clients.consumer.internals.AbstractStickyAssignor
 import org.apache.kafka.common.TopicPartition
@@ -24,7 +25,6 @@ import org.apache.kafka.common.protocol.types.Field
 import org.apache.kafka.common.protocol.types.Schema
 import org.apache.kafka.common.protocol.types.Struct
 import org.apache.kafka.common.protocol.types.Type
-import java.nio.ByteBuffer
 
 /**
  * A cooperative version of the [AbstractStickyAssignor]. This follows the same (sticky) assignment
@@ -52,7 +52,7 @@ class CooperativeStickyAssignor : AbstractStickyAssignor() {
         listOf(RebalanceProtocol.COOPERATIVE, RebalanceProtocol.EAGER)
 
     override fun onAssignment(
-        assignment: ConsumerPartitionAssignor.Assignment,
+        assignment: ConsumerPartitionAssignor.Assignment?,
         metadata: ConsumerGroupMetadata?,
     ) {
         generation = metadata!!.generationId
@@ -86,43 +86,41 @@ class CooperativeStickyAssignor : AbstractStickyAssignor() {
 
     override fun assign(
         partitionsPerTopic: Map<String, Int>,
-        subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>
-    ): Map<String, List<TopicPartition>> {
+        subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>,
+    ): MutableMap<String, MutableList<TopicPartition>> {
         val assignments = super.assign(partitionsPerTopic, subscriptions)
         val partitionsTransferringOwnership = super.partitionsTransferringOwnership
             ?: computePartitionsTransferringOwnership(subscriptions, assignments)
-        return adjustAssignment(assignments, partitionsTransferringOwnership)
+        adjustAssignment(assignments, partitionsTransferringOwnership)
+        return assignments
     }
 
     // Following the cooperative rebalancing protocol requires removing partitions that must first
     // be revoked from the assignment
     private fun adjustAssignment(
-        assignments: Map<String, List<TopicPartition>>,
-        partitionsTransferringOwnership: Map<TopicPartition, String>
-    ) : Map<String, List<TopicPartition>> {
-        val mutableAssignments = assignments.toMutableMap()
-        partitionsTransferringOwnership.forEach { (topicPartition, consumer) ->
-            mutableAssignments.computeIfPresent(consumer) { _, topicPartitions ->
-                topicPartitions - topicPartition
-            }
+        assignments: Map<String, MutableList<TopicPartition>>,
+        partitionsTransferringOwnership: Map<TopicPartition, String>,
+    ) {
+        for ((topicPartition, key) in partitionsTransferringOwnership) {
+            assignments[key]!!.remove(topicPartition)
         }
-        return mutableAssignments.toMap()
     }
 
     private fun computePartitionsTransferringOwnership(
         subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>,
-        assignments: Map<String, List<TopicPartition>>
+        assignments: Map<String, List<TopicPartition>>,
     ): Map<TopicPartition, String> {
-        val allAddedPartitions: MutableMap<TopicPartition, String> = HashMap()
-        val allRevokedPartitions: MutableSet<TopicPartition> = hashSetOf()
+        val allAddedPartitions = mutableMapOf<TopicPartition, String>()
+        val allRevokedPartitions = mutableSetOf<TopicPartition>()
+
         for ((consumer, assignedPartitions) in assignments) {
             val ownedPartitions = subscriptions[consumer]!!.ownedPartitions
-            val ownedPartitionsSet: Set<TopicPartition> = ownedPartitions.toHashSet()
+            val ownedPartitionsSet: Set<TopicPartition> = ownedPartitions.toSet()
 
             for (tp in assignedPartitions) {
                 if (!ownedPartitionsSet.contains(tp)) allAddedPartitions[tp] = consumer
             }
-            val assignedPartitionsSet: Set<TopicPartition> = assignedPartitions.toHashSet()
+            val assignedPartitionsSet = assignedPartitions.toSet()
             for (tp in ownedPartitions) {
                 if (!assignedPartitionsSet.contains(tp)) allRevokedPartitions.add(tp)
             }

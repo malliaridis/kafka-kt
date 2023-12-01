@@ -86,8 +86,10 @@ class RoundRobinAssignor : AbstractPartitionAssignor() {
     override fun assign(
         partitionsPerTopic: Map<String, Int>,
         subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>,
-    ): Map<String, List<TopicPartition>> {
-        val assignment = subscriptions.mapValues { mutableListOf<TopicPartition>() }
+    ): MutableMap<String, MutableList<TopicPartition>> {
+        val assignment = subscriptions
+            .mapValues { mutableListOf<TopicPartition>() }
+            .toMutableMap()
         val memberInfoList = subscriptions.map { (key, value) ->
             MemberInfo(key, value.groupInstanceId)
         }

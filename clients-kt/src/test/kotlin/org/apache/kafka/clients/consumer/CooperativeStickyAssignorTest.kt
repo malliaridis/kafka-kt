@@ -23,6 +23,7 @@ import org.apache.kafka.common.TopicPartition
 import org.junit.jupiter.api.Test
 import java.nio.ByteBuffer
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -105,7 +106,7 @@ class CooperativeStickyAssignorTest : AbstractStickyAssignorTest() {
         assertEquals(AbstractStickyAssignor.DEFAULT_GENERATION, encodedGeneration)
         val generation = 10
         assignor.onAssignment(
-            assignment = ConsumerPartitionAssignor.Assignment(emptyList()),
+            assignment = null,
             metadata = ConsumerGroupMetadata(
                 groupId = "dummy-group-id",
                 generationId = generation,
@@ -350,12 +351,10 @@ class CooperativeStickyAssignorTest : AbstractStickyAssignorTest() {
      * "rebalance" to get the final assignment and then verify that it is both valid and balanced.
      */
     override fun verifyValidityAndBalance(
-        subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>,
-        assignments: Map<String, List<TopicPartition>>,
+        subscriptions: MutableMap<String, ConsumerPartitionAssignor.Subscription>,
+        assignments: MutableMap<String, MutableList<TopicPartition>>,
         partitionsPerTopic: Map<String, Int>,
     ) {
-        val subscriptions = subscriptions.toMutableMap()
-        val assignments = assignments.toMutableMap()
         var rebalances = 0
         // partitions are being revoked, we must go through another assignment to get the final state
         while (verifyCooperativeValidity(subscriptions, assignments)) {

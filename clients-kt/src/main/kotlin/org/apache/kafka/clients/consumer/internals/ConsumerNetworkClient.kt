@@ -196,8 +196,9 @@ class ConsumerNetworkClient(
      * @throws InterruptException if the calling thread is interrupted
      */
     fun poll(future: RequestFuture<*>, timer: Timer, disableWakeup: Boolean = false): Boolean {
-        do poll(timer, future, disableWakeup)
-        while (!future.isDone && timer.isNotExpired)
+        do {
+            poll(timer, future, disableWakeup)
+        } while (!future.isDone && timer.isNotExpired)
 
         return future.isDone
     }
@@ -462,7 +463,7 @@ class ConsumerNetworkClient(
     }
 
     // Visible for testing
-    fun trySend(now: Long): Long {
+    internal fun trySend(now: Long): Long {
         var pollDelayMs = maxPollTimeoutMs.toLong()
 
         // send any requests that can be sent now
@@ -606,8 +607,7 @@ class ConsumerNetworkClient(
      */
     private class UnsentRequests {
 
-        private val unsent: ConcurrentMap<Node, ConcurrentLinkedQueue<ClientRequest>> =
-            ConcurrentHashMap()
+        private val unsent: ConcurrentMap<Node, ConcurrentLinkedQueue<ClientRequest>> = ConcurrentHashMap()
 
         fun put(node: Node, request: ClientRequest) {
             // the lock protects the put from a concurrent removal of the queue for the node

@@ -487,7 +487,7 @@ abstract class AbstractCoordinator(
                 synchronized(this@AbstractCoordinator) {
                     val simpleName: String = exception.javaClass.simpleName
                     requestRejoin(
-                        shortReason = "rebalance failed due to $$simpleName",
+                        shortReason = "rebalance failed due to $simpleName",
                         fullReason = "rebalance failed due to '${exception.message}' ($simpleName)",
                     )
                 }

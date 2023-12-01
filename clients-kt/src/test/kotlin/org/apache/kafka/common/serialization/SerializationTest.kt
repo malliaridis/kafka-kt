@@ -47,13 +47,13 @@ class SerializationTest {
     private val topic = "testTopic"
     
     private val testData = mapOf(
-        String::class.java to mutableListOf<Any>("my string"),
+        String::class.java to listOf("my string"),
         Short::class.java to listOf<Short>(32767, -32768),
         Int::class.java to listOf(423412424, -41243432),
         Long::class.java to listOf(922337203685477580L, -922337203685477581L),
         Float::class.java to listOf(5678567.12312f, -5678567.12341f),
         Double::class.java to listOf(5678567.12312, -5678567.12341),
-        ByteArray::class.java to "my string".toByteArray().toList(),
+        ByteArray::class.java to listOf("my string".toByteArray()),
         ByteBuffer::class.java to listOf(
             ByteBuffer.wrap("my string".toByteArray()),
             ByteBuffer.allocate(10).put("my string".toByteArray()),
@@ -67,12 +67,12 @@ class SerializationTest {
 
     @Test
     fun allSerdesShouldRoundtripInput() {
-        for ((key, value1) in testData) {
+        for ((key, value) in testData) {
             assertIs<Class<Any>>(key)
             serdeFrom(key).use { serde ->
-                for (value in value1) assertEquals(
-                    expected = value,
-                    actual = serde.deserializer().deserialize(topic, serde.serializer().serialize(topic, value)),
+                for (element in value) assertEquals(
+                    expected = element,
+                    actual = serde.deserializer().deserialize(topic, serde.serializer().serialize(topic, element)),
                     message = "Should get the original ${key.getSimpleName()} after serialization and deserialization",
                 )
             }
@@ -85,11 +85,11 @@ class SerializationTest {
             serdeFrom(cls).use { serde ->
                 assertNull(
                     actual = serde.serializer().serialize(topic, null),
-                    message = "Should support null in ${cls.getSimpleName()} serialization",
+                    message = "Should support null in ${cls.name} serialization",
                 )
                 assertNull(
                     actual = serde.deserializer().deserialize(topic, null),
-                    message = "Should support null in ${cls.getSimpleName()} deserialization",
+                    message = "Should support null in ${cls.name} deserialization",
                 )
             }
         }

@@ -31,7 +31,7 @@ class NetworkReceive(
     override fun source(): String = source
 
     override fun complete(): Boolean {
-        return !size.hasRemaining() && buffer?.hasRemaining() != true
+        return !size.hasRemaining() && buffer?.hasRemaining() == false
     }
 
     @Throws(IOException::class)

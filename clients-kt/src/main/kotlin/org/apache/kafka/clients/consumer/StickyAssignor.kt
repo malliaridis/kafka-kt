@@ -176,10 +176,10 @@ class StickyAssignor : AbstractStickyAssignor() {
     override fun name(): String = STICKY_ASSIGNOR_NAME
 
     override fun onAssignment(
-        assignment: ConsumerPartitionAssignor.Assignment,
+        assignment: ConsumerPartitionAssignor.Assignment?,
         metadata: ConsumerGroupMetadata?,
     ) {
-        memberAssignment = assignment.partitions
+        memberAssignment = assignment!!.partitions
         generation = metadata!!.generationId
     }
 

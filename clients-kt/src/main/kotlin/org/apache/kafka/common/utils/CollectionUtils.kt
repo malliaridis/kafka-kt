@@ -79,7 +79,7 @@ object CollectionUtils {
         buildGroup: Function<String, T>,
         addToGroup: BiConsumer<T, Int>
     ): Map<String, T> {
-        val dataByTopic: MutableMap<String, T> = HashMap()
+        val dataByTopic = mutableMapOf<String, T>()
         for ((topic, partition) in partitions) {
             val topicData = dataByTopic.computeIfAbsent(topic, buildGroup)
             addToGroup.accept(topicData, partition)

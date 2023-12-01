@@ -48,9 +48,7 @@ interface ConsumerPartitionAssignor {
      * @param topics Topics subscribed to through [KafkaConsumer.subscribe] and variants
      * @return nullable subscription user data
      */
-    fun subscriptionUserData(topics: Set<String>): ByteBuffer? {
-        return null
-    }
+    fun subscriptionUserData(topics: Set<String>): ByteBuffer? = null
 
     /**
      * Perform the group assignment given the member subscriptions and current cluster metadata.
@@ -68,15 +66,13 @@ interface ConsumerPartitionAssignor {
      * @param assignment The local member's assignment as provided by the leader in [assign]
      * @param metadata Additional metadata on the consumer (optional)
      */
-    fun onAssignment(assignment: Assignment, metadata: ConsumerGroupMetadata?) {}
+    fun onAssignment(assignment: Assignment?, metadata: ConsumerGroupMetadata?) = Unit
 
     /**
      * Indicate which rebalance protocol this assignor works with;
      * By default it should always work with [RebalanceProtocol.EAGER].
      */
-    fun supportedProtocols(): List<RebalanceProtocol?>? {
-        return listOf(RebalanceProtocol.EAGER)
-    }
+    fun supportedProtocols(): List<RebalanceProtocol?>? = listOf(RebalanceProtocol.EAGER)
 
     /**
      * Return the version of the assignor which indicates how the user metadata encodings

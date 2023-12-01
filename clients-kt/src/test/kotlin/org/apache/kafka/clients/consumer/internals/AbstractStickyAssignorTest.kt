@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
 import java.nio.ByteBuffer
 import kotlin.math.abs
+import kotlin.math.absoluteValue
 import kotlin.random.Random
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -525,12 +526,12 @@ abstract class AbstractStickyAssignorTest {
         assignment = assignor.assign(partitionsPerTopic, subscriptions)
 
         assertEquals(
-            expected = setOf(
+            expected = hashSetOf(
                 TopicPartition(topic = topic, partition = 2),
                 TopicPartition(topic = topic, partition = 1),
                 TopicPartition(topic = topic, partition = 0),
             ),
-            actual = assignment[consumer2]!!.toSet(),
+            actual = assignment[consumer2]!!.toHashSet(),
         )
         assertTrue(assignor.partitionsTransferringOwnership!!.isEmpty())
         verifyValidityAndBalance(subscriptions, assignment, partitionsPerTopic)
@@ -1253,21 +1254,21 @@ abstract class AbstractStickyAssignorTest {
             generation = AbstractStickyAssignor.DEFAULT_GENERATION,
         )
         val assignment = assignor.assign(partitionsPerTopic, subscriptions)
-        assertContentEquals(
-            expected = listOf(
+        assertEquals(
+            expected = hashSetOf(
                 TopicPartition(topic = topic, partition = 0),
                 TopicPartition(topic = topic, partition = 2),
                 TopicPartition(topic = topic2, partition = 1),
             ),
-            actual = assignment[consumer1]!!,
+            actual = assignment[consumer1]!!.toHashSet(),
         )
         assertEquals(
-            expected = setOf(
+            expected = hashSetOf(
                 TopicPartition(topic = topic, partition = 1),
                 TopicPartition(topic = topic2, partition = 0),
                 TopicPartition(topic = topic2, partition = 2),
             ),
-            actual = assignment[consumer2]!!.toSet(),
+            actual = assignment[consumer2]!!.toHashSet(),
         )
         assertTrue(assignor.partitionsTransferringOwnership!!.isEmpty())
         verifyValidityAndBalance(subscriptions, assignment, partitionsPerTopic)
@@ -1522,8 +1523,8 @@ abstract class AbstractStickyAssignorTest {
      * @param partitionsPerTopic number of partitions per topic
      */
     internal open fun verifyValidityAndBalance(
-        subscriptions: Map<String, Subscription>,
-        assignments: Map<String, List<TopicPartition>>,
+        subscriptions: MutableMap<String, Subscription>,
+        assignments: MutableMap<String, MutableList<TopicPartition>>,
         partitionsPerTopic: Map<String, Int>,
     ) {
         val size = subscriptions.size
@@ -1549,7 +1550,7 @@ abstract class AbstractStickyAssignorTest {
                 )
                 val len = partitions.size
                 val otherLen = otherPartitions.size
-                if (abs((len - otherLen).toDouble()) <= 1) continue
+                if ((len - otherLen).absoluteValue <= 1) continue
                 val map = groupPartitionsByTopic(partitions)
                 val otherMap = groupPartitionsByTopic(otherPartitions)
                 val moreLoaded = if (len > otherLen) i else j

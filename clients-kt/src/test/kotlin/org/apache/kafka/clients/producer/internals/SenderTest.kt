@@ -218,7 +218,7 @@ class SenderTest {
         )
         client.prepareResponse(
             matcher = { body ->
-                val request: ProduceRequest? = body as ProduceRequest?
+                val request = body as ProduceRequest?
                 if (request!!.version.toInt() != 2) return@prepareResponse false
                 val records: MemoryRecords? = partitionRecords(request)[tp0]
                 (records != null
@@ -3016,13 +3016,13 @@ class SenderTest {
         expectedEpoch: Int = -1,
         expectedSequence: Int,
         tp: TopicPartition,
-        responseError: Errors?,
+        responseError: Errors,
         responseOffset: Long,
         logStartOffset: Long = -1L,
     ) {
         client.respond(
-            matcher = { body: AbstractRequest? ->
-                val produceRequest: ProduceRequest? = body as ProduceRequest?
+            matcher = { body ->
+                val produceRequest = body as ProduceRequest?
                 assertTrue(RequestTestUtils.hasIdempotentRecords(produceRequest))
                 val records: MemoryRecords? = partitionRecords(produceRequest)[tp]
                 val batchIterator: Iterator<MutableRecordBatch> = records!!.batches().iterator()
@@ -3058,10 +3058,7 @@ class SenderTest {
         // cluster authorization is a fatal error for the producer
         val future: Future<RecordMetadata>? = appendToAccumulator(tp0)
         client.prepareResponse(
-            matcher = { body: AbstractRequest? ->
-                body is ProduceRequest
-                        && RequestTestUtils.hasIdempotentRecords(body as ProduceRequest?)
-            },
+            matcher = { body -> body is ProduceRequest? && RequestTestUtils.hasIdempotentRecords(body) },
             response = produceResponse(
                 tp = tp0,
                 offset = -1,
@@ -3092,10 +3089,7 @@ class SenderTest {
         val future2: Future<RecordMetadata>? = appendToAccumulator(tp1)
         sender.runOnce()
         client.respond(
-            matcher = { body: AbstractRequest? ->
-                body is ProduceRequest
-                        && RequestTestUtils.hasIdempotentRecords(body as ProduceRequest?)
-            },
+            matcher = { body -> body is ProduceRequest? && RequestTestUtils.hasIdempotentRecords(body) },
             response = produceResponse(
                 tp = tp0,
                 offset = -1,
@@ -3112,8 +3106,7 @@ class SenderTest {
         // Should be fine if the second response eventually returns
         client.respond(
             matcher = { body ->
-                body is ProduceRequest
-                        && RequestTestUtils.hasIdempotentRecords(body as ProduceRequest?)
+                body is ProduceRequest? && RequestTestUtils.hasIdempotentRecords(body)
             },
             response = produceResponse(
                 tp = tp1,
@@ -3136,8 +3129,7 @@ class SenderTest {
         val future: Future<RecordMetadata>? = appendToAccumulator(tp0)
         client.prepareResponse(
             matcher = { body ->
-                body is ProduceRequest
-                        && RequestTestUtils.hasIdempotentRecords(body as ProduceRequest?)
+                body is ProduceRequest? && RequestTestUtils.hasIdempotentRecords(body)
             },
             response = produceResponse(
                 tp = tp0,
@@ -3204,7 +3196,7 @@ class SenderTest {
         val responseFuture: Future<RecordMetadata>? = appendToAccumulator(tp0)
         client.prepareResponse(
             matcher = { body ->
-                if (body is ProduceRequest) {
+                if (body is ProduceRequest?) {
                     val records = partitionRecords(body)[tp0]
                     val batchIterator = records!!.batches().iterator()
                     assertTrue(batchIterator.hasNext())
@@ -4557,14 +4549,18 @@ class SenderTest {
     private fun produceResponse(
         tp: TopicPartition,
         offset: Long,
-        error: Errors?,
+        error: Errors,
         throttleTimeMs: Int,
         logStartOffset: Long = -1L,
         errorMessage: String? = null
     ): ProduceResponse {
         val resp = PartitionResponse(
-            error!!, offset,
-            RecordBatch.NO_TIMESTAMP, logStartOffset, emptyList(), errorMessage
+            error = error,
+            baseOffset = offset,
+            logAppendTime = RecordBatch.NO_TIMESTAMP,
+            logStartOffset = logStartOffset,
+            recordErrors = emptyList(),
+            errorMessage = errorMessage,
         )
         val partResp = mapOf(tp to resp)
         return ProduceResponse(partResp, throttleTimeMs)
