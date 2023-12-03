@@ -241,16 +241,6 @@ class FieldSpec @JsonCreator constructor(
         structRegistry: StructRegistry,
     ): String {
         return when {
-            // Special cases / exceptions
-            // TODO Replace special treatment from generator
-            type is ArrayType && structRegistry.isStructArrayWithKeys(this) ->
-                collectionType(type.elementType.toString()) + "()"
-
-            type is BytesFieldType -> if (zeroCopy) {
-                headerGenerator.addImport(MessageGenerator.BYTE_UTILS_CLASS)
-                "ByteUtils.EMPTY_BUF"
-            } else "byteArrayOf()"
-
             // Nullable and fallback cases
 
             // In case of all versions nullable
@@ -644,6 +634,8 @@ class FieldSpec @JsonCreator constructor(
     /**
      * Generate an if statement that checks if this field has a non-default value.
      *
+     * Note that the field has to be immutable if it is nullable.
+     *
      * @param headerGenerator The header generator in case we need to add imports.
      * @param structRegistry The struct registry in case we need to look up structs.
      * @param buffer The code buffer to write to.
@@ -660,71 +652,35 @@ class FieldSpec @JsonCreator constructor(
         nullableVersions: Versions,
         disableSafeUnwrap: Boolean = false,
     ) {
-        val fieldDefault = fieldDefault(headerGenerator, structRegistry)
-        val prefixedFieldName = if (disableSafeUnwrap) "${fieldPrefix ?: "this."}${camelCaseName()}"
-        else safePrefixedCamelCaseName(fieldPrefix)
-        if (type.isNullable && !disableSafeUnwrap) {
-            // Generate copy variable for smart cast
-            buffer.printf("val %s = %s%n", camelCaseName(), "${fieldPrefix ?: "this."}${camelCaseName()}")
-        }
+        val fieldDefaultString = fieldDefault(headerGenerator, structRegistry)
+        val prefixedFieldName = "${fieldPrefix ?: ""}${camelCaseName()}"
 
-        if (type.isArray) {
-            if (fieldDefault == "null")
+        when {
+            // All fields with null default (includes Records too)
+            fieldDefaultString == "null" ->
                 buffer.printf("if (%s != null) {%n", prefixedFieldName)
-            else if (nullableVersions.isEmpty)
-                buffer.printf("if (%s.isNotEmpty()) {%n", prefixedFieldName)
-            else buffer.printf(
-                "if (%s == null || %s.isNotEmpty()) {%n",
-                prefixedFieldName,
-                prefixedFieldName,
-            )
-        } else if (type.isBytes) {
-            if (fieldDefault == "null")
-                buffer.printf("if (%s != null) {%n", prefixedFieldName)
-            else if (nullableVersions.isEmpty) {
-                if (zeroCopy) buffer.printf(
-                    // it is a ByteBuffer
-                    "if (%s.hasRemaining()) {%n",
-                    prefixedFieldName,
-                )
-                // else it is a ByteArray
-                else buffer.printf("if (%s.length != 0) {%n", prefixedFieldName)
-            } else {
-                if (zeroCopy) buffer.printf(
-                    "if (%s == null || %s.remaining() > 0) {%n",
-                    prefixedFieldName,
-                    prefixedFieldName,
-                )
-                else buffer.printf(
-                    "if (%s == null || %s.length != 0) {%n",
-                    prefixedFieldName,
-                    prefixedFieldName,
-                )
+
+            type is ArrayType && type.isNullable -> // TODO Change behavior for only non-nullable default
+                buffer.printf("if (%s == null || %s.isNotEmpty()) {%n", prefixedFieldName, prefixedFieldName)
+
+            type is ArrayType -> buffer.printf("if (%s.isNotEmpty()) {%n", prefixedFieldName)
+
+            type is BytesFieldType && type.isNullable -> // TODO Change behavior for only non-nullable default
+                if(zeroCopy) buffer.printf("if (%s == null || %s.remaining() > 0) {%n", prefixedFieldName, prefixedFieldName)
+                else buffer.printf("if (%s == null || %s.isNotEmpty()) {%n", prefixedFieldName, prefixedFieldName)
+
+            type is BytesFieldType ->
+                if(zeroCopy) buffer.printf("if (%s.remaining() > 0) {%n", prefixedFieldName)
+                else buffer.printf("if (%s.isNotEmpty()) {%n", prefixedFieldName)
+
+            type is StringFieldType ||type is StructType || type is BoolFieldType || type.isPrimitive ->
+                buffer.printf("if (%s != %s) {%n", prefixedFieldName, fieldDefaultString)
+
+            type is UUIDFieldType -> {
+                headerGenerator.addImport(MessageGenerator.UUID_CLASS)
+                buffer.printf("if (%s != Uuid.ZERO_UUID) {%n", prefixedFieldName)
             }
-        } else if (type.isString || type.isStruct || type is UUIDFieldType) {
-            if (fieldDefault == "null")
-                buffer.printf("if (%s != null) {%n", prefixedFieldName)
-            else if (nullableVersions.isEmpty) buffer.printf(
-                "if (%s != %s) {%n",
-                prefixedFieldName,
-                fieldDefault,
-            )
-            else buffer.printf(
-                "if (%s == null || %s != %s) {%n",
-                prefixedFieldName,
-                prefixedFieldName,
-                fieldDefault,
-            )
-        } else if (type is BoolFieldType) buffer.printf(
-            "if (%s%s) {%n",
-            if (fieldDefault == "true") "!" else "",
-            prefixedFieldName,
-        )
-        else buffer.printf(
-            "if (%s != %s) {%n",
-            prefixedFieldName,
-            fieldDefault,
-        )
+        }
     }
 
     /**

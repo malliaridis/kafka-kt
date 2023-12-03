@@ -533,6 +533,8 @@ class JsonConverterGenerator internal constructor(
                 )
             }
             val cond = VersionConditional.forVersions(field.versions, curVersions)
+                .emitBlockScope { field.type.isNullable }
+                .ifInBlockScope { buffer.printf("val %s = obj.%s%n", field.camelCaseName(), field.camelCaseName()) }
                 .ifMember { presentVersions ->
                     VersionConditional.forVersions(field.taggedVersions, presentVersions)
                         .ifMember { presentAndTaggedVersions ->
@@ -551,7 +553,7 @@ class JsonConverterGenerator internal constructor(
                     field.generateNonIgnorableFieldCheck(
                         headerGenerator = headerGenerator,
                         structRegistry = structRegistry,
-                        fieldPrefix = "obj.",
+                        fieldPrefix = if (field.type.isNullable) null else "obj.",
                         buffer = buffer,
                     )
                 }

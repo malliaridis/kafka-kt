@@ -34,7 +34,9 @@ class IsNullConditional private constructor(
 
     private var ifShouldNotBeNull: Runnable? = null
 
-    private var alwaysEmitBlockScope = false
+    private var emitBlockScope = { false }
+
+    private var inBlockScope: () -> Unit = {}
 
     private var conditionalGenerator: ConditionalGenerator = PrimitiveConditionalGenerator
 
@@ -58,8 +60,25 @@ class IsNullConditional private constructor(
         return this
     }
 
+    fun emitBlockScope(emit: () -> Boolean): IsNullConditional {
+        this.emitBlockScope = emit
+        return this
+    }
+
+    /**
+     * Allows to set a [block] that is executed whenever a new block scope is opened, regardless if member or not.
+     */
+    fun ifInBlockScope(block: () -> Unit): IsNullConditional {
+        this.inBlockScope = block
+        return this
+    }
+
+    @Deprecated(
+        message = "Use emitBlockScope() instead",
+        replaceWith = ReplaceWith("emitBlockScope { alwaysEmitBlockScope }"),
+    )
     fun alwaysEmitBlockScope(alwaysEmitBlockScope: Boolean): IsNullConditional {
-        this.alwaysEmitBlockScope = alwaysEmitBlockScope
+        this.emitBlockScope = { alwaysEmitBlockScope }
         return this
     }
 
@@ -71,21 +90,15 @@ class IsNullConditional private constructor(
     fun generate(buffer: CodeBuffer) {
         val ifShouldNotBeNull = ifShouldNotBeNull
 
-        if (nullableVersions.intersect(possibleVersions).isEmpty) {
-            if (ifShouldNotBeNull != null) {
-                if (alwaysEmitBlockScope) {
-                    buffer.printf("run {%n")
-                    buffer.incrementIndent()
-                }
-                ifShouldNotBeNull.run()
-                if (alwaysEmitBlockScope) {
-                    buffer.decrementIndent()
-                    buffer.printf("}%n")
-                }
-            }
-        } else {
+        if (emitBlockScope()) {
+            buffer.printf("run<Unit> {%n")
+            buffer.incrementIndent()
+            inBlockScope()
+        }
+
+        if (nullableVersions.intersect(possibleVersions).isEmpty) ifShouldNotBeNull?.run()
+        else {
             val ifNull = ifNull
-            if (namePrefix != null) buffer.printf("val %s = %s%s%n", name, namePrefix, name)
 
             if (ifNull != null) {
                 buffer.printf("if (%s) {%n", conditionalGenerator.generate(name, false))
@@ -106,6 +119,11 @@ class IsNullConditional private constructor(
                 buffer.decrementIndent()
                 buffer.printf("}%n")
             }
+        }
+
+        if (emitBlockScope()) {
+            buffer.decrementIndent()
+            buffer.printf("}%n")
         }
     }
 

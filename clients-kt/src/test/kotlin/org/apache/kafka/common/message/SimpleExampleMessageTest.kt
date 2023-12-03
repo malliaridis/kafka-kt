@@ -249,7 +249,7 @@ class SimpleExampleMessageTest {
         // Verify that the tagged field reads as empty when not set.
         testRoundTrip(
             message = SimpleExampleMessageData(),
-            validator = { message -> assertContentEquals(null, message.myBytes) },
+            validator = { message -> assertContentEquals(byteArrayOf(), message.myBytes) },
         )
         testRoundTrip(
             message = SimpleExampleMessageData().setMyBytes(byteArrayOf(0x43, 0x66)),
@@ -424,7 +424,7 @@ class SimpleExampleMessageTest {
                     "myNullableString=null, " +
                     "myInt16=123, myFloat64=1.0, " +
                     "myString='', " +
-                    "myBytes=null, " +
+                    "myBytes=[], " +
                     "taggedUuid=x7D3Ck_ZRA22-dzIvu_pnQ, " +
                     "taggedLong=914172222550880202, " +
                     "zeroCopyByteBuffer=java.nio.HeapByteBuffer[pos=0 lim=0 cap=0], " +

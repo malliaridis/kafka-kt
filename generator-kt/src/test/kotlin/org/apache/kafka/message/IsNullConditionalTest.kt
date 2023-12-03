@@ -104,11 +104,11 @@ class IsNullConditionalTest {
             .possibleVersions(Versions.parse(input = "3+", defaultVersions = null)!!)
             .ifNull { buffer.printf("println(\"null\")%n") }
             .ifShouldNotBeNull { buffer.printf("println(\"not null\")%n") }
-            .alwaysEmitBlockScope(true)
+            .emitBlockScope { true }
             .generate(buffer)
         VersionConditionalTest.claimEquals(
             buffer,
-            "run {%n",
+            "run<Unit> {%n",
             "    println(\"not null\")%n",
             "}%n",
         )

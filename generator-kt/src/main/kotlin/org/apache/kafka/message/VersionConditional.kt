@@ -28,9 +28,11 @@ class VersionConditional private constructor(
     private var ifMember: ClauseGenerator? = null
     
     private var ifNotMember: ClauseGenerator? = null
-    
-    private var alwaysEmitBlockScope = false
-    
+
+    private var emitBlockScope: () -> Boolean = { false }
+
+    private var inBlockScope: () -> Unit = {}
+
     private var allowMembershipCheckAlwaysFalse = true
     
     fun ifMember(ifMember: ClauseGenerator?): VersionConditional {
@@ -44,12 +46,30 @@ class VersionConditional private constructor(
     }
 
     /**
+     * Create a new block scope if the emit returns true. This is useful for cases where we need immutable
+     * fields or want to declare variables in the clauses without worrying if they conflict with other variables
+     * of the same name.
+     */
+    fun emitBlockScope(emit: () -> Boolean): VersionConditional {
+        this.emitBlockScope = emit
+        return this
+    }
+
+    /**
+     * Allows to set a [block] that is executed whenever a new block scope is opened, regardless if member or not.
+     */
+    fun ifInBlockScope(block: () -> Unit): VersionConditional {
+        this.inBlockScope = block
+        return this
+    }
+
+    /**
      * If this is set, we will always create a new block scope, even if there are no 'if'
      * statements. This is useful for cases where we want to declare variables in the clauses
      * without worrying if they conflict with other variables of the same name.
      */
     fun alwaysEmitBlockScope(alwaysEmitBlockScope: Boolean): VersionConditional {
-        this.alwaysEmitBlockScope = alwaysEmitBlockScope
+        this.emitBlockScope= { alwaysEmitBlockScope }
         return this
     }
 
@@ -160,35 +180,15 @@ class VersionConditional private constructor(
     }
 
     private fun generateAlwaysTrueCheck(ifVersions: Versions, buffer: CodeBuffer) {
-        ifMember?.let { ifMember ->
-            if (alwaysEmitBlockScope) {
-                buffer.printf("run {%n")
-                buffer.incrementIndent()
-            }
-            ifMember.generate(ifVersions)
-            if (alwaysEmitBlockScope) {
-                buffer.decrementIndent()
-                buffer.printf("}%n")
-            }
-        }
+        ifMember?.generate(ifVersions)
     }
 
-    private fun generateAlwaysFalseCheck(ifNotVersions: Versions?, buffer: CodeBuffer) {
+    private fun generateAlwaysFalseCheck(ifNotVersions: Versions, buffer: CodeBuffer) {
         if (!allowMembershipCheckAlwaysFalse) throw RuntimeException(
             "Version ranges $containingVersions and $possibleVersions have no versions in common."
         )
 
-        ifNotMember?.let { ifNotMember ->
-            if (alwaysEmitBlockScope) {
-                buffer.printf("run {%n")
-                buffer.incrementIndent()
-            }
-            ifNotMember.generate((ifNotVersions)!!)
-            if (alwaysEmitBlockScope) {
-                buffer.decrementIndent()
-                buffer.printf("}%n")
-            }
-        }
+        ifNotMember?.generate(ifNotVersions)
     }
 
     fun generate(buffer: CodeBuffer) {
@@ -200,6 +200,11 @@ class VersionConditional private constructor(
         // dealing with multiple ranges.
         if (ifNotVersions == null) {
             ifNotVersions = possibleVersions
+        }
+        if(emitBlockScope()) {
+            buffer.printf("run<Unit> {%n")
+            buffer.incrementIndent()
+            inBlockScope()
         }
         if (possibleVersions.lowest < containingVersions.lowest) {
             if (possibleVersions.highest > containingVersions.highest)
@@ -215,6 +220,11 @@ class VersionConditional private constructor(
                 generateUpperRangeCheck(ifVersions, ifNotVersions, buffer)
             else generateAlwaysTrueCheck(ifVersions, buffer)
         } else generateAlwaysFalseCheck(ifNotVersions, buffer)
+
+        if (emitBlockScope()) {
+            buffer.decrementIndent()
+            buffer.printf("}%n")
+        }
     }
 
     companion object {
