@@ -112,7 +112,7 @@ class MetadataRequest(
             val data = MetadataRequestData()
             topicIds?.forEach { topicId ->
                 data.topics = data.topics!! + MetadataRequestTopic().setTopicId(topicId)
-            } ?: data.setTopics(emptyList())
+            } ?: data.setTopics(null)
 
             // It's impossible to create topic with topicId
             data.setAllowAutoTopicCreation(false)
@@ -154,7 +154,7 @@ class MetadataRequest(
         companion object {
 
             private val ALL_TOPICS_REQUEST_DATA = MetadataRequestData()
-                .setTopics(emptyList())
+                .setTopics(null)
                 .setAllowAutoTopicCreation(true)
 
             // This never causes auto-creation, but we set the boolean to true because that is

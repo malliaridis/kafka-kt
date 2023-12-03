@@ -47,7 +47,7 @@ interface Message {
     fun size(cache: ObjectSerializationCache, version: Short): Int {
         val size = MessageSizeAccumulator()
         addSize(size, cache, version)
-        return size.totalSize()
+        return size.totalSize
     }
 
     /**

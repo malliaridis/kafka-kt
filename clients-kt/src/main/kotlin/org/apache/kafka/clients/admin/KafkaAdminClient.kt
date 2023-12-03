@@ -2546,7 +2546,7 @@ class KafkaAdminClient internal constructor(
             ) {
                 override fun createRequest(timeoutMs: Int): DescribeLogDirsRequest.Builder {
                     // Query selected partitions in all log directories
-                    return DescribeLogDirsRequest.Builder(DescribeLogDirsRequestData())
+                    return DescribeLogDirsRequest.Builder(DescribeLogDirsRequestData().setTopics(null))
                 }
 
                 override fun handleResponse(abstractResponse: AbstractResponse) {

@@ -57,13 +57,16 @@ class ConsumerMetadataTest {
     private fun testPatternSubscription(includeInternalTopics: Boolean) {
         subscription.subscribe(Pattern.compile("__.*"), NoOpConsumerRebalanceListener())
         val metadata = newConsumerMetadata(includeInternalTopics)
+
         val builder = metadata.newMetadataRequestBuilder()
         assertTrue(builder.isAllTopics)
+
         val topics = listOf(
             topicMetadata(topic = "__consumer_offsets", isInternal = true),
             topicMetadata(topic = "__matching_topic", isInternal = false),
             topicMetadata(topic = "non_matching_topic", isInternal = false),
         )
+
         val response = metadataResponse(
             brokers = listOf(node),
             clusterId = "clusterId",
@@ -75,6 +78,7 @@ class ConsumerMetadataTest {
             isPartialUpdate = false,
             nowMs = time.milliseconds(),
         )
+
         if (includeInternalTopics) assertEquals(
             expected = setOf(
                 "__matching_topic",

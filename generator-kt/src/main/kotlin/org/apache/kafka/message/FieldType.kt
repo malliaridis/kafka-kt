@@ -17,7 +17,7 @@
 
 package org.apache.kafka.message
 
-interface FieldType {
+sealed interface FieldType {
 
     fun getBoxedKotlinType(headerGenerator: HeaderGenerator): String?
 
