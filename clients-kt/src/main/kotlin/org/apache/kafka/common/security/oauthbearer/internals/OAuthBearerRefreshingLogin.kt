@@ -114,9 +114,9 @@ class OAuthBearerRefreshingLogin : Login {
 
     @Synchronized
     @Throws(LoginException::class)
-    override fun login(): LoginContext {
-        return expiringCredentialRefreshingLogin?.login()
-            ?: throw LoginException("Login was not configured properly")
+    override fun login(): LoginContext? {
+        return if (expiringCredentialRefreshingLogin != null) expiringCredentialRefreshingLogin?.login()
+        else throw LoginException("Login was not configured properly")
     }
 
     companion object {

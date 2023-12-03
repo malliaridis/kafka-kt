@@ -33,7 +33,7 @@ class GarbageCollectedMemoryPool(
     sizeBytes: Long,
     maxSingleAllocationSize: Int,
     strict: Boolean,
-    oomPeriodSensor: Sensor?
+    oomPeriodSensor: Sensor?,
 ) : SimpleMemoryPool(
     sizeInBytes = sizeBytes,
     maxSingleAllocationBytes = maxSingleAllocationSize,
@@ -75,10 +75,11 @@ class GarbageCollectedMemoryPool(
     override fun bufferToBeReleased(justReleased: ByteBuffer) {
         val ref = BufferReference(justReleased) //used ro lookup only
 
-        val metadata = buffersInFlight.remove(ref)
-            ?: //its impossible for the buffer to have already been GC'ed (because we have a hard ref to it
-            //in the function arg) so this means either a double free or not our buffer.
-            throw IllegalArgumentException("returned buffer ${ref.hashCode} was never allocated by this pool")
+        //its impossible for the buffer to have already been GC'ed (because we have a hard ref to it
+        //in the function arg) so this means either a double free or not our buffer.
+        val metadata = requireNotNull(buffersInFlight.remove(ref)) {
+            "returned buffer ${ref.hashCode} was never allocated by this pool"
+        }
 
         check(metadata.sizeBytes == justReleased.capacity()) {
             //this is a bug
@@ -103,11 +104,11 @@ class GarbageCollectedMemoryPool(
                     //release() can only happen before its GC'ed, and enqueue can only happen after.
                     //if the ref was enqueued it must then not have been released
                     val metadata = buffersInFlight.remove(ref)
-                        ?: //it can happen rarely that the buffer was release()ed properly (so no metadata) and yet
-                        //the reference object to it remains reachable for a short period of time after release()
-                        //and hence gets enqueued. this is because we keep refs in a ConcurrentHashMap which cleans
-                        //up keys lazily.
-                        continue
+                    //it can happen rarely that the buffer was release()ed properly (so no metadata) and yet
+                    //the reference object to it remains reachable for a short period of time after release()
+                    //and hence gets enqueued. this is because we keep refs in a ConcurrentHashMap which cleans
+                    //up keys lazily.
+                        ?: continue
                     availableMemory.addAndGet(metadata.sizeBytes.toLong())
                     log.error(
                         "Reclaimed buffer of size {} and identity {} that was not properly release()ed. This is a bug.",
@@ -127,7 +128,7 @@ class GarbageCollectedMemoryPool(
 
     private class BufferReference(
         referent: ByteBuffer,
-        q: ReferenceQueue<in ByteBuffer>? = null
+        q: ReferenceQueue<in ByteBuffer>? = null,
     ) : WeakReference<ByteBuffer>(referent, q) {
 
         val hashCode: Int
@@ -148,8 +149,8 @@ class GarbageCollectedMemoryPool(
                 return false
             }
             val thisBuf = get()
-                ?: //our buffer has already been GC'ed, yet "that" is not us. so not same buffer
-                return false
+            //our buffer has already been GC'ed, yet "that" is not us. so not same buffer
+                ?: return false
             val thatBuf = that.get()
             return thisBuf === thatBuf
         }

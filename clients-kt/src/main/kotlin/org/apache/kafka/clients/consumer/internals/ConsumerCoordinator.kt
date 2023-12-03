@@ -356,8 +356,9 @@ class ConsumerCoordinator(
 
         // Only the leader is responsible for monitoring for metadata changes (i.e. partition changes)
         if (!isLeader) assignmentSnapshot = null
-        val assignor = lookupAssignor(protocol)
-            ?: throw IllegalStateException("Coordinator selected invalid assignment protocol: $protocol")
+        val assignor = checkNotNull(lookupAssignor(protocol)) {
+            "Coordinator selected invalid assignment protocol: $protocol"
+        }
 
         // Give the assignor a chance to update internal state based on the received assignment
         groupMetadata = ConsumerGroupMetadata(
@@ -623,8 +624,9 @@ class ConsumerCoordinator(
         allMemberMetadata: List<JoinGroupResponseMember>,
         skipAssignment: Boolean,
     ): Map<String, ByteBuffer> {
-        val assignor = lookupAssignor(protocol)
-            ?: error("Coordinator selected invalid assignment protocol: $protocol")
+        val assignor = checkNotNull(lookupAssignor(protocol)) {
+            "Coordinator selected invalid assignment protocol: $protocol"
+        }
         val assignorName = assignor.name()
         val allSubscribedTopics: MutableSet<String> = HashSet()
         val subscriptions: MutableMap<String, ConsumerPartitionAssignor.Subscription> = HashMap()

@@ -33,17 +33,16 @@ class SystemTime : Time {
     override fun sleep(ms: Long) = Utils.sleep(ms)
 
     @Throws(InterruptedException::class)
-    override fun waitObject(obj: Any, condition: Supplier<Boolean>, deadlineMs: Long) {
+    override fun waitObject(obj: Object, condition: Supplier<Boolean>, deadlineMs: Long) {
         synchronized(obj) {
             while (true) {
-                if (condition.get())
-                    return
+                if (condition.get()) return
 
                 val currentTimeMs = milliseconds()
                 if (currentTimeMs >= deadlineMs)
                     throw TimeoutException("Condition not satisfied before deadline")
 
-                (obj as Object).wait(deadlineMs - currentTimeMs)
+                obj.wait(deadlineMs - currentTimeMs)
             }
         }
     }

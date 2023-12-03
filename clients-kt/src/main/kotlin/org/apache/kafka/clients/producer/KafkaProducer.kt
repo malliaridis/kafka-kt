@@ -289,7 +289,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
     constructor(
         configs: Map<String, Any?>,
         keySerializer: Serializer<K>? = null,
-        valueSerializer: Serializer<V>? = null
+        valueSerializer: Serializer<V>? = null,
     ) : this(
         config = ProducerConfig(
             props = ProducerConfig.appendSerializerToConfig(configs, keySerializer, valueSerializer)
@@ -314,7 +314,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
     constructor(
         properties: Properties,
         keySerializer: Serializer<K>? = null,
-        valueSerializer: Serializer<V>? = null
+        valueSerializer: Serializer<V>? = null,
     ) : this(
         Utils.propsToMap(properties),
         keySerializer,
@@ -401,7 +401,8 @@ open class KafkaProducer<K, V> : Producer<K, V> {
                 ) as Serializer<V>
                 this.valueSerializer.configure(
                     configs = config.originals(
-                        mapOf(ProducerConfig.CLIENT_ID_CONFIG to clientId)),
+                        mapOf(ProducerConfig.CLIENT_ID_CONFIG to clientId)
+                    ),
                     isKey = false,
                 )
             } else {
@@ -505,7 +506,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
         interceptors: ProducerInterceptors<K, V>,
         partitioner: Partitioner?,
         time: Time,
-        ioThread: KafkaThread?
+        ioThread: KafkaThread?,
     ) {
         producerConfig = config
         this.time = time
@@ -559,43 +560,41 @@ open class KafkaProducer<K, V> : Producer<K, V> {
         kafkaClient: KafkaClient?,
         metadata: ProducerMetadata,
     ): Sender {
-        val maxInflightRequests =
-            producerConfig.getInt(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION)!!
+        val maxInflightRequests = producerConfig.getInt(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION)!!
         val requestTimeoutMs = producerConfig.getInt(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG)!!
         val channelBuilder = ClientUtils.createChannelBuilder(producerConfig, time, logContext)
         val metricsRegistry = ProducerMetrics(metrics)
         val throttleTimeSensor = Sender.throttleTimeSensor(metricsRegistry.senderMetrics)
-        val client = kafkaClient
-            ?: NetworkClient(
-                selector = Selector(
-                    connectionMaxIdleMs =
-                    producerConfig.getLong(ProducerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG)!!,
-                    metrics = metrics,
-                    time = time,
-                    metricGrpPrefix = "producer",
-                    channelBuilder = channelBuilder,
-                    logContext = logContext
-                ),
-                metadata = metadata,
-                clientId = clientId,
-                maxInFlightRequestsPerConnection = maxInflightRequests,
-                reconnectBackoffMs =
-                producerConfig.getLong(ProducerConfig.RECONNECT_BACKOFF_MS_CONFIG)!!,
-                reconnectBackoffMax =
-                producerConfig.getLong(ProducerConfig.RECONNECT_BACKOFF_MAX_MS_CONFIG)!!,
-                socketSendBuffer = producerConfig.getInt(ProducerConfig.SEND_BUFFER_CONFIG)!!,
-                socketReceiveBuffer = producerConfig.getInt(ProducerConfig.RECEIVE_BUFFER_CONFIG)!!,
-                defaultRequestTimeoutMs = requestTimeoutMs,
-                connectionSetupTimeoutMs =
-                producerConfig.getLong(ProducerConfig.SOCKET_CONNECTION_SETUP_TIMEOUT_MS_CONFIG)!!,
-                connectionSetupTimeoutMaxMs =
-                producerConfig.getLong(ProducerConfig.SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS_CONFIG)!!,
+        val client = kafkaClient ?: NetworkClient(
+            selector = Selector(
+                connectionMaxIdleMs =
+                producerConfig.getLong(ProducerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG)!!,
+                metrics = metrics,
                 time = time,
-                discoverBrokerVersions = true,
-                apiVersions = apiVersions,
-                throttleTimeSensor = throttleTimeSensor,
+                metricGrpPrefix = "producer",
+                channelBuilder = channelBuilder,
                 logContext = logContext
-            )
+            ),
+            metadata = metadata,
+            clientId = clientId,
+            maxInFlightRequestsPerConnection = maxInflightRequests,
+            reconnectBackoffMs =
+            producerConfig.getLong(ProducerConfig.RECONNECT_BACKOFF_MS_CONFIG)!!,
+            reconnectBackoffMax =
+            producerConfig.getLong(ProducerConfig.RECONNECT_BACKOFF_MAX_MS_CONFIG)!!,
+            socketSendBuffer = producerConfig.getInt(ProducerConfig.SEND_BUFFER_CONFIG)!!,
+            socketReceiveBuffer = producerConfig.getInt(ProducerConfig.RECEIVE_BUFFER_CONFIG)!!,
+            defaultRequestTimeoutMs = requestTimeoutMs,
+            connectionSetupTimeoutMs =
+            producerConfig.getLong(ProducerConfig.SOCKET_CONNECTION_SETUP_TIMEOUT_MS_CONFIG)!!,
+            connectionSetupTimeoutMaxMs =
+            producerConfig.getLong(ProducerConfig.SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS_CONFIG)!!,
+            time = time,
+            discoverBrokerVersions = true,
+            apiVersions = apiVersions,
+            throttleTimeSensor = throttleTimeSensor,
+            logContext = logContext
+        )
         val acks = producerConfig.getString(ProducerConfig.ACKS_CONFIG)!!.toShort()
         return Sender(
             logContext = logContext,
@@ -617,7 +616,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
 
     private fun configureTransactionState(
         config: ProducerConfig,
-        logContext: LogContext
+        logContext: LogContext,
     ): TransactionManager? {
         var transactionManager: TransactionManager? = null
         if (config.getBoolean(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG)!!) {
@@ -747,7 +746,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
     )
     override fun sendOffsetsToTransaction(
         offsets: Map<TopicPartition, OffsetAndMetadata>,
-        consumerGroupId: String
+        consumerGroupId: String,
     ) = sendOffsetsToTransaction(offsets, ConsumerGroupMetadata(consumerGroupId))
 
     /**
@@ -1081,10 +1080,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
                     maxWaitMs = maxBlockTimeMs
                 )
             } catch (e: KafkaException) {
-                if (metadata.isClosed) throw KafkaException(
-                    "Producer closed while send in progress",
-                    e
-                )
+                if (metadata.isClosed) throw KafkaException("Producer closed while send in progress", e)
                 throw e
             }
             nowMs += clusterAndWaitTime.waitedOnMetadataMs
@@ -1094,13 +1090,13 @@ open class KafkaProducer<K, V> : Producer<K, V> {
             val serializedKey: ByteArray?
             try {
                 serializedKey = keySerializer.serialize(
-                    record.topic,
-                    record.headers,
-                    record.key
+                    topic = record.topic,
+                    headers = record.headers,
+                    data = record.key,
                 )
             } catch (cce: ClassCastException) {
                 throw SerializationException(
-                    message = "Can't convert key of class ${record.key?:Nothing::class.java.name}" +
+                    message = "Can't convert key of class ${record.key ?: Nothing::class.java.name}" +
                             " to class ${producerConfig.getClass(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG)!!.name}" +
                             " specified in key.serializer",
                     cause = cce,
@@ -1115,7 +1111,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
                 )
             } catch (cce: ClassCastException) {
                 throw SerializationException(
-                    message = "Can't convert value of class ${record.value?:Nothing::class.java.name}" +
+                    message = "Can't convert value of class ${record.value ?: Nothing::class.java.name}" +
                             " to class ${producerConfig.getClass(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG)!!.name}" +
                             " specified in value.serializer",
                     cause = cce,
@@ -1260,7 +1256,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
         topic: String,
         partition: Int?,
         nowMs: Long,
-        maxWaitMs: Long
+        maxWaitMs: Long,
     ): ClusterAndWaitTime {
         // add topic to metadata topic list if it is not there already and reset expiry
         var cluster = metadata.fetch()
@@ -1269,10 +1265,11 @@ open class KafkaProducer<K, V> : Producer<K, V> {
         var partitionsCount = cluster.partitionCountForTopic(topic)
         // Return cached metadata if we have it, and if the record's partition is either undefined
         // or within the known partition range
-        if (partitionsCount != null && (partition == null || partition < partitionsCount)) return ClusterAndWaitTime(
-            cluster,
-            0
-        )
+        if (partitionsCount != null && (partition == null || partition < partitionsCount))
+            return ClusterAndWaitTime(
+                cluster = cluster,
+                waitedOnMetadataMs = 0,
+            )
         var remainingWaitMs = maxWaitMs
         var elapsed: Long = 0
         // Issue metadata requests until we have metadata for the topic and the requested partition,
@@ -1280,15 +1277,9 @@ open class KafkaProducer<K, V> : Producer<K, V> {
         // is stale and the number of partitions for this topic has increased in the meantime.
         val nowNanos = time.nanoseconds()
         do {
-            if (partition != null) {
-                log.trace(
-                    "Requesting metadata update for partition {} of topic {}.",
-                    partition,
-                    topic
-                )
-            } else {
-                log.trace("Requesting metadata update for topic {}.", topic)
-            }
+            if (partition != null)
+                log.trace("Requesting metadata update for partition {} of topic {}.", partition, topic)
+            else log.trace("Requesting metadata update for topic {}.", topic)
             metadata.add(topic, nowMs + elapsed)
             val version = metadata.requestUpdateForTopic(topic)
             sender!!.wakeup()
@@ -1526,7 +1517,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
     private fun configureClusterResourceListeners(
         keySerializer: Serializer<K>?,
         valueSerializer: Serializer<V>?,
-        vararg candidateLists: List<*>
+        vararg candidateLists: List<*>,
     ): ClusterResourceListeners {
         val clusterResourceListeners = ClusterResourceListeners()
         for (candidateList: List<*> in candidateLists) clusterResourceListeners.maybeAddAll(
@@ -1551,7 +1542,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
         record: ProducerRecord<K, V>,
         serializedKey: ByteArray?,
         serializedValue: ByteArray?,
-        cluster: Cluster
+        cluster: Cluster,
     ): Int {
         if (record.partition != null) return record.partition
         if (partitioner != null) {
@@ -1599,7 +1590,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
 
     class ClusterAndWaitTime internal constructor(
         val cluster: Cluster,
-        val waitedOnMetadataMs: Long
+        val waitedOnMetadataMs: Long,
     )
 
     class FutureFailure(exception: Exception?) :

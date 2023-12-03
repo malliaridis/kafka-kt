@@ -2505,7 +2505,7 @@ class TransactionManagerTest {
         assertTrue(abortResult.isSuccessful)
         assertTrue(transactionManager.isReady) // make sure we are ready for a transaction now.
         val recordMetadata = responseFuture.get()
-        assertEquals(tp0.topic, recordMetadata.topic)
+        assertEquals(tp0.topic, recordMetadata?.topic)
     }
 
     @Test

@@ -69,7 +69,7 @@ class SslFactory(
         endpointIdentification = configs[SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG] as String?
 
         // The input map must be a mutable RecordingMap in production.
-        val nextConfigs = configs.toMutableMap()
+        val nextConfigs = configs as MutableMap
         if (clientAuthConfigOverride != null) {
             nextConfigs[BrokerSecurityConfigs.SSL_CLIENT_AUTH_CONFIG] = clientAuthConfigOverride
         }
@@ -491,8 +491,8 @@ class SslFactory(
          * @param V The map value type.
          */
         private fun <K, V> copyMapEntries(
-            destMap: MutableMap<K, V>,
-            srcMap: Map<K, V>,
+            destMap: MutableMap<K, V?>,
+            srcMap: Map<K, V?>,
             keySet: Set<K>
         ) = keySet.forEach { key -> copyMapEntry(destMap, srcMap, key) }
 
@@ -506,9 +506,11 @@ class SslFactory(
          * @param V The map value type.
          */
         private fun <K, V> copyMapEntry(
-            destMap: MutableMap<K, V>,
-            srcMap: Map<K, V>,
+            destMap: MutableMap<K, V?>,
+            srcMap: Map<K, V?>,
             key: K
-        ) = srcMap[key]?.let { destMap[key] = it }
+        ) {
+            if(srcMap.containsKey(key)) destMap[key] = srcMap[key]
+        }
     }
 }

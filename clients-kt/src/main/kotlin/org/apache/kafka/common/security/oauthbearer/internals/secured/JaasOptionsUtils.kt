@@ -62,15 +62,12 @@ class JaasOptionsUtils(private val options: Map<String, Any>) {
     fun validateString(name: String, isRequired: Boolean = true): String? {
         var value = options[name] as String?
             ?: return if (isRequired) throw ConfigException(
-                String.format("The OAuth configuration option %s value must be non-null", name)
+                "The OAuth configuration option $name value must be non-null"
             ) else null
         value = value.trim { it <= ' ' }
         return value.ifEmpty {
             if (isRequired) throw ConfigException(
-                String.format(
-                    "The OAuth configuration option %s value must not contain only whitespace",
-                    name
-                )
+                "The OAuth configuration option $name value must not contain only whitespace"
             ) else null
         }
     }
@@ -78,15 +75,12 @@ class JaasOptionsUtils(private val options: Map<String, Any>) {
     @Throws(ValidateException::class)
     fun validateRequiredString(name: String): String {
         var value = options[name] as String? ?: throw ConfigException(
-            String.format("The OAuth configuration option %s value must be non-null", name)
+            "The OAuth configuration option $name value must be non-null"
         )
         value = value.trim { it <= ' ' }
         return value.ifEmpty {
             throw ConfigException(
-                String.format(
-                    "The OAuth configuration option %s value must not contain only whitespace",
-                    name
-                )
+                "The OAuth configuration option $name value must not contain only whitespace"
             )
         }
     }

@@ -523,7 +523,7 @@ class TransactionManager(
 
     @Synchronized
     fun addInFlightBatch(batch: ProducerBatch) {
-        if (batch.hasSequence) {
+        check(batch.hasSequence) {
             "Can't track batch for partition ${batch.topicPartition} when sequence is not set."
         }
         txnPartitionMap[batch.topicPartition].inflightBatchesBySequence.add(batch)
@@ -542,6 +542,7 @@ class TransactionManager(
         if (!hasInflightBatches(topicPartition)) return RecordBatch.NO_SEQUENCE
 
         val inflightBatches = txnPartitionMap[topicPartition].inflightBatchesBySequence
+
         return if (inflightBatches.isEmpty()) RecordBatch.NO_SEQUENCE
         else inflightBatches.first().baseSequence
     }
@@ -549,7 +550,7 @@ class TransactionManager(
     @Synchronized
     fun nextBatchBySequence(topicPartition: TopicPartition): ProducerBatch? {
         val queue = txnPartitionMap[topicPartition].inflightBatchesBySequence
-        return if (queue.isEmpty()) null else queue.first()
+        return queue.firstOrNull()
     }
 
     @Synchronized
@@ -1168,7 +1169,7 @@ class TransactionManager(
     private fun txnOffsetCommitHandler(
         result: TransactionalRequestResult,
         offsets: Map<TopicPartition, OffsetAndMetadata>,
-        groupMetadata: ConsumerGroupMetadata
+        groupMetadata: ConsumerGroupMetadata,
     ): TxnOffsetCommitHandler {
         for ((partition, offsetAndMetadata) in offsets) {
             val committedOffset = CommittedOffset(
@@ -1203,7 +1204,7 @@ class TransactionManager(
     private fun handleCachedTransactionRequestResult(
         transactionalRequestResultSupplier: () -> TransactionalRequestResult,
         nextState: State,
-        operation: String
+        operation: String,
     ): TransactionalRequestResult {
         ensureTransactional()
         pendingTransition?.let {
@@ -1339,7 +1340,7 @@ class TransactionManager(
 
     private inner class InitProducerIdHandler(
         private val builder: InitProducerIdRequest.Builder,
-        private val isEpochBump: Boolean
+        private val isEpochBump: Boolean,
     ) : TxnRequestHandler("InitProducerId") {
 
         override fun requestBuilder(): InitProducerIdRequest.Builder = builder
@@ -1618,7 +1619,7 @@ class TransactionManager(
     private inner class AddOffsetsToTxnHandler(
         private val builder: AddOffsetsToTxnRequest.Builder,
         private val offsets: Map<TopicPartition, OffsetAndMetadata>,
-        private val groupMetadata: ConsumerGroupMetadata
+        private val groupMetadata: ConsumerGroupMetadata,
     ) : TxnRequestHandler("AddOffsetsToTxn") {
 
         override fun requestBuilder(): AddOffsetsToTxnRequest.Builder = builder

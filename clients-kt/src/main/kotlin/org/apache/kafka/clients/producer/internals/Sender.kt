@@ -302,7 +302,7 @@ class Sender(
         }
 
         // remove any nodes we aren't ready to send to
-        val iter = result.readyNodes.toMutableSet().iterator()
+        val iter = result.readyNodes.iterator()
         var notReadyTimeout = Long.MAX_VALUE
         while (iter.hasNext()) {
             val node = iter.next()
@@ -742,8 +742,7 @@ class Sender(
                 // We cannot differentiate between different error cases (such as INVALID_TIMESTAMP)
                 // from the single error code at the partition level, so instead we use INVALID_RECORD
                 // for all failed records and rely on the message to distinguish the cases.
-                val errorMessage: String =
-                    recordError.message ?: response.errorMessage ?: response.error.message
+                val errorMessage = recordError.message ?: response.errorMessage ?: response.error.message
 
                 // If the batch contained only a single record error, then we can unambiguously
                 // use the exception type corresponding to the partition-level error code.
@@ -795,8 +794,7 @@ class Sender(
         (!batch.hasReachedDeliveryTimeout(accumulator.deliveryTimeoutMs.toLong(), now)
                 && batch.attempts() < retries
                 && !batch.isDone
-                && ((transactionManager?.canRetry(response, batch)
-            ?: response.error.exception) is RetriableException))
+                && transactionManager?.canRetry(response, batch) ?: (response.error.exception is RetriableException))
 
     /**
      * Transfer the record batches into a list of produce requests on a per-node basis

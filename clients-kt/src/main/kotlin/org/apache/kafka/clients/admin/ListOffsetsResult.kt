@@ -37,9 +37,7 @@ data class ListOffsetsResult(
      * Return a future which can be used to check the result for a given partition.
      */
     fun partitionResult(partition: TopicPartition): KafkaFuture<ListOffsetsResultInfo> {
-        return futures[partition] ?: throw IllegalArgumentException(
-            "List Offsets for partition \"$partition\" was not attempted"
-        )
+        return requireNotNull(futures[partition]) { "List Offsets for partition \"$partition\" was not attempted" }
     }
 
     /**

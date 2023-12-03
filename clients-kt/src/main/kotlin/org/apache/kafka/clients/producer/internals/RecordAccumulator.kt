@@ -1347,7 +1347,7 @@ class RecordAccumulator(
      * The set of nodes that have at least one complete record batch in the accumulator
      */
     class ReadyCheckResult(
-        val readyNodes: Set<Node>,
+        val readyNodes: MutableSet<Node>,
         val nextReadyCheckDelayMs: Long,
         val unknownLeaderTopics: Set<String>,
     )

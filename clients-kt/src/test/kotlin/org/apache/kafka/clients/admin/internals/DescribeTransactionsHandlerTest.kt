@@ -67,12 +67,12 @@ class DescribeTransactionsHandlerTest {
         assertMatchingTransactionState(
             expectedCoordinatorId = node.id,
             expected = transactionState1,
-            actual = result.completedKeys[CoordinatorKey.byTransactionalId(transactionalId1)],
+            actual = result.completedKeys[CoordinatorKey.byTransactionalId(transactionalId1)]!!,
         )
         assertMatchingTransactionState(
             expectedCoordinatorId = node.id,
             expected = transactionState2,
-            actual = result.completedKeys[CoordinatorKey.byTransactionalId(transactionalId2)],
+            actual = result.completedKeys[CoordinatorKey.byTransactionalId(transactionalId2)]!!,
         )
     }
 
@@ -194,14 +194,14 @@ class DescribeTransactionsHandlerTest {
     private fun assertMatchingTransactionState(
         expectedCoordinatorId: Int,
         expected: DescribeTransactionsResponseData.TransactionState,
-        actual: TransactionDescription?,
+        actual: TransactionDescription,
     ) {
-        assertEquals(expectedCoordinatorId, actual?.coordinatorId)
-        assertEquals(expected.producerId, actual?.producerId)
-        assertEquals(expected.producerEpoch.toInt(), actual?.producerEpoch)
-        assertEquals(expected.transactionTimeoutMs.toLong(), actual?.transactionTimeoutMs)
-        assertEquals(expected.transactionStartTimeMs, actual?.transactionStartTimeMs ?: -1)
-        assertEquals(collectTransactionPartitions(expected), actual?.topicPartitions)
+        assertEquals(expectedCoordinatorId, actual.coordinatorId)
+        assertEquals(expected.producerId, actual.producerId)
+        assertEquals(expected.producerEpoch.toInt(), actual.producerEpoch)
+        assertEquals(expected.transactionTimeoutMs.toLong(), actual.transactionTimeoutMs)
+        assertEquals(expected.transactionStartTimeMs, actual.transactionStartTimeMs ?: -1)
+        assertEquals(collectTransactionPartitions(expected), actual.topicPartitions)
     }
 
     private fun collectTransactionPartitions(

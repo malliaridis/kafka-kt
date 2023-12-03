@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
+import org.apache.kafka.common.TopicPartition
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
@@ -79,8 +80,11 @@ class FutureRecordMetadataTest {
     @Throws(InterruptedException::class)
     private fun mockProduceRequestResult(): ProduceRequestResult {
         val mockProduceRequestResult = mock<ProduceRequestResult>()
+        // Kotlin Migration - Include topic partition in mock sicne value may not be null
+        val mockTopicPartition = mock<TopicPartition>()
 
         whenever(mockProduceRequestResult.await(any(), any())).thenReturn(true)
+        whenever(mockProduceRequestResult.topicPartition).thenReturn(mockTopicPartition)
 
         return mockProduceRequestResult
     }

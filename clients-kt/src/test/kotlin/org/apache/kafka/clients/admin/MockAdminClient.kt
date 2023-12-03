@@ -1196,7 +1196,7 @@ class MockAdminClient private constructor(
                 brokers = brokers,
                 controller = controller ?: brokers[0],
                 clusterId = clusterId,
-                defaultPartitions = (defaultPartitions?.toInt() ?: 1).toInt(),
+                defaultPartitions = defaultPartitions?.toInt() ?: 1,
                 defaultReplicationFactor = defaultReplicationFactor ?: min(brokers.size.toDouble(), 3.0).toInt(),
                 brokerLogDirs = brokerLogDirs,
                 usingRaftController = usingRaftController,

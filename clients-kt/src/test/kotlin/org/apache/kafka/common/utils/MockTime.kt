@@ -72,12 +72,12 @@ class MockTime(
     }
 
     @Throws(InterruptedException::class)
-    override fun waitObject(obj: Any, condition: Supplier<Boolean>, deadlineMs: Long) {
-        val listener = Listener { synchronized(obj) { (obj as Object).notify() } }
+    override fun waitObject(obj: Object, condition: Supplier<Boolean>, deadlineMs: Long) {
+        val listener = Listener { synchronized(obj) { obj.notify() } }
         listeners.add(listener)
         try {
             synchronized(obj) {
-                while (milliseconds() < deadlineMs && !condition.get()) (obj as Object).wait()
+                while (milliseconds() < deadlineMs && !condition.get()) obj.wait()
                 if (!condition.get()) throw TimeoutException("Condition not satisfied before deadline")
             }
         } finally {

@@ -188,7 +188,7 @@ class UpdateMetadataRequestTest {
 
             // Rack is only supported from version 2
             if (version < 2) {
-                for (liveBroker in liveBrokers) liveBroker.setRack("")
+                for (liveBroker in liveBrokers) liveBroker.setRack(null)
             }
 
             // Non plaintext listener name is only supported from version 3

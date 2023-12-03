@@ -44,9 +44,10 @@ class FutureRecordMetadata(
     override fun isCancelled(): Boolean = false
 
     @Throws(InterruptedException::class, ExecutionException::class)
-    override fun get(): RecordMetadata {
+    override fun get(): RecordMetadata? {
         result.await()
-        return nextRecordMetadata?.get() ?: valueOrError()
+        return if (nextRecordMetadata != null) nextRecordMetadata?.get()
+        else valueOrError()
     }
 
     @Throws(
@@ -54,7 +55,7 @@ class FutureRecordMetadata(
         ExecutionException::class,
         TimeoutException::class
     )
-    override fun get(timeout: Long, unit: TimeUnit): RecordMetadata {
+    override fun get(timeout: Long, unit: TimeUnit): RecordMetadata? {
         // Handle overflow.
         val now = time.milliseconds()
         val timeoutMillis = unit.toMillis(timeout)
@@ -64,8 +65,9 @@ class FutureRecordMetadata(
 
         val occurred = result.await(timeout, unit)
         if (!occurred) throw TimeoutException("Timeout after waiting for $timeoutMillis ms.")
-        return nextRecordMetadata?.get(deadline - time.milliseconds(), TimeUnit.MILLISECONDS)
-            ?: valueOrError()
+        return if (nextRecordMetadata != null)
+            nextRecordMetadata?.get(deadline - time.milliseconds(), TimeUnit.MILLISECONDS)
+        else valueOrError()
     }
 
     /**
@@ -80,22 +82,24 @@ class FutureRecordMetadata(
     }
 
     @Throws(ExecutionException::class)
-    fun valueOrError(): RecordMetadata {
+    fun valueOrError(): RecordMetadata? {
         val exception = result.error(batchIndex) ?: return value()
         throw ExecutionException(exception)
     }
 
-    fun value(): RecordMetadata = nextRecordMetadata?.value() ?: RecordMetadata(
-        topicPartition = result.topicPartition,
-        baseOffset = result.baseOffset(),
-        batchIndex = batchIndex,
-        timestamp = timestamp(),
-        serializedKeySize = serializedKeySize,
-        serializedValueSize = serializedValueSize,
-    )
+    fun value(): RecordMetadata? =
+        if (nextRecordMetadata != null) nextRecordMetadata?.value()
+        else RecordMetadata(
+            topicPartition = result.topicPartition,
+            baseOffset = result.baseOffset!!,
+            batchIndex = batchIndex,
+            timestamp = timestamp(),
+            serializedKeySize = serializedKeySize,
+            serializedValueSize = serializedValueSize,
+        )
 
     private fun timestamp(): Long =
-        if (result.hasLogAppendTime()) result.logAppendTime()
+        if (result.hasLogAppendTime()) result.logAppendTime
         else createTimestamp
 
     override fun isDone(): Boolean =

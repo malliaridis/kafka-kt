@@ -285,19 +285,13 @@ class ConfigurationUtils(
     fun validateString(name: String, isRequired: Boolean = true): String? {
         var value = get<String>(name)
             ?: return if (isRequired) throw ConfigException(
-                message = String.format(
-                    "The OAuth configuration option %s value must be non-null",
-                    name
-                )
+                message = "The OAuth configuration option $name value must be non-null"
             ) else null
 
         value = value.trim { it <= ' ' }
         return value.ifEmpty {
             if (isRequired) throw ConfigException(
-                message = String.format(
-                    "The OAuth configuration option %s value must not contain only whitespace",
-                    name
-                )
+                message = "The OAuth configuration option $name value must not contain only whitespace"
             ) else null
         }
     }
@@ -305,16 +299,13 @@ class ConfigurationUtils(
     @Throws(ValidateException::class)
     fun validateRequiredString(name: String): String {
         var value = get<String>(name) ?: throw ConfigException(
-            String.format("The OAuth configuration option %s value must be non-null", name)
+            "The OAuth configuration option $name value must be non-null"
         )
 
         value = value.trim { it <= ' ' }
         return value.ifEmpty {
             throw ConfigException(
-                message = String.format(
-                    "The OAuth configuration option %s value must not contain only whitespace",
-                    name
-                )
+                message = "The OAuth configuration option $name value must not contain only whitespace"
             )
         }
     }

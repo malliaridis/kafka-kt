@@ -34,6 +34,7 @@ import org.apache.kafka.common.utils.Time
 import java.time.Duration
 import java.util.*
 import java.util.concurrent.Future
+import org.apache.kafka.clients.producer.internals.DefaultPartitioner
 
 /**
  * A mock of the producer interface you can use for testing code that uses Kafka.
@@ -53,10 +54,10 @@ import java.util.concurrent.Future
  */
 class MockProducer<K, V>(
     private val cluster: Cluster = Cluster.empty(),
-    private val autoComplete: Boolean = false,
-    private val partitioner: Partitioner? = null,
-    private val keySerializer: Serializer<K>? = null,
-    private val valueSerializer: Serializer<V>? = null,
+    private val autoComplete: Boolean,
+    private val partitioner: Partitioner? = DefaultPartitioner(),
+    private val keySerializer: Serializer<K>?,
+    private val valueSerializer: Serializer<V>?,
 ) : Producer<K, V> {
 
     private val sent = mutableListOf<ProducerRecord<K, V>>()

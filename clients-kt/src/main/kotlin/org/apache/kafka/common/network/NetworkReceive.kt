@@ -91,8 +91,7 @@ class NetworkReceive(
     fun payload(): ByteBuffer? = buffer
 
     fun bytesRead(): Int {
-        return buffer?.let { it.position() + size. position() }
-            ?: run { size.position() }
+        return buffer?.let { it.position() + size.position() } ?: size.position()
     }
 
     /**

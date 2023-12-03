@@ -112,7 +112,8 @@ open class DelegationTokenCache(scramMechanisms: Collection<String>) {
             ) ?: return@forEach
 
             val credential = scramCredentialMap[mechanism]
-            credential?.let { cache.put(tokenId, it) } ?: cache.remove(tokenId)
+            if (credential != null) cache.put(tokenId, credential)
+            else cache.remove(tokenId)
         }
     }
 }

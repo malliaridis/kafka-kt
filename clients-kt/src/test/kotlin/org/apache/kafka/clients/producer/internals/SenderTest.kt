@@ -91,7 +91,6 @@ import org.apache.kafka.test.MockSelector
 import org.apache.kafka.test.TestUtils.assertFutureThrows
 import org.apache.kafka.test.TestUtils.checkEquals
 import org.apache.kafka.test.TestUtils.singletonCluster
-import org.apache.kafka.test.TestUtils.toList
 import org.apache.kafka.test.TestUtils.waitForCondition
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions
@@ -106,8 +105,10 @@ import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
+import org.mockito.AdditionalMatchers.geq
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argThat
+import org.mockito.kotlin.argWhere
 import org.mockito.kotlin.atLeastOnce
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.inOrder
@@ -132,8 +133,12 @@ class SenderTest {
     private val batchSize = 16 * 1024
 
     private val metadata = ProducerMetadata(
-        0, Long.MAX_VALUE, TOPIC_IDLE_MS,
-        LogContext(), ClusterResourceListeners(), time
+        refreshBackoffMs = 0,
+        metadataExpireMs = Long.MAX_VALUE,
+        metadataIdleMs = TOPIC_IDLE_MS,
+        logContext = LogContext(),
+        clusterResourceListeners = ClusterResourceListeners(),
+        time = time,
     )
 
     private var client = MockClient(time, metadata)
@@ -235,7 +240,7 @@ class SenderTest {
         sender.runOnce() // connect
         sender.runOnce() // send produce request
         assertTrue(future!!.isDone, "Request should be completed")
-        assertEquals(offset, future.get().offset)
+        assertEquals(offset, future.get()?.offset)
     }
 
     @Suppress("Deprecation")
@@ -525,7 +530,7 @@ class SenderTest {
             )
             sender.runOnce()
             assertTrue(future!!.isDone, "Request should have retried and completed")
-            assertEquals(offset, future.get().offset)
+            assertEquals(offset, future.get()?.offset)
             assertEquals(0, sender.inFlightBatches(tp0).size)
 
             // do an unsuccessful retry
@@ -1297,6 +1302,7 @@ class SenderTest {
         setupWithTransactionState(transactionManager)
         prepareAndReceiveInitProducerId(producerId, Errors.NONE)
         assertTrue(transactionManager.hasProducerId)
+
         assertEquals(0, transactionManager.sequenceNumber(tp0))
 
         // Send first ProduceRequest
@@ -1317,28 +1323,38 @@ class SenderTest {
         assertFalse(request1!!.isDone)
         assertFalse(request2!!.isDone)
         assertTrue(client.isReady(node, time.milliseconds()))
+
         sendIdempotentProducerResponse(
             expectedSequence = 0,
             tp = tp0,
             responseError = Errors.MESSAGE_TOO_LARGE,
             responseOffset = -1L,
         )
+
         sender.runOnce() // receive response 0, should adjust sequences of future batches.
         assertFutureFailure(request1, RecordTooLargeException::class.java)
+
         assertEquals(expected = 1, actual = client.inFlightRequestCount())
         assertNull(transactionManager.lastAckedSequence(tp0))
+
         sendIdempotentProducerResponse(
             expectedSequence = 1,
             tp = tp0,
             responseError = Errors.OUT_OF_ORDER_SEQUENCE_NUMBER,
             responseOffset = -1L,
         )
+
         sender.runOnce() // receive response 1
+
         assertNull(transactionManager.lastAckedSequence(tp0))
         assertEquals(expected = 0, actual = client.inFlightRequestCount())
+
         sender.runOnce() // resend request 1
+
         assertEquals(expected = 1, actual = client.inFlightRequestCount())
+
         assertNull(transactionManager.lastAckedSequence(tp0))
+
         sendIdempotentProducerResponse(
             expectedSequence = 0,
             tp = tp0,
@@ -1348,6 +1364,7 @@ class SenderTest {
         sender.runOnce() // receive response 1
         assertEquals(expected = 0, actual = transactionManager.lastAckedSequence(tp0))
         assertEquals(expected = 0, actual = client.inFlightRequestCount())
+
         assertTrue(request1.isDone)
         assertEquals(expected = 0, actual = request2.get().offset)
     }
@@ -2115,6 +2132,7 @@ class SenderTest {
         setupWithTransactionState(transactionManager)
         prepareAndReceiveInitProducerId(producerId, Errors.NONE)
         assertTrue(transactionManager.hasProducerId)
+
         assertEquals(expected = 0, actual = transactionManager.sequenceNumber(tp0))
 
         // Send first ProduceRequest
@@ -2128,7 +2146,9 @@ class SenderTest {
         time.sleep(10000L)
         client.disconnect(node.idString())
         client.backoff(node, 10)
+
         sender.runOnce()
+
         assertFutureFailure(request1, TimeoutException::class.java)
         assertFalse(transactionManager.hasUnresolvedSequence(tp0))
     }
@@ -3832,16 +3852,13 @@ class SenderTest {
         time.setCurrentTimeMs(time.milliseconds() + accumulator.getDeliveryTimeoutMs() + 1)
         sender.runOnce()
         val inOrder = inOrder(client)
-        inOrder.verify(client, atLeastOnce())
-            .ready(any(), any())
-        inOrder.verify(client, atLeastOnce())
-            .newClientRequest(any(), any(), any(), any(), any(), any())
-        inOrder.verify(client, atLeastOnce())
-            .send(any(), any())
+        inOrder.verify(client, atLeastOnce()).ready(any(), any())
+        inOrder.verify(client, atLeastOnce()).newClientRequest(any(), any(), any(), any(), any(), any())
+        inOrder.verify(client, atLeastOnce()).send(any(), any())
         inOrder.verify(client).poll(eq(0L), any())
-        inOrder.verify(client)
-            .poll(eq(accumulator.getDeliveryTimeoutMs()), any())
-        inOrder.verify(client).poll(argThat { this >= 1L }, any())
+        inOrder.verify(client).poll(eq(accumulator.getDeliveryTimeoutMs()), any())
+        // Kotlin Migration - Replacement of AdditionalMatchers.geq not possible due to NPE.
+        inOrder.verify(client).poll(geq(1L), any())
     }
 
     @Suppress("Deprecation")
@@ -4323,8 +4340,7 @@ class SenderTest {
         doInitTransactions(txnManager, producerIdAndEpoch)
 
         // doInitTransactions calls sender.doOnce three times, only two requests are sent, so we should only poll twice
-        verify(client, times(2))
-            .poll(eq(RETRY_BACKOFF_MS), any())
+        verify(client, times(2)).poll(eq(RETRY_BACKOFF_MS), any())
     }
 
     @Test
@@ -4410,7 +4426,7 @@ class SenderTest {
                 error = Errors.INVALID_REQUEST,
                 throttleTimeMs = 0,
             ),
-            expectedMessage = Errors.INVALID_REQUEST.message,
+            expectedMessage = Errors.INVALID_REQUEST.message!!,
         )
     }
 
@@ -4507,7 +4523,7 @@ class SenderTest {
             if (body !is ProduceRequest) return@RequestMatcher false
             val recordsMap = partitionRecords(body)
             val records = recordsMap[tp] ?: return@RequestMatcher false
-            val batches = toList(records.batches())
+            val batches = records.batches().toList()
             if (batches.size != 1) return@RequestMatcher false
             val batch = batches[0]
 

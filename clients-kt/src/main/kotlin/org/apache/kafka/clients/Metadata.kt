@@ -128,7 +128,7 @@ open class Metadata(
      */
     @Synchronized
     fun timeToAllowUpdate(nowMs: Long): Long {
-        return Math.max(lastRefreshMs + refreshBackoffMs - nowMs, 0)
+        return (lastRefreshMs + refreshBackoffMs - nowMs).coerceAtLeast(0)
     }
 
     /**
@@ -141,11 +141,9 @@ open class Metadata(
      */
     @Synchronized
     fun timeToNextUpdate(nowMs: Long): Long {
-        val timeToExpire = if (updateRequested()) 0 else Math.max(
-            lastSuccessfulRefreshMs + metadataExpireMs - nowMs,
-            0
-        )
-        return Math.max(timeToExpire, timeToAllowUpdate(nowMs))
+        val timeToExpire = if (updateRequested()) 0
+        else (lastSuccessfulRefreshMs + metadataExpireMs - nowMs).coerceAtLeast(0)
+        return timeToExpire.coerceAtLeast(timeToAllowUpdate(nowMs))
     }
 
     fun metadataExpireMs(): Long {
@@ -514,9 +512,7 @@ open class Metadata(
     @Synchronized
     fun maybeThrowExceptionForTopic(topic: String) {
         clearErrorsAndMaybeThrowException {
-            recoverableExceptionForTopic(
-                topic
-            )
+            recoverableExceptionForTopic(topic)
         }
     }
 
@@ -575,9 +571,7 @@ open class Metadata(
      * The last time metadata was successfully updated.
      */
     @Synchronized
-    fun lastSuccessfulUpdate(): Long {
-        return lastSuccessfulRefreshMs
-    }
+    fun lastSuccessfulUpdate(): Long = lastSuccessfulRefreshMs
 
     /**
      * Close this metadata instance to indicate that metadata updates are no longer possible.

@@ -120,7 +120,7 @@ class ProducerMetadata(
             else currentTimeMs + timeoutMs
 
         time.waitObject(
-            obj = this,
+            obj = this as Object,
             condition = {
                 // Throw fatal exceptions, if there are any. Recoverable topic errors will be handled by the caller.
                 maybeThrowFatalException()
@@ -146,14 +146,22 @@ class ProducerMetadata(
         if (newTopics.isNotEmpty()) response.topicMetadata().forEach { (_, topic) ->
             newTopics.remove(topic)
         }
+
+        (this as Object).notifyAll()
     }
 
     @Synchronized
-    override fun fatalError(exception: KafkaException?) = super.fatalError(exception)
+    override fun fatalError(exception: KafkaException?) {
+        super.fatalError(exception)
+        (this as Object).notifyAll()
+    }
 
     /**
      * Close this instance and notify any awaiting threads.
      */
     @Synchronized
-    override fun close() = super.close()
+    override fun close() {
+        super.close()
+        (this as Object).notifyAll()
+    }
 }

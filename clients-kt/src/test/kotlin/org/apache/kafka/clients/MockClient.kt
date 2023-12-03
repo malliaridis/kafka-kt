@@ -281,14 +281,13 @@ open class MockClient(
         this.numBlockingWakeups = numBlockingWakeups
     }
 
+    @Synchronized
     override fun wakeup() {
-        synchronized(obj) {
-            if (numBlockingWakeups > 0) {
-                numBlockingWakeups--
-                obj.notify()
-            }
-            wakeupHook?.run()
+        if (numBlockingWakeups > 0) {
+            numBlockingWakeups--
+            (this as Object).notify()
         }
+        wakeupHook?.run()
     }
 
     private fun maybeAwaitWakeup() = synchronized(obj) {

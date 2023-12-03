@@ -63,7 +63,7 @@ class RecordSendTest {
         request.done()
 
         assertTrue(future.isDone())
-        assertEquals(baseOffset + relOffset, future.get().offset)
+        assertEquals(baseOffset + relOffset, future.get()?.offset)
     }
 
     /**
@@ -107,7 +107,7 @@ class RecordSendTest {
             time = Time.SYSTEM,
         )
 
-        assertEquals(baseOffset + relOffset, future.get().offset)
+        assertEquals(baseOffset + relOffset, future.get()?.offset)
     }
 
     /* create a new request result that will be completed after the given timeout */

@@ -371,14 +371,20 @@ object TestUtils {
         }
     }
 
-    @Deprecated("Use Iterable.toList() instead.")
+    @Deprecated(
+        message = "Use Iterable.toList() instead.",
+        replaceWith = ReplaceWith("iterable.toList()")
+    )
     fun <T> toList(iterable: Iterable<T>): List<T> {
         val list: MutableList<T> = ArrayList()
         for (item: T in iterable) list.add(item)
         return list
     }
 
-    @Deprecated("Use Collection.toSet() instead.")
+    @Deprecated(
+        message = "Use Collection.toSet() instead.",
+        replaceWith = ReplaceWith("collection.toSet()"),
+    )
     fun <T> toSet(collection: Collection<T>): Set<T> = collection.toSet()
 
     fun toBuffer(send: Send): ByteBuffer {

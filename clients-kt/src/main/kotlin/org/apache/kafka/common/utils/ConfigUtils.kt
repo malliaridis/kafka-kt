@@ -17,10 +17,7 @@
 
 package org.apache.kafka.common.utils
 
-import java.util.*
-import java.util.function.Function
 import java.util.stream.Collectors
-import java.util.stream.Stream
 import org.apache.kafka.common.config.ConfigDef
 import org.slf4j.LoggerFactory
 
@@ -45,13 +42,11 @@ object ConfigUtils {
      */
     fun <T> translateDeprecatedConfigs(
         configs: Map<String, T>,
-        aliasGroups: Array<Array<String>>
-    ): Map<String, T> {
+        aliasGroups: Array<Array<String>>,
+    ): Map<String, T?> {
         return translateDeprecatedConfigs(
-            configs,
-            aliasGroups.associate { x ->
-                x[0] to x.toMutableList().apply { removeFirst() }.toList()
-            }
+            configs = configs,
+            aliasGroups = aliasGroups.associate { it[0] to it.drop(1) },
         )
     }
 
@@ -69,44 +64,52 @@ object ConfigUtils {
      */
     fun <T> translateDeprecatedConfigs(
         configs: Map<String, T>,
-        aliasGroups: Map<String, List<String>>
-    ): Map<String, T> {
+        aliasGroups: Map<String, List<String>>,
+    ): Map<String, T?> {
         val aliasSet = aliasGroups.keys + aliasGroups.values.flatten()
 
         // pass through all configurations without aliases
-        val newConfigs = (configs - aliasSet).filterValues { value -> value != null }.toMutableMap()
+        val newConfigs: MutableMap<String, T?> = configs.filter { !aliasSet.contains(it.key) }
+            .mapNotNull { (key, value) -> value?.let { key to it } }
+            .associateBy(
+                keySelector = Pair<String, T>::first,
+                valueTransform = Pair<String, T>::second,
+            )
+            .toMutableMap()
 
         aliasGroups.forEach { (target, aliases) ->
             val deprecated = aliases.filter { configs.containsKey(it) }
 
             if (deprecated.isEmpty()) {
-                configs[target]?.let { newConfigs[target] = it }
+                // No deprecated key(s) found.
+                if (configs.containsKey(target)) newConfigs[target] = configs[target]
                 return@forEach
             }
 
             val aliasString = deprecated.joinToString(", ")
 
-            configs[target]?.let {
+            if (configs.contains(target)) {
                 // Ignore the deprecated key(s) because the actual key was set.
                 log.error(
                     "$target was configured, as well as the deprecated alias(es) $aliasString. " +
                             "Using the value of $target"
                 )
-                newConfigs[target] = it
-            } ?: if (deprecated.size > 1) {
+                newConfigs[target] = configs[target]
+            }
+            else if (deprecated.size > 1) {
                 log.error(
                     "The configuration keys $aliasString are deprecated and may be removed in " +
                             "the future. Additionally, this configuration is ambiguous because " +
                             "these configuration keys are all aliases for $target. Please update " +
                             "your configuration to have only $target set."
                 )
-                newConfigs[target] = configs[deprecated[0]]!!
+                newConfigs[target] = configs[deprecated[0]]
             } else {
                 log.warn(
                     "Configuration key ${deprecated[0]} is deprecated and may be removed in " +
                             "the future. Please update your configuration to use $target instead."
                 )
-                newConfigs[target] = configs[deprecated[0]]!!
+                newConfigs[target] = configs[deprecated[0]]
             }
         }
 

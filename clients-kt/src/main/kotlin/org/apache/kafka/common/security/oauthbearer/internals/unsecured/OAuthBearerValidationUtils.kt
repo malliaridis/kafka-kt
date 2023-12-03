@@ -41,7 +41,7 @@ object OAuthBearerValidationUtils {
     ): OAuthBearerValidationResult {
         val rawClaim = jwt.rawClaim(claimName)
             ?: return if (required) OAuthBearerValidationResult.newFailure(
-                String.format("Required claim missing: %s", claimName)
+                "Required claim missing: $claimName"
             ) else OAuthBearerValidationResult.newSuccess()
 
         allowedTypes.forEach { allowedType ->
@@ -50,11 +50,7 @@ object OAuthBearerValidationUtils {
         }
 
         return OAuthBearerValidationResult.newFailure(
-            String.format(
-                "The %s claim had the incorrect type: %s",
-                claimName,
-                rawClaim.javaClass.simpleName,
-            )
+            "The $claimName claim had the incorrect type: ${rawClaim.javaClass.simpleName}"
         )
     }
 

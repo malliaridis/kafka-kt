@@ -813,10 +813,10 @@ enum class Errors(
         message = "Use property instead.",
         replaceWith = ReplaceWith("message"),
     )
-    fun message(): String = _exception?.message ?: toString()
+    fun message(): String? = if (_exception != null) _exception!!.message else toString()
 
-    val message: String
-        get() = _exception?.message ?: toString()
+    val message: String?
+        get() = if (_exception != null) _exception!!.message else toString()
 
     companion object {
 
@@ -901,7 +901,7 @@ enum class Errors(
                 b.append(if (error._exception is RetriableException) "True" else "False")
                 b.append("</td>")
                 b.append("<td>")
-                b.append(error._exception?.message ?: "")
+                b.append(if(error._exception != null) error._exception!!.message else "")
                 b.append("</td>")
                 b.append("</tr>\n")
             }

@@ -1779,7 +1779,7 @@ class RecordAccumulatorTest {
 
         assertEquals(1, acked.get(), "The first message should have been acked.")
         assertTrue(future1.isDone)
-        assertEquals(0, future1.get().offset)
+        assertEquals(0, future1.get()?.offset)
 
         drained = accum.drain(cluster, result.readyNodes, Int.MAX_VALUE, time.milliseconds())
 
@@ -1790,7 +1790,7 @@ class RecordAccumulatorTest {
 
         assertEquals(2, acked.get(), "Both message should have been acked.")
         assertTrue(future2.isDone)
-        assertEquals(1, future2.get().offset)
+        assertEquals(1, future2.get()?.offset)
     }
 
     @Test

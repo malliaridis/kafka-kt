@@ -447,7 +447,7 @@ class DefaultRecordBatchTest {
         assertEquals(1, batches.size)
         val batch = batches[0]
         assertTrue(batch.isControlBatch)
-        val logRecords = TestUtils.toList(records.records())
+        val logRecords = records.records().toList()
         assertEquals(1, logRecords.size)
         val commitRecord = logRecords[0]
         assertEquals(marker, EndTransactionMarker.deserialize(commitRecord))
