@@ -34,7 +34,7 @@
         { "name": "Name", "type": "string", "versions": "0+", "mapKey": true,
           "about": "The configuration key name." },
         { "name": "Value", "type": "string", "versions": "0+", "nullableVersions": "0+",
-          "about": "The value to set for the configuration key."}
+          "default": "", "about": "The value to set for the configuration key."}
       ]}
     ]},
     { "name": "ValidateOnly", "type": "bool", "versions": "0+",

@@ -61,7 +61,7 @@
         { "name": "CommitTimestamp", "type": "int64", "versions": "1", "default": "-1",
           "about": "The timestamp of the commit." },
         { "name": "CommittedMetadata", "type": "string", "versions": "0+", "nullableVersions": "0+",
-          "about": "Any associated metadata the client wants to keep." }
+          "default": "", "about": "Any associated metadata the client wants to keep." }
       ]}
     ]}
   ]

@@ -25,15 +25,15 @@
     { "name": "ErrorCode", "type": "int16", "versions": "0+",
       "about": "The error code, or `0` if the quota description succeeded." },
     { "name": "ErrorMessage", "type": "string", "versions": "0+", "nullableVersions": "0+",
-      "about": "The error message, or `null` if the quota description succeeded." },
+      "default": "", "about": "The error message, or `null` if the quota description succeeded." },
     { "name": "Entries", "type": "[]EntryData", "versions": "0+", "nullableVersions": "0+",
-      "about": "A result entry.", "fields": [
+      "default": "", "about": "A result entry.", "fields": [
       { "name": "Entity", "type": "[]EntityData", "versions": "0+",
         "about": "The quota entity description.", "fields": [
         { "name": "EntityType", "type": "string", "versions": "0+",
           "about": "The entity type." },
         { "name": "EntityName", "type": "string", "versions": "0+", "nullableVersions": "0+",
-          "about": "The entity name, or null if the default." }
+          "default": "", "about": "The entity name, or null if the default." }
       ]},
       { "name": "Values", "type": "[]ValueData", "versions": "0+",
 	"about": "The quota values for the entity.", "fields": [

@@ -31,7 +31,7 @@
       { "name": "ResourceName", "type": "string", "versions": "0+",
         "about": "The resource name." },
       { "name": "ConfigurationKeys", "type": "[]string", "versions": "0+", "nullableVersions": "0+",
-        "about": "The configuration keys to list, or null to list all configuration keys." }
+        "default": "", "about": "The configuration keys to list, or null to list all configuration keys." }
     ]},
     { "name": "IncludeSynonyms", "type": "bool", "versions": "1+", "default": "false", "ignorable": false,
       "about": "True if we should include all synonyms." },

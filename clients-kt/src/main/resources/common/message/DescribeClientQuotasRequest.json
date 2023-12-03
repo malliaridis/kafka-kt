@@ -28,7 +28,7 @@
         "about": "The entity type that the filter component applies to." },
       { "name": "MatchType", "type": "int8", "versions": "0+",
         "about": "How to match the entity {0 = exact name, 1 = default name, 2 = any specified name}." },
-      { "name": "Match", "type": "string", "versions": "0+", "nullableVersions": "0+",
+      { "name": "Match", "type": "string", "versions": "0+", "nullableVersions": "0+", "default": "",
         "about": "The string to match against, or null if unused for the match type." }
     ]},
     { "name": "Strict", "type": "bool", "versions": "0+",

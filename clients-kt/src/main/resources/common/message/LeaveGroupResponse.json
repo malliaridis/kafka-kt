@@ -39,7 +39,7 @@
       { "name": "MemberId", "type": "string", "versions": "3+",
         "about": "The member ID to remove from the group." },
       { "name": "GroupInstanceId", "type": "string", "versions": "3+", "nullableVersions": "3+",
-        "about": "The group instance ID to remove from the group." },
+        "default": "", "about": "The group instance ID to remove from the group." },
       { "name": "ErrorCode", "type": "int16", "versions": "3+",
         "about": "The error code, or 0 if there was no error." }
     ]}

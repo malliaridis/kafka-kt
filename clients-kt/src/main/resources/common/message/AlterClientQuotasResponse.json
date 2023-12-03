@@ -28,13 +28,13 @@
       { "name": "ErrorCode", "type": "int16", "versions": "0+",
         "about": "The error code, or `0` if the quota alteration succeeded." },
       { "name": "ErrorMessage", "type": "string", "versions": "0+", "nullableVersions": "0+",
-        "about": "The error message, or `null` if the quota alteration succeeded." },
+        "default": "", "about": "The error message, or `null` if the quota alteration succeeded." },
       { "name": "Entity", "type": "[]EntityData", "versions": "0+",
         "about": "The quota entity to alter.", "fields": [
         { "name": "EntityType", "type": "string", "versions": "0+",
           "about": "The entity type." },
         { "name": "EntityName", "type": "string", "versions": "0+", "nullableVersions": "0+",
-          "about": "The name of the entity, or null if the default." }
+          "default": "", "about": "The name of the entity, or null if the default." }
       ]}
     ]}
   ]

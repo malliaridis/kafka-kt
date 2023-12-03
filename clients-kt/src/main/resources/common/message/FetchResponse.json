@@ -87,8 +87,8 @@
             { "name": "EndOffset", "type": "int64", "versions": "0+", "default": "-1" },
             { "name": "Epoch", "type": "int32", "versions": "0+", "default": "-1" }
         ]},
-        { "name": "AbortedTransactions", "type": "[]AbortedTransaction", "versions": "4+", "nullableVersions": "4+", "ignorable": true,
-          "about": "The aborted transactions.",  "fields": [
+        { "name": "AbortedTransactions", "type": "[]AbortedTransaction", "versions": "4+", "nullableVersions": "4+",
+          "default": "", "ignorable": true, "about": "The aborted transactions.",  "fields": [
           { "name": "ProducerId", "type": "int64", "versions": "4+", "entityType": "producerId",
             "about": "The producer id associated with the aborted transaction." },
           { "name": "FirstOffset", "type": "int64", "versions": "4+",

@@ -36,7 +36,7 @@
     // ApiVersionsRequest, even if it is from a newer version.
     // Since the client is sending the ApiVersionsRequest in order to discover what
     // versions are supported, the client does not know the best version to use.
-    { "name": "ClientId", "type": "string", "versions": "1+", "nullableVersions": "1+", "ignorable": true,
-      "flexibleVersions": "none", "about": "The client ID string." }
+    { "name": "ClientId", "type": "string", "versions": "1+", "nullableVersions": "1+", "default": "",
+      "ignorable": true, "flexibleVersions": "none", "about": "The client ID string." }
   ]
 }

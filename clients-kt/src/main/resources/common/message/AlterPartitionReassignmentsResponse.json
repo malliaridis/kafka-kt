@@ -25,7 +25,7 @@
     { "name": "ErrorCode", "type": "int16", "versions": "0+",
       "about": "The top-level error code, or 0 if there was no error." },
     { "name": "ErrorMessage", "type": "string", "versions": "0+", "nullableVersions": "0+",
-      "about": "The top-level error message, or null if there was no error." },
+      "default": "", "about": "The top-level error message, or null if there was no error." },
     { "name": "Responses", "type": "[]ReassignableTopicResponse", "versions": "0+",
       "about": "The responses to topics to reassign.", "fields": [
       { "name": "Name", "type": "string", "versions": "0+", "entityType": "topicName",
@@ -37,7 +37,7 @@
         { "name": "ErrorCode", "type": "int16", "versions": "0+",
           "about": "The error code for this partition, or 0 if there was no error." },
         { "name": "ErrorMessage", "type": "string", "versions": "0+", "nullableVersions": "0+",
-          "about": "The error message for this partition, or null if there was no error." }
+          "default": "", "about": "The error message for this partition, or null if there was no error." }
       ]}
     ]}
   ]

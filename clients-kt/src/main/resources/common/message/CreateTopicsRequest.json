@@ -52,7 +52,7 @@
         { "name": "Name", "type": "string", "versions": "0+" , "mapKey": true,
           "about": "The configuration name." },
         { "name": "Value", "type": "string", "versions": "0+", "nullableVersions": "0+",
-          "about": "The configuration value." }
+          "default": "", "about": "The configuration value." }
       ]}
     ]},
     { "name": "timeoutMs", "type": "int32", "versions": "0+", "default": "60000",

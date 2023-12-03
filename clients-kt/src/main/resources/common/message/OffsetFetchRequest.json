@@ -39,7 +39,8 @@
     { "name": "GroupId", "type": "string", "versions": "0-7", "entityType": "groupId",
       "about": "The group to fetch offsets for." },
     { "name": "Topics", "type": "[]OffsetFetchRequestTopic", "versions": "0-7", "nullableVersions": "2-7",
-      "about": "Each topic we would like to fetch offsets for, or null to fetch offsets for all topics.", "fields": [
+      "default": "", "about": "Each topic we would like to fetch offsets for, or null to fetch offsets for all topics.",
+      "fields": [
       { "name": "Name", "type": "string", "versions": "0-7", "entityType": "topicName",
         "about": "The topic name."},
       { "name": "PartitionIndexes", "type": "[]int32", "versions": "0-7",
@@ -50,7 +51,8 @@
       { "name": "groupId", "type": "string", "versions": "8+", "entityType": "groupId",
         "about": "The group ID."},
       { "name": "Topics", "type": "[]OffsetFetchRequestTopics", "versions": "8+", "nullableVersions": "8+",
-        "about": "Each topic we would like to fetch offsets for, or null to fetch offsets for all topics.", "fields": [
+        "default": "", "about": "Each topic we would like to fetch offsets for, or null to fetch offsets for all topics.",
+        "fields": [
         { "name": "Name", "type": "string", "versions": "8+", "entityType": "topicName",
           "about": "The topic name."},
         { "name": "PartitionIndexes", "type": "[]int32", "versions": "8+",
