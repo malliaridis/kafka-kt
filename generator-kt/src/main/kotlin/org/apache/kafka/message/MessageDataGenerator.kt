@@ -501,10 +501,7 @@ class MessageDataGenerator internal constructor(
                                 type = field.type,
                                 possibleVersions = versions,
                                 nullableVersions = field.nullableVersions,
-                                assignmentPrefix = String.format(
-                                    "%s = ",
-                                    field.prefixedCamelCaseName()
-                                ),
+                                assignmentPrefix = String.format("%s = ", field.prefixedCamelCaseName()),
                                 fieldDefault = field.fieldDefault(headerGenerator, structRegistry),
                                 assignmentSuffix = String.format("%n"),
                                 isStructArrayWithKeys = structRegistry.isStructArrayWithKeys(field),
@@ -567,10 +564,8 @@ class MessageDataGenerator internal constructor(
                                         type = field.type,
                                         possibleVersions = presentAndTaggedVersions,
                                         nullableVersions = field.nullableVersions,
-                                        assignmentPrefix =
-                                        String.format("%s = ", field.prefixedCamelCaseName()),
-                                        fieldDefault =
-                                        field.fieldDefault(headerGenerator, structRegistry),
+                                        assignmentPrefix = String.format("%s = ", field.prefixedCamelCaseName()),
+                                        fieldDefault = field.fieldDefault(headerGenerator, structRegistry),
                                         assignmentSuffix = String.format("%n"),
                                         isStructArrayWithKeys =
                                         structRegistry.isStructArrayWithKeys(field),
@@ -661,7 +656,7 @@ class MessageDataGenerator internal constructor(
                     name,
                 )
             }
-            .ifMember { buffer.printf("%s%s%s", assignmentPrefix, fieldDefault, assignmentSuffix) }
+            .ifMember { buffer.printf("%s%s%s", assignmentPrefix, null, assignmentSuffix) }
             .generate(buffer)
 
         buffer.decrementIndent()
@@ -847,8 +842,6 @@ class MessageDataGenerator internal constructor(
                                 structRegistry = structRegistry,
                                 buffer = buffer,
                                 fieldPrefix = null,
-                                nullableVersions = field.nullableVersions,
-                                disableSafeUnwrap = true,
                             )
 
                             buffer.incrementIndent()
@@ -907,7 +900,7 @@ class MessageDataGenerator internal constructor(
                                         structRegistry = structRegistry,
                                         buffer = buffer,
                                         fieldPrefix = null,
-                                        nullableVersions = Versions.NONE,
+                                        fromIfNotNull = true,
                                     )
                                     buffer.incrementIndent()
                                 }
@@ -1268,7 +1261,6 @@ class MessageDataGenerator internal constructor(
                 structRegistry = structRegistry,
                 buffer = buffer,
                 fieldPrefix = null,
-                nullableVersions = field.nullableVersions,
             )
             buffer.incrementIndent()
             buffer.printf("numTaggedFields++%n")
@@ -1326,7 +1318,7 @@ class MessageDataGenerator internal constructor(
                             structRegistry = structRegistry,
                             buffer = buffer,
                             fieldPrefix = null,
-                            nullableVersions = Versions.NONE,
+                            fromIfNotNull = true,
                         )
                         buffer.incrementIndent()
                     }
@@ -1709,12 +1701,7 @@ class MessageDataGenerator internal constructor(
                 .emitBlockScope { field.type.isNullable }
                 .ifInBlockScope { buffer.printf("val %s = %s%n", field.camelCaseName(), field.camelCaseName())}
                 .nullableVersions(target.field.nullableVersions)
-                .ifNull {
-                    buffer.printf(
-                        "%s%n",
-                        target.assignmentStatement(field.fieldDefault(headerGenerator, structRegistry)),
-                    )
-                }
+                .ifNull { buffer.printf("%s%n", target.assignmentStatement("null")) }
             if (field.type.isBytes) {
                 if (field.zeroCopy) {
                     cond.ifShouldNotBeNull {

@@ -1665,7 +1665,7 @@ class SslTransportLayerTest {
             .certAlias("server")
             .cn("server")
             .certBuilder(certBuilder)
-            .createNewTrustStore(truststoreFile!!)
+            .createNewTrustStore(truststoreFile)
             .usePem(args.useInlinePem)
         val newConfigs = builder.build()
         val newKeystoreConfigs = CertStores.KEYSTORE_PROPS.associateWith { propName -> newConfigs[propName] }
@@ -1690,7 +1690,7 @@ class SslTransportLayerTest {
             messageCount = 10,
         )
         val invalidBuilder = CertificateBuilder().sanDnsNames("localhost")
-        if (!args.useInlinePem) builder.useExistingTrustStore(truststoreFile)
+        if (!args.useInlinePem) builder.useExistingTrustStore(truststoreFile!!)
         val invalidConfig = builder.certBuilder(invalidBuilder).build()
         val invalidKeystoreConfigs = CertStores.KEYSTORE_PROPS.associateWith { propName -> invalidConfig[propName] }
         verifyInvalidReconfigure(
@@ -2156,7 +2156,7 @@ class SslTransportLayerTest {
                 // operation. To avoid the read buffer being expanded too early, increase buffer size
                 // only when read buffer is full. This ensures that BUFFER_UNDERFLOW is always
                 // triggered in testNetReadBufferResize().
-                val updateBufSize = netReadBuffer != null && !netReadBuffer()!!.hasRemaining()
+                val updateBufSize = netReadBuffer != null && !netReadBuffer.hasRemaining()
                 return netReadBufSize.updateAndGet(super.netReadBufferSize(), updateBufSize)
             }
 
@@ -2199,8 +2199,8 @@ class SslTransportLayerTest {
             fun updateAndGet(actualSize: Int, update: Boolean): Int {
                 var size = actualSize
                 bufSizeOverride?.let {
-                    if (update) bufSizeOverride = min((it * 2).toDouble(), size.toDouble()).toInt()
-                    size = it
+                    if (update) bufSizeOverride = (it * 2).coerceAtMost(size)
+                    size = bufSizeOverride!!
                 }
                 return size
             }

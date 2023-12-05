@@ -360,7 +360,7 @@ class JsonConverterGenerator internal constructor(
                     .conditionalGenerator { name, negated ->
                         String.format("%s%s.isNull", if (negated) "!" else "", name)
                     }
-                    .ifNull { buffer.printf("%s%n", target.assignmentStatement(target.field.fieldDefault(headerGenerator, structRegistry))) }
+                    .ifNull { buffer.printf("%s%n", target.assignmentStatement("null")) }
                     .ifShouldNotBeNull { generateVariableLengthTargetFromJson(target, curVersions) }
                     .generate(buffer)
             }

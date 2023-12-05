@@ -116,6 +116,7 @@ import org.mockito.kotlin.never
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
@@ -428,11 +429,11 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         assignment[consumerId2] = mutableListOf(t2p)
         partitionAssignor.prepare(assignment)
         buildCoordinator(
-            rebalanceConfig,
-            Metrics(),
-            assignors,
-            false,
-            mockSubscriptionState
+            rebalanceConfig = rebalanceConfig,
+            metrics = Metrics(),
+            assignors = assignors,
+            autoCommitEnabled = false,
+            subscriptionState = mockSubscriptionState,
         ).use { coordinator ->
             if (protocol === RebalanceProtocol.COOPERATIVE) {
                 // in cooperative protocol, we should throw exception when validating cooperative assignment
@@ -444,9 +445,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
                         skipAssignment = false,
                     )
                 }
-                assertTrue(
-                    e.message!!.contains("Assignor supporting the COOPERATIVE protocol violates its requirements"),
-                )
+                assertContains(e.message!!, "Assignor supporting the COOPERATIVE protocol violates its requirements")
             } else {
                 // in eager protocol, we should not validate assignment
                 coordinator.onLeaderElected("1", partitionAssignor.name(), metadata, false)

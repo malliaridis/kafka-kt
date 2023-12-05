@@ -649,8 +649,7 @@ class FieldSpec @JsonCreator constructor(
         structRegistry: StructRegistry,
         buffer: CodeBuffer,
         fieldPrefix: String?,
-        nullableVersions: Versions,
-        disableSafeUnwrap: Boolean = false,
+        fromIfNotNull: Boolean = false,
     ) {
         val fieldDefaultString = fieldDefault(headerGenerator, structRegistry)
         val prefixedFieldName = "${fieldPrefix ?: ""}${camelCaseName()}"
@@ -660,14 +659,26 @@ class FieldSpec @JsonCreator constructor(
             fieldDefaultString == "null" ->
                 buffer.printf("if (%s != null) {%n", prefixedFieldName)
 
-            type is ArrayType && type.isNullable -> // TODO Change behavior for only non-nullable default
-                buffer.printf("if (%s == null || %s.isNotEmpty()) {%n", prefixedFieldName, prefixedFieldName)
+            type is ArrayType && type.isNullable ->
+                buffer.printf(
+                    "if (%s%s.isNotEmpty()) {%n",
+                    if (fromIfNotNull) "" else "$prefixedFieldName == null || ",
+                    prefixedFieldName,
+                )
 
             type is ArrayType -> buffer.printf("if (%s.isNotEmpty()) {%n", prefixedFieldName)
 
-            type is BytesFieldType && type.isNullable -> // TODO Change behavior for only non-nullable default
-                if(zeroCopy) buffer.printf("if (%s == null || %s.remaining() > 0) {%n", prefixedFieldName, prefixedFieldName)
-                else buffer.printf("if (%s == null || %s.isNotEmpty()) {%n", prefixedFieldName, prefixedFieldName)
+            type is BytesFieldType && type.isNullable ->
+                if(zeroCopy) buffer.printf(
+                    "if (%s%s.remaining() > 0) {%n",
+                    if (fromIfNotNull) "" else "$prefixedFieldName == null || ",
+                    prefixedFieldName,
+                )
+                else buffer.printf(
+                    "if (%s%s.isNotEmpty()) {%n",
+                    if (fromIfNotNull) "" else "$prefixedFieldName == null || ",
+                    prefixedFieldName,
+                )
 
             type is BytesFieldType ->
                 if(zeroCopy) buffer.printf("if (%s.remaining() > 0) {%n", prefixedFieldName)
@@ -702,7 +713,6 @@ class FieldSpec @JsonCreator constructor(
             structRegistry = structRegistry,
             buffer = buffer,
             fieldPrefix = fieldPrefix,
-            nullableVersions = nullableVersions,
         )
         buffer.incrementIndent()
         headerGenerator.addImport(MessageGenerator.UNSUPPORTED_VERSION_EXCEPTION_CLASS)

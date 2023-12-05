@@ -17,6 +17,8 @@
 
 package org.apache.kafka.common.message
 
+import java.nio.ByteBuffer
+import java.util.function.Consumer
 import org.apache.kafka.common.Uuid
 import org.apache.kafka.common.errors.UnsupportedVersionException
 import org.apache.kafka.common.message.SimpleExampleMessageData.MyStruct
@@ -29,8 +31,6 @@ import org.apache.kafka.common.protocol.MessageUtil.toByteBuffer
 import org.apache.kafka.common.protocol.ObjectSerializationCache
 import org.apache.kafka.common.utils.ByteUtils
 import org.junit.jupiter.api.Test
-import java.nio.ByteBuffer
-import java.util.function.Consumer
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -73,7 +73,7 @@ class SimpleExampleMessageTest {
         val out = SimpleExampleMessageData()
         assertEquals(Uuid.fromString("AAAAAAAAAAAAAAAAAAAAAA"), out.processId)
         assertEquals(ByteUtils.EMPTY_BUF, out.zeroCopyByteBuffer)
-        assertEquals(null, out.nullableZeroCopyByteBuffer)
+        assertEquals(ByteUtils.EMPTY_BUF, out.nullableZeroCopyByteBuffer)
     }
 
     @Test
@@ -93,7 +93,7 @@ class SimpleExampleMessageTest {
         
         assertEquals(uuid, inputData.processId)
         assertEquals(buf, inputData.zeroCopyByteBuffer)
-        assertEquals(null, inputData.nullableZeroCopyByteBuffer)
+        assertEquals(ByteUtils.EMPTY_BUF, inputData.nullableZeroCopyByteBuffer)
     }
 
     @Test
@@ -428,7 +428,7 @@ class SimpleExampleMessageTest {
                     "taggedUuid=x7D3Ck_ZRA22-dzIvu_pnQ, " +
                     "taggedLong=914172222550880202, " +
                     "zeroCopyByteBuffer=java.nio.HeapByteBuffer[pos=0 lim=0 cap=0], " +
-                    "nullableZeroCopyByteBuffer=null, " +
+                    "nullableZeroCopyByteBuffer=java.nio.HeapByteBuffer[pos=0 lim=0 cap=0], " +
                     "myStruct=MyStruct(structId=0, arrayInStruct=[]), " +
                     "myTaggedStruct=TaggedStruct(structId=''), " +
                     "taggedLongFlexibleVersionSubset=0, " +
