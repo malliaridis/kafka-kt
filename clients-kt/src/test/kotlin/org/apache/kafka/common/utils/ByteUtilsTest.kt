@@ -120,10 +120,10 @@ class ByteUtilsTest {
     @Test
     fun testReadUnsignedInt() {
         val buffer = ByteBuffer.allocate(4)
-        val writeValue: Long = 133444
-        writeUnsignedInt(buffer, writeValue.toUInt())
+        val writeValue = 133444u
+        writeUnsignedInt(buffer, writeValue)
         buffer.flip()
-        val readValue = readUnsignedInt(buffer).toLong()
+        val readValue = readUnsignedInt(buffer)
         assertEquals(writeValue, readValue)
     }
 

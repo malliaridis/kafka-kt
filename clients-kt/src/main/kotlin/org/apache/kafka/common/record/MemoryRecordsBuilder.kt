@@ -847,7 +847,7 @@ class MemoryRecordsBuilder(
         key: ByteBuffer?,
         value: ByteBuffer?,
         magic: Byte
-    ): Long {
+    ): UInt {
         var timestamp = timestamp
         ensureOpenForRecordAppend()
         if (

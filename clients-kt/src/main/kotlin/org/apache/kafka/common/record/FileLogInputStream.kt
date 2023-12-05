@@ -96,7 +96,7 @@ class FileLogInputStream internal constructor(
 
         override fun timestampType(): TimestampType = loadBatchHeader().timestampType()
 
-        override fun checksum(): Long = loadBatchHeader().checksum()
+        override fun checksum(): UInt = loadBatchHeader().checksum()
 
         override fun maxTimestamp(): Long = loadBatchHeader().maxTimestamp()
 

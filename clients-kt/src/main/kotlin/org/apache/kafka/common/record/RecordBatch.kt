@@ -46,9 +46,9 @@ interface RecordBatch : Iterable<Record> {
      * Get the checksum of this record batch, which covers the batch header as well as all the
      * records.
      *
-     * @return The 4-byte unsigned checksum represented as a long
+     * @return The 4-byte unsigned checksum represented as a unsigned integer
      */
-    fun checksum(): Long
+    fun checksum(): UInt
 
     /**
      * Get the max timestamp or log append time of this record batch.

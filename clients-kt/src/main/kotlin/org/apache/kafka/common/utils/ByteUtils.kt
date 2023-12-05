@@ -38,8 +38,7 @@ object ByteUtils {
      * @param buffer The buffer to read from
      * @return The integer read, as a long to avoid signedness
      */
-    fun readUnsignedShort(buffer: ByteBuffer): UShort =
-        buffer.getInt().toUShort()
+    fun readUnsignedShort(buffer: ByteBuffer): UShort = buffer.getInt().toUShort()
 
     /**
      * Read an unsigned integer from the current position in the buffer, incrementing the position
@@ -48,8 +47,7 @@ object ByteUtils {
      * @param buffer The buffer to read from
      * @return The integer read, as a long to avoid signedness
      */
-    fun readUnsignedInt(buffer: ByteBuffer): UInt =
-        buffer.getLong().toUInt()
+    fun readUnsignedInt(buffer: ByteBuffer): UInt = buffer.getInt().toUInt()
 
     /**
      * Read an unsigned integer from the given position without modifying the buffers position
@@ -58,8 +56,7 @@ object ByteUtils {
      * @param index the index from which to read the integer
      * @return The integer read, as a long to avoid signedness
      */
-    fun readUnsignedInt(buffer: ByteBuffer, index: Int): Long =
-        buffer.getInt(index).toLong() and 0xffffffffL
+    fun readUnsignedInt(buffer: ByteBuffer, index: Int): UInt = buffer.getInt(index).toUInt()
 
     /**
      * Read an unsigned integer stored in little-endian format from the [InputStream].
@@ -94,8 +91,8 @@ object ByteUtils {
      * @param index The position in the buffer at which to begin writing
      * @param value The value to write
      */
-    fun writeUnsignedInt(buffer: ByteBuffer, index: Int, value: Long) {
-        buffer.putInt(index, (value and 0xffffffffL).toInt())
+    fun writeUnsignedInt(buffer: ByteBuffer, index: Int, value: UInt) {
+        buffer.putInt(index, value.toInt())
     }
 
     /**
@@ -105,7 +102,7 @@ object ByteUtils {
      * @param value The value to write
      */
     fun writeUnsignedInt(buffer: ByteBuffer, value: UInt) {
-        buffer.putInt(value.toLong().toInt())
+        buffer.putInt(value.toInt())
     }
 
     /**

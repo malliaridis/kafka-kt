@@ -228,14 +228,14 @@ class MemoryRecordsTest {
             records = records,
         ).batches().first()
         val expectedChecksum = if (magic == RecordBatch.MAGIC_VALUE_V0) {
-            if (compression === CompressionType.NONE) 1978725405L
-            else 66944826L
+            if (compression === CompressionType.NONE) 1978725405u
+            else 66944826u
         } else if (magic == RecordBatch.MAGIC_VALUE_V1) {
-            if (compression === CompressionType.NONE) 109425508L
-            else 1407303399L
+            if (compression === CompressionType.NONE) 109425508u
+            else 1407303399u
         } else {
-            if (compression === CompressionType.NONE) 3851219455L
-            else 2745969314L
+            if (compression === CompressionType.NONE) 3851219455u
+            else 2745969314u
         }
         assertEquals(
             expected = expectedChecksum,

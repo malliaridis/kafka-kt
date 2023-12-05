@@ -1148,7 +1148,7 @@ class FetcherTest {
         LegacyRecord.write(
             out = out,
             magic = magic,
-            crc = crc + 1,
+            crc = crc + 1u,
             attributes = LegacyRecord.computeAttributes(
                 magic = magic,
                 type = CompressionType.NONE,
