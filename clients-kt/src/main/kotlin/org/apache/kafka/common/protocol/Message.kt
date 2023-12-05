@@ -89,7 +89,7 @@ interface Message {
      *
      * @return The raw tagged fields.
      */
-    fun unknownTaggedFields(): List<RawTaggedField>
+    fun unknownTaggedFields(): MutableList<RawTaggedField>
 
     /**
      * Make a deep copy of the message.

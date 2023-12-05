@@ -669,7 +669,7 @@ class FieldSpec @JsonCreator constructor(
             type is ArrayType -> buffer.printf("if (%s.isNotEmpty()) {%n", prefixedFieldName)
 
             type is BytesFieldType && type.isNullable ->
-                if(zeroCopy) buffer.printf(
+                if (zeroCopy) buffer.printf(
                     "if (%s%s.remaining() > 0) {%n",
                     if (fromIfNotNull) "" else "$prefixedFieldName == null || ",
                     prefixedFieldName,
@@ -681,16 +681,15 @@ class FieldSpec @JsonCreator constructor(
                 )
 
             type is BytesFieldType ->
-                if(zeroCopy) buffer.printf("if (%s.remaining() > 0) {%n", prefixedFieldName)
+                if (zeroCopy) buffer.printf("if (%s.remaining() > 0) {%n", prefixedFieldName)
                 else buffer.printf("if (%s.isNotEmpty()) {%n", prefixedFieldName)
 
-            type is StringFieldType ||type is StructType || type is BoolFieldType || type.isPrimitive ->
-                buffer.printf("if (%s != %s) {%n", prefixedFieldName, fieldDefaultString)
-
-            type is UUIDFieldType -> {
-                headerGenerator.addImport(MessageGenerator.UUID_CLASS)
-                buffer.printf("if (%s != Uuid.ZERO_UUID) {%n", prefixedFieldName)
-            }
+            type is StringFieldType
+                    || type is StructType
+                    || type is BoolFieldType
+                    || type is UUIDFieldType
+                    || type.isPrimitive
+            -> buffer.printf("if (%s != %s) {%n", prefixedFieldName, fieldDefaultString)
         }
     }
 

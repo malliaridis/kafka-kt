@@ -2583,7 +2583,7 @@ class RequestResponseTest {
             TopicPartition("test", 1) to OffsetFetchResponse.PartitionData(
                 offset = 100L,
                 leaderEpoch = 10,
-                metadata = "",
+                metadata = null,
                 error = Errors.NONE,
             )
         )
@@ -3554,7 +3554,7 @@ class RequestResponseTest {
                                     )
                                     .setIsSensitive(false).setReadOnly(true)
                                     .setSynonyms(emptyList())
-                                    .setConfigType(DescribeConfigsResponse.ConfigType.BOOLEAN.id())
+                                    .setConfigType(DescribeConfigsResponse.ConfigType.BOOLEAN.id)
                                     .setDocumentation("some description"),
                                 DescribeConfigsResourceResult()
                                     .setName("another_name")

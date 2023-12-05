@@ -44,7 +44,7 @@ class LeaderAndIsrResponse(
     override fun errorCounts(): Map<Errors, Int> {
         val error = error()
         // Minor optimization since the top-level error applies to all partitions
-        if (error != Errors.NONE) mapOf(
+        if (error != Errors.NONE) return mapOf(
             if (version < 5) error to data.partitionErrors.size + 1
             else error to data.topics.sumOf { it.partitionErrors.size } + 1
         )

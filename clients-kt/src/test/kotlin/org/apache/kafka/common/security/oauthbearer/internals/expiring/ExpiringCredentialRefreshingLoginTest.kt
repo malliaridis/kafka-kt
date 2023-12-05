@@ -81,9 +81,11 @@ class ExpiringCredentialRefreshingLoginTest {
 
         private var tmpExpiringCredential: ExpiringCredential? = null
 
-        open val createMs: Long = time.milliseconds()
+        open val createMs: Long
+            get() = time.milliseconds()
 
-        val expireTimeMs: Long = time.milliseconds() + lifetimeMillis
+        val expireTimeMs: Long
+            get() = time.milliseconds() + lifetimeMillis
 
         // Invoke at login time
         fun createNewExpiringCredential() {
@@ -107,9 +109,7 @@ class ExpiringCredentialRefreshingLoginTest {
                 else tmpExpiringCredential // login has already been invoked
         }
 
-        override fun expiringCredential(): ExpiringCredential? {
-            return expiringCredential
-        }
+        override fun expiringCredential(): ExpiringCredential? = expiringCredential
 
         private fun internalNewExpiringCredential(): ExpiringCredential {
 

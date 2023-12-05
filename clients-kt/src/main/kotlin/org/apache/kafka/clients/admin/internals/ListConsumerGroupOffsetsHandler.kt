@@ -119,7 +119,11 @@ class ListConsumerGroupOffsetsHandler(
                         // Negative offset indicates that the group has no committed offset for this partition
                         groupOffsetsListing[topicPartition] =
                             if (offset < 0) null
-                            else OffsetAndMetadata(offset, leaderEpoch, metadata)
+                            else OffsetAndMetadata(
+                                offset = offset,
+                                leaderEpoch = leaderEpoch,
+                                metadata = metadata ?: "",
+                            )
                     } else log.warn(
                         "Skipping return offset for {} due to error {}.",
                         topicPartition,

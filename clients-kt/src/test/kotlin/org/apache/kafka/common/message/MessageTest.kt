@@ -1365,11 +1365,9 @@ class MessageTest {
         val createTopics = CreateTopicsRequestData()
         verifyWriteSucceeds(6, createTopics)
         val field1000 = RawTaggedField(1000, byteArrayOf(0x1, 0x2, 0x3))
-        fail("Kotlin Migration: Unknown tagged fields should be variable from version 6 upwards")
-        // TODO Delete above line and uncomment the following line once migrated
-        // createTopics.unknownTaggedFields().add(field1000)
-        // verifyWriteRaisesUve(0, "Tagged fields were set", createTopics)
-        // verifyWriteSucceeds(6, createTopics)
+        createTopics.unknownTaggedFields().add(field1000)
+        verifyWriteRaisesUve(0, "Tagged fields were set", createTopics)
+        verifyWriteSucceeds(6, createTopics)
     }
 
     @Test
@@ -1445,14 +1443,12 @@ class MessageTest {
         assertEquals(createTopics, createTopics2)
         assertEquals(createTopics2, createTopics)
 
-        fail("Kotlin Migration: Unknown tagged fields should be variable from version 6 upwards")
-        // TODO Delete above line and uncomment the following lines once migrated
-        // createTopics.unknownTaggedFields().add(RawTaggedField(0, byteArrayOf(0)))
-        // assertNotEquals(createTopics, createTopics2)
-        // assertNotEquals(createTopics2, createTopics)
-        // createTopics2.unknownTaggedFields().add(RawTaggedField(0, byteArrayOf(0)))
-        // assertEquals(createTopics, createTopics2)
-        // assertEquals(createTopics2, createTopics)
+        createTopics.unknownTaggedFields().add(RawTaggedField(0, byteArrayOf(0)))
+        assertNotEquals(createTopics, createTopics2)
+        assertNotEquals(createTopics2, createTopics)
+        createTopics2.unknownTaggedFields().add(RawTaggedField(0, byteArrayOf(0)))
+        assertEquals(createTopics, createTopics2)
+        assertEquals(createTopics2, createTopics)
     }
 
     companion object {

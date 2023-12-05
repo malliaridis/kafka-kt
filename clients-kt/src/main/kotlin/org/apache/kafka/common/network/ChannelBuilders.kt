@@ -282,6 +282,7 @@ object ChannelBuilders {
     private fun requireNonNullMode(mode: Mode?, securityProtocol: SecurityProtocol) =
         requireNotNull(mode) { "`mode` must be non-null if `securityProtocol` is `$securityProtocol`" }
 
+    @JvmStatic // Kotlin Migration - JvmStatic required for mocking in tests
     fun createPrincipalBuilder(
         configs: Map<String, *>,
         kerberosShortNamer: KerberosShortNamer? = null,

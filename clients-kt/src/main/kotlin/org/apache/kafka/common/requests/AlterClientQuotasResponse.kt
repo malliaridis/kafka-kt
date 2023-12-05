@@ -49,9 +49,7 @@ class AlterClientQuotasResponse(
         }
     }
 
-    override fun throttleTimeMs(): Int {
-        return data.throttleTimeMs
-    }
+    override fun throttleTimeMs(): Int = data.throttleTimeMs
 
     override fun maybeSetThrottleTimeMs(throttleTimeMs: Int) {
         data.setThrottleTimeMs(throttleTimeMs)
@@ -70,9 +68,7 @@ class AlterClientQuotasResponse(
         return counts
     }
 
-    override fun data(): AlterClientQuotasResponseData {
-        return data
-    }
+    override fun data(): AlterClientQuotasResponseData = data
 
     companion object {
 

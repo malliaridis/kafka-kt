@@ -27,6 +27,7 @@ import javax.security.sasl.Sasl
 import javax.security.sasl.SaslException
 import javax.security.sasl.SaslServer
 import org.apache.kafka.common.config.internals.BrokerSecurityConfigs
+import org.apache.kafka.common.errors.IllegalSaslStateException
 import org.apache.kafka.common.errors.SaslAuthenticationException
 import org.apache.kafka.common.message.ApiMessageType
 import org.apache.kafka.common.message.SaslAuthenticateRequestData
@@ -128,7 +129,7 @@ class SaslServerAuthenticatorTest {
             invocation.getArgument<ByteBuffer>(0).put(headerBuffer.duplicate())
             headerBuffer.remaining()
         }
-        assertFailsWith<IllegalStateException>(
+        assertFailsWith<IllegalSaslStateException>(
             message = "Expected authenticate() to raise an exception",
         ) { authenticator.authenticate() }
         verify(transportLayer, times(numInvocations = 2)).read(any<ByteBuffer>())

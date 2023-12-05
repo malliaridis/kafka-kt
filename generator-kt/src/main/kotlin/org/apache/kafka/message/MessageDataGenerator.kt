@@ -335,7 +335,7 @@ class MessageDataGenerator internal constructor(
 
         headerGenerator.addImport(MessageGenerator.LIST_CLASS)
         headerGenerator.addImport(MessageGenerator.RAW_TAGGED_FIELD_CLASS)
-        buffer.printf("private var unknownTaggedFields: List<RawTaggedField>? = null%n")
+        buffer.printf("private var unknownTaggedFields: MutableList<RawTaggedField>? = null%n")
         generateFieldEpilogue(isSetElement)
     }
 
@@ -374,14 +374,14 @@ class MessageDataGenerator internal constructor(
     private fun generateUnknownTaggedFieldsAccessor() {
         headerGenerator.addImport(MessageGenerator.LIST_CLASS)
         headerGenerator.addImport(MessageGenerator.RAW_TAGGED_FIELD_CLASS)
-        buffer.printf("override fun unknownTaggedFields(): List<RawTaggedField> {%n")
+        buffer.printf("override fun unknownTaggedFields(): MutableList<RawTaggedField> {%n")
         buffer.incrementIndent()
         // Optimize unknownTaggedFields by not creating a new list object
         // unless we need it.
         buffer.printf("if (unknownTaggedFields == null) {%n")
         buffer.incrementIndent()
         headerGenerator.addImport(MessageGenerator.ARRAYLIST_CLASS)
-        buffer.printf("unknownTaggedFields = ArrayList()%n")
+        buffer.printf("unknownTaggedFields = mutableListOf()%n")
         buffer.decrementIndent()
         buffer.printf("}%n")
         buffer.printf("return unknownTaggedFields!!%n")
@@ -591,7 +591,7 @@ class MessageDataGenerator internal constructor(
                 buffer.printf("else -> %n")
                 buffer.incrementIndent()
                 buffer.printf(
-                    "this.unknownTaggedFields = readable.readUnknownTaggedField(this.unknownTaggedFields?.toMutableList(), tag, size)%n"
+                    "this.unknownTaggedFields = readable.readUnknownTaggedField(this.unknownTaggedFields, tag, size)%n"
                 )
                 buffer.decrementIndent()
                 buffer.decrementIndent()

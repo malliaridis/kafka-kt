@@ -653,8 +653,9 @@ class SubscriptionState(
         val allConsumed: MutableMap<TopicPartition, OffsetAndMetadata> = HashMap()
         assignment.forEach { topicPartition: TopicPartition, partitionState: TopicPartitionState ->
             if (partitionState.hasValidPosition()) allConsumed[topicPartition] = OffsetAndMetadata(
-                partitionState.position!!.offset,
-                partitionState.position!!.offsetEpoch, ""
+                offset = partitionState.position!!.offset,
+                leaderEpoch = partitionState.position!!.offsetEpoch,
+                metadata = "",
             )
         }
         return allConsumed

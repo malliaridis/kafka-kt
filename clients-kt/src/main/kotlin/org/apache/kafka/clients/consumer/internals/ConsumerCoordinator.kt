@@ -65,7 +65,6 @@ import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.Time
 import org.apache.kafka.common.utils.Timer
 import org.apache.kafka.common.utils.Utils
-import org.apache.kafka.common.utils.Utils.join
 import org.slf4j.Logger
 import java.nio.ByteBuffer
 import java.util.*
@@ -1577,9 +1576,9 @@ class ConsumerCoordinator(
                     // record the position with the offset (-1 indicates no committed offset to fetch);
                     // if there's no committed offset, record as null
                     offsets[tp] = OffsetAndMetadata(
-                        partitionData.offset,
-                        partitionData.leaderEpoch,
-                        partitionData.metadata
+                        offset = partitionData.offset,
+                        leaderEpoch = partitionData.leaderEpoch,
+                        metadata = partitionData.metadata ?: "",
                     )
                 } else {
                     log.info("Found no committed offset for partition {}", tp)

@@ -301,9 +301,7 @@ open class SaslChannelBuilder(
     )
 
     // Package private for testing
-    fun loginManagers(): Map<String, LoginManager> {
-        return loginManagers
-    }
+    internal fun loginManagers(): Map<String, LoginManager> = loginManagers
 
     private fun createClientCallbackHandler(configs: Map<String, *>) {
         val callbackHandlerClass =

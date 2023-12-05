@@ -310,7 +310,7 @@ class OffsetFetchResponseTest {
         val pd = OffsetFetchResponse.PartitionData(
             offset = OFFSET.toLong(),
             leaderEpoch = LEADER_EPOCH_ONE,
-            metadata = "",
+            metadata = null,
             error = Errors.UNKNOWN_TOPIC_OR_PARTITION,
         )
         // test PartitionData.equals with null metadata
@@ -349,7 +349,7 @@ class OffsetFetchResponseTest {
         val pd = OffsetFetchResponse.PartitionData(
             offset = OFFSET.toLong(),
             leaderEpoch = LEADER_EPOCH_ONE,
-            metadata = "",
+            metadata = null,
             error = Errors.UNKNOWN_TOPIC_OR_PARTITION,
         )
         // test PartitionData.equals with null metadata

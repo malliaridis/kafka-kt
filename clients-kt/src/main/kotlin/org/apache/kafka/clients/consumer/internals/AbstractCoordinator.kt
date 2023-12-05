@@ -1272,7 +1272,7 @@ abstract class AbstractCoordinator(
     }
 
     val isDynamicMember: Boolean
-        get() = rebalanceConfig.groupInstanceId != null
+        get() = rebalanceConfig.groupInstanceId == null
 
     private inner class LeaveGroupResponseHandler(
         generation: Generation,

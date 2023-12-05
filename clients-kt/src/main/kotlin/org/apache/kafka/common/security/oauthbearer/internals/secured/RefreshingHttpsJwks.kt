@@ -226,20 +226,14 @@ class RefreshingHttpsJwks(
             )
             val localJWKs = retry.execute(Retryable {
                 try {
-                    log.debug(
-                        "JWKS validation key calling refresh of {} starting",
-                        httpsJwks.location
-                    )
+                    log.debug("JWKS validation key calling refresh of {} starting", httpsJwks.location)
 
                     // Call the *actual* refresh implementation that will more than likely issue
                     // HTTP(S) calls over the network.
                     httpsJwks.refresh()
                     val jwks = httpsJwks.jsonWebKeys
 
-                    log.debug(
-                        "JWKS validation key refresh of {} complete",
-                        httpsJwks.location
-                    )
+                    log.debug("JWKS validation key refresh of {} complete", httpsJwks.location)
 
                     return@Retryable jwks
                 } catch (e: Exception) {

@@ -84,9 +84,7 @@ class AlterClientQuotasRequest(
         private val data: AlterClientQuotasRequestData
 
         init {
-            val entryData: MutableList<AlterClientQuotasRequestData.EntryData> =
-                ArrayList(entries.size)
-            for (entry in entries) {
+            val entryData = entries.map { entry ->
                 val entityData = entry.entity.entries.map { (key, value) ->
                     AlterClientQuotasRequestData.EntityData()
                         .setEntityType(key)

@@ -329,7 +329,7 @@ open class SaslServerAuthenticator(
         )
         val principal = principalBuilder.build(context)
         if (ScramMechanism.isScram(saslMechanism) && java.lang.Boolean.parseBoolean(
-                saslServer!!.getNegotiatedProperty(ScramLoginModule.TOKEN_AUTH_CONFIG) as String
+                saslServer!!.getNegotiatedProperty(ScramLoginModule.TOKEN_AUTH_CONFIG) as String?
             )
         ) {
             principal.tokenAuthenticated(true)

@@ -568,9 +568,8 @@ open class Selector private constructor(
                     && (key.isReadable || channel.hasBytesBuffered())
                     && !hasCompletedReceive(channel)
                     && !explicitlyMutedChannels.contains(channel)
-                ) {
-                    attemptRead(channel)
-                }
+                ) attemptRead(channel)
+
                 if (channel.hasBytesBuffered() && !explicitlyMutedChannels.contains(channel)) {
                     //this channel has bytes enqueued in intermediary buffers that we could not read
                     //(possibly because no memory). it may be the case that the underlying socket will
@@ -628,14 +627,17 @@ open class Selector private constructor(
 
     @Throws(IOException::class)
     private fun attemptWrite(key: SelectionKey?, channel: KafkaChannel, nowNanos: Long) {
-        if (channel.hasSend() && channel.ready() && key!!.isWritable && !channel.maybeBeginClientReauthentication { nowNanos }) {
-            write(channel)
-        }
+        if (
+            channel.hasSend()
+            && channel.ready()
+            && key!!.isWritable
+            && !channel.maybeBeginClientReauthentication { nowNanos }
+        ) write(channel)
     }
 
     // package-private for testing
     @Throws(IOException::class)
-    fun write(channel: KafkaChannel) {
+    internal fun write(channel: KafkaChannel) {
         val nodeId = channel.id
         val bytesSent = channel.write()
         val send = channel.maybeCompleteSend()
@@ -918,13 +920,13 @@ open class Selector private constructor(
      * check if channel is ready
      */
     override fun isChannelReady(id: String): Boolean {
-        val channel = channels[id]
-        return channel != null && channel.ready()
+        return channels[id]?.ready() == true
     }
 
     private fun openOrClosingChannelOrFail(id: String): KafkaChannel {
         return checkNotNull(channels[id] ?: closingChannels[id]) {
-            "Attempt to retrieve channel for which there is no connection. Connection id $id " + "existing connections ${channels.keys}"
+            "Attempt to retrieve channel for which there is no connection. Connection id $id " +
+                    "existing connections ${channels.keys}"
         }
     }
 
@@ -1632,7 +1634,7 @@ open class Selector private constructor(
     }
 
     private enum class CloseMode(
-// discard any outstanding receives, no disconnect notification
+        // discard any outstanding receives, no disconnect notification
         var notifyDisconnect: Boolean,
     ) {
         GRACEFUL(true),

@@ -96,15 +96,16 @@ class DescribeAclsRequest private constructor(
 
         init {
             val (resourceType, name, patternType) = filter.patternFilter
-            val (principal, host, operation, permissionType) = filter.entryFilter
-            data = DescribeAclsRequestData()
-                .setHostFilter(host)
-                .setOperation(operation.code)
-                .setPermissionType(permissionType.code)
-                .setPrincipalFilter(principal)
-                .setResourceNameFilter(name)
-                .setPatternTypeFilter(patternType.code)
-                .setResourceTypeFilter(resourceType.code)
+            with (filter.entryFilter) {
+                data = DescribeAclsRequestData()
+                    .setHostFilter(host)
+                    .setOperation(operation.code)
+                    .setPermissionType(permissionType.code)
+                    .setPrincipalFilter(principal)
+                    .setResourceNameFilter(name)
+                    .setPatternTypeFilter(patternType.code)
+                    .setResourceTypeFilter(resourceType.code)
+            }
         }
 
         override fun build(version: Short): DescribeAclsRequest = DescribeAclsRequest(data, version)
