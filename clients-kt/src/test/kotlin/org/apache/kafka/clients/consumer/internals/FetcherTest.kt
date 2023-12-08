@@ -4538,24 +4538,23 @@ class FetcherTest {
     }
 
     @Test
-    @Disabled("Kotlin Migration: Offsets to expect require a value, since types will be incompatible.")
     fun testListOffsetsWithZeroTimeout() {
-//        buildFetcher()
-//        val offsetsToSearch = mapOf(
-//            tp0 to ListOffsetsRequest.EARLIEST_TIMESTAMP,
-//            tp1 to ListOffsetsRequest.EARLIEST_TIMESTAMP,
-//        )
-//        val offsetsToExpect = mapOf<TopicPartition, Long?>(
-//            tp0 to null,
-//            tp1 to null,
-//        )
-//        assertEquals(
-//            expected = offsetsToExpect,
-//            actual = fetcher.offsetsForTimes(
-//                timestampsToSearch = offsetsToSearch,
-//                timer = time.timer(0),
-//            ),
-//        )
+        buildFetcher()
+        val offsetsToSearch = mapOf(
+            tp0 to ListOffsetsRequest.EARLIEST_TIMESTAMP,
+            tp1 to ListOffsetsRequest.EARLIEST_TIMESTAMP,
+        )
+        val offsetsToExpect = mapOf<TopicPartition, OffsetAndTimestamp?>(
+            tp0 to null,
+            tp1 to null,
+        )
+        assertEquals(
+            expected = offsetsToExpect,
+            actual = fetcher.offsetsForTimes(
+                timestampsToSearch = offsetsToSearch,
+                timer = time.timer(0),
+            ),
+        )
     }
 
     @Test
