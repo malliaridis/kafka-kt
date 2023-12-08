@@ -17,7 +17,6 @@
 
 package org.apache.kafka.common.security.oauthbearer.internals.secured
 
-import java.util.*
 import org.apache.kafka.common.config.SaslConfigs
 import org.jose4j.keys.resolvers.VerificationKeyResolver
 
@@ -40,7 +39,7 @@ object AccessTokenValidatorFactory {
         verificationKeyResolver: VerificationKeyResolver?
     ): AccessTokenValidator {
         val cu = ConfigurationUtils(configs, saslMechanism)
-        val expectedAudiences = cu.get<Collection<String>>(SaslConfigs.SASL_OAUTHBEARER_EXPECTED_AUDIENCE)
+        val expectedAudiences = cu.get<Collection<String>>(SaslConfigs.SASL_OAUTHBEARER_EXPECTED_AUDIENCE)?.toSet()
 
         val clockSkew = cu.validateOptionalInt(SaslConfigs.SASL_OAUTHBEARER_CLOCK_SKEW_SECONDS)
         val expectedIssuer = cu.validateOptionalString(SaslConfigs.SASL_OAUTHBEARER_EXPECTED_ISSUER)

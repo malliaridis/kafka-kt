@@ -99,7 +99,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
 import kotlin.test.assertTrue
 import java.nio.ByteBuffer
-import java.util.*
+import java.util.IdentityHashMap
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
@@ -107,8 +107,6 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import org.mockito.AdditionalMatchers.geq
 import org.mockito.kotlin.any
-import org.mockito.kotlin.argThat
-import org.mockito.kotlin.argWhere
 import org.mockito.kotlin.atLeastOnce
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.inOrder
@@ -4839,7 +4837,7 @@ class SenderTest {
                     partitionRecords[tp] = p.records as MemoryRecords
                 }
             }
-            return Collections.unmodifiableMap(partitionRecords)
+            return partitionRecords
         }
     }
 }

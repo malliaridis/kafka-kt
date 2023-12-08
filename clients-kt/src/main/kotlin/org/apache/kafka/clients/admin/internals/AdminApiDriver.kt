@@ -17,7 +17,6 @@
 
 package org.apache.kafka.clients.admin.internals
 
-import java.util.*
 import java.util.function.BiFunction
 import org.apache.kafka.clients.admin.internals.AdminApiHandler.RequestAndKeys
 import org.apache.kafka.common.Node
@@ -263,7 +262,7 @@ class AdminApiDriver<K, V>(
             if (requestState.hasInflight()) return@forEach
 
             // Copy the keys to avoid exposing the underlying mutable set
-            val copyKeys = Collections.unmodifiableSet(keys.toHashSet())
+            val copyKeys = keys.toSet()
             val newRequests = buildRequest.apply(copyKeys, scope)
             if (newRequests.isEmpty()) return
 

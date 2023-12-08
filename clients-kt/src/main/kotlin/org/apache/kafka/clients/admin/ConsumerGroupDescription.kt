@@ -27,15 +27,39 @@ import org.apache.kafka.common.acl.AclOperation
  * @property groupId
  * @property isSimpleConsumerGroup If consumer group is simple or not.
  */
-data class ConsumerGroupDescription(
-    val groupId: String = "",
-    val isSimpleConsumerGroup: Boolean,
-    val members: Collection<MemberDescription> = emptyList(),
-    val partitionAssignor: String = "",
-    private val state: ConsumerGroupState,
-    private val coordinator: Node,
-    val authorizedOperations: Set<AclOperation> = emptySet()
+class ConsumerGroupDescription(
+    groupId: String = "",
+    isSimpleConsumerGroup: Boolean,
+    members: Collection<MemberDescription> = emptyList(),
+    partitionAssignor: String = "",
+    state: ConsumerGroupState,
+    coordinator: Node,
+    authorizedOperations: Set<AclOperation> = emptySet()
 ) {
+
+    val groupId: String
+
+    val isSimpleConsumerGroup: Boolean
+
+    val members: Collection<MemberDescription>
+
+    val partitionAssignor: String
+
+    private val state: ConsumerGroupState
+
+    private val coordinator: Node
+
+    val authorizedOperations: Set<AclOperation>
+
+    init {
+        this.groupId = groupId
+        this.isSimpleConsumerGroup = isSimpleConsumerGroup
+        this.members = members.toList()
+        this.partitionAssignor = partitionAssignor
+        this.state = state
+        this.coordinator = coordinator
+        this.authorizedOperations = authorizedOperations
+    }
 
     /**
      * The id of the consumer group.
@@ -100,5 +124,33 @@ data class ConsumerGroupDescription(
                 ", coordinator=$coordinator" +
                 ", authorizedOperations=$authorizedOperations" +
                 ")"
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as ConsumerGroupDescription
+
+        if (groupId != other.groupId) return false
+        if (isSimpleConsumerGroup != other.isSimpleConsumerGroup) return false
+        if (members != other.members) return false
+        if (partitionAssignor != other.partitionAssignor) return false
+        if (state != other.state) return false
+        if (coordinator != other.coordinator) return false
+        if (authorizedOperations != other.authorizedOperations) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = groupId.hashCode()
+        result = 31 * result + isSimpleConsumerGroup.hashCode()
+        result = 31 * result + members.hashCode()
+        result = 31 * result + partitionAssignor.hashCode()
+        result = 31 * result + state.hashCode()
+        result = 31 * result + coordinator.hashCode()
+        result = 31 * result + authorizedOperations.hashCode()
+        return result
     }
 }

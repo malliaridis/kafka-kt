@@ -18,7 +18,6 @@
 package org.apache.kafka.clients.consumer
 
 import java.time.Duration
-import java.util.Collections
 import java.util.OptionalLong
 import java.util.Properties
 import java.util.concurrent.atomic.AtomicInteger
@@ -977,7 +976,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
     override fun subscription(): Set<String> {
         acquireAndEnsureOpen()
         try {
-            return Collections.unmodifiableSet(subscriptions.subscription().toHashSet())
+            return subscriptions.subscription().toSet()
         } finally {
             release()
         }

@@ -17,7 +17,6 @@
 
 package org.apache.kafka.clients.admin
 
-import java.util.*
 import org.apache.kafka.common.annotation.InterfaceStability.Evolving
 
 /**
@@ -39,9 +38,7 @@ data class Config(
     /**
      * Configuration entries for a resource.
      */
-    fun entries(): Collection<ConfigEntry> {
-        return Collections.unmodifiableCollection(entries.values)
-    }
+    fun entries(): Collection<ConfigEntry> = entries.values
 
     /**
      * Get the configuration entry with the provided name or null if there isn't one.

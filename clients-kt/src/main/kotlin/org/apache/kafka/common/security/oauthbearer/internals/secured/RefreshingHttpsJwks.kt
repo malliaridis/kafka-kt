@@ -19,10 +19,8 @@ package org.apache.kafka.common.security.oauthbearer.internals.secured
 
 import java.io.Closeable
 import java.io.IOException
-import java.util.*
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReadWriteLock
@@ -126,7 +124,7 @@ class RefreshingHttpsJwks(
             }
             jsonWebKeys = try {
                 refreshLock.writeLock().lock()
-                Collections.unmodifiableList(localJWKs)
+                localJWKs
             } finally {
                 refreshLock.writeLock().unlock()
             }
@@ -243,7 +241,7 @@ class RefreshingHttpsJwks(
             jsonWebKeys = try {
                 refreshLock.writeLock().lock()
                 for (jwk in localJWKs) missingKeyIds.remove(jwk.keyId)
-                Collections.unmodifiableList(localJWKs)
+                localJWKs
             } finally {
                 refreshLock.writeLock().unlock()
             }

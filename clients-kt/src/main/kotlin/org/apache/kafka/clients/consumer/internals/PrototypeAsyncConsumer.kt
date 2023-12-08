@@ -50,7 +50,6 @@ import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.Time
 import org.slf4j.Logger
 import java.time.Duration
-import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
@@ -364,9 +363,7 @@ class PrototypeAsyncConsumer<K, V> : Consumer<K, V> {
      * been made.
      * @return The set of topics currently subscribed to
      */
-    override fun subscription(): Set<String> {
-        return Collections.unmodifiableSet(subscriptions.subscription())
-    }
+    override fun subscription(): Set<String> = subscriptions.subscription()
 
     override fun subscribe(topics: Collection<String>) =
         throw KafkaException("method not implemented")

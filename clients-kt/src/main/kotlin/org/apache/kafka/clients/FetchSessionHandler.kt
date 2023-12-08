@@ -25,9 +25,7 @@ import org.apache.kafka.common.requests.FetchMetadata
 import org.apache.kafka.common.requests.FetchRequest
 import org.apache.kafka.common.requests.FetchResponse
 import org.apache.kafka.common.utils.LogContext
-import org.apache.kafka.common.utils.Utils.join
 import org.slf4j.Logger
-import java.util.*
 
 /**
  * FetchSessionHandler maintains the fetch session state for connecting to a broker.
@@ -250,7 +248,7 @@ open class FetchSessionHandler(logContext: LogContext, node: Int) {
                 // Only add topic IDs to the session if we are using topic IDs.
                 sessionTopicNames = if (canUseTopicIds) topicNames else emptyMap()
 
-                val toSend = Collections.unmodifiableMap(LinkedHashMap(sessionPartitions))
+                val toSend = sessionPartitions.toMap()
                 return FetchRequestData(
                     toSend = toSend,
                     toForget = emptyList(),
@@ -333,13 +331,14 @@ open class FetchSessionHandler(logContext: LogContext, node: Int) {
                 )
             }
             val toSend = next!!.toMap()
-            val curSessionPartitions = if (copySessionPartitions) sessionPartitions.toMap()
-            else sessionPartitions
+            val curSessionPartitions =
+                if (copySessionPartitions) sessionPartitions.toMap()
+                else sessionPartitions
             next = null
             return FetchRequestData(
                 toSend = toSend,
-                toForget = Collections.unmodifiableList(removed),
-                toReplace = Collections.unmodifiableList(replaced),
+                toForget = removed,
+                toReplace = replaced,
                 sessionPartitions = curSessionPartitions,
                 metadata = nextMetadata,
                 canUseTopicIds = canUseTopicIds,
