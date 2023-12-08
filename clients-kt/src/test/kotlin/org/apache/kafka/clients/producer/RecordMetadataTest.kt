@@ -76,44 +76,43 @@ class RecordMetadataTest {
 
     @Test
     @Deprecated("")
-    @Disabled("Kotlin Migration: Checksum was not migrated in new code")
     fun testConstructionWithChecksum() {
-//        val tp = TopicPartition("foo", 0)
-//        val timestamp = 2340234L
-//        val baseOffset = 15L
-//        val batchIndex = 3L
-//        val keySize = 3
-//        val valueSize = 5
-//        var metadata = RecordMetadata(
-//            topicPartition = tp,
-//            baseOffset = baseOffset,
-//            batchIndex = batchIndex.toInt(),
-//            timestamp = timestamp,
-//            checksum = null,
-//            serializedKeySize = keySize,
-//            serializedValueSize = valueSize,
-//        )
-//        assertEquals(tp.topic, metadata.topic)
-//        assertEquals(tp.partition, metadata.partition)
-//        assertEquals(timestamp, metadata.timestamp)
-//        assertEquals(baseOffset + batchIndex, metadata.offset)
-//        assertEquals(keySize, metadata.serializedKeySize)
-//        assertEquals(valueSize, metadata.serializedValueSize)
-//        val checksum = 133424L
-//        metadata = RecordMetadata(
-//            topicPartition = tp,
-//            baseOffset = baseOffset,
-//            batchIndex = batchIndex.toInt(),
-//            timestamp = timestamp,
-//            checksum = checksum.toInt(),
-//            serializedKeySize = keySize,
-//            serializedValueSize = valueSize,
-//        )
-//        assertEquals(tp.topic, metadata.topic)
-//        assertEquals(tp.partition, metadata.partition)
-//        assertEquals(timestamp, metadata.timestamp)
-//        assertEquals(baseOffset + batchIndex, metadata.offset)
-//        assertEquals(keySize, metadata.serializedKeySize)
-//        assertEquals(valueSize, metadata.serializedValueSize)
+        val tp = TopicPartition("foo", 0)
+        val timestamp = 2340234L
+        val baseOffset = 15L
+        val batchIndex = 3L
+        val keySize = 3
+        val valueSize = 5
+        var metadata = RecordMetadata(
+            topicPartition = tp,
+            baseOffset = baseOffset,
+            batchIndex = batchIndex,
+            timestamp = timestamp,
+            checksum = null,
+            serializedKeySize = keySize,
+            serializedValueSize = valueSize,
+        )
+        assertEquals(tp.topic, metadata.topic)
+        assertEquals(tp.partition, metadata.partition)
+        assertEquals(timestamp, metadata.timestamp)
+        assertEquals(baseOffset + batchIndex, metadata.offset)
+        assertEquals(keySize, metadata.serializedKeySize)
+        assertEquals(valueSize, metadata.serializedValueSize)
+        val checksum = 133424u
+        metadata = RecordMetadata(
+            topicPartition = tp,
+            baseOffset = baseOffset,
+            batchIndex = batchIndex,
+            timestamp = timestamp,
+            checksum = checksum,
+            serializedKeySize = keySize,
+            serializedValueSize = valueSize,
+        )
+        assertEquals(tp.topic, metadata.topic)
+        assertEquals(tp.partition, metadata.partition)
+        assertEquals(timestamp, metadata.timestamp)
+        assertEquals(baseOffset + batchIndex, metadata.offset)
+        assertEquals(keySize, metadata.serializedKeySize)
+        assertEquals(valueSize, metadata.serializedValueSize)
     }
 }

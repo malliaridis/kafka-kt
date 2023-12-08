@@ -44,7 +44,7 @@ class RecordMetadata private constructor(
     val offset: Long,
     val timestamp: Long,
     val serializedKeySize: Int,
-    val serializedValueSize: Int
+    val serializedValueSize: Int,
 ) {
 
     constructor(
@@ -61,6 +61,32 @@ class RecordMetadata private constructor(
         timestamp = timestamp,
         serializedKeySize = serializedKeySize,
         serializedValueSize = serializedValueSize,
+    )
+
+
+    /**
+     * Creates a new instance with the provided parameters.
+     *
+     */
+    @Deprecated(
+        "use constructor without `checksum` parameter. This constructor will be removed in " +
+                "Apache Kafka 4.0 (deprecated since 3.0)."
+    )
+    constructor(
+        topicPartition: TopicPartition,
+        baseOffset: Long,
+        batchIndex: Long,
+        timestamp: Long,
+        checksum: UInt?,
+        serializedKeySize: Int,
+        serializedValueSize: Int,
+    ) : this(
+        topicPartition = topicPartition,
+        baseOffset = baseOffset,
+        batchIndex = batchIndexToInt(batchIndex),
+        timestamp = timestamp,
+        serializedKeySize = serializedKeySize,
+        serializedValueSize = serializedValueSize
     )
 
     /**
@@ -83,7 +109,7 @@ class RecordMetadata private constructor(
      * Indicates whether the record metadata includes the timestamp.
      * @return true if a valid timestamp exists, false otherwise.
      */
-    fun hasTimestamp(): Boolean =  timestamp != RecordBatch.NO_TIMESTAMP
+    fun hasTimestamp(): Boolean = timestamp != RecordBatch.NO_TIMESTAMP
 
     /**
      * The timestamp of the record in the topic/partition.
@@ -154,5 +180,10 @@ class RecordMetadata private constructor(
          * Partition value for record without partition assigned
          */
         const val UNKNOWN_PARTITION = -1
+
+        private fun batchIndexToInt(batchIndex: Long): Int {
+            require(batchIndex <= Int.MAX_VALUE) { "batchIndex is larger than Integer.MAX_VALUE: $batchIndex" }
+            return batchIndex.toInt()
+        }
     }
 }
