@@ -19,7 +19,6 @@ package org.apache.kafka.clients.admin.internals
 
 import java.util.*
 import java.util.function.BiFunction
-import java.util.function.Consumer
 import org.apache.kafka.clients.admin.internals.AdminApiHandler.RequestAndKeys
 import org.apache.kafka.common.Node
 import org.apache.kafka.common.errors.DisconnectException
@@ -114,10 +113,10 @@ class AdminApiDriver<K, V>(
     }
 
     private fun clear(keys: Collection<K>) {
-        keys.forEach(Consumer { key: K ->
+        keys.forEach { key ->
             lookupMap.remove(key)
             fulfillmentMap.remove(key)
-        })
+        }
     }
 
     fun keyToBrokerId(key: K): Int? = fulfillmentMap.getKey(key)?.destinationBrokerId
@@ -142,7 +141,7 @@ class AdminApiDriver<K, V>(
     }
 
     private fun retryLookup(keys: Collection<K>) {
-        keys.forEach(Consumer { key: K -> unmap(key) })
+        keys.forEach { key: K -> unmap(key) }
     }
 
     /**
@@ -190,14 +189,14 @@ class AdminApiDriver<K, V>(
         currentTimeMs: Long,
         spec: RequestSpec<K>,
         response: AbstractResponse,
-        node: Node?
+        node: Node?,
     ) {
         clearInflightRequest(currentTimeMs, spec)
         if (spec.scope is FulfillmentScope) handler.handleResponse(
             broker = node!!,
             keys = spec.keys,
             response = response,
-        ).run {
+        ).apply {
             complete(completedKeys)
             completeExceptionally(failedKeys)
             retryLookup(unmappedKeys)
@@ -205,7 +204,7 @@ class AdminApiDriver<K, V>(
         else handler.lookupStrategy().handleResponse(
             keys = spec.keys,
             response = response,
-        ).run {
+        ).apply {
             completedKeys.forEach { value -> lookupMap.remove(value) }
             completeLookup(mappedKeys)
             completeLookupExceptionally(failedKeys)
@@ -362,9 +361,7 @@ class AdminApiDriver<K, V>(
             message = "Use property instead.",
             replaceWith = ReplaceWith("destinationBrokerId")
         )
-        override fun destinationBrokerId(): Int {
-            return destinationBrokerId
-        }
+        override fun destinationBrokerId(): Int = destinationBrokerId
     }
 
     /**
@@ -372,12 +369,15 @@ class AdminApiDriver<K, V>(
      * Each value can map to one and only one key, but many values can be associated with
      * a single key.
      *
-     * @param <K> The key type
-     * @param <V> The value type
-    </V></K> */
+     * @param K The key type
+     * @param V The value type
+     */
     private class BiMultimap<K, V> {
+
         private val reverseMap: MutableMap<V, K> = HashMap()
+
         private val map: MutableMap<K, MutableSet<V>> = HashMap()
+
         fun put(key: K, value: V) {
             remove(value)
             reverseMap[value] = key
@@ -397,12 +397,8 @@ class AdminApiDriver<K, V>(
             }
         }
 
-        fun getKey(value: V): K? {
-            return reverseMap[value]
-        }
+        fun getKey(value: V): K? = reverseMap[value]
 
-        fun entrySet(): Set<Map.Entry<K, Set<V>>> {
-            return map.entries
-        }
+        fun entrySet(): Set<Map.Entry<K, Set<V>>> = map.entries
     }
 }

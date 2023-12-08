@@ -106,25 +106,19 @@ class AdminClientUnitTestEnv(
         message = "Use property instead",
         replaceWith = ReplaceWith("cluster"),
     )
-    fun cluster(): Cluster {
-        return cluster
-    }
+    fun cluster(): Cluster = cluster
 
     @Deprecated(
         message = "Use property instead",
         replaceWith = ReplaceWith("adminClient"),
     )
-    fun adminClient(): Admin {
-        return adminClient
-    }
+    fun adminClient(): Admin = adminClient
 
     @Deprecated(
         message = "Use property instead",
         replaceWith = ReplaceWith("mockClient"),
     )
-    fun kafkaClient(): MockClient {
-        return mockClient
-    }
+    fun kafkaClient(): MockClient = mockClient
 
     override fun close() {
         // tell the admin client to close now

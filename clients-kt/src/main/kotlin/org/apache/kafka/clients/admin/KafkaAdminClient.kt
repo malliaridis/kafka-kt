@@ -710,10 +710,7 @@ class KafkaAdminClient internal constructor(
         private fun timeoutCallsToSend(processor: TimeoutProcessor): Int {
             var numTimedOut = 0
             for (callList: MutableList<Call> in callsToSend.values) {
-                numTimedOut += processor.handleTimeouts(
-                    callList,
-                    "Timed out waiting to send the call."
-                )
+                numTimedOut += processor.handleTimeouts(callList, "Timed out waiting to send the call.")
             }
             if (numTimedOut > 0) log.debug("Timed out {} call(s) with assigned nodes.", numTimedOut)
             return numTimedOut
@@ -800,8 +797,7 @@ class KafkaAdminClient internal constructor(
          */
         private fun sendEligibleCalls(now: Long): Long {
             var pollTimeout = Long.MAX_VALUE
-            val iter: MutableIterator<Map.Entry<Node, MutableList<Call>>> =
-                callsToSend.entries.iterator()
+            val iter: MutableIterator<Map.Entry<Node, MutableList<Call>>> = callsToSend.iterator()
             while (iter.hasNext()) {
                 val entry = iter.next()
                 val calls = entry.value
@@ -881,7 +877,7 @@ class KafkaAdminClient internal constructor(
                         clientRequest.correlationId,
                         timeoutMs,
                     )
-                    client.send((clientRequest), now)
+                    client.send(clientRequest, now)
                     callsInFlight[node.idString()] = call
                     correlationIdToCalls[clientRequest.correlationId] = call
                     break
@@ -993,7 +989,7 @@ class KafkaAdminClient internal constructor(
          * calls will be put back in the pendingCalls collection and they will be reassigned
          */
         private fun unassignUnsentCalls(shouldUnassign: Predicate<Node>) {
-            val iterator = callsToSend.entries.iterator()
+            val iterator = callsToSend.iterator()
             while (iterator.hasNext()) {
                 val entry = iterator.next()
                 val node = entry.key
@@ -1115,7 +1111,7 @@ class KafkaAdminClient internal constructor(
                 log.trace("KafkaClient#poll retrieved {} response(s)", responses.size)
 
                 // unassign calls to disconnected nodes
-                unassignUnsentCalls { node -> client.connectionFailed(node) }
+                unassignUnsentCalls(client::connectionFailed)
 
                 // Update the current time and handle the latest responses.
                 now = time.milliseconds()
