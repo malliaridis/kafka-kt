@@ -81,8 +81,9 @@ class ListConsumerGroupOffsetsHandler(
         // the batching end-to-end, including the FindCoordinatorRequest.
         return if (lookupStrategy.batch)
             listOf(RequestAndKeys(buildBatchedRequest(keys), keys))
-        else keys.map { groupId: CoordinatorKey ->
-            RequestAndKeys(buildBatchedRequest(setOf(groupId)), keys)
+        else keys.map { groupId ->
+            val groupIds = setOf(groupId)
+            RequestAndKeys(buildBatchedRequest(groupIds), groupIds)
         }
     }
 
