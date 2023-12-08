@@ -17,11 +17,8 @@
 
 package org.apache.kafka.common.utils
 
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.locks.ReentrantLock
 import java.util.function.Supplier
 import org.apache.kafka.common.errors.TimeoutException
-import kotlin.concurrent.withLock
 
 /**
  * A time implementation that uses the system clock and sleep call. Use `Time.SYSTEM` instead of
@@ -36,22 +33,17 @@ class SystemTime : Time {
     override fun sleep(ms: Long) = Utils.sleep(ms)
 
     @Throws(InterruptedException::class)
-    override fun waitObject(obj: Any, condition: Supplier<Boolean>, deadlineMs: Long) {
-        lock.withLock {
-            while (!condition.get()) {
-                val currentTimeMs = milliseconds()
+    override fun waitObject(obj: Object, condition: Supplier<Boolean>, deadlineMs: Long) {
+        synchronized(obj) {
+            while (true) {
+                if (condition.get()) return
 
+                val currentTimeMs = milliseconds()
                 if (currentTimeMs >= deadlineMs)
                     throw TimeoutException("Condition not satisfied before deadline")
 
-                lockCondition.await(deadlineMs - currentTimeMs, TimeUnit.MILLISECONDS)
+                obj.wait(deadlineMs - currentTimeMs)
             }
-            lockCondition.signalAll()
         }
-    }
-
-    companion object {
-        private val lock = ReentrantLock()
-        private val lockCondition = lock.newCondition()
     }
 }

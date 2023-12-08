@@ -44,19 +44,15 @@ object ClaimValidationUtils {
      */
     @Throws(ValidateException::class)
     fun validateScopes(scopeClaimName: String, scopes: Collection<String>): Set<String> {
-        val copy: MutableSet<String> = HashSet()
+        val copy = mutableSetOf<String>()
         scopes.forEach { scope ->
             val validatedScope = validateString(scopeClaimName, scope)
             if (copy.contains(validatedScope)) throw ValidateException(
-                String.format(
-                    "%s value must not contain duplicates - %s already present",
-                    scopeClaimName,
-                    validatedScope,
-                )
+                "$scopeClaimName value must not contain duplicates - $validatedScope already present"
             )
             copy.add(validatedScope)
         }
-        return copy
+        return copy.toSet()
     }
 
     /**
@@ -73,15 +69,10 @@ object ClaimValidationUtils {
     @Throws(ValidateException::class)
     fun validateExpiration(claimName: String, claimValue: Long?): Long {
         if (claimValue == null)
-            throw ValidateException(String.format("%s value must be non-null", claimName))
+            throw ValidateException("$claimName value must be non-null")
 
-        if (claimValue < 0) throw ValidateException(
-            String.format(
-                "%s value must be non-negative; value given was \"%s\"",
-                claimName,
-                claimValue
-            )
-        )
+        if (claimValue < 0)
+            throw ValidateException("$claimName value must be non-negative; value given was \"$claimValue\"")
         return claimValue
     }
 
@@ -117,11 +108,7 @@ object ClaimValidationUtils {
     @Throws(ValidateException::class)
     fun validateIssuedAt(claimName: String, claimValue: Long?): Long? {
         if (claimValue != null && claimValue < 0) throw ValidateException(
-            String.format(
-                "%s value must be null or non-negative; value given was \"%s\"",
-                claimName,
-                claimValue
-            )
+            "$claimName value must be null or non-negative; value given was \"$claimValue\""
         )
         return claimValue
     }
@@ -145,16 +132,11 @@ object ClaimValidationUtils {
 
     @Throws(ValidateException::class)
     private fun validateString(name: String, value: String?): String {
-        if (value == null) throw ValidateException(String.format("%s value must be non-null", name))
+        if (value == null) throw ValidateException("$name value must be non-null")
 
-        var updatedValue = value
-        if (updatedValue.isEmpty()) throw ValidateException(
-            String.format("%s value must be non-empty", name)
-        )
-        updatedValue = updatedValue.trim { it <= ' ' }
-        if (updatedValue.isEmpty()) throw ValidateException(
-            String.format("%s value must not contain only whitespace", name)
-        )
+        if (value.isEmpty()) throw ValidateException("$name value must be non-empty")
+        val updatedValue = value.trim { it <= ' ' }
+        if (updatedValue.isEmpty()) throw ValidateException("$name value must not contain only whitespace")
         return updatedValue
     }
 }

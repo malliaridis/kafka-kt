@@ -95,7 +95,7 @@ class OAuthBearerExtensionsValidatorCallback(
      */
     fun valid(extensionName: String) {
         validatedExtensions[extensionName] = requireNotNull(inputExtensions.map()[extensionName]) {
-            String.format("Extension %s was not found in the original extensions", extensionName)
+            "Extension $extensionName was not found in the original extensions"
         }
     }
 

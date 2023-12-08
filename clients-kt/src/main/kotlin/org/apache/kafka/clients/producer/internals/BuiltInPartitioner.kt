@@ -235,13 +235,13 @@ class BuiltInPartitioner(
      *
      * Visible for testing
      */
-    fun updatePartitionLoadStats(queueSizes: IntArray?, partitionIds: IntArray, length: Int) {
+    fun updatePartitionLoadStats(queueSizes: IntArray?, partitionIds: IntArray?, length: Int) {
         if (queueSizes == null) {
             log.trace("No load stats for topic {}, not using adaptive", topic)
             partitionLoadStats = null
             return
         }
-        assert(queueSizes.size == partitionIds.size)
+        assert(queueSizes.size == partitionIds?.size)
         assert(length <= queueSizes.size)
 
         // The queueSizes.length represents the number of all partitions in the topic and if we have
@@ -305,7 +305,7 @@ class BuiltInPartitioner(
             "Partition load stats for topic {}: CFT={}, IDs={}, length={}",
             topic, queueSizes, partitionIds, length
         )
-        partitionLoadStats = PartitionLoadStats(queueSizes, partitionIds, length)
+        partitionLoadStats = PartitionLoadStats(queueSizes, partitionIds!!, length)
     }
 
     /**

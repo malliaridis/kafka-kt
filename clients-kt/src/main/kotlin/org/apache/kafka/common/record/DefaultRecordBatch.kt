@@ -214,7 +214,7 @@ class DefaultRecordBatch internal constructor(
                         baseOffset = baseOffset,
                         baseTimestamp = baseTimestamp,
                         baseSequence = baseSequence,
-                        logAppendTime = logAppendTime
+                        logAppendTime = logAppendTime,
                     )
                 }
             }
@@ -330,13 +330,13 @@ class DefaultRecordBatch internal constructor(
         buffer.putInt(PARTITION_LEADER_EPOCH_OFFSET, epoch)
     }
 
-    override fun checksum(): Long = ByteUtils.readUnsignedInt(buffer, CRC_OFFSET)
+    override fun checksum(): UInt = ByteUtils.readUnsignedInt(buffer, CRC_OFFSET)
 
     override val isValid: Boolean
         get() = sizeInBytes() >= RECORD_BATCH_OVERHEAD && checksum() == computeChecksum()
 
-    private fun computeChecksum(): Long =
-        Crc32C.compute(buffer, ATTRIBUTES_OFFSET, buffer.limit() - ATTRIBUTES_OFFSET)
+    private fun computeChecksum(): UInt =
+        Crc32C.compute(buffer, ATTRIBUTES_OFFSET, buffer.limit() - ATTRIBUTES_OFFSET).toUInt()
 
     // note we're not using the second byte of attributes
     private fun attributes(): Byte = buffer.getShort(ATTRIBUTES_OFFSET).toByte()
@@ -487,7 +487,7 @@ class DefaultRecordBatch internal constructor(
 
         override fun lastSequence(): Int = loadBatchHeader().lastSequence()
 
-        override fun checksum(): Long = loadBatchHeader().checksum()
+        override fun checksum(): UInt = loadBatchHeader().checksum()
 
         override fun countOrNull(): Int? = loadBatchHeader().countOrNull()
 
@@ -722,11 +722,11 @@ class DefaultRecordBatch internal constructor(
 
             while (iterator.hasNext()) {
                 val record = iterator.next()
-                if (baseTimestamp == null) baseTimestamp = record.timestamp()
-                val timestampDelta = record.timestamp() - baseTimestamp
+                if (baseTimestamp == null) baseTimestamp = record.timestamp
+                val timestampDelta = record.timestamp - baseTimestamp
                 size += DefaultRecord.sizeInBytes(
-                    offsetDelta++, timestampDelta, record.key(), record.value(),
-                    record.headers()
+                    offsetDelta++, timestampDelta, record.key, record.value,
+                    record.headers
                 )
             }
 

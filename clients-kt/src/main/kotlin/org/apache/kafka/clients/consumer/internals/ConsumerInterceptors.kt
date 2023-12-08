@@ -47,7 +47,7 @@ class ConsumerInterceptors<K, V>(
      * @return records that are either modified by interceptors or same as records passed to this
      * method.
      */
-    fun onConsume(records: ConsumerRecords<K?, V?>): ConsumerRecords<K?, V?> {
+    fun onConsume(records: ConsumerRecords<K, V>): ConsumerRecords<K, V> {
         var interceptRecords = records
         for (interceptor in interceptors) {
             try {

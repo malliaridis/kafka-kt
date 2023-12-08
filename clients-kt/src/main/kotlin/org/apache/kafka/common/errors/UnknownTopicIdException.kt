@@ -18,7 +18,7 @@
 package org.apache.kafka.common.errors
 
 
-class UnknownTopicIdException(message: String?) : InvalidMetadataException(message) {
+class UnknownTopicIdException(message: String? = null) : InvalidMetadataException(message) {
     companion object {
         private const val serialVersionUID = 1L
     }

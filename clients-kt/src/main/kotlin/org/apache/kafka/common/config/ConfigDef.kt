@@ -101,8 +101,8 @@ class ConfigDef {
     }
 
     constructor(base: ConfigDef) {
-        configKeys = LinkedHashMap(base.configKeys)
-        groups = LinkedList(base.groups)
+        configKeys = base.configKeys.toMutableMap()
+        groups = base.groups.toMutableList()
         // It is not safe to copy this from the parent because we may subsequently add to the set of
         // configs and invalidate this
     }
@@ -162,7 +162,7 @@ class ConfigDef {
         width: Width? = Width.NONE,
         displayName: String? = name,
         dependents: List<String> = emptyList(),
-        recommender: Recommender? = null
+        recommender: Recommender? = null,
     ): ConfigDef {
         return define(
             ConfigKey(
@@ -198,7 +198,7 @@ class ConfigDef {
         name: String,
         type: Type,
         defaultValue: Any?,
-        importance: Importance
+        importance: Importance,
     ): ConfigDef {
         return define(
             ConfigKey(
@@ -236,7 +236,7 @@ class ConfigDef {
         defaultValue: Any?,
         validator: Validator?,
         importance: Importance,
-        documentation: String?
+        documentation: String?,
     ): ConfigDef {
         return define(
             ConfigKey(
@@ -325,7 +325,7 @@ class ConfigDef {
     fun parseValue(key: ConfigKey, value: Any?, isSet: Boolean): Any? {
 
         val parsedValue = if (isSet) parseType(key.name, value, key.type)
-            // props map doesn't contain setting, the key is required because no default value specified - its an error
+        // props map doesn't contain setting, the key is required because no default value specified - its an error
         else if (NO_DEFAULT_VALUE == key.defaultValue) throw ConfigException(
             "Missing required configuration \"${key.name}\" which has no default value."
         )
@@ -366,7 +366,7 @@ class ConfigDef {
     // package accessible for testing
     fun parseForValidate(
         props: Map<String, String?>,
-        configValues: Map<String, ConfigValue?>
+        configValues: Map<String, ConfigValue?>,
     ): Map<String, Any?> {
         val parsed: MutableMap<String, Any?> = HashMap()
         val configsWithNoParent = getConfigsWithNoParent()
@@ -379,7 +379,7 @@ class ConfigDef {
 
     private fun validate(
         parsed: Map<String, Any?>,
-        configValues: MutableMap<String, ConfigValue?>
+        configValues: MutableMap<String, ConfigValue?>,
     ): Map<String, ConfigValue?> {
         val configsWithNoParent = getConfigsWithNoParent()
 
@@ -391,7 +391,7 @@ class ConfigDef {
     }
 
     private fun undefinedDependentConfigs(): List<String> {
-        val undefinedConfigKeys: MutableSet<String> = HashSet()
+        val undefinedConfigKeys: MutableSet<String> = hashSetOf()
 
         configKeys.values.forEach { configKey ->
             configKey.dependents.forEach { dependent ->
@@ -413,7 +413,7 @@ class ConfigDef {
             configsWithParent.addAll(configKey.dependents)
         }
 
-        val configs: MutableSet<String> = HashSet(configKeys.keys)
+        val configs: MutableSet<String> = configKeys.keys.toHashSet()
 
         configs.removeAll(configsWithParent)
         configsWithNoParent = configs
@@ -425,7 +425,7 @@ class ConfigDef {
         name: String,
         props: Map<String, String?>,
         parsed: MutableMap<String, Any?>,
-        configs: Map<String, ConfigValue?>
+        configs: Map<String, ConfigValue?>,
     ) {
         if (!configKeys.containsKey(name)) return
 
@@ -462,7 +462,7 @@ class ConfigDef {
     private fun validate(
         name: String,
         parsed: Map<String, Any?>,
-        configs: MutableMap<String, ConfigValue?>
+        configs: MutableMap<String, ConfigValue?>,
     ) {
         if (!configKeys.containsKey(name)) return
 
@@ -475,7 +475,7 @@ class ConfigDef {
                 val originalRecommendedValues = value.recommendedValues
 
                 if (originalRecommendedValues.isNotEmpty()) {
-                    val originalRecommendedValueSet: Set<Any> = HashSet(originalRecommendedValues)
+                    val originalRecommendedValueSet = originalRecommendedValues.toHashSet()
                     recommendedValues.filter { originalRecommendedValueSet.contains(it) }
                 }
 
@@ -585,7 +585,7 @@ class ConfigDef {
     ) : Validator {
 
         override fun ensureValid(name: String, value: Any?) {
-            if (value == null) throw ConfigException(name, null, "Value must be non-null")
+            if (value == null) throw ConfigException(name = name, message = "Value must be non-null")
             val n = value as Number
             if (min != null && n.toDouble() < min.toDouble()) throw ConfigException(
                 name = name,
@@ -631,8 +631,8 @@ class ConfigDef {
         val validString: ValidString = ValidString(validStrings)
 
         override fun ensureValid(name: String, value: Any?) {
-            val values = value as List<String>
-            for (string: String in values) {
+            val values = value as List<String?>
+            for (string: String? in values) {
                 validString.ensureValid(name, string)
             }
         }
@@ -649,10 +649,10 @@ class ConfigDef {
         }
     }
 
-    class ValidString internal constructor(val validStrings: List<String>) : Validator {
+    class ValidString internal constructor(val validStrings: List<String?>) : Validator {
 
         override fun ensureValid(name: String, value: Any?) {
-            val s = value as String
+            val s = value as String?
 
             if (!validStrings.contains(s)) throw ConfigException(
                 name = name,
@@ -710,7 +710,11 @@ class ConfigDef {
         override fun ensureValid(name: String, value: Any?) {
             if (value == null) {
                 // Pass in the string null to avoid the spotbugs warning
-                throw ConfigException(name, "null", "entry must be non null")
+                throw ConfigException(
+                    name = name,
+                    value = "null",
+                    message = "entry must be non null"
+                )
             }
         }
 
@@ -776,7 +780,11 @@ class ConfigDef {
             val s = value as String?
 
             if (s != null && s.isEmpty()) {
-                throw ConfigException(name, value, "String must be non-empty")
+                throw ConfigException(
+                    name = name,
+                    value = value,
+                    message = "String must be non-empty"
+                )
             }
         }
 
@@ -793,9 +801,11 @@ class ConfigDef {
                 // name configuration - a missing name parameter is caught when checking for mandatory parameters,
                 // thus we can ok a null value here
                 return
-            } else if (s.isEmpty()) {
-                throw ConfigException(name, value, "String may not be empty")
-            }
+            } else if (s.isEmpty()) throw ConfigException(
+                name = name,
+                value = value,
+                message = "String may not be empty"
+            )
 
             // Check name string for illegal characters
             val foundIllegalCharacters = ArrayList<Int>()
@@ -804,14 +814,12 @@ class ConfigDef {
                     foundIllegalCharacters.add(s.codePointAt(i))
                 }
             }
-            if (foundIllegalCharacters.isNotEmpty()) {
-                throw ConfigException(
-                    name,
-                    value,
-                    "String may not contain control sequences but had the following ASCII chars: " +
+            if (foundIllegalCharacters.isNotEmpty()) throw ConfigException(
+                name = name,
+                value = value,
+                message = "String may not contain control sequences but had the following ASCII chars: " +
                         foundIllegalCharacters.joinToString(", "),
-                )
-            }
+            )
         }
 
         override fun toString(): String {
@@ -830,9 +838,11 @@ class ConfigDef {
         override fun ensureValid(name: String, value: Any?) {
             val values = value as List<String>
 
-            if (values.size > maxSize) {
-                throw ConfigException(name, value, "exceeds maximum list size of [$maxSize].")
-            }
+            if (values.size > maxSize) throw ConfigException(
+                name = name,
+                value = value,
+                message = "exceeds maximum list size of [$maxSize]."
+            )
         }
 
         override fun toString(): String {
@@ -860,7 +870,7 @@ class ConfigDef {
         val displayName: String?,
         val dependents: List<String>,
         val recommender: Recommender?,
-        val internalConfig: Boolean
+        val internalConfig: Boolean,
     ) {
         val defaultValue: Any?
 
@@ -1020,14 +1030,13 @@ class ConfigDef {
     private fun getConfigKeyRst(key: ConfigKey, b: StringBuilder) {
         b.append("``").append(key.name).append("``").append("\n")
         if (key.documentation != null) key.documentation.split("\n".toRegex())
-                .dropLastWhile { it.isEmpty() }
-                .toTypedArray()
-                .forEach { docLine ->
-                    if (docLine.isEmpty()) return@forEach
-                    b.append("  ")
-                        .append(docLine)
-                        .append("\n\n")
-                }
+            .dropLastWhile { it.isEmpty() }
+            .forEach { docLine ->
+                if (docLine.isEmpty()) return@forEach
+                b.append("  ")
+                    .append(docLine)
+                    .append("\n\n")
+            }
         else b.append("\n")
 
         b.append("  * Type: ")
@@ -1138,7 +1147,7 @@ class ConfigDef {
     fun toHtml(
         headerDepth: Int,
         idGenerator: Function<String, String>,
-        dynamicUpdateModes: Map<String, String> = emptyMap()
+        dynamicUpdateModes: Map<String, String> = emptyMap(),
     ): String {
         val hasUpdateModes = dynamicUpdateModes.isNotEmpty()
         val configs = sortedConfigs()
@@ -1257,8 +1266,8 @@ class ConfigDef {
                     }
 
                     Type.LONG -> {
-                        if (value is Int) return value.toLong()
                         return when (value) {
+                            is Int -> value.toLong()
                             is Long -> value
                             is String -> trimmed!!.toLong()
                             else -> throw ConfigException(
@@ -1281,11 +1290,19 @@ class ConfigDef {
                         )
                     }
 
-                    Type.LIST -> return if (value is List<*>) value
-                    else if (value is String)
-                        if (trimmed!!.isEmpty()) emptyList<Any>()
-                        else listOf(*COMMA_WITH_WHITESPACE.split(trimmed, -1))
-                    else throw ConfigException(name, value, "Expected a comma separated list.")
+                    Type.LIST -> return when (value) {
+                        is List<*> -> value
+                        is String -> {
+                            if (trimmed!!.isEmpty()) emptyList<Any>()
+                            else COMMA_WITH_WHITESPACE.split(trimmed, -1).toList()
+                        }
+
+                        else -> throw ConfigException(
+                            name = name,
+                            value = value,
+                            message = "Expected a comma separated list."
+                        )
+                    }
 
                     Type.CLASS -> return when (value) {
                         is Class<*> -> value
@@ -1310,9 +1327,9 @@ class ConfigDef {
                     else -> throw IllegalStateException("Unknown type.")
                 }
             } catch (e: NumberFormatException) {
-                throw ConfigException(name, value, "Not a number of type $type")
+                throw ConfigException(name = name, value = value, message = "Not a number of type $type")
             } catch (e: ClassNotFoundException) {
-                throw ConfigException(name, value, "Class $value could not be found.")
+                throw ConfigException(name = name, value = value, message = "Class $value could not be found.")
             }
         }
 
@@ -1327,7 +1344,9 @@ class ConfigDef {
                 Type.LONG,
                 Type.DOUBLE,
                 Type.STRING,
-                Type.PASSWORD -> parsedValue.toString()
+                Type.PASSWORD,
+                -> parsedValue.toString()
+
                 Type.LIST -> {
                     val valueList = parsedValue as List<*>
                     valueList.joinToString(",")
@@ -1424,7 +1443,7 @@ class ConfigDef {
          */
         private fun embeddedDependents(
             keyPrefix: String,
-            dependents: List<String>
+            dependents: List<String>,
         ): List<String> = dependents.map { keyPrefix + it }
 
         /**

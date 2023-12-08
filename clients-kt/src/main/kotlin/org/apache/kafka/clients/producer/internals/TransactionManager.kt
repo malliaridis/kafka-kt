@@ -153,13 +153,12 @@ class TransactionManager(
     private var epochBumpRequired = false
 
     @Synchronized
-    fun initializeTransactions(): TransactionalRequestResult =
-        initializeTransactions(ProducerIdAndEpoch.NONE)
+    fun initializeTransactions(): TransactionalRequestResult = initializeTransactions(ProducerIdAndEpoch.NONE)
 
     @Synchronized
-    fun initializeTransactions(producerIdAndEpoch: ProducerIdAndEpoch): TransactionalRequestResult {
+    internal fun initializeTransactions(producerIdAndEpoch: ProducerIdAndEpoch): TransactionalRequestResult {
         maybeFailWithError()
-        val isEpochBump = producerIdAndEpoch !== ProducerIdAndEpoch.NONE
+        val isEpochBump = producerIdAndEpoch != ProducerIdAndEpoch.NONE
         return handleCachedTransactionRequestResult(
             transactionalRequestResultSupplier = {
 
@@ -524,7 +523,7 @@ class TransactionManager(
 
     @Synchronized
     fun addInFlightBatch(batch: ProducerBatch) {
-        if (batch.hasSequence) {
+        check(batch.hasSequence) {
             "Can't track batch for partition ${batch.topicPartition} when sequence is not set."
         }
         txnPartitionMap[batch.topicPartition].inflightBatchesBySequence.add(batch)
@@ -543,6 +542,7 @@ class TransactionManager(
         if (!hasInflightBatches(topicPartition)) return RecordBatch.NO_SEQUENCE
 
         val inflightBatches = txnPartitionMap[topicPartition].inflightBatchesBySequence
+
         return if (inflightBatches.isEmpty()) RecordBatch.NO_SEQUENCE
         else inflightBatches.first().baseSequence
     }
@@ -550,7 +550,7 @@ class TransactionManager(
     @Synchronized
     fun nextBatchBySequence(topicPartition: TopicPartition): ProducerBatch? {
         val queue = txnPartitionMap[topicPartition].inflightBatchesBySequence
-        return if (queue.isEmpty()) null else queue.first()
+        return queue.firstOrNull()
     }
 
     @Synchronized
@@ -1169,7 +1169,7 @@ class TransactionManager(
     private fun txnOffsetCommitHandler(
         result: TransactionalRequestResult,
         offsets: Map<TopicPartition, OffsetAndMetadata>,
-        groupMetadata: ConsumerGroupMetadata
+        groupMetadata: ConsumerGroupMetadata,
     ): TxnOffsetCommitHandler {
         for ((partition, offsetAndMetadata) in offsets) {
             val committedOffset = CommittedOffset(
@@ -1204,16 +1204,16 @@ class TransactionManager(
     private fun handleCachedTransactionRequestResult(
         transactionalRequestResultSupplier: () -> TransactionalRequestResult,
         nextState: State,
-        operation: String
+        operation: String,
     ): TransactionalRequestResult {
         ensureTransactional()
         pendingTransition?.let {
             if (it.result.isAcked) pendingTransition = null
-            else if (nextState != pendingTransition!!.state) error(
+            else if (nextState != it.state) error(
                 "Cannot attempt operation `$operation` because the previous call to " +
-                        "`${pendingTransition!!.operation}` timed out and must be retried"
+                        "`${it.operation}` timed out and must be retried"
             )
-            else it.result
+            else return it.result
         }
         val result = transactionalRequestResultSupplier()
         pendingTransition = PendingStateTransition(result, nextState, operation)
@@ -1340,7 +1340,7 @@ class TransactionManager(
 
     private inner class InitProducerIdHandler(
         private val builder: InitProducerIdRequest.Builder,
-        private val isEpochBump: Boolean
+        private val isEpochBump: Boolean,
     ) : TxnRequestHandler("InitProducerId") {
 
         override fun requestBuilder(): InitProducerIdRequest.Builder = builder
@@ -1408,7 +1408,7 @@ class TransactionManager(
             val addPartitionsToTxnResponse = responseBody as AddPartitionsToTxnResponse
             val errors = addPartitionsToTxnResponse.errors()
             var hasPartitionErrors = false
-            val unauthorizedTopics: MutableSet<String> = HashSet()
+            val unauthorizedTopics: MutableSet<String> = hashSetOf()
             retryBackoffMs = this@TransactionManager.retryBackoffMs
 
             for ((topicPartition, error) in errors) {
@@ -1619,7 +1619,7 @@ class TransactionManager(
     private inner class AddOffsetsToTxnHandler(
         private val builder: AddOffsetsToTxnRequest.Builder,
         private val offsets: Map<TopicPartition, OffsetAndMetadata>,
-        private val groupMetadata: ConsumerGroupMetadata
+        private val groupMetadata: ConsumerGroupMetadata,
     ) : TxnRequestHandler("AddOffsetsToTxn") {
 
         override fun requestBuilder(): AddOffsetsToTxnRequest.Builder = builder

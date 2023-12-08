@@ -26,11 +26,21 @@ package org.apache.kafka.common.errors
  * @property cause The exception's cause
  * @property resource The (potentially null) resource that was referred to twice
  */
-class DuplicateResourceException(
-    message: String? = null,
-    cause: Throwable? = null,
-    val resource: String? = null,
-) : ApiException(message = message, cause = cause) {
+class DuplicateResourceException : ApiException {
+
+    val resource: String?
+
+    constructor(message: String?) : this(resource = null, message = message)
+
+    constructor(message : String?, cause: Throwable?) : this(null, message, cause)
+
+    constructor(resource: String?, message: String?) : super(message = message) {
+        this.resource = resource
+    }
+
+    constructor(resource: String?, message: String?, cause: Throwable?) : super(message, cause) {
+        this.resource = resource
+    }
 
     /**
      *

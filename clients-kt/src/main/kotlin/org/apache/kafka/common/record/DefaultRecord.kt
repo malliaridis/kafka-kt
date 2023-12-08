@@ -381,8 +381,8 @@ open class DefaultRecord internal constructor(
 
                 val sequence =
                     if (baseSequence >= 0) DefaultRecordBatch.incrementSequence(
-                        baseSequence,
-                        offsetDelta
+                        sequence = baseSequence,
+                        increment = offsetDelta,
                     )
                     else RecordBatch.NO_SEQUENCE
 
@@ -412,13 +412,13 @@ open class DefaultRecord internal constructor(
                 )
 
                 return PartialDefaultRecord(
-                    sizeInBytes,
-                    attributes,
-                    offset,
-                    timestamp,
-                    sequence,
-                    keySize,
-                    valueSize
+                    sizeInBytes = sizeInBytes,
+                    attributes = attributes,
+                    offset = offset,
+                    timestamp = timestamp,
+                    sequence = sequence,
+                    keySize = keySize,
+                    valueSize = valueSize,
                 )
             } catch (e: BufferUnderflowException) {
                 throw InvalidRecordException("Found invalid record structure", e)

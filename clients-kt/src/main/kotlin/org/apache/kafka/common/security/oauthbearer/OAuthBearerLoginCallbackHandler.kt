@@ -225,7 +225,7 @@ class OAuthBearerLoginCallbackHandler : AuthenticateCallbackHandler {
     }
 
     private fun checkInitialized() = check(isInitialized) {
-        String.format("To use %s, first call the configure or init method", javaClass.simpleName)
+        "To use ${javaClass.simpleName}, first call the configure or init method"
     }
 
     companion object {

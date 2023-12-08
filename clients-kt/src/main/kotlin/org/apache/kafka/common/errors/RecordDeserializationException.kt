@@ -32,19 +32,15 @@ class RecordDeserializationException(
 
     @Deprecated(
         message = "Use property instead.",
-        replaceWith = ReplaceWith("topicPartition"),
+        replaceWith = ReplaceWith("partition"),
     )
-    fun topicPartition(): TopicPartition {
-        return partition
-    }
+    fun topicPartition(): TopicPartition = partition
 
     @Deprecated(
         message = "Use property instead.",
         replaceWith = ReplaceWith("offset"),
     )
-    fun offset(): Long {
-        return offset
-    }
+    fun offset(): Long = offset
 
     companion object {
         private const val serialVersionUID = 1L

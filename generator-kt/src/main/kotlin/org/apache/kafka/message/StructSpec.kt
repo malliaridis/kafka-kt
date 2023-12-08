@@ -40,7 +40,7 @@ class StructSpec @JsonCreator constructor(
         val newFields = ArrayList<FieldSpec>()
         if (fields != null) {
             // Each field should have a unique tag ID (if the field has a tag ID).
-            val tags = HashSet<Int>()
+            val tags = hashSetOf<Int>()
             for (field in fields) {
                 if (field.tag != null) {
                     if (tags.contains(field.tag)) throw RuntimeException(

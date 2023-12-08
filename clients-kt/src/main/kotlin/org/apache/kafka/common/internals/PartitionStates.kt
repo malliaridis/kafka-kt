@@ -17,7 +17,6 @@
 
 package org.apache.kafka.common.internals
 
-import java.util.*
 import org.apache.kafka.common.TopicPartition
 
 /**
@@ -40,7 +39,7 @@ class PartitionStates<S> {
 
     private val map = LinkedHashMap<TopicPartition, S>()
 
-    private val partitionSetView = Collections.unmodifiableSet(map.keys)
+    private val partitionSetView: Set<TopicPartition> = map.keys
 
     /* the number of partitions that are currently assigned available in a thread safe manner */
     @Volatile

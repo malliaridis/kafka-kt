@@ -27,10 +27,10 @@ import org.apache.kafka.common.KafkaException
  */
 class OAuthBearerIllegalTokenException(
     val reason: OAuthBearerValidationResult,
-) : KafkaException(reason.failureDescription()) {
+) : KafkaException(reason.failureDescription) {
 
     init {
-        require(!reason.success()) { "The reason indicates success; it must instead indicate failure" }
+        require(!reason.success) { "The reason indicates success; it must instead indicate failure" }
     }
 
     /**

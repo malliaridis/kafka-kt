@@ -163,7 +163,7 @@ class OAuthBearerValidatorCallbackHandler : AuthenticateCallbackHandler {
     private fun handleValidatorCallback(callback: OAuthBearerValidatorCallback) {
         checkInitialized()
         try {
-            callback.token = accessTokenValidator!!.validate(callback.tokenValue)
+            callback.setToken(accessTokenValidator!!.validate(callback.tokenValue))
         } catch (e: ValidateException) {
             log.warn(e.message, e)
             callback.error(errorStatus = "invalid_token")
@@ -180,7 +180,7 @@ class OAuthBearerValidatorCallbackHandler : AuthenticateCallbackHandler {
     }
 
     private fun checkInitialized() = check(isInitialized) {
-        String.format("To use %s, first call the configure or init method", javaClass.simpleName)
+        "To use ${javaClass.simpleName}, first call the configure or init method"
     }
 
     /**

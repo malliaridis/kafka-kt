@@ -17,7 +17,9 @@
 
 package org.apache.kafka.common.errors
 
-class BrokerIdNotRegisteredException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : ApiException(message = message, cause = cause)
+class BrokerIdNotRegisteredException : ApiException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message: String?, cause: Throwable?) : super(message, cause)
+}

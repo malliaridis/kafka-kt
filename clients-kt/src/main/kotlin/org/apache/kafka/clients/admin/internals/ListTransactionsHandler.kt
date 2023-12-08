@@ -94,11 +94,10 @@ class ListTransactionsHandler(
                 error,
             )
             return ApiResult.failed(
-                key,
-                error.exception(
-                    "ListTransactions request sent to broker $brokerId failed with an unexpected " +
-                            "exception"
-                ),
+                key = key,
+                t = error.exception(
+                    "ListTransactions request sent to broker $brokerId failed with an unexpected exception"
+                )!!,
             )
         } else {
             val listings = res.data().transactionStates.map { transactionState ->
@@ -119,7 +118,7 @@ class ListTransactionsHandler(
     ): BrokerKey {
         require ( keys.size == 1) { "Unexpected key set: $keys" }
 
-        val key = keys.iterator().next()
+        val key = keys.first()
         require (key.brokerId != null && key.brokerId == brokerId) {
             "Unexpected broker key: $key"
         }

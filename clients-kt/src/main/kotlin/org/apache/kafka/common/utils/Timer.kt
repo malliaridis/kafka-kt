@@ -140,7 +140,7 @@ class Timer internal constructor(private val time: Time, timeoutMs: Long) {
      */
     fun resetDeadline(deadlineMs: Long) {
         require(deadlineMs >= 0) { "Invalid negative deadline $deadlineMs" }
-        timeoutMs = Math.max(0, deadlineMs - currentTimeMs)
+        timeoutMs = (deadlineMs - currentTimeMs).coerceAtLeast(0)
         startMs = currentTimeMs
         this.deadlineMs = deadlineMs
     }
@@ -236,7 +236,7 @@ class Timer internal constructor(private val time: Time, timeoutMs: Long) {
      * @param durationMs The duration in milliseconds to sleep
      */
     fun sleep(durationMs: Long) {
-        val sleepDurationMs = Math.min(durationMs, remainingMs)
+        val sleepDurationMs = durationMs.coerceAtMost(remainingMs)
         time.sleep(sleepDurationMs)
         update()
     }

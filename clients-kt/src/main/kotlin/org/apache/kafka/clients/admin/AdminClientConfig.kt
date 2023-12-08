@@ -44,7 +44,7 @@ class AdminClientConfig internal constructor(
     doLog = doLog,
 ) {
 
-    internal fun postProcessParsedConfig(parsedValues: Map<String, Any>): Map<String, Any?> {
+    override fun postProcessParsedConfig(parsedValues: Map<String, Any?>): Map<String, Any?> {
         postValidateSaslMechanismConfig(this)
         return postProcessReconnectBackoffConfigs(this, parsedValues)
     }

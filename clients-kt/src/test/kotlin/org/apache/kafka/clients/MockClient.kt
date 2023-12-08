@@ -17,6 +17,10 @@
 
 package org.apache.kafka.clients
 
+import java.util.*
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ConcurrentLinkedDeque
+import java.util.function.Consumer
 import org.apache.kafka.clients.MockClient.RequestMatcher
 import org.apache.kafka.common.Node
 import org.apache.kafka.common.errors.AuthenticationException
@@ -29,10 +33,6 @@ import org.apache.kafka.common.requests.MetadataRequest
 import org.apache.kafka.common.requests.MetadataResponse
 import org.apache.kafka.common.utils.Time
 import org.apache.kafka.test.TestUtils.waitForCondition
-import java.util.*
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ConcurrentLinkedDeque
-import java.util.function.Consumer
 
 /**
  * A mock network client for use testing code
@@ -281,14 +281,13 @@ open class MockClient(
         this.numBlockingWakeups = numBlockingWakeups
     }
 
+    @Synchronized
     override fun wakeup() {
-        synchronized(obj) {
-            if (numBlockingWakeups > 0) {
-                numBlockingWakeups--
-                obj.notify()
-            }
-            wakeupHook?.run()
+        if (numBlockingWakeups > 0) {
+            numBlockingWakeups--
+            (this as Object).notify()
         }
+        wakeupHook?.run()
     }
 
     private fun maybeAwaitWakeup() = synchronized(obj) {
@@ -320,10 +319,10 @@ open class MockClient(
         }
 
         val copy = mutableListOf<ClientResponse>()
-        var response: ClientResponse
-        while ((responses.poll().also { response = it }) != null) {
-            response.onComplete()
-            copy.add(response)
+        var response: ClientResponse?
+        while (responses.poll().also { response = it } != null) {
+            response!!.onComplete()
+            copy.add(response!!)
         }
         return copy
     }
@@ -427,8 +426,8 @@ open class MockClient(
      * @param disconnected Whether the request was disconnected. Defaults to `false`.
      */
     fun prepareResponse(
-        matcher: RequestMatcher = ALWAYS_TRUE,
         response: AbstractResponse?,
+        matcher: RequestMatcher = ALWAYS_TRUE,
         disconnected: Boolean = false,
     ) = prepareResponseFrom(
         matcher = matcher,
@@ -460,11 +459,11 @@ open class MockClient(
         isUnsupportedVersion: Boolean = false,
     ) = futureResponses.add(
         FutureResponse(
-            node,
-            matcher,
-            response,
-            disconnected,
-            isUnsupportedVersion
+            node = node,
+            requestMatcher = matcher,
+            responseBody = response,
+            disconnected = disconnected,
+            isUnsupportedRequest = isUnsupportedVersion
         )
     )
 
@@ -586,7 +585,7 @@ open class MockClient(
 
     class MetadataUpdate internal constructor(
         val updateResponse: MetadataResponse,
-        val expectMatchRefreshTopics: Boolean
+        val expectMatchRefreshTopics: Boolean,
     ) {
         fun topics(): Set<String> = updateResponse.topicMetadata()
             .map { it.topic }
@@ -626,7 +625,8 @@ open class MockClient(
 
         private var lastUpdate: MetadataUpdate? = null
 
-        override val isUpdateNeeded: Boolean = metadata.updateRequested()
+        override val isUpdateNeeded: Boolean
+            get() = metadata.updateRequested()
 
         override fun fetchNodes(): List<Node> = metadata.fetch().nodes
 
@@ -657,7 +657,7 @@ open class MockClient(
                     "The metadata topics does not match expectation. Expected topics: " +
                             "${update.topics()}, asked topics: ALL"
                 }
-                val requestedTopics: Set<String> = HashSet(builder.topics())
+                val requestedTopics = builder.topics().toSet()
                 check(requestedTopics == update.topics()) {
                     "The metadata topics does not match expectation. Expected topics: " +
                             "${update.topics()}, asked topics: $requestedTopics"
@@ -702,17 +702,11 @@ open class MockClient(
             return now < readyDelayedUntilMs
         }
 
-        fun notThrottled(now: Long): Boolean {
-            return now > throttledUntilMs
-        }
+        fun notThrottled(now: Long): Boolean = now > throttledUntilMs
 
-        fun isBackingOff(now: Long): Boolean {
-            return now < backingOffUntilMs
-        }
+        fun isBackingOff(now: Long): Boolean = now < backingOffUntilMs
 
-        fun isUnreachable(now: Long): Boolean {
-            return now < unreachableUntilMs
-        }
+        fun isUnreachable(now: Long): Boolean = now < unreachableUntilMs
 
         fun disconnect() {
             state = State.DISCONNECTED

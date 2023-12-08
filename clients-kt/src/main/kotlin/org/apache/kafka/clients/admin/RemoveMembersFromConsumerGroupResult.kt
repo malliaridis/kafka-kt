@@ -82,10 +82,11 @@ class RemoveMembersFromConsumerGroupResult internal constructor(
         val result = KafkaFutureImpl<Unit>()
         future.whenComplete { memberErrors, throwable ->
             if (throwable != null) result.completeExceptionally(throwable)
-            else if (!maybeCompleteExceptionally(
-                    requireNotNull(memberErrors),
-                    member.toMemberIdentity(),
-                    result
+            else if (
+                !maybeCompleteExceptionally(
+                    memberErrors = requireNotNull(memberErrors),
+                    member = member.toMemberIdentity(),
+                    result = result,
                 )
             ) result.complete(Unit)
         }

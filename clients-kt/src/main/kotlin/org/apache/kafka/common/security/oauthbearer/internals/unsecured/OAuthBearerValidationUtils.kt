@@ -41,7 +41,7 @@ object OAuthBearerValidationUtils {
     ): OAuthBearerValidationResult {
         val rawClaim = jwt.rawClaim(claimName)
             ?: return if (required) OAuthBearerValidationResult.newFailure(
-                String.format("Required claim missing: %s", claimName)
+                "Required claim missing: $claimName"
             ) else OAuthBearerValidationResult.newSuccess()
 
         allowedTypes.forEach { allowedType ->
@@ -50,11 +50,7 @@ object OAuthBearerValidationUtils {
         }
 
         return OAuthBearerValidationResult.newFailure(
-            String.format(
-                "The %s claim had the incorrect type: %s",
-                claimName,
-                rawClaim.javaClass.simpleName,
-            )
+            "The $claimName claim had the incorrect type: ${rawClaim.javaClass.simpleName}"
         )
     }
 
@@ -80,7 +76,7 @@ object OAuthBearerValidationUtils {
         allowableClockSkewMs: Int,
     ): OAuthBearerValidationResult {
         val value: Number = try {
-            jwt.issuedAt()
+            jwt.issuedAt
         } catch (e: OAuthBearerIllegalTokenException) {
             return e.reason
         } ?: return doesNotExistResult(required, "iat")
@@ -119,7 +115,7 @@ object OAuthBearerValidationUtils {
         allowableClockSkewMs: Int
     ): OAuthBearerValidationResult {
         val value: Number = try {
-            Objects.requireNonNull(jwt).expirationTime()
+            jwt.expirationTime
         } catch (e: OAuthBearerIllegalTokenException) {
             return e.reason
         } ?: return doesNotExistResult(true, "exp")
@@ -151,8 +147,8 @@ object OAuthBearerValidationUtils {
         val issuedAt: Number?
         val expirationTime: Number?
         try {
-            issuedAt = jwt.issuedAt()
-            expirationTime = jwt.expirationTime()
+            issuedAt = jwt.issuedAt
+            expirationTime = jwt.expirationTime
         } catch (e: OAuthBearerIllegalTokenException) {
             return e.reason
         }

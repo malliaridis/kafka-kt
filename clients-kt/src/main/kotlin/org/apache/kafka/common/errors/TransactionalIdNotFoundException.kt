@@ -17,4 +17,4 @@
 
 package org.apache.kafka.common.errors
 
-class TransactionalIdNotFoundException(message: String?) : ApiException(message)
+class TransactionalIdNotFoundException(message: String? = null) : ApiException(message)

@@ -36,7 +36,13 @@ import javax.security.auth.Subject
  *
  * See [KAFKA-14062](https://issues.apache.org/jira/browse/KAFKA-14062) for more detail.
  */
-open class SaslExtensions(private val extensionsMap: Map<String, String>) {
+open class SaslExtensions(extensionsMap: Map<String, String>) {
+
+    private val extensionsMap: Map<String, String>
+
+    init {
+        this.extensionsMap = extensionsMap.toMap()
+    }
 
     /**
      * Returns an **immutable** map of the extension names and their values

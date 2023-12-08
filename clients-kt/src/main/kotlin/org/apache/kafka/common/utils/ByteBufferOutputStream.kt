@@ -50,9 +50,9 @@ class ByteBufferOutputStream(buffer: ByteBuffer) : OutputStream() {
      * where a pooled ByteBuffer was passed via the constructor and it needs to be returned to the
      * pool.
      */
-    val initialCapacity: Int = buffer.position()
+    val initialCapacity: Int = buffer.capacity()
     
-    private val initialPosition: Int = buffer.capacity()
+    private val initialPosition: Int = buffer.position()
 
     constructor(
         initialCapacity: Int,

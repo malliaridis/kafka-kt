@@ -43,7 +43,7 @@ class ListOffsetsRequest private constructor(
     init {
         val duplicates = mutableSetOf<TopicPartition>()
 
-        val partitions: MutableSet<TopicPartition> = HashSet()
+        val partitions: MutableSet<TopicPartition> = hashSetOf()
         data.topics.forEach { topic ->
             topic.partitions.forEach { partition ->
                 val tp = TopicPartition(topic.name, partition.partitionIndex)

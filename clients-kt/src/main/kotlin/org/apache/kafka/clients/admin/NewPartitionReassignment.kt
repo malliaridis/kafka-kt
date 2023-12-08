@@ -22,12 +22,15 @@ package org.apache.kafka.clients.admin
  *
  * @throws IllegalArgumentException if no replicas are supplied
  */
-data class NewPartitionReassignment(val targetReplicas: List<Int>) {
+class NewPartitionReassignment(targetReplicas: List<Int>) {
+
+    val targetReplicas: List<Int>
 
     init {
         require(targetReplicas.isNotEmpty()) {
             "Cannot create a new partition reassignment without any replicas"
         }
+        this.targetReplicas = targetReplicas.toList()
     }
 
     @Deprecated(
@@ -35,4 +38,17 @@ data class NewPartitionReassignment(val targetReplicas: List<Int>) {
         replaceWith = ReplaceWith("targetReplicas"),
     )
     fun targetReplicas(): List<Int> = targetReplicas
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as NewPartitionReassignment
+
+        return targetReplicas == other.targetReplicas
+    }
+
+    override fun hashCode(): Int {
+        return targetReplicas.hashCode()
+    }
 }

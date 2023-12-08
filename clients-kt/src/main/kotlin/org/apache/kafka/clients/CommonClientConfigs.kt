@@ -287,7 +287,7 @@ object CommonClientConfigs {
         parsedValues: Map<String, Any?>
     ): Map<String, Any?> {
         val rval = HashMap<String, Any?>()
-        val originalConfig: Map<String, Any?> = config.originals()
+        val originalConfig = config.originals()
         if (
             !originalConfig.containsKey(RECONNECT_BACKOFF_MAX_MS_CONFIG)
             && originalConfig.containsKey(RECONNECT_BACKOFF_MS_CONFIG)
@@ -302,7 +302,7 @@ object CommonClientConfigs {
     }
 
     fun postValidateSaslMechanismConfig(config: AbstractConfig) {
-        val securityProtocol = SecurityProtocol.forName(config.getString(SECURITY_PROTOCOL_CONFIG)!!)
+        val securityProtocol = config.getString(SECURITY_PROTOCOL_CONFIG)?.let { SecurityProtocol.forName(it) }
         val clientSaslMechanism = config.getString(SaslConfigs.SASL_MECHANISM)
         if (
             securityProtocol === SecurityProtocol.SASL_PLAINTEXT
@@ -327,23 +327,22 @@ object CommonClientConfigs {
 
     fun metricsReporters(
         clientIdOverride: Map<String, Any?>,
-        config: AbstractConfig
+        config: AbstractConfig,
     ): List<MetricsReporter> {
-        val reporters: MutableList<MetricsReporter> =
-            config.getConfiguredInstances(
-                METRIC_REPORTER_CLASSES_CONFIG,
-                MetricsReporter::class.java,
-                clientIdOverride,
-            ).toMutableList()
+        val reporters = config.getConfiguredInstances(
+            key = METRIC_REPORTER_CLASSES_CONFIG,
+            t = MetricsReporter::class.java,
+            configOverrides = clientIdOverride,
+        )
         if (
             config.getBoolean(AUTO_INCLUDE_JMX_REPORTER_CONFIG) == true
             && reporters.none { reporter -> (JmxReporter::class.java == reporter.javaClass) }
         ) {
             val jmxReporter = JmxReporter()
             jmxReporter.configure(config.originals(clientIdOverride))
-            reporters.add(jmxReporter)
-        }
 
+            return reporters + jmxReporter
+        }
         return reporters
     }
 }

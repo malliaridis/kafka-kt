@@ -53,7 +53,7 @@ class ListConsumerGroupOffsetsResult internal constructor(
                     "Use partitionsToOffsetAndMetadata(groupId) instead to get future for a " +
                     "specific group."
         }
-        return futures.values.iterator().next()
+        return futures.values.first()
     }
 
     /**

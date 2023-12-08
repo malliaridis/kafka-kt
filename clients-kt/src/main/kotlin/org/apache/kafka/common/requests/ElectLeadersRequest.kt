@@ -40,7 +40,7 @@ class ElectLeadersRequest private constructor(
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse {
         val (error, message) = ApiError.fromThrowable(e)
 
-        val electionResults = data.topicPartitions.map { topic ->
+        val electionResults = data.topicPartitions?.map { topic ->
             val electionResult = ReplicaElectionResult()
             electionResult.setTopic(topic.topic)
 
@@ -52,7 +52,7 @@ class ElectLeadersRequest private constructor(
                 electionResult.partitionResult += partitionResult
             }
             electionResult
-        }
+        } ?: emptyList()
 
         return ElectLeadersResponse(
             throttleTimeMs = throttleTimeMs,
@@ -89,12 +89,10 @@ class ElectLeadersRequest private constructor(
             val data = ElectLeadersRequestData().setTimeoutMs(timeoutMs)
 
             topicPartitions?.forEach { (topic, partition): TopicPartition ->
-                var tps = data.topicPartitions.find(topic)
+                var tps = data.topicPartitions!!.find(topic)
                 if (tps == null) {
                     tps = TopicPartitions().setTopic(topic)
-                    data.topicPartitions += TopicPartitions().setTopic(topic).also {
-                        tps = it
-                    }
+                    data.topicPartitions!!.add(TopicPartitions().setTopic(topic).also { tps = it })
                 }
                 tps!!.partitions += partition
             } ?: data.setTopicPartitions(ElectLeadersRequestData.TopicPartitionsCollection())

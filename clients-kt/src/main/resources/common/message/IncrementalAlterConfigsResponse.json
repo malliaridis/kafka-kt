@@ -27,8 +27,8 @@
       "about": "The responses for each resource.", "fields": [
       { "name": "ErrorCode", "type": "int16", "versions": "0+",
         "about": "The resource error code." },
-      { "name": "ErrorMessage", "type": "string", "nullableVersions": "0+", "versions": "0+",
-        "about": "The resource error message, or null if there was no error." },
+      { "name": "ErrorMessage", "type": "string", "nullableVersions": "0+", "default": "",
+        "versions": "0+", "about": "The resource error message, or null if there was no error." },
       { "name": "ResourceType", "type": "int8", "versions": "0+",
         "about": "The resource type." },
       { "name": "ResourceName", "type": "string", "versions": "0+",

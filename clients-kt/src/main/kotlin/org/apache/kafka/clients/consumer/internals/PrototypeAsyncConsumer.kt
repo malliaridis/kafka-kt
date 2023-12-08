@@ -50,7 +50,6 @@ import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.Time
 import org.slf4j.Logger
 import java.time.Duration
-import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
@@ -168,7 +167,7 @@ class PrototypeAsyncConsumer<K, V> : Consumer<K, V> {
      * @param timeout timeout of the poll loop
      * @return ConsumerRecord. It can be empty if time timeout expires.
      */
-    override fun poll(timeout: Duration): ConsumerRecords<K?, V?> {
+    override fun poll(timeout: Duration): ConsumerRecords<K, V> {
         try {
             do {
                 if (!eventHandler.isEmpty) {
@@ -208,11 +207,11 @@ class PrototypeAsyncConsumer<K, V> : Consumer<K, V> {
     private fun processEvent(backgroundEvent: BackgroundEvent, timeout: Duration) = Unit
 
     // stubbed class
-    private fun processFetchResults(fetch: Fetch<K?, V?>): ConsumerRecords<K?, V?> =
+    private fun processFetchResults(fetch: Fetch<K, V>): ConsumerRecords<K, V> =
         ConsumerRecords.empty()
 
     // stubbed class
-    private fun collectFetches(): Fetch<K?, V?> = Fetch.empty()
+    private fun collectFetches(): Fetch<K, V> = Fetch.empty()
 
     /**
      * This method sends a commit event to the EventHandler and return.
@@ -364,9 +363,7 @@ class PrototypeAsyncConsumer<K, V> : Consumer<K, V> {
      * been made.
      * @return The set of topics currently subscribed to
      */
-    override fun subscription(): Set<String> {
-        return Collections.unmodifiableSet(subscriptions.subscription())
-    }
+    override fun subscription(): Set<String> = subscriptions.subscription()
 
     override fun subscribe(topics: Collection<String>) =
         throw KafkaException("method not implemented")
@@ -385,7 +382,7 @@ class PrototypeAsyncConsumer<K, V> : Consumer<K, V> {
     override fun unsubscribe() = throw KafkaException("method not implemented")
 
     @Deprecated("")
-    override fun poll(timeout: Long): ConsumerRecords<K?, V?> =
+    override fun poll(timeout: Long): ConsumerRecords<K, V> =
         throw KafkaException("method not implemented")
 
     /**

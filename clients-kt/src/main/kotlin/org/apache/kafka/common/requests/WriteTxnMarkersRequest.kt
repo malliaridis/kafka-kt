@@ -78,9 +78,7 @@ class WriteTxnMarkersRequest private constructor(
         return data == that.data
     }
 
-    override fun hashCode(): Int {
-        return Objects.hash(data)
-    }
+    override fun hashCode(): Int = data.hashCode()
 
     class TxnMarkerEntry(
         val producerId: Long,

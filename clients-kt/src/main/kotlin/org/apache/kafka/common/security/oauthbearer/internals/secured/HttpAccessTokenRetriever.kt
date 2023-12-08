@@ -58,7 +58,7 @@ class HttpAccessTokenRetriever(
     private val loginRetryBackoffMs: Long,
     private val loginRetryBackoffMaxMs: Long,
     private val loginConnectTimeoutMs: Int? = null,
-    private val loginReadTimeoutMs: Int? = null
+    private val loginReadTimeoutMs: Int? = null,
 ) : AccessTokenRetriever {
 
     /**
@@ -149,7 +149,7 @@ class HttpAccessTokenRetriever(
             headers: Map<String, String>?,
             requestBody: String?,
             connectTimeoutMs: Int?,
-            readTimeoutMs: Int?
+            readTimeoutMs: Int?,
         ): String {
             handleInput(
                 connection = connection,
@@ -167,7 +167,7 @@ class HttpAccessTokenRetriever(
             headers: Map<String, String>?,
             requestBody: String?,
             connectTimeoutMs: Int?,
-            readTimeoutMs: Int?
+            readTimeoutMs: Int?,
         ) {
             log.debug("handleInput - starting post for {}", connection.url)
 
@@ -242,7 +242,8 @@ class HttpAccessTokenRetriever(
             }
             return when (responseCode) {
                 HttpURLConnection.HTTP_OK,
-                HttpURLConnection.HTTP_CREATED -> {
+                HttpURLConnection.HTTP_CREATED,
+                -> {
                     log.debug(
                         "handleOutput - responseCode: {}, error response: {}",
                         responseCode,
@@ -309,22 +310,14 @@ class HttpAccessTokenRetriever(
             try {
                 val rootNode = mapper.readTree(errorResponseBody)
                 return if (!rootNode.at("/error").isMissingNode) {
-                    String.format(
-                        "{%s - %s}",
-                        rootNode.at("/error"),
-                        rootNode.at("/error_description")
-                    )
+                    "{${rootNode.at("/error")} - ${rootNode.at("/error_description")}}"
                 } else if (!rootNode.at("/errorCode").isMissingNode) {
-                    String.format(
-                        "{%s - %s}",
-                        rootNode.at("/errorCode"),
-                        rootNode.at("/errorSummary")
-                    )
+                    "{${rootNode.at("/errorCode")} - ${rootNode.at("/errorSummary")}}"
                 } else errorResponseBody
             } catch (e: Exception) {
                 log.warn("Error parsing error response", e)
             }
-            return String.format("{%s}", errorResponseBody)
+            return "{$errorResponseBody}"
         }
 
         @Throws(IOException::class)
@@ -340,24 +333,15 @@ class HttpAccessTokenRetriever(
                 if (snippet.length > MAX_RESPONSE_BODY_LENGTH) {
                     val actualLength = responseBody.length
                     val s = responseBody.substring(0, MAX_RESPONSE_BODY_LENGTH)
-                    snippet = String.format(
-                        "%s (trimmed to first %s characters out of %s total)",
-                        s,
-                        MAX_RESPONSE_BODY_LENGTH,
-                        actualLength
-                    )
+                    snippet = "$s (trimmed to first $MAX_RESPONSE_BODY_LENGTH characters out of $actualLength total)"
                 }
                 throw IOException(
-                    String.format(
-                        "The token endpoint response did not contain an access_token value. " +
-                                "Response: (%s)",
-                        snippet
-                    )
+                        "The token endpoint response did not contain an access_token value. Response: ($snippet)"
                 )
             }
             return sanitizeString(
-                "the token endpoint response's access_token JSON attribute",
-                accessTokenNode.textValue(),
+                name = "the token endpoint response's access_token JSON attribute",
+                value = accessTokenNode.textValue(),
             )
         }
 
@@ -372,11 +356,11 @@ class HttpAccessTokenRetriever(
                 value = clientSecret,
             )
 
-            val idAndSecret = String.format("%s:%s", sanitizedClientId, sanitizedClientSecret)
+            val idAndSecret = "$sanitizedClientId:$sanitizedClientSecret"
 
             // Per RFC-7617, we need to use the *non-URL safe* base64 encoder. See KAFKA-14496.
             val encoded = Base64.getEncoder().encodeToString(idAndSecret.toByteArray())
-            return String.format("Basic %s", encoded)
+            return "Basic $encoded"
         }
 
         @Throws(IOException::class)
@@ -391,23 +375,18 @@ class HttpAccessTokenRetriever(
                     requestParameters.append("&scope=").append(encodedScope)
                 }
                 requestParameters.toString()
-            } catch (e: UnsupportedEncodingException) {
+            } catch (_: UnsupportedEncodingException) {
                 // The world has gone crazy!
-                throw IOException(
-                    String.format("Encoding %s not supported", StandardCharsets.UTF_8.name())
-                )
+                throw IOException("Encoding ${StandardCharsets.UTF_8.name()} not supported")
             }
         }
 
-        private fun sanitizeString(name: String, value: String): String {
-            require(value.isNotEmpty()) {
-                String.format("The value for %s must be non-empty", name)
-            }
+        private fun sanitizeString(name: String, value: String?): String {
+            requireNotNull(value) { "The value for $name must be non-null" }
+            require(value.isNotEmpty()) { "The value for $name must be non-empty" }
 
             val sanitized = value.trim { it <= ' ' }
-            require(sanitized.isNotEmpty()) {
-                String.format("The value for %s must not contain only whitespace", name)
-            }
+            require(sanitized.isNotEmpty()) { "The value for $name must not contain only whitespace" }
 
             return sanitized
         }

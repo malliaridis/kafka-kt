@@ -155,7 +155,7 @@ interface AdminApiHandler<K, V> {
                 "Unbatched admin handler should only be required to handle responses for a " +
                         "single key at a time"
             }
-            val key = keys.iterator().next()
+            val key = keys.first()
             return handleSingleResponse(broker, key, response)
         }
     }

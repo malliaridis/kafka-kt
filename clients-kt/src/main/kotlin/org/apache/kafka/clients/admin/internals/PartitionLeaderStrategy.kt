@@ -48,7 +48,7 @@ class PartitionLeaderStrategy(logContext: LogContext) : AdminApiLookupStrategy<T
         request.setAllowAutoTopicCreation(false)
         keys.map { obj -> obj.topic }
             .distinct()
-            .forEach { topic -> request.topics += MetadataRequestTopic().setName(topic) }
+            .forEach { topic -> request.topics = request.topics!! + MetadataRequestTopic().setName(topic) }
         return MetadataRequest.Builder(request)
     }
 
@@ -104,7 +104,7 @@ class PartitionLeaderStrategy(logContext: LogContext) : AdminApiLookupStrategy<T
                 ) { tp: TopicPartition ->
                     topicError.exception(
                         "Failed to fetch metadata for partition $tp due to unexpected error for topic `$topic`"
-                    )
+                    )!!
                 }
             }
         }

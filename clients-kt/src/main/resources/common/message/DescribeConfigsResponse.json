@@ -29,7 +29,7 @@
       "about": "The results for each resource.", "fields": [
       { "name": "ErrorCode", "type": "int16", "versions": "0+",
         "about": "The error code, or 0 if we were able to successfully describe the configurations." },
-      { "name": "ErrorMessage", "type": "string", "versions": "0+", "nullableVersions": "0+",
+      { "name": "ErrorMessage", "type": "string", "versions": "0+", "nullableVersions": "0+", "default": "",
         "about": "The error message, or null if we were able to successfully describe the configurations." },
       { "name": "ResourceType", "type": "int8", "versions": "0+",
         "about": "The resource type." },
@@ -40,7 +40,7 @@
         { "name": "Name", "type": "string", "versions": "0+",
           "about": "The configuration name." },
         { "name": "Value", "type": "string", "versions": "0+", "nullableVersions": "0+",
-          "about": "The configuration value." },
+          "default": "", "about": "The configuration value." },
         { "name": "ReadOnly", "type": "bool", "versions": "0+",
           "about": "True if the configuration is read-only." },
         { "name": "IsDefault", "type": "bool", "versions": "0",
@@ -57,14 +57,14 @@
           { "name": "Name", "type": "string", "versions": "1+",
             "about": "The synonym name." },
           { "name": "Value", "type": "string", "versions": "1+", "nullableVersions": "0+",
-            "about": "The synonym value." },
+            "default": "", "about": "The synonym value." },
           { "name": "Source", "type": "int8", "versions": "1+",
             "about": "The synonym source." }
         ]},
         { "name": "ConfigType", "type": "int8", "versions": "3+", "default": "0", "ignorable": true,
           "about": "The configuration data type. Type can be one of the following values - BOOLEAN, STRING, INT, SHORT, LONG, DOUBLE, LIST, CLASS, PASSWORD" },
-        { "name": "Documentation", "type": "string", "versions": "3+", "nullableVersions": "0+", "ignorable": true,
-          "about": "The configuration documentation." }
+        { "name": "Documentation", "type": "string", "versions": "3+", "nullableVersions": "0+", "default": "",
+          "ignorable": true, "about": "The configuration documentation." }
       ]}
     ]}
   ]

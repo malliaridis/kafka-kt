@@ -87,7 +87,7 @@ class CoordinatorStrategy(
 
         (response as FindCoordinatorResponse).coordinators().forEach { coordinator ->
             val key =
-                if (coordinator.key == null) requireSingletonAndType(keys)  // old version without batching
+                if (coordinator.key.isEmpty()) requireSingletonAndType(keys)  // old version without batching
                 else if ((type == CoordinatorType.GROUP)) CoordinatorKey.byGroupId(coordinator.key)
                 else CoordinatorKey.byTransactionalId(coordinator.key)
 
@@ -118,7 +118,7 @@ class CoordinatorStrategy(
     private fun requireSingletonAndType(keys: Collection<CoordinatorKey>): CoordinatorKey {
         require(keys.size == 1) { "Unexpected size of key set: expected 1, but got ${keys.size}" }
 
-        val key: CoordinatorKey = keys.iterator().next()
+        val key: CoordinatorKey = keys.first()
         require(key.type == type) {
             "Unexpected key type: expected key to be of type $type, but got ${key.type}"
         }
@@ -149,8 +149,8 @@ class CoordinatorStrategy(
 
             Errors.GROUP_AUTHORIZATION_FAILED -> failedKeys[key] =
                 GroupAuthorizationException(
-                    ("FindCoordinator request for groupId " +
-                            "`" + key + "` failed due to authorization failure"), key.idValue
+                    message = "FindCoordinator request for groupId `$key` failed due to authorization failure",
+                    groupId = key.idValue
                 )
 
             Errors.TRANSACTIONAL_ID_AUTHORIZATION_FAILED -> failedKeys.put(
@@ -160,12 +160,9 @@ class CoordinatorStrategy(
                 )
             )
 
-            else -> failedKeys.put(
-                key, error.exception(
-                    ("FindCoordinator request for key " +
-                            "`" + key + "` failed due to an unexpected error")
-                )
-            )
+            else -> failedKeys[key] = error.exception(
+                "FindCoordinator request for key `$key` failed due to an unexpected error"
+            )!!
         }
     }
 

@@ -22,10 +22,11 @@ package org.apache.kafka.common.errors
  * request. This can happen when an operation is attempted before a pending metadata update has been
  * received. Clients will typically refresh metadata before retrying.
  */
-class FencedLeaderEpochException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : InvalidMetadataException(message = message, cause = cause) {
+class FencedLeaderEpochException : InvalidMetadataException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

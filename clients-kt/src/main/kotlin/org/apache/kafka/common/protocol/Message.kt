@@ -47,7 +47,7 @@ interface Message {
     fun size(cache: ObjectSerializationCache, version: Short): Int {
         val size = MessageSizeAccumulator()
         addSize(size, cache, version)
-        return size.totalSize()
+        return size.totalSize
     }
 
     /**
@@ -89,7 +89,7 @@ interface Message {
      *
      * @return The raw tagged fields.
      */
-    fun unknownTaggedFields(): List<RawTaggedField>
+    fun unknownTaggedFields(): MutableList<RawTaggedField>
 
     /**
      * Make a deep copy of the message.

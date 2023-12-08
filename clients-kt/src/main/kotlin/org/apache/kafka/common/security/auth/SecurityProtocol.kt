@@ -17,6 +17,8 @@
 
 package org.apache.kafka.common.security.auth
 
+import java.util.Locale
+
 /**
  * @property name Name of the security protocol. This may be used by client configuration.
  * @property id The permanent and immutable id of a security protocol -- this can't change, and must
@@ -72,6 +74,6 @@ enum class SecurityProtocol(
         /**
          * Case-insensitive lookup by protocol name
          */
-        fun forName(name: String): SecurityProtocol = valueOf(name.uppercase())
+        fun forName(name: String): SecurityProtocol = valueOf(name.uppercase(Locale.ROOT))
     }
 }

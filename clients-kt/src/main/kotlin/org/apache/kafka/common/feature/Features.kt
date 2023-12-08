@@ -78,7 +78,7 @@ class Features<VersionRangeType : BaseVersionRange> private constructor(
         else features == other.features
     }
 
-    override fun hashCode(): Int = Objects.hash(features)
+    override fun hashCode(): Int = features.hashCode()
 
     companion object {
 

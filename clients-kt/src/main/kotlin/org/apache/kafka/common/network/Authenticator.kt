@@ -2,7 +2,6 @@ package org.apache.kafka.common.network
 
 import java.io.Closeable
 import java.io.IOException
-import java.util.*
 import org.apache.kafka.common.errors.AuthenticationException
 import org.apache.kafka.common.security.auth.KafkaPrincipal
 import org.apache.kafka.common.security.auth.KafkaPrincipalSerde
@@ -30,8 +29,7 @@ interface Authenticator : Closeable {
      * @throws IOException if read/write fails due to an I/O error
      */
     @Throws(IOException::class)
-    fun handleAuthenticationFailure() {
-    }
+    fun handleAuthenticationFailure() = Unit
 
     /**
      * Returns Principal using PrincipalBuilder

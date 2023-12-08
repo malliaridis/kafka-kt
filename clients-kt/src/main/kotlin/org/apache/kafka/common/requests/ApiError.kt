@@ -66,9 +66,9 @@ data class ApiError(
      * If `message` is defined, return it. Otherwise, fallback to the default error message
      * associated with the error code.
      */
-    fun messageWithFallback(): String = message ?: error.message
+    fun messageWithFallback(): String? = message ?: error.message
 
-    fun exception(): ApiException = error.exception(message)
+    fun exception(): ApiException? = error.exception(message)
 
     override fun toString(): String = "ApiError(error=$error, message=$message)"
 

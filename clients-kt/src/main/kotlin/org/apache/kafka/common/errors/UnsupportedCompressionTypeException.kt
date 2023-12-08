@@ -20,10 +20,11 @@ package org.apache.kafka.common.errors
 /**
  * The requesting client does not support the compression type of given partition.
  */
-class UnsupportedCompressionTypeException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : ApiException(message = message, cause = cause) {
+class UnsupportedCompressionTypeException : ApiException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

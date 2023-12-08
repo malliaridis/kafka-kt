@@ -25,10 +25,11 @@ package org.apache.kafka.common.errors
  * request with the same transactional id, or if the transaction cache is currently being populated from the transaction
  * log.
  */
-class CoordinatorLoadInProgressException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : RetriableException(message = message, cause = cause) {
+class CoordinatorLoadInProgressException : RetriableException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

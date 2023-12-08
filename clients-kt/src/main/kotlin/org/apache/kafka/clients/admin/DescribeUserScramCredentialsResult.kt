@@ -60,8 +60,7 @@ class DescribeUserScramCredentialsResult internal constructor(
                 }
 
                 if (firstFailedDescribe != null) retval.completeExceptionally(
-                    Errors.forCode(firstFailedDescribe.errorCode)
-                        .exception(firstFailedDescribe.errorMessage)
+                    Errors.forCode(firstFailedDescribe.errorCode).exception(firstFailedDescribe.errorMessage)!!
                 ) else {
                     val retvalMap = data.results.associate { userResult ->
                         userResult.user to UserScramCredentialsDescription(
@@ -124,8 +123,7 @@ class DescribeUserScramCredentialsResult internal constructor(
                 ) else {
                     // RESOURCE_NOT_FOUND is included here
                     if (userResult.errorCode != Errors.NONE.code) retval.completeExceptionally(
-                        Errors.forCode(userResult.errorCode)
-                            .exception(userResult.errorMessage)
+                        Errors.forCode(userResult.errorCode).exception(userResult.errorMessage)!!
                     )
                     else retval.complete(
                         UserScramCredentialsDescription(

@@ -39,7 +39,7 @@ data class ListTransactionsOptions(
      * @return this object
      */
     fun filterStates(states: Collection<TransactionState>): ListTransactionsOptions {
-        filteredStates = HashSet(states)
+        filteredStates = states.toHashSet()
         return this
     }
 
@@ -52,7 +52,7 @@ data class ListTransactionsOptions(
      * @return this object
      */
     fun filterProducerIds(producerIdFilters: Collection<Long>): ListTransactionsOptions {
-        filteredProducerIds = HashSet(producerIdFilters)
+        filteredProducerIds = producerIdFilters.toHashSet()
         return this
     }
 

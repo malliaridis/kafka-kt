@@ -84,72 +84,52 @@ object Serdes {
     /**
      * A serde for nullable `Integer` type.
      */
-    fun Integer(): Serde<Int> {
-        return IntegerSerde()
-    }
+    fun Integer(): Serde<Int> = IntegerSerde()
 
     /**
      * A serde for nullable `Short` type.
      */
-    fun Short(): Serde<Short> {
-        return ShortSerde()
-    }
+    fun Short(): Serde<Short> = ShortSerde()
 
     /**
      * A serde for nullable `Float` type.
      */
-    fun Float(): Serde<Float> {
-        return FloatSerde()
-    }
+    fun Float(): Serde<Float> = FloatSerde()
 
     /**
      * A serde for nullable `Double` type.
      */
-    fun Double(): Serde<Double> {
-        return DoubleSerde()
-    }
+    fun Double(): Serde<Double> = DoubleSerde()
 
     /**
      * A serde for nullable `String` type.
      */
-    fun String(): Serde<String> {
-        return StringSerde()
-    }
+    fun String(): Serde<String> = StringSerde()
 
     /**
      * A serde for nullable `ByteBuffer` type.
      */
-    fun ByteBuffer(): Serde<ByteBuffer> {
-        return ByteBufferSerde()
-    }
+    fun ByteBuffer(): Serde<ByteBuffer> = ByteBufferSerde()
 
     /**
      * A serde for nullable `Bytes` type.
      */
-    fun Bytes(): Serde<Bytes> {
-        return BytesSerde()
-    }
+    fun Bytes(): Serde<Bytes> = BytesSerde()
 
     /**
      * A serde for nullable `UUID` type
      */
-    fun UUID(): Serde<UUID> {
-        return UUIDSerde()
-    }
+    fun UUID(): Serde<UUID> = UUIDSerde()
 
     /**
      * A serde for nullable `byte[]` type.
      */
-    fun ByteArray(): Serde<ByteArray> {
-        return ByteArraySerde()
-    }
+    fun ByteArray(): Serde<ByteArray> = ByteArraySerde()
 
     /**
      * A serde for `Void` type.
      */
-    fun Void(): Serde<Void> {
-        return VoidSerde()
-    }
+    fun Void(): Serde<Void> = VoidSerde()
 
     /*
      * A serde for {@code List} type
@@ -157,9 +137,7 @@ object Serdes {
     fun <L : List<Inner>?, Inner> ListSerde(
         listClass: Class<L?>?,
         innerSerde: Serde<Inner>
-    ): Serde<List<Inner>> {
-        return Serdes.ListSerde(listClass, innerSerde)
-    }
+    ): Serde<List<Inner>> = Serdes.ListSerde(listClass, innerSerde)
 
     open class WrapperSerde<T>(
         private val serializer: Serializer<T>,

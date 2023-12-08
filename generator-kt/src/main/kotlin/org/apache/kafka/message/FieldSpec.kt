@@ -19,7 +19,12 @@ package org.apache.kafka.message
 
 import com.fasterxml.jackson.annotation.JsonCreator
 import com.fasterxml.jackson.annotation.JsonProperty
+import java.nio.ByteBuffer
+import java.util.Base64
+import java.util.regex.Pattern
+import org.apache.kafka.message.FieldType.ArrayType
 import org.apache.kafka.message.FieldType.BoolFieldType
+import org.apache.kafka.message.FieldType.BytesFieldType
 import org.apache.kafka.message.FieldType.Float32FieldType
 import org.apache.kafka.message.FieldType.Float64FieldType
 import org.apache.kafka.message.FieldType.Int16FieldType
@@ -28,6 +33,7 @@ import org.apache.kafka.message.FieldType.Int64FieldType
 import org.apache.kafka.message.FieldType.Int8FieldType
 import org.apache.kafka.message.FieldType.RecordsFieldType
 import org.apache.kafka.message.FieldType.StringFieldType
+import org.apache.kafka.message.FieldType.StructType
 import org.apache.kafka.message.FieldType.UUIDFieldType
 import org.apache.kafka.message.FieldType.Uint16FieldType
 import org.apache.kafka.message.FieldType.Uint32FieldType
@@ -36,9 +42,6 @@ import org.apache.kafka.message.FieldType.Uint8FieldType
 import org.apache.kafka.message.MessageGenerator.capitalizeFirst
 import org.apache.kafka.message.MessageGenerator.lowerCaseFirst
 import org.apache.kafka.message.MessageGenerator.toSnakeCase
-import java.nio.ByteBuffer
-import java.util.*
-import java.util.regex.Pattern
 
 /**
  * @property ignorable Whether this field can be ignored from comparisons (and serialization?).
@@ -114,8 +117,7 @@ class FieldSpec @JsonCreator constructor(
             isNullable = !this.versions.intersect(parsedNullableVersions).isEmpty,
         )
 
-        // Do not add nullable versions for array fields
-        this.nullableVersions = if (parsedType.isArray) Versions.NONE else parsedNullableVersions
+        this.nullableVersions = parsedNullableVersions
         this.type = parsedType
 
         this.entityType = entityType ?: EntityType.UNKNOWN
@@ -238,262 +240,292 @@ class FieldSpec @JsonCreator constructor(
         headerGenerator: HeaderGenerator,
         structRegistry: StructRegistry,
     ): String {
-        when {
-            (fieldDefault == null) && type.isNullable && !type.isArray -> {
-                // No default value provided, use null if all fields are nullable
-                // Arrays / Lists are never null (only empty)
-                isNullDefaultAllowed()
-                return "null"
+        return when {
+            // Nullable and fallback cases
+
+            // In case of all versions nullable
+            isNullDefaultAllowed() && fieldDefault == null -> "null"
+            // In case non-nullable fallback value should be used
+            fieldDefault.isNullOrEmpty() -> getFallbackValue(headerGenerator, structRegistry)
+            // In case of nullable and default "null" (string)
+            fieldDefault == "null" -> {
+                requireNullDefaultAllowed() // all versions must be nullable
+                "null"
             }
-            (fieldDefault == "null") && type.isNullable && !type.isArray -> {
-                // Default value "null" provided, verify that all versions are nullable
-                // Arrays / Lists are never null (only empty)
-                validateNullDefault()
-                return "null"
-            }
-            type is BoolFieldType -> {
-                return if (fieldDefault.isNullOrEmpty()) "false"
-                else if (fieldDefault.equals("true", ignoreCase = true)) "true"
+
+            type is RecordsFieldType -> "null" // ignore fieldDefault for RecordsFieldType
+
+            // Parsing cases (non-nullable cases with default value provided)
+            type is BoolFieldType ->
+                // Parse field type
+                if (fieldDefault.equals("true", ignoreCase = true)) "true"
                 else if (fieldDefault.equals("false", ignoreCase = true)) "false"
                 else throw RuntimeException("Invalid default for boolean field $name: $fieldDefault")
-            }
-            type is Int8FieldType -> {
-                val (base, defaultString) = getBaseAndDefaultString(fieldDefault)
-                val isNegative: Boolean
-                return if (defaultString.isNullOrEmpty()) "0.toByte()"
-                else {
-                    try {
-                        isNegative = defaultString.toByte(base) < 0
-                    } catch (e: NumberFormatException) {
-                        throw RuntimeException(
-                            "Invalid default for int8 field $name: $defaultString",
-                            e,
-                        )
-                    }
-                    if (isNegative) "($fieldDefault).toByte()"
-                    else "$fieldDefault.toByte()"
+
+            type.isPrimitive -> {
+                val (base, numberAsString) = getBaseAndDefaultString(fieldDefault)
+                when (type) { // All the numeric field types
+                    is Int8FieldType -> parseInt8String(base, numberAsString)
+                    is Int16FieldType -> parseInt16String(base, numberAsString)
+                    is Int32FieldType -> parseInt32String(base, numberAsString)
+                    is Int64FieldType -> parseInt64String(base, numberAsString)
+                    is Uint8FieldType -> parseUInt8String(base, numberAsString)
+                    is Uint16FieldType -> parseUInt16String(base, numberAsString)
+                    is Uint32FieldType -> parseUInt32String(base, numberAsString)
+                    is Uint64FieldType -> parseUInt64String(base, numberAsString)
+                    is Float32FieldType -> parseFloat32String(fieldDefault)
+                    is Float64FieldType -> parseFloat64String(fieldDefault)
+                    else -> throw RuntimeException(
+                        "Unsupported default value $fieldDefault for primitive field type $type"
+                    )
                 }
             }
-            type is Uint8FieldType -> {
-                val (base, defaultString) = getBaseAndDefaultString(fieldDefault)
-                return if (defaultString.isNullOrEmpty()) "0.toUByte()"
-                else {
-                    try {
-                        val value = defaultString.toUByte(base)
-                        if (value < 0U || value > UByte.MAX_VALUE)
-                            throw RuntimeException(
-                                "Invalid default for uint8 field $name: out of range."
-                            )
-                    } catch (e: NumberFormatException) {
-                        throw RuntimeException(
-                            "Invalid default for uint8 field $name: $defaultString",
-                            e,
-                        )
-                    }
-                    "${fieldDefault}u"
-                }
-            }
-            type is Int16FieldType -> {
-                val (base, defaultString) = getBaseAndDefaultString(fieldDefault)
-                val isNegative: Boolean
-                return if (defaultString.isNullOrEmpty()) "0.toShort()"
-                else {
-                    try {
-                        isNegative = defaultString.toShort(base) < 0
-                    } catch (e: NumberFormatException) {
-                        throw RuntimeException(
-                            "Invalid default for int16 field $name: $defaultString",
-                            e,
-                        )
-                    }
-                    if (isNegative) "($fieldDefault).toShort()"
-                    else "$fieldDefault.toShort()"
-                }
-            }
-            type is Uint16FieldType -> {
-                val (base, defaultString) = getBaseAndDefaultString(fieldDefault)
-                return if (defaultString.isNullOrEmpty()) "0.toUShort()"
-                else {
-                    try {
-                        val value = defaultString.toUShort(base)
-                        if (value < 0U || value > UShort.MAX_VALUE)
-                            throw RuntimeException(
-                                "Invalid default for uint16 field $name: out of range."
-                            )
-                    } catch (e: NumberFormatException) {
-                        throw RuntimeException(
-                            "Invalid default for uint16 field $name: $defaultString",
-                            e,
-                        )
-                    }
-                    "${fieldDefault}u"
-                }
-            }
-            type is Int32FieldType -> {
-                val (base, defaultString) = getBaseAndDefaultString(fieldDefault)
-                return if (defaultString.isNullOrEmpty()) "0"
-                else {
-                    try {
-                        defaultString.toInt(base)
-                    } catch (e: NumberFormatException) {
-                        throw RuntimeException(
-                            "Invalid default for int32 field $name: $defaultString",
-                            e,
-                        )
-                    }
-                    "$fieldDefault"
-                }
-            }
-            type is Uint32FieldType -> {
-                val (base, defaultString) = getBaseAndDefaultString(fieldDefault)
-                return if (defaultString.isNullOrEmpty()) "0.toUInt()"
-                else {
-                    try {
-                        val value = defaultString.toUInt(base)
-                        if (value < 0U || value > UInt.MAX_VALUE)
-                            throw RuntimeException(
-                                "Invalid default for uint32 field $name: out of range."
-                            )
-                    } catch (e: NumberFormatException) {
-                        throw RuntimeException(
-                            "Invalid default for uint32 field $name: $defaultString",
-                            e,
-                        )
-                    }
-                    "${fieldDefault}u"
-                }
-            }
-            type is Int64FieldType -> {
-                val (base, defaultString) = getBaseAndDefaultString(fieldDefault)
-                return if (defaultString.isNullOrEmpty()) "0L"
-                else {
-                    try {
-                        defaultString.toLong(base)
-                    } catch (e: NumberFormatException) {
-                        throw RuntimeException(
-                            "Invalid default for int64 field $name: $defaultString",
-                            e,
-                        )
-                    }
-                    "${fieldDefault}L"
-                }
-            }
-            type is Uint64FieldType -> {
-                val (base, defaultString) = getBaseAndDefaultString(fieldDefault)
-                return if (defaultString.isNullOrEmpty()) "0uL"
-                else {
-                    try {
-                        val value = defaultString.toULong(base)
-                        if (value < 0U || value > ULong.MAX_VALUE)
-                            throw RuntimeException(
-                                "Invalid default for uint64 field $name: out of range."
-                            )
-                    } catch (e: NumberFormatException) {
-                        throw RuntimeException(
-                            "Invalid default for uint64 field $name: $defaultString",
-                            e,
-                        )
-                    }
-                    "${fieldDefault}uL"
-                }
-            }
-            type is UUIDFieldType -> {
-                headerGenerator.addImport(MessageGenerator.UUID_CLASS)
-                return if (fieldDefault.isNullOrEmpty()) "Uuid.ZERO_UUID"
-                else {
-                    try {
-                        val uuidBytes = ByteBuffer.wrap(Base64.getUrlDecoder().decode(fieldDefault))
-                        uuidBytes.getLong()
-                        uuidBytes.getLong()
-                    } catch (e: IllegalArgumentException) {
-                        throw RuntimeException(
-                            "Invalid default for uuid field $name: $fieldDefault",
-                            e,
-                        )
-                    }
-                    headerGenerator.addImport(MessageGenerator.UUID_CLASS)
-                    "Uuid.fromString(\"$fieldDefault\")"
-                }
-            }
-            type is Float32FieldType -> {
-                return if (fieldDefault.isNullOrEmpty()) "0.0f"
-                else {
-                    try {
-                        fieldDefault.toFloat()
-                    } catch (e: NumberFormatException) {
-                        throw RuntimeException(
-                            "Invalid default for float32 field $name: $fieldDefault",
-                            e,
-                        )
-                    }
-                    "\"$fieldDefault\".toFloat()"
-                }
-            }
-            type is Float64FieldType -> {
-                return if (fieldDefault.isNullOrEmpty()) "0.0"
-                else {
-                    try {
-                        fieldDefault.toDouble()
-                    } catch (e: NumberFormatException) {
-                        throw RuntimeException(
-                            "Invalid default for float64 field $name: $fieldDefault",
-                            e,
-                        )
-                    }
-                    "\"$fieldDefault\".toDouble()"
-                }
-            }
-            type is StringFieldType ->
-                return if (fieldDefault.isNullOrEmpty()) "\"\""
-                else "\"$fieldDefault\""
-            type.isBytes -> {
-                if (fieldDefault?.isNotEmpty() == true && fieldDefault != "null") throw RuntimeException(
-                    "Invalid default for bytes field $name. The only valid default for a bytes field " +
-                            "is empty or null."
-                )
-                return if (zeroCopy) {
-                    headerGenerator.addImport(MessageGenerator.BYTE_UTILS_CLASS)
-                    "ByteUtils.EMPTY_BUF"
-                } else {
-                    headerGenerator.addImport(MessageGenerator.BYTES_CLASS)
-                    "Bytes.EMPTY"
-                }
-            }
-            type.isRecords -> return "null" // TODO instantiate record
-            type.isStruct -> {
-                if (!fieldDefault.isNullOrEmpty()) throw RuntimeException(
-                    "Invalid default for struct field $name: custom defaults are not supported " +
-                            "for struct fields."
-                )
-                return "$type()"
-            }
-            type.isArray -> {
-                if (fieldDefault?.isNotEmpty() == true && fieldDefault != "null") throw RuntimeException(
-                    "Invalid default for array field $name. The only valid default for an array " +
-                            "field is the empty array (empty string) or null (undefined or string \"null\")."
-                )
-                return String.format(
-                    "%s(%s)",
-                    concreteKotlinType(headerGenerator, structRegistry),
-                    if ((type as FieldType.ArrayType).elementType.isPrimitive) "0" else "",
-                )
-            }
+
+            type is StringFieldType -> "\"$fieldDefault\""
+            type is UUIDFieldType -> parseUUIDString(headerGenerator)
+
+            // Error cases / Invalid input (null or empty fieldDefault values already returned)
+            type is StructType -> throw RuntimeException(
+                "Invalid default for struct field $name: custom defaults are not supported for struct fields."
+            )
+
+            type is ArrayType -> throw RuntimeException(
+                "Invalid default for array field $name. The only valid default for an array " +
+                        "field is the empty array (empty string) or null (undefined or string \"null\")."
+            )
+
+            type is BytesFieldType -> throw RuntimeException(
+                "Invalid default for bytes field $name. The only valid default for a bytes field is empty or null."
+            )
+
             else -> throw RuntimeException("Unsupported field type $type")
         }
     }
 
-    private fun getBaseAndDefaultString(fieldDefault: String?): Pair<Int, String?> {
+    /**
+     * Returns a non-null (except in for RecordsType) fallback field value that can be used in case [fieldDefault]
+     * was null or empty.
+     */
+    private fun getFallbackValue(
+        headerGenerator: HeaderGenerator,
+        structRegistry: StructRegistry,
+    ): String {
+        return when (type) {
+            // Numeric
+            is BoolFieldType -> "false"
+            is Int8FieldType -> "0.toByte()"
+            is Int16FieldType -> "0.toShort()"
+            is Int32FieldType -> "0"
+            is Int64FieldType -> "0L"
+            is Uint8FieldType -> "0.toUByte()"
+            is Uint16FieldType -> "0.toUShort()"
+            is Uint32FieldType -> "0.toUInt()"
+            is Uint64FieldType -> "0.toULong()"
+            is Float32FieldType -> "0.0f"
+            is Float64FieldType -> "0.0"
+
+            // Lists / Arrays
+            is ArrayType -> when (type.elementType) {
+                is BoolFieldType -> "booleanArrayOf()"
+                is Int8FieldType -> "byteArrayOf()"
+                is Int16FieldType -> "shortArrayOf()"
+                is Int32FieldType -> "intArrayOf()"
+                is Int64FieldType -> "longArrayOf()"
+                is Uint8FieldType -> "uByteArrayOf()"
+                is Uint16FieldType -> "uShortArrayOf()"
+                is Uint32FieldType -> "uIntArrayOf()"
+                is Uint64FieldType -> "uLongArrayOf()"
+                is Float32FieldType -> "floatArrayOf()"
+                is Float64FieldType -> "doubleArrayOf()"
+                else -> {
+                    if (structRegistry.isStructArrayWithKeys(this))
+                        collectionType(type.elementType.toString()) + "()"
+                    else "emptyList()"
+                }
+            }
+
+            // Classes (incl. ByteArray, since part of BytesFieldType)
+            is StructType -> "$type()"
+            is BytesFieldType -> if (zeroCopy) {
+                headerGenerator.addImport(MessageGenerator.BYTE_UTILS_CLASS)
+                "ByteUtils.EMPTY_BUF"
+            } else "byteArrayOf()"
+
+            is RecordsFieldType -> "null" // TODO Use dummy instance to allow non-nullable fields
+            is StringFieldType -> "\"\""
+            is UUIDFieldType -> {
+                headerGenerator.addImport(MessageGenerator.UUID_CLASS)
+                "Uuid.ZERO_UUID"
+            }
+        }
+    }
+
+    /**
+     * Checks if [text] is a valid int8 representation and returns the String representation
+     * for instantiating that int8.
+     */
+    private fun parseInt8String(base: Int, text: String): String {
+        val isNegative: Boolean
+        try {
+            isNegative = text.toByte(base) < 0
+        } catch (e: NumberFormatException) {
+            throw RuntimeException("Invalid default for int8 field $name: $text", e)
+        }
+        return if (isNegative) "($fieldDefault).toByte()"
+        else "$fieldDefault.toByte()"
+    }
+
+    /**
+     * Checks if [text] is a valid int16 number representation and returns the String representation
+     * for instantiating that int16.
+     */
+    private fun parseInt16String(base: Int, text: String): String {
+        val isNegative: Boolean
+        try {
+            isNegative = text.toShort(base) < 0
+        } catch (e: NumberFormatException) {
+            throw RuntimeException("Invalid default for int16 field $name: $text", e)
+        }
+        return if (isNegative) "($fieldDefault).toShort()"
+        else "$fieldDefault.toShort()"
+    }
+
+    /**
+     * Checks if [text] is a valid int32 number representation and returns the String representation
+     * for instantiating that int32.
+     */
+    private fun parseInt32String(base: Int, text: String): String {
+        try {
+            text.toInt(base)
+        } catch (e: NumberFormatException) {
+            throw RuntimeException("Invalid default for int32 field $name: $text", e)
+        }
+        return "$fieldDefault"
+    }
+
+    /**
+     * Checks if [text] is a valid int64 number representation and returns the String representation
+     * for instantiating that int64.
+     */
+    private fun parseInt64String(base: Int, text: String): String {
+        try {
+            text.toLong(base)
+        } catch (e: NumberFormatException) {
+            throw RuntimeException("Invalid default for int64 field $name: $text", e)
+        }
+        return "${fieldDefault}L"
+    }
+
+    /**
+     * Checks if [text] is a valid uint8 representation and returns the String representation
+     * for instantiating that uint8.
+     */
+    private fun parseUInt8String(base: Int, text: String): String {
+        try {
+            val value = text.toUByte(base)
+            if (value < 0U || value > UByte.MAX_VALUE)
+                throw RuntimeException("Invalid default for uint8 field $name: out of range.")
+        } catch (e: NumberFormatException) {
+            throw RuntimeException("Invalid default for uint8 field $name: $text", e)
+        }
+        return "${fieldDefault}u.toUByte()"
+    }
+
+    /**
+     * Checks if [text] is a valid uint16 representation and returns the String representation
+     * for instantiating that uint16.
+     */
+    private fun parseUInt16String(base: Int, text: String): String {
+        try {
+            val value = text.toUShort(base)
+            if (value < 0U || value > UShort.MAX_VALUE)
+                throw RuntimeException("Invalid default for uint16 field $name: out of range.")
+        } catch (e: NumberFormatException) {
+            throw RuntimeException("Invalid default for uint16 field $name: $text", e)
+        }
+        return "${fieldDefault}u.toUShort()"
+    }
+
+    /**
+     * Checks if [text] is a valid uint32 representation and returns the String representation
+     * for instantiating that uint32.
+     */
+    private fun parseUInt32String(base: Int, text: String): String {
+        try {
+            val value = text.toUInt(base)
+            if (value < 0U || value > UInt.MAX_VALUE)
+                throw RuntimeException("Invalid default for uint32 field $name: out of range.")
+        } catch (e: NumberFormatException) {
+            throw RuntimeException("Invalid default for uint32 field $name: $text", e)
+        }
+        return "${fieldDefault}u"
+    }
+
+    /**
+     * Checks if [text] is a valid uint64 representation and returns the String representation
+     * for instantiating that uint64.
+     */
+    private fun parseUInt64String(base: Int, text: String): String {
+        try {
+            val value = text.toULong(base)
+            if (value < 0U || value > ULong.MAX_VALUE)
+                throw RuntimeException("Invalid default for uint64 field $name: out of range.")
+        } catch (e: NumberFormatException) {
+            throw RuntimeException("Invalid default for uint64 field $name: $text", e)
+        }
+        return "${fieldDefault}uL"
+    }
+
+    /**
+     * Checks if [text] is a valid float32 representation and returns the String representation
+     * for instantiating that float32.
+     */
+    private fun parseFloat32String(text: String): String {
+        try {
+            text.toFloat()
+        } catch (e: NumberFormatException) {
+            throw RuntimeException("Invalid default for float32 field $name: $text", e)
+        }
+        return "\"$text\".toFloat()"
+    }
+
+    /**
+     * Checks if [text] is a valid float64 representation and returns the String representation
+     * for instantiating that float64.
+     */
+    private fun parseFloat64String(text: String): String {
+        try {
+            text.toDouble()
+        } catch (e: NumberFormatException) {
+            throw RuntimeException("Invalid default for float64 field $name: $text", e)
+        }
+        return "\"$text\".toDouble()"
+    }
+
+    private fun parseUUIDString(headerGenerator: HeaderGenerator): String {
+        try {
+            val uuidBytes = ByteBuffer.wrap(Base64.getUrlDecoder().decode(fieldDefault))
+            uuidBytes.getLong()
+            uuidBytes.getLong()
+        } catch (e: IllegalArgumentException) {
+            throw RuntimeException("Invalid default for uuid field $name: $fieldDefault", e)
+        }
+        headerGenerator.addImport(MessageGenerator.UUID_CLASS)
+        return "Uuid.fromString(\"$fieldDefault\")"
+    }
+
+    private fun getBaseAndDefaultString(fieldDefault: String): Pair<Int, String> {
         var base = 10
         var defaultString = fieldDefault
-        if (defaultString?.startsWith("0x") == true) {
+        if (defaultString.startsWith("0x")) {
             base = 16
             defaultString = defaultString.substring(2)
         }
         return Pair(base, defaultString)
     }
 
-    private fun validateNullDefault() {
-        if (!nullableVersions.contains(versions)) throw RuntimeException(
+    private fun requireNullDefaultAllowed() {
+        if (!isNullDefaultAllowed()) throw RuntimeException(
             "null cannot be the default for field $name, because not all versions of this field are nullable."
         )
     }
@@ -501,7 +533,7 @@ class FieldSpec @JsonCreator constructor(
     /**
      * Returns `true` iff all versions are nullable versions.
      */
-    private fun isNullDefaultAllowed(): Boolean = !nullableVersions.contains(versions)
+    private fun isNullDefaultAllowed(): Boolean = nullableVersions.contains(versions)
 
     /**
      * Get the abstract Kotlin type of the field-- for example, List.
@@ -516,26 +548,27 @@ class FieldSpec @JsonCreator constructor(
     ): String {
         return when {
             type is BoolFieldType
-            || type is Int8FieldType
-            || type is Int16FieldType
-            || type is Uint16FieldType
-            || type is Uint32FieldType
-            || type is Int32FieldType
-            || type is Int64FieldType
-            || type is UUIDFieldType
-            || type is Float32FieldType
-            || type is Float64FieldType
-            || type is RecordsFieldType
-            || type.isString
-            || (type.isBytes && zeroCopy) -> type.getBoxedKotlinType(headerGenerator)!!
+                    || type is Int8FieldType
+                    || type is Int16FieldType
+                    || type is Uint16FieldType
+                    || type is Uint32FieldType
+                    || type is Int32FieldType
+                    || type is Int64FieldType
+                    || type is UUIDFieldType
+                    || type is Float32FieldType
+                    || type is Float64FieldType
+                    || type is RecordsFieldType
+                    || type.isString
+                    || (type.isBytes && zeroCopy) -> type.getBoxedKotlinType(headerGenerator)!!
+
             type.isBytes -> "ByteArray" + if (type.isNullable) "?" else ""
             type.isStruct -> capitalizeFirst(typeString) + if (type.isNullable) "?" else ""
             type.isArray -> {
-                val arrayType = type as FieldType.ArrayType
+                val arrayType = type as ArrayType
                 if (structRegistry.isStructArrayWithKeys(this)) {
                     headerGenerator.addImport(MessageGenerator.IMPLICIT_LINKED_HASH_MULTI_COLLECTION_CLASS)
                     collectionType(arrayType.elementType.toString()) + if (type.isNullable) "?" else ""
-                } else when(arrayType.elementType) {
+                } else when (arrayType.elementType) {
                     is BoolFieldType -> "BooleanArray"
                     is Int8FieldType -> "ByteArray"
                     is Uint8FieldType -> "UByteArray"
@@ -549,10 +582,7 @@ class FieldSpec @JsonCreator constructor(
                     is Float64FieldType -> "DoubleArray"
                     else -> {
                         headerGenerator.addImport(MessageGenerator.LIST_CLASS)
-                        String.format(
-                            "List<%s>",
-                            arrayType.elementType.getBoxedKotlinType(headerGenerator),
-                        )
+                        String.format("List<%s>", arrayType.elementType.getBoxedKotlinType(headerGenerator))
                     }
                 } + if (type.isNullable) "?" else ""
             }
@@ -573,11 +603,11 @@ class FieldSpec @JsonCreator constructor(
         structRegistry: StructRegistry,
     ): String {
         return if (type.isArray) {
-            val arrayType = type as FieldType.ArrayType
+            val arrayType = type as ArrayType
             if (structRegistry.isStructArrayWithKeys(this))
                 collectionType(arrayType.elementType.toString())
             else {
-                return when(arrayType.elementType) {
+                return when (arrayType.elementType) {
                     is BoolFieldType -> "BooleanArray"
                     is Int8FieldType -> "ByteArray"
                     is Uint8FieldType -> "UByteArray"
@@ -604,6 +634,8 @@ class FieldSpec @JsonCreator constructor(
     /**
      * Generate an if statement that checks if this field has a non-default value.
      *
+     * Note that the field has to be immutable if it is nullable.
+     *
      * @param headerGenerator The header generator in case we need to add imports.
      * @param structRegistry The struct registry in case we need to look up structs.
      * @param buffer The code buffer to write to.
@@ -617,74 +649,48 @@ class FieldSpec @JsonCreator constructor(
         structRegistry: StructRegistry,
         buffer: CodeBuffer,
         fieldPrefix: String?,
-        nullableVersions: Versions,
-        disableSafeUnwrap: Boolean = false,
+        fromIfNotNull: Boolean = false,
     ) {
-        val fieldDefault = fieldDefault(headerGenerator, structRegistry)
-        val prefixedFieldName = if (disableSafeUnwrap) "${fieldPrefix ?: "this."}${camelCaseName()}"
-            else safePrefixedCamelCaseName(fieldPrefix)
-        if (type.isNullable && !disableSafeUnwrap) {
-            // Generate copy variable for smart cast
-            buffer.printf("val %s = %s%n", camelCaseName(), "${fieldPrefix ?: "this."}${camelCaseName()}")
-        }
+        val fieldDefaultString = fieldDefault(headerGenerator, structRegistry)
+        val prefixedFieldName = "${fieldPrefix ?: ""}${camelCaseName()}"
 
-        if (type.isArray) {
-            if (fieldDefault == "null")
+        when {
+            // All fields with null default (includes Records too)
+            fieldDefaultString == "null" ->
                 buffer.printf("if (%s != null) {%n", prefixedFieldName)
-            else if (nullableVersions.isEmpty)
-                buffer.printf("if (%s.isNotEmpty()) {%n", prefixedFieldName)
-            else buffer.printf(
-                "if (%s == null || %s.isNotEmpty()) {%n",
-                prefixedFieldName,
-                prefixedFieldName,
-            )
-        } else if (type.isBytes) {
-            if (fieldDefault == "null")
-                buffer.printf("if (%s != null) {%n", prefixedFieldName)
-            else if (nullableVersions.isEmpty) {
-                if (zeroCopy) buffer.printf(
-                    // it is a ByteBuffer
-                    "if (%s.hasRemaining()) {%n",
+
+            type is ArrayType && type.isNullable ->
+                buffer.printf(
+                    "if (%s%s.isNotEmpty()) {%n",
+                    if (fromIfNotNull) "" else "$prefixedFieldName == null || ",
                     prefixedFieldName,
                 )
-                // else it is a ByteArray
-                else buffer.printf("if (%s.length != 0) {%n", prefixedFieldName)
-            } else {
+
+            type is ArrayType -> buffer.printf("if (%s.isNotEmpty()) {%n", prefixedFieldName)
+
+            type is BytesFieldType && type.isNullable ->
                 if (zeroCopy) buffer.printf(
-                    "if (%s == null || %s.remaining() > 0) {%n",
-                    prefixedFieldName,
+                    "if (%s%s.remaining() > 0) {%n",
+                    if (fromIfNotNull) "" else "$prefixedFieldName == null || ",
                     prefixedFieldName,
                 )
                 else buffer.printf(
-                    "if (%s == null || %s.length != 0) {%n",
-                    prefixedFieldName,
+                    "if (%s%s.isNotEmpty()) {%n",
+                    if (fromIfNotNull) "" else "$prefixedFieldName == null || ",
                     prefixedFieldName,
                 )
-            }
-        } else if (type.isString || type.isStruct || type is UUIDFieldType) {
-            if (fieldDefault == "null")
-                buffer.printf("if (%s != null) {%n", prefixedFieldName)
-            else if (nullableVersions.isEmpty) buffer.printf(
-                "if (%s != %s) {%n",
-                prefixedFieldName,
-                fieldDefault,
-            )
-            else buffer.printf(
-                "if (%s == null || %s != %s) {%n",
-                prefixedFieldName,
-                prefixedFieldName,
-                fieldDefault,
-            )
-        } else if (type is BoolFieldType) buffer.printf(
-            "if (%s%s) {%n",
-            if (fieldDefault == "true") "!" else "",
-            prefixedFieldName,
-        )
-        else buffer.printf(
-            "if (%s != %s) {%n",
-            prefixedFieldName,
-            fieldDefault,
-        )
+
+            type is BytesFieldType ->
+                if (zeroCopy) buffer.printf("if (%s.remaining() > 0) {%n", prefixedFieldName)
+                else buffer.printf("if (%s.isNotEmpty()) {%n", prefixedFieldName)
+
+            type is StringFieldType
+                    || type is StructType
+                    || type is BoolFieldType
+                    || type is UUIDFieldType
+                    || type.isPrimitive
+            -> buffer.printf("if (%s != %s) {%n", prefixedFieldName, fieldDefaultString)
+        }
     }
 
     /**
@@ -706,7 +712,6 @@ class FieldSpec @JsonCreator constructor(
             structRegistry = structRegistry,
             buffer = buffer,
             fieldPrefix = fieldPrefix,
-            nullableVersions = nullableVersions,
         )
         buffer.incrementIndent()
         headerGenerator.addImport(MessageGenerator.UNSUPPORTED_VERSION_EXCEPTION_CLASS)
@@ -724,7 +729,7 @@ class FieldSpec @JsonCreator constructor(
 
         fun collectionType(baseType: String): String = baseType + "Collection"
 
-        fun primitiveArrayType(baseType: FieldType): String = when(baseType) {
+        fun primitiveArrayType(baseType: FieldType): String = when (baseType) {
             is BoolFieldType -> "BooleanArray"
             is Int8FieldType -> "ByteArray"
             is Uint8FieldType -> "UByteArray"

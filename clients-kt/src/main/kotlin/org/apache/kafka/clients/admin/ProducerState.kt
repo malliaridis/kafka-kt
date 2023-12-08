@@ -17,7 +17,7 @@
 
 package org.apache.kafka.clients.admin
 
-class ProducerState(
+data class ProducerState(
     val producerId: Long,
     val producerEpoch: Int,
     val lastSequence: Int,
@@ -30,49 +30,37 @@ class ProducerState(
         message = "Use property instead",
         replaceWith = ReplaceWith("producerId"),
     )
-    fun producerId(): Long {
-        return producerId
-    }
+    fun producerId(): Long = producerId
 
     @Deprecated(
         message = "Use property instead",
         replaceWith = ReplaceWith("producerEpoch"),
     )
-    fun producerEpoch(): Int {
-        return producerEpoch
-    }
+    fun producerEpoch(): Int = producerEpoch
 
     @Deprecated(
         message = "Use property instead",
         replaceWith = ReplaceWith("lastSequence"),
     )
-    fun lastSequence(): Int {
-        return lastSequence
-    }
+    fun lastSequence(): Int = lastSequence
 
     @Deprecated(
         message = "Use property instead",
         replaceWith = ReplaceWith("lastTimestamp"),
     )
-    fun lastTimestamp(): Long {
-        return lastTimestamp
-    }
+    fun lastTimestamp(): Long = lastTimestamp
 
     @Deprecated(
         message = "Use property instead",
         replaceWith = ReplaceWith("currentTransactionStartOffset"),
     )
-    fun currentTransactionStartOffset(): Long? {
-        return currentTransactionStartOffset
-    }
+    fun currentTransactionStartOffset(): Long? = currentTransactionStartOffset
 
     @Deprecated(
         message = "Use property instead",
         replaceWith = ReplaceWith("coordinatorEpoch"),
     )
-    fun coordinatorEpoch(): Int? {
-        return coordinatorEpoch
-    }
+    fun coordinatorEpoch(): Int? = coordinatorEpoch
 
     override fun toString(): String {
         return "ProducerState(" +

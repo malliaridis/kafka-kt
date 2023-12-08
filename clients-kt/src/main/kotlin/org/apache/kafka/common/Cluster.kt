@@ -133,7 +133,7 @@ class Cluster private constructor(
         message = "Use property instaed.",
         replaceWith = ReplaceWith("nodes")
     )
-    fun nodes(): List<Node?> {
+    fun nodes(): List<Node> {
         return nodes
     }
 
@@ -225,9 +225,19 @@ class Cluster private constructor(
      * Get all topics.
      * @return a set of all topics
      */
+    @Deprecated(
+        message = "Use property instead",
+        replaceWith = ReplaceWith("topics")
+    )
     fun topics(): Set<String> {
         return partitionsByTopic.keys
     }
+
+    /**
+     * Set of all topics
+     */
+    val topics: Set<String>
+        get() = partitionsByTopic.keys
 
     @Deprecated(
         message = "Use property instead",

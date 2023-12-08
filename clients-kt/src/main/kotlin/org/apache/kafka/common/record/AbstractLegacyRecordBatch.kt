@@ -74,7 +74,7 @@ abstract class AbstractLegacyRecordBatch : AbstractRecordBatch(), Record {
     override fun hasTimestampType(timestampType: TimestampType): Boolean =
         outerRecord().timestampType() == timestampType
 
-    override fun checksum(): Long = outerRecord().checksum()
+    override fun checksum(): UInt = outerRecord().checksum()
 
     override fun maxTimestamp(): Long = timestamp()
 
@@ -82,7 +82,7 @@ abstract class AbstractLegacyRecordBatch : AbstractRecordBatch(), Record {
 
     override fun timestampType(): TimestampType = outerRecord().timestampType()
 
-    override fun baseOffset(): Long = iterator().next().offset()
+    override fun baseOffset(): Long = first().offset()
 
     override fun magic(): Byte = outerRecord().magic()
 

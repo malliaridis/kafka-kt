@@ -184,10 +184,11 @@ class Bytes(private val bytes: ByteArray) : Comparable<Bytes> {
             val inputArr = input.get()
             val ret = ByteArray(inputArr.size)
             var carry = 1
-            inputArr.reversed().forEachIndexed { index, byte ->
-                if (byte == 0xFF.toByte() && carry == 1) ret[index] = 0x00.toByte()
-                else {
-                    ret[index] = (byte + carry).toByte()
+            for (i in inputArr.indices.reversed()) {
+                if (inputArr[i] == 0xFF.toByte() && carry == 1) {
+                    ret[i] = 0x00.toByte()
+                } else {
+                    ret[i] = (inputArr[i] + carry).toByte()
                     carry = 0
                 }
             }

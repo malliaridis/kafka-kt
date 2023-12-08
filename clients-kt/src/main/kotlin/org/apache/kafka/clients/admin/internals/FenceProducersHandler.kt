@@ -136,7 +136,7 @@ class FenceProducersHandler(
                 transactionalIdKey, error.exception(
                     "InitProducerId request for transactionalId " +
                             "`${transactionalIdKey.idValue}` failed due to unexpected error"
-                )
+                )!!
             )
         }
     }

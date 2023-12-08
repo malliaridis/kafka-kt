@@ -25,10 +25,19 @@ package org.apache.kafka.clients.admin
  * @property credentialInfos the required SASL/SCRAM credential representations for the user
  * @see [KIP-554: Add Broker-side SCRAM Config API](https://cwiki.apache.org/confluence/display/KAFKA/KIP-554%3A+Add+Broker-side+SCRAM+Config+API)
  */
-data class UserScramCredentialsDescription(
-    val name: String,
-    val credentialInfos: List<ScramCredentialInfo>,
+class UserScramCredentialsDescription(
+    name: String,
+    credentialInfos: List<ScramCredentialInfo>,
 ) {
+
+    val name: String
+
+    val credentialInfos: List<ScramCredentialInfo>
+
+    init {
+        this.name = name
+        this.credentialInfos = credentialInfos.toList()
+    }
 
     override fun toString(): String =
         "UserScramCredentialsDescription{name='$name', credentialInfos=$credentialInfos}"
@@ -52,4 +61,22 @@ data class UserScramCredentialsDescription(
         replaceWith = ReplaceWith("credentialInfos"),
     )
     fun credentialInfos(): List<ScramCredentialInfo> = credentialInfos
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as UserScramCredentialsDescription
+
+        if (name != other.name) return false
+        if (credentialInfos != other.credentialInfos) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = name.hashCode()
+        result = 31 * result + credentialInfos.hashCode()
+        return result
+    }
 }

@@ -22,9 +22,7 @@ class GroupAuthorizationException(
     val groupId: String? = null,
 ) : AuthorizationException(message) {
 
-    constructor(
-        groupId: String? = null,
-    ) : this(
+    constructor(groupId: String? = null) : this(
         message = "Not authorized to access group: $groupId",
         groupId = groupId,
     )
@@ -44,7 +42,10 @@ class GroupAuthorizationException(
     companion object {
         @Deprecated("Use constructor with groupId instead.")
         fun forGroupId(groupId: String): GroupAuthorizationException {
-            return GroupAuthorizationException("Not authorized to access group: $groupId", groupId)
+            return GroupAuthorizationException(
+                message = "Not authorized to access group: $groupId",
+                groupId = groupId
+            )
         }
     }
 }

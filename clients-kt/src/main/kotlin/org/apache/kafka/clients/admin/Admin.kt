@@ -18,7 +18,7 @@
 package org.apache.kafka.clients.admin
 
 import java.time.Duration
-import java.util.*
+import java.util.Properties
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.ElectionType
 import org.apache.kafka.common.Metric
@@ -175,7 +175,7 @@ interface Admin : AutoCloseable {
      * @return The DeleteTopicsResult.
      */
     fun deleteTopics(topics: Collection<String>): DeleteTopicsResult {
-        return deleteTopics(TopicCollection.ofTopicNames(topics), DeleteTopicsOptions())
+        return deleteTopics(topics, DeleteTopicsOptions())
     }
 
     /**
@@ -919,12 +919,13 @@ interface Admin : AutoCloseable {
         groupId: String,
         options: ListConsumerGroupOffsetsOptions = ListConsumerGroupOffsetsOptions()
     ): ListConsumerGroupOffsetsResult {
-        @Suppress("deprecation")
-        val groupSpec = ListConsumerGroupOffsetsSpec().topicPartitions(options.topicPartitions())
+        @Suppress("Deprecation")
+        val groupSpec = ListConsumerGroupOffsetsSpec()
+            .apply { topicPartitions = options.topicPartitions() }
 
         // We can use the provided options with the batched API, which uses topic partitions from
         // the group spec and ignores any topic partitions set in the options.
-        return listConsumerGroupOffsets(Collections.singletonMap(groupId, groupSpec), options)
+        return listConsumerGroupOffsets(mapOf(groupId to groupSpec), options)
     }
 
     /**
@@ -1320,11 +1321,11 @@ interface Admin : AutoCloseable {
      *
      * This is a convenience method for [describeUserScramCredentials]
      *
-     * @param users the users for which credentials are to be described; all users' credentials are described if null
-     * or empty.
+     * @param users the users for which credentials are to be described; all users' credentials are
+     * described if null or empty.
      * @return The DescribeUserScramCredentialsResult.
      */
-    fun describeUserScramCredentials(users: List<String>): DescribeUserScramCredentialsResult {
+    fun describeUserScramCredentials(users: List<String?>?): DescribeUserScramCredentialsResult {
         return describeUserScramCredentials(users, DescribeUserScramCredentialsOptions())
     }
 
@@ -1345,13 +1346,13 @@ interface Admin : AutoCloseable {
      *
      * This operation is supported by brokers with version 2.7.0 or higher.
      *
-     * @param users the users for which credentials are to be described; all users' credentials are described if null
-     * or empty.
+     * @param users the users for which credentials are to be described; all users' credentials are
+     * described if null or empty.
      * @param options The options to use when describing the credentials
      * @return The DescribeUserScramCredentialsResult.
      */
     fun describeUserScramCredentials(
-        users: List<String>?,
+        users: List<String?>?,
         options: DescribeUserScramCredentialsOptions
     ): DescribeUserScramCredentialsResult
 

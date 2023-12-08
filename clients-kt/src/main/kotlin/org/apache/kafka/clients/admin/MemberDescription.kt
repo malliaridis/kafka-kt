@@ -20,7 +20,7 @@ package org.apache.kafka.clients.admin
 /**
  * A detailed description of a single group instance in the cluster.
  */
-class MemberDescription(
+data class MemberDescription(
     val memberId: String = "",
     val groupInstanceId: String? = null,
     val clientId: String = "",
@@ -81,4 +81,3 @@ class MemberDescription(
                 ", assignment=$assignment)"
     }
 }
-

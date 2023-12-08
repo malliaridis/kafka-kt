@@ -17,6 +17,8 @@
 
 package org.apache.kafka.clients.producer
 
+import java.util.Properties
+import java.util.concurrent.atomic.AtomicInteger
 import org.apache.kafka.clients.ClientDnsLookup
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.CommonClientConfigs.postProcessReconnectBackoffConfigs
@@ -39,8 +41,6 @@ import org.apache.kafka.common.utils.Utils.enumOptions
 import org.apache.kafka.common.utils.Utils.propsToMap
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import java.util.*
-import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Configuration for the Kafka Producer. Documentation for these configurations can be found in the
@@ -77,15 +77,19 @@ class ProducerConfig : AbstractConfig {
     }
 
     private fun maybeOverrideClientId(configs: MutableMap<String, Any?>) {
-        val refinedClientId: String = getString(CLIENT_ID_CONFIG) ?: run {
-            val transactionalId: String = getString(TRANSACTIONAL_ID_CONFIG)!!
-            "producer-$transactionalId"
+        val refinedClientId: String?
+        val userConfiguredClientId = this.originals().containsKey(CLIENT_ID_CONFIG)
+        refinedClientId = if (userConfiguredClientId) {
+            getString(CLIENT_ID_CONFIG)
+        } else {
+            val transactionalId = getString(TRANSACTIONAL_ID_CONFIG)
+            "producer-" + (transactionalId ?: PRODUCER_CLIENT_ID_SEQUENCE.getAndIncrement())
         }
         configs[CLIENT_ID_CONFIG] = refinedClientId
     }
 
     private fun postProcessAndValidateIdempotenceConfigs(configs: MutableMap<String, Any?>) {
-        val originalConfigs: Map<String, Any?> = originals()
+        val originalConfigs = originals()
         val acksStr = parseAcks(getString(ACKS_CONFIG)!!)
         configs[ACKS_CONFIG] = acksStr
         val userConfiguredIdempotence = originals().containsKey(ENABLE_IDEMPOTENCE_CONFIG)
@@ -645,7 +649,7 @@ class ProducerConfig : AbstractConfig {
             ).define(
                 name = COMPRESSION_TYPE_CONFIG,
                 type = ConfigDef.Type.STRING,
-                defaultValue = CompressionType.NONE.name,
+                defaultValue = CompressionType.NONE.altName,
                 validator = `in`(*enumOptions(CompressionType::class.java)),
                 importance = Importance.HIGH,
                 documentation = COMPRESSION_TYPE_DOC,
@@ -899,22 +903,22 @@ class ProducerConfig : AbstractConfig {
         }
 
         fun appendSerializerToConfig(
-            configs: Map<String, Any?>?,
+            configs: Map<String, Any?>,
             keySerializer: Serializer<*>?,
             valueSerializer: Serializer<*>?,
         ): Map<String, Any?> {
             // validate serializer configuration, if the passed serializer instance is null, the
             // user must explicitly set a valid serializer configuration value
-            val newConfigs: MutableMap<String, Any?> = HashMap(configs)
+            val newConfigs = configs.toMutableMap()
             if (keySerializer != null)
                 newConfigs[KEY_SERIALIZER_CLASS_CONFIG] = keySerializer.javaClass
             else if (newConfigs[KEY_SERIALIZER_CLASS_CONFIG] == null)
-                throw ConfigException(KEY_SERIALIZER_CLASS_CONFIG, null, "must be non-null.")
+                throw ConfigException(name = KEY_SERIALIZER_CLASS_CONFIG, message = "must be non-null.")
 
             if (valueSerializer != null)
                 newConfigs[VALUE_SERIALIZER_CLASS_CONFIG] = valueSerializer.javaClass
             else if (newConfigs[VALUE_SERIALIZER_CLASS_CONFIG] == null)
-                throw ConfigException(VALUE_SERIALIZER_CLASS_CONFIG, null, "must be non-null.")
+                throw ConfigException(name = VALUE_SERIALIZER_CLASS_CONFIG, message = "must be non-null.")
 
             return newConfigs
         }

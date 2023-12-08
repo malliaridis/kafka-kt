@@ -162,7 +162,7 @@ open class SslChannelBuilder(
         /**
          * No-Op for plaintext authenticator
          */
-        override fun authenticate() {}
+        override fun authenticate() = Unit
 
         /**
          * Constructs Principal using configured principalBuilder.

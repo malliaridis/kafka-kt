@@ -17,9 +17,7 @@
 
 package org.apache.kafka.clients.admin.internals
 
-import java.util.*
 import java.util.function.BiFunction
-import java.util.function.Consumer
 import org.apache.kafka.clients.admin.internals.AdminApiHandler.RequestAndKeys
 import org.apache.kafka.common.Node
 import org.apache.kafka.common.errors.DisconnectException
@@ -114,10 +112,10 @@ class AdminApiDriver<K, V>(
     }
 
     private fun clear(keys: Collection<K>) {
-        keys.forEach(Consumer { key: K ->
+        keys.forEach { key ->
             lookupMap.remove(key)
             fulfillmentMap.remove(key)
-        })
+        }
     }
 
     fun keyToBrokerId(key: K): Int? = fulfillmentMap.getKey(key)?.destinationBrokerId
@@ -142,7 +140,7 @@ class AdminApiDriver<K, V>(
     }
 
     private fun retryLookup(keys: Collection<K>) {
-        keys.forEach(Consumer { key: K -> unmap(key) })
+        keys.forEach { key: K -> unmap(key) }
     }
 
     /**
@@ -190,27 +188,26 @@ class AdminApiDriver<K, V>(
         currentTimeMs: Long,
         spec: RequestSpec<K>,
         response: AbstractResponse,
-        node: Node?
+        node: Node?,
     ) {
         clearInflightRequest(currentTimeMs, spec)
         if (spec.scope is FulfillmentScope) handler.handleResponse(
             broker = node!!,
             keys = spec.keys,
             response = response,
-        ).run {
+        ).apply {
             complete(completedKeys)
             completeExceptionally(failedKeys)
             retryLookup(unmappedKeys)
         }
-        else handler.lookupStrategy()
-            .handleResponse(
-                keys = spec.keys,
-                response = response,
-            ).run {
-                completedKeys.forEach { value -> lookupMap.remove(value) }
-                completeLookup(mappedKeys)
-                completeLookupExceptionally(failedKeys)
-            }
+        else handler.lookupStrategy().handleResponse(
+            keys = spec.keys,
+            response = response,
+        ).apply {
+            completedKeys.forEach { value -> lookupMap.remove(value) }
+            completeLookup(mappedKeys)
+            completeLookupExceptionally(failedKeys)
+        }
     }
 
     /**
@@ -260,27 +257,26 @@ class AdminApiDriver<K, V>(
         multimap.entrySet().forEach { (scope, keys) ->
             if (keys.isEmpty()) return@forEach
 
-            val requestState: RequestState =
-                requestStates.computeIfAbsent(scope as ApiRequestScope) { RequestState() }
+            val requestState: RequestState = requestStates.computeIfAbsent(scope as ApiRequestScope) { RequestState() }
 
             if (requestState.hasInflight()) return@forEach
 
             // Copy the keys to avoid exposing the underlying mutable set
-            val copyKeys = Collections.unmodifiableSet(HashSet(keys))
+            val copyKeys = keys.toSet()
             val newRequests = buildRequest.apply(copyKeys, scope)
             if (newRequests.isEmpty()) return
 
             // Only process the first request; all the remaining requests will be targeted at the same broker
             // and we don't want to issue more than one fulfillment request per broker at a time
-            val newRequest = newRequests.iterator().next()
+            val newRequest = newRequests.first()
             val spec = RequestSpec(
-                handler.apiName() + "(api=${newRequest.request.apiKey()})",
-                scope,
-                newRequest.keys,
-                newRequest.request,
-                requestState.nextAllowedRetryMs,
-                deadlineMs,
-                requestState.tries
+                name = handler.apiName() + "(api=${newRequest.request.apiKey})",
+                scope = scope,
+                keys = newRequest.keys,
+                request = newRequest.request,
+                nextAllowedTryMs = requestState.nextAllowedRetryMs,
+                deadlineMs = deadlineMs,
+                tries = requestState.tries
             )
             requestState.setInflight(spec)
             requests.add(spec)
@@ -364,9 +360,7 @@ class AdminApiDriver<K, V>(
             message = "Use property instead.",
             replaceWith = ReplaceWith("destinationBrokerId")
         )
-        override fun destinationBrokerId(): Int {
-            return destinationBrokerId
-        }
+        override fun destinationBrokerId(): Int = destinationBrokerId
     }
 
     /**
@@ -374,16 +368,19 @@ class AdminApiDriver<K, V>(
      * Each value can map to one and only one key, but many values can be associated with
      * a single key.
      *
-     * @param <K> The key type
-     * @param <V> The value type
-    </V></K> */
+     * @param K The key type
+     * @param V The value type
+     */
     private class BiMultimap<K, V> {
+
         private val reverseMap: MutableMap<V, K> = HashMap()
+
         private val map: MutableMap<K, MutableSet<V>> = HashMap()
+
         fun put(key: K, value: V) {
             remove(value)
             reverseMap[value] = key
-            map.computeIfAbsent(key) { _: K -> HashSet() }.add(value)
+            map.computeIfAbsent(key) { _: K -> hashSetOf() }.add(value)
         }
 
         fun remove(value: V) {
@@ -399,12 +396,8 @@ class AdminApiDriver<K, V>(
             }
         }
 
-        fun getKey(value: V): K? {
-            return reverseMap[value]
-        }
+        fun getKey(value: V): K? = reverseMap[value]
 
-        fun entrySet(): Set<Map.Entry<K, Set<V>>> {
-            return map.entries
-        }
+        fun entrySet(): Set<Map.Entry<K, Set<V>>> = map.entries
     }
 }

@@ -54,7 +54,7 @@ class ProduceRequestResult(val topicPartition: TopicPartition) {
      * response was successful
      */
     operator fun set(
-        baseOffset: Long,
+        baseOffset: Long?,
         logAppendTime: Long,
         errorsByIndex: ((Int) -> RuntimeException?)?,
     ) {
@@ -93,7 +93,7 @@ class ProduceRequestResult(val topicPartition: TopicPartition) {
         message = "User property instead",
         replaceWith = ReplaceWith("baseOffset"),
     )
-    fun baseOffset(): Long = baseOffset!!
+    fun baseOffset(): Long? = baseOffset!!
 
     /**
      * Return true if log append time is being used for this topic

@@ -21,7 +21,7 @@ data class ConfigValue(
     val name: String,
     var value: Any? = null,
     var recommendedValues: List<Any> = emptyList(),
-    private val errorMessages: MutableList<String?> = mutableListOf(),
+    private var errorMessages: List<String?> = emptyList(),
     var visible: Boolean = true,
 ) {
 
@@ -66,7 +66,7 @@ data class ConfigValue(
     }
 
     fun addErrorMessage(errorMessage: String?) {
-        errorMessages.add(errorMessage)
+        errorMessages += errorMessage
     }
 
     @Deprecated("Use property instead")

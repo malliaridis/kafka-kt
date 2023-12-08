@@ -21,10 +21,15 @@ package org.apache.kafka.common.errors
  * A misc. network-related IOException occurred when making a request. This could be because the client's metadata is
  * out of date and it is making a request to a node that is now dead.
  */
-class NetworkException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : InvalidMetadataException(message = message, cause = cause) {
+class NetworkException : InvalidMetadataException {
+
+    constructor() : super()
+
+    constructor(message: String?) : super(message)
+
+    constructor(cause: Throwable?) : super(cause)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

@@ -18,7 +18,6 @@
 package org.apache.kafka.clients.consumer
 
 import java.nio.ByteBuffer
-import java.util.*
 import org.apache.kafka.clients.consumer.internals.AbstractStickyAssignor
 import org.apache.kafka.common.Cluster
 import org.apache.kafka.common.Configurable
@@ -49,9 +48,7 @@ interface ConsumerPartitionAssignor {
      * @param topics Topics subscribed to through [KafkaConsumer.subscribe] and variants
      * @return nullable subscription user data
      */
-    fun subscriptionUserData(topics: Set<String>): ByteBuffer? {
-        return null
-    }
+    fun subscriptionUserData(topics: Set<String>): ByteBuffer? = null
 
     /**
      * Perform the group assignment given the member subscriptions and current cluster metadata.
@@ -69,15 +66,13 @@ interface ConsumerPartitionAssignor {
      * @param assignment The local member's assignment as provided by the leader in [assign]
      * @param metadata Additional metadata on the consumer (optional)
      */
-    fun onAssignment(assignment: Assignment, metadata: ConsumerGroupMetadata?) {}
+    fun onAssignment(assignment: Assignment?, metadata: ConsumerGroupMetadata?) = Unit
 
     /**
      * Indicate which rebalance protocol this assignor works with;
      * By default it should always work with [RebalanceProtocol.EAGER].
      */
-    fun supportedProtocols(): List<RebalanceProtocol?>? {
-        return listOf(RebalanceProtocol.EAGER)
-    }
+    fun supportedProtocols(): List<RebalanceProtocol?>? = listOf(RebalanceProtocol.EAGER)
 
     /**
      * Return the version of the assignor which indicates how the user metadata encodings
@@ -99,7 +94,7 @@ interface ConsumerPartitionAssignor {
         val userData: ByteBuffer? = null,
         val ownedPartitions: List<TopicPartition> = emptyList(),
         generationId: Int = AbstractStickyAssignor.DEFAULT_GENERATION,
-        val rackId: String? = null
+        val rackId: String? = null,
     ) {
 
         var groupInstanceId: String? = null
@@ -187,11 +182,7 @@ interface ConsumerPartitionAssignor {
         )
         fun groupSubscription(): Map<String, Subscription> = subscriptions
 
-        override fun toString(): String {
-            return "GroupSubscription(" +
-                    "subscriptions=$subscriptions" +
-                    ")"
-        }
+        override fun toString(): String = "GroupSubscription(subscriptions=$subscriptions)"
     }
 
     class GroupAssignment(val assignments: Map<String, Assignment>) {
@@ -200,15 +191,9 @@ interface ConsumerPartitionAssignor {
             message = "Use property instead",
             replaceWith = ReplaceWith("assignments"),
         )
-        fun groupAssignment(): Map<String, Assignment> {
-            return assignments
-        }
+        fun groupAssignment(): Map<String, Assignment> = assignments
 
-        override fun toString(): String {
-            return "GroupAssignment(" +
-                    "assignments=$assignments" +
-                    ")"
-        }
+        override fun toString(): String = "GroupAssignment(assignments=$assignments)"
     }
 
     /**
@@ -234,17 +219,15 @@ interface ConsumerPartitionAssignor {
      */
     enum class RebalanceProtocol(val id: Byte) {
 
-        EAGER(0.toByte()),
+        EAGER(0),
 
-        COOPERATIVE(1.toByte());
+        COOPERATIVE(1);
 
         @Deprecated(
             message = "Use property instead",
             replaceWith = ReplaceWith("id"),
         )
-        fun id(): Byte {
-            return id
-        }
+        fun id(): Byte = id
 
         companion object {
 
@@ -263,48 +246,53 @@ interface ConsumerPartitionAssignor {
          * names/types specified by [ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG].
          */
         fun getAssignorInstances(
-            assignorClasses: List<String>,
+            assignorClasses: List<*>?,
             configs: Map<String, Any?>,
         ): List<ConsumerPartitionAssignor> {
 
-            if (assignorClasses.isEmpty()) return emptyList()
+            if (assignorClasses == null) return emptyList()
 
             val assignors: MutableList<ConsumerPartitionAssignor> = ArrayList()
             // a map to store assignor name -> assignor class name
             val assignorNameMap: MutableMap<String, String> = HashMap()
 
-            assignorClasses.forEach { assignerClass ->
-                var klass: Any = assignerClass
+            assignorClasses.forEach { klass ->
+                var klazz: Any? = klass
 
                 // first try to get the class
-                try {
-                    klass = Class.forName(assignerClass, true, contextOrKafkaClassLoader)
+                if (klass is String) try {
+                    klazz = Class.forName(klass, true, contextOrKafkaClassLoader)
                 } catch (classNotFound: ClassNotFoundException) {
                     throw KafkaException(
-                        "$assignerClass ClassNotFoundException exception occurred",
+                        "$klass ClassNotFoundException exception occurred",
                         classNotFound
                     )
                 }
 
-                val assignor = newInstance(klass)
+                if (klazz is Class<*>) {
+                    val assignor = newInstance(klazz)
 
-                if (assignor is Configurable) assignor.configure(configs)
+                    if (assignor is Configurable) assignor.configure(configs)
 
-                if (assignor is ConsumerPartitionAssignor) {
-                    val assignorName = assignor.name()
-                    if (assignorNameMap.containsKey(assignorName)) {
-                        throw KafkaException(
-                            "The assignor name: '$assignorName' is used in more than one assignor: " +
-                                    "${assignorNameMap[assignorName]}, ${assignor.javaClass.name}"
-                        )
-                    }
+                    if (assignor is ConsumerPartitionAssignor) {
+                        val assignorName = assignor.name()
+                        if (assignorNameMap.containsKey(assignorName)) {
+                            throw KafkaException(
+                                "The assignor name: '$assignorName' is used in more than one assignor: " +
+                                        "${assignorNameMap[assignorName]}, ${assignor.javaClass.name}"
+                            )
+                        }
 
-                    assignorNameMap[assignorName] = assignor.javaClass.name
-                    assignors.add(assignor)
+                        assignorNameMap[assignorName] = assignor.javaClass.name
+                        assignors.add(assignor)
+                    } else throw KafkaException(
+                        "$klass is not an instance of ${ConsumerPartitionAssignor::class.java.name}"
+                    )
                 } else throw KafkaException(
-                    "$klass is not an instance of ${ConsumerPartitionAssignor::class.java.name}"
+                    "List contains element of type ${klazz!!.javaClass.getName()}, expected String or Class"
                 )
             }
+
             return assignors
         }
     }

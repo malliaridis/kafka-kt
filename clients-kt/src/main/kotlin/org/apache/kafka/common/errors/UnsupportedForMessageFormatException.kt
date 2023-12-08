@@ -21,10 +21,11 @@ package org.apache.kafka.common.errors
  * The message format version does not support the requested function. For example, if idempotence is
  * requested and the topic is using a message format older than 0.11.0.0, then this error will be returned.
  */
-class UnsupportedForMessageFormatException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : ApiException(message = message, cause = cause) {
+class UnsupportedForMessageFormatException : ApiException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

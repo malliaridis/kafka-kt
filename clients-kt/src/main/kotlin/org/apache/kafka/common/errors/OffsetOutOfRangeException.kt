@@ -21,10 +21,11 @@ package org.apache.kafka.common.errors
  * No reset policy has been defined, and the offsets for these partitions are either larger or smaller
  * than the range of offsets the server has for the given partition.
  */
-class OffsetOutOfRangeException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : InvalidOffsetException(message = message, cause = cause) {
+class OffsetOutOfRangeException : InvalidOffsetException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

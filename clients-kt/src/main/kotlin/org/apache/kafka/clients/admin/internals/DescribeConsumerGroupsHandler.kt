@@ -81,7 +81,7 @@ class DescribeConsumerGroupsHandler(
 
         val completed: MutableMap<CoordinatorKey, ConsumerGroupDescription> = HashMap()
         val failed: MutableMap<CoordinatorKey, Throwable> = HashMap()
-        val groupsToUnmap: MutableSet<CoordinatorKey> = HashSet()
+        val groupsToUnmap: MutableSet<CoordinatorKey> = hashSetOf()
 
         response.data().groups.forEach { describedGroup ->
             val groupIdKey = CoordinatorKey.byGroupId(describedGroup.groupId)
@@ -105,7 +105,7 @@ class DescribeConsumerGroupsHandler(
                         val assignment = ConsumerProtocol.deserializeAssignment(
                             ByteBuffer.wrap(groupMember.memberAssignment)
                         )
-                        partitions = HashSet(assignment.partitions)
+                        partitions = assignment.partitions.toSet()
                     }
 
                     memberDescriptions.add(

@@ -36,17 +36,16 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
 
     // Keep track of the partitions being migrated from one consumer to another during assignment
     // so the cooperative assignor can adjust the assignment
-    protected var partitionsTransferringOwnership: MutableMap<TopicPartition, String>? =
-        mutableMapOf()
+    var partitionsTransferringOwnership: MutableMap<TopicPartition, String>? = mutableMapOf()
 
-    protected abstract fun memberData(
+    abstract fun memberData(
         subscription: ConsumerPartitionAssignor.Subscription,
     ): MemberData
 
     override fun assign(
         partitionsPerTopic: Map<String, Int>,
         subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>,
-    ): Map<String, MutableList<TopicPartition>> {
+    ): MutableMap<String, MutableList<TopicPartition>> {
         val consumerToOwnedPartitions = mutableMapOf<String, MutableList<TopicPartition>>()
         val partitionsWithMultiplePreviousOwners = mutableSetOf<TopicPartition>()
 
@@ -214,7 +213,7 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
         partitionsPerTopic: Map<String, Int>,
         consumerToOwnedPartitions: Map<String, MutableList<TopicPartition>>,
         partitionsWithMultiplePreviousOwners: Set<TopicPartition>,
-    ): Map<String, MutableList<TopicPartition>> {
+    ): MutableMap<String, MutableList<TopicPartition>> {
         if (log.isDebugEnabled) log.debug(
             "Performing constrained assign with partitionsPerTopic: {}, " +
                     "consumerToOwnedPartitions: {}.",
@@ -222,7 +221,7 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
             consumerToOwnedPartitions,
         )
 
-        val allRevokedPartitions: MutableSet<TopicPartition> = HashSet()
+        val allRevokedPartitions = mutableSetOf<TopicPartition>()
 
         // the consumers which may still be assigned one or more partitions to reach expected
         // capacity
@@ -241,8 +240,9 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
         var currentNumMembersWithOverMinQuotaPartitions = 0
 
         // initialize the assignment map with an empty array of size maxQuota for all members
-        val assignment: Map<String, MutableList<TopicPartition>> = consumerToOwnedPartitions.keys
+        val assignment: MutableMap<String, MutableList<TopicPartition>> = consumerToOwnedPartitions.keys
             .associateWith { ArrayList<TopicPartition>(maxQuota) }
+            .toMutableMap()
 
         val assignedPartitions: MutableList<TopicPartition> = ArrayList()
         // Reassign previously owned partitions, up to the expected number of partitions per consumer
@@ -395,7 +395,7 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
                             "minQuota partitions, but no more partitions to be assigned"
                 )
             } else {
-                for (unfilledMember: String in unfilledMembersWithUnderMinQuotaPartitions) {
+                for (unfilledMember in unfilledMembersWithUnderMinQuotaPartitions) {
                     val assignedPartitionsCount = assignment[unfilledMember]!!.size
                     if (assignedPartitionsCount != minQuota) {
                         log.error(
@@ -458,7 +458,7 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
         partitionsPerTopic: Map<String, Int>,
         subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>,
         currentAssignment: MutableMap<String, MutableList<TopicPartition>>,
-    ): Map<String, MutableList<TopicPartition>> {
+    ): MutableMap<String, MutableList<TopicPartition>> {
         if (log.isDebugEnabled) log.debug(
             "performing general assign. partitionsPerTopic: {}, subscriptions: {}, " +
                     "currentAssignment: {}",
@@ -1007,8 +1007,7 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
         // create a deep copy of the current assignment, so we can revert to it if we do not get a
         // more balanced assignment later
         val preBalanceAssignment = deepCopy(currentAssignment)
-        val preBalancePartitionConsumers: Map<TopicPartition, String> =
-            currentPartitionConsumer.toMap()
+        val preBalancePartitionConsumers = currentPartitionConsumer.toMap()
 
         // if we don't already need to revoke something due to subscription changes, first try to
         // balance by only moving newly added partitions
@@ -1327,7 +1326,7 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
             val reversePair = ConsumerPair(newConsumer, oldConsumer)
 
             return if (!partitionMovementsForThisTopic.containsKey(reversePair)) partition
-            else partitionMovementsForThisTopic[reversePair]!!.iterator().next()
+            else partitionMovementsForThisTopic[reversePair]!!.first()
         }
 
         private fun isLinked(

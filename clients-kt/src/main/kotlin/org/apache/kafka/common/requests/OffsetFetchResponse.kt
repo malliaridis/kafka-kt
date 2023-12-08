@@ -180,7 +180,7 @@ class OffsetFetchResponse : AbstractResponse {
     data class PartitionData(
         val offset: Long,
         val leaderEpoch: Int?,
-        val metadata: String,
+        val metadata: String?,
         val error: Errors
     ) {
 
@@ -243,7 +243,7 @@ class OffsetFetchResponse : AbstractResponse {
     }
 
     // package-private for testing purposes
-    fun responseDataV0ToV7(): Map<TopicPartition, PartitionData> {
+    internal fun responseDataV0ToV7(): Map<TopicPartition, PartitionData> {
         val responseData: MutableMap<TopicPartition, PartitionData> = HashMap()
 
         data.topics.forEach { topic ->
@@ -253,7 +253,7 @@ class OffsetFetchResponse : AbstractResponse {
                     PartitionData(
                         offset = partition.committedOffset,
                         leaderEpoch = RequestUtils.getLeaderEpoch(partition.committedLeaderEpoch),
-                        metadata = partition.metadata ?: NO_METADATA,
+                        metadata = partition.metadata,
                         error = Errors.forCode(partition.errorCode)
                     )
             }
@@ -266,7 +266,7 @@ class OffsetFetchResponse : AbstractResponse {
         val group = data
             .groups
             .stream()
-            .filter { g: OffsetFetchResponseGroup -> g.groupId == groupId }
+            .filter { group -> group.groupId == groupId }
             .collect(Collectors.toList())[0]
 
         group.topics.forEach { topic ->
@@ -276,7 +276,7 @@ class OffsetFetchResponse : AbstractResponse {
                     PartitionData(
                         offset = partition.committedOffset,
                         leaderEpoch = RequestUtils.getLeaderEpoch(partition.committedLeaderEpoch),
-                        metadata = partition.metadata ?: NO_METADATA,
+                        metadata = partition.metadata,
                         error = Errors.forCode(partition.errorCode)
                     )
             }
@@ -300,17 +300,17 @@ class OffsetFetchResponse : AbstractResponse {
         const val NO_METADATA = ""
 
         val UNKNOWN_PARTITION = PartitionData(
-            INVALID_OFFSET,
-            null,
-            NO_METADATA,
-            Errors.UNKNOWN_TOPIC_OR_PARTITION
+            offset = INVALID_OFFSET,
+            leaderEpoch = null,
+            metadata = NO_METADATA,
+            error = Errors.UNKNOWN_TOPIC_OR_PARTITION
         )
 
         val UNAUTHORIZED_PARTITION = PartitionData(
-            INVALID_OFFSET,
-            null,
-            NO_METADATA,
-            Errors.TOPIC_AUTHORIZATION_FAILED
+            offset = INVALID_OFFSET,
+            leaderEpoch = null,
+            metadata = NO_METADATA,
+            error = Errors.TOPIC_AUTHORIZATION_FAILED
         )
 
         private val PARTITION_ERRORS = listOf(

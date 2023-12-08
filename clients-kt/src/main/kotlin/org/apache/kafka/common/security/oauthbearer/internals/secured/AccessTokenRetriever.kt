@@ -31,7 +31,7 @@ import java.io.IOException
  * @see HttpAccessTokenRetriever
  * @see FileTokenRetriever
  */
-interface AccessTokenRetriever : Initable, Closeable {
+fun interface AccessTokenRetriever : Initable, Closeable {
 
     /**
      * Retrieves a JWT access token in its serialized three-part form. The implementation is free to

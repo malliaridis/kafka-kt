@@ -76,9 +76,11 @@ class RangeAssignor : AbstractPartitionAssignor() {
     override fun assign(
         partitionsPerTopic: Map<String, Int>,
         subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>,
-    ): Map<String, MutableList<TopicPartition>> {
+    ): MutableMap<String, MutableList<TopicPartition>> {
         val consumersPerTopic = consumersPerTopic(subscriptions)
-        val assignment = subscriptions.keys.associateWith { mutableListOf<TopicPartition>() }
+        val assignment = subscriptions.keys
+            .associateWith { mutableListOf<TopicPartition>() }
+            .toMutableMap()
 
         for ((topic, consumersForTopic) in consumersPerTopic) {
             val numPartitionsForTopic = partitionsPerTopic[topic] ?: continue

@@ -92,7 +92,7 @@ internal class InFlightRequests(private val maxInFlightRequestsPerConnection: In
     fun canSendMore(node: String): Boolean {
         val queue = requests[node]
         return queue.isNullOrEmpty()
-                || queue.peekFirst().send.completed()
+                || queue.peekFirst().send?.completed() == true
                 && queue.size < maxInFlightRequestsPerConnection
     }
 

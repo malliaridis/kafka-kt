@@ -69,9 +69,10 @@ interface ReplicaView {
          * for deterministic selection of a replica when there is a tie from a selector.
          */
         fun comparator(): Comparator<ReplicaView> {
-            return Comparator.comparing { obj: ReplicaView -> obj.logEndOffset() }
-                .thenComparing { obj: ReplicaView -> obj.timeSinceLastCaughtUpMs() }
-                .reversed()
+            return Comparator.comparing(ReplicaView::logEndOffset)
+                .thenComparing(
+                    Comparator.comparingLong(ReplicaView::timeSinceLastCaughtUpMs).reversed()
+                )
                 .thenComparing { replicaInfo -> replicaInfo.endpoint().id }
         }
     }

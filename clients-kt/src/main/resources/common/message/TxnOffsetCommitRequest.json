@@ -54,7 +54,7 @@
         { "name": "CommittedLeaderEpoch", "type": "int32", "versions": "2+", "default": "-1", "ignorable": true,
           "about": "The leader epoch of the last consumed record." },
         { "name": "CommittedMetadata", "type": "string", "versions": "0+", "nullableVersions": "0+",
-          "about": "Any associated metadata the client wants to keep." }
+          "default": "", "about": "Any associated metadata the client wants to keep." }
       ]}
     ]}
   ]

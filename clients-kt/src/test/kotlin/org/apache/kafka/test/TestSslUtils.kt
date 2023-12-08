@@ -153,7 +153,7 @@ object TestSslUtils {
     fun <T : Certificate?> createTrustStore(
         filename: String,
         password: Password,
-        certs: Map<String?, T>,
+        certs: Map<String, T>,
     ) {
         var ks = KeyStore.getInstance("JKS")
         try {
@@ -191,7 +191,7 @@ object TestSslUtils {
         trustStore: Boolean,
         mode: Mode,
         trustStoreFile: File,
-        certAlias: String?,
+        certAlias: String,
         cn: String = "localhost",
     ): Map<String, Any> = createSslConfig(
         useClientCert = useClientCert,
@@ -209,7 +209,7 @@ object TestSslUtils {
         createTrustStore: Boolean,
         mode: Mode,
         trustStoreFile: File,
-        certAlias: String?,
+        certAlias: String,
         cn: String,
         certBuilder: CertificateBuilder
     ): Map<String, Any> {
@@ -228,21 +228,21 @@ object TestSslUtils {
 
     @Throws(Exception::class)
     fun convertToPem(
-        sslProps: MutableMap<String?, Any?>,
+        sslProps: MutableMap<String, Any?>,
         writeToFile: Boolean,
         encryptPrivateKey: Boolean,
     ) {
         var tsPath = sslProps[SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG] as String?
         val tsType = sslProps[SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG] as String?
-        val tsPassword = sslProps.remove(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG) as Password
+        val tsPassword = sslProps.remove(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG) as Password?
         var trustCerts = sslProps.remove(SslConfigs.SSL_TRUSTSTORE_CERTIFICATES_CONFIG) as Password?
 
         if (trustCerts == null && tsPath != null)
-            trustCerts = exportCertificates(tsPath, tsPassword, tsType)
+            trustCerts = exportCertificates(tsPath, tsPassword!!, tsType)
 
         if (trustCerts != null) {
             if (tsPath == null) {
-                tsPath = TestUtils.tempFile("truststore", ".pem").path
+                tsPath = TestUtils.tempFile(prefix = "truststore", suffix = ".pem").path
                 sslProps[SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG] = tsPath
             }
             sslProps[SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG] = DefaultSslEngineFactory.PEM_TYPE
@@ -270,7 +270,7 @@ object TestSslUtils {
 
         if (certChain != null) {
             if (ksPath == null) {
-                ksPath = TestUtils.tempFile("keystore", ".pem").path
+                ksPath = TestUtils.tempFile(prefix = "keystore", suffix = ".pem").path
                 sslProps[SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG] = ksPath
             }
             sslProps[SslConfigs.SSL_KEYSTORE_TYPE_CONFIG] = DefaultSslEngineFactory.PEM_TYPE
@@ -478,7 +478,7 @@ object TestSslUtils {
 
         var createTrustStore: Boolean = true
 
-        lateinit var trustStoreFile: File
+        var trustStoreFile: File? = null
 
         var trustStorePassword: Password = Password(TRUST_STORE_PASSWORD)
 
@@ -489,7 +489,7 @@ object TestSslUtils {
 
         var keyPassword: Password = keyStorePassword
 
-        var certAlias: String? = mode.name.lowercase()
+        var certAlias: String = mode.name.lowercase()
 
         var cn: String = "localhost"
 
@@ -504,7 +504,7 @@ object TestSslUtils {
             return this
         }
 
-        fun createNewTrustStore(trustStoreFile: File): SslConfigsBuilder {
+        fun createNewTrustStore(trustStoreFile: File?): SslConfigsBuilder {
             this.trustStoreFile = trustStoreFile
             createTrustStore = true
             return this
@@ -521,7 +521,7 @@ object TestSslUtils {
             return this
         }
 
-        fun certAlias(certAlias: String?): SslConfigsBuilder {
+        fun certAlias(certAlias: String): SslConfigsBuilder {
             this.certAlias = certAlias
             return this
         }
@@ -554,10 +554,10 @@ object TestSslUtils {
 
         @Throws(IOException::class, GeneralSecurityException::class)
         private fun buildJks(): Map<String, Any> {
-            val certs: MutableMap<String?, X509Certificate> = HashMap()
+            val certs: MutableMap<String, X509Certificate> = HashMap()
             var keyStoreFile: File? = null
             if (mode === Mode.CLIENT && useClientCert) {
-                keyStoreFile = TestUtils.tempFile("clientKS", ".jks")
+                keyStoreFile = TestUtils.tempFile(prefix = "clientKS", suffix = ".jks")
                 val cKP = generateKeyPair(algorithm)
                 val cCert = certBuilder.generate("CN=$cn, O=A client", cKP)
                 createKeyStore(
@@ -570,7 +570,7 @@ object TestSslUtils {
                 )
                 certs[certAlias] = cCert
             } else if (mode === Mode.SERVER) {
-                keyStoreFile = TestUtils.tempFile("serverKS", ".jks")
+                keyStoreFile = TestUtils.tempFile(prefix = "serverKS", suffix = ".jks")
                 val sKP = generateKeyPair(algorithm)
                 val sCert = certBuilder.generate("CN=$cn, O=A server", sKP)
                 createKeyStore(
@@ -585,6 +585,7 @@ object TestSslUtils {
                 keyStoreFile.deleteOnExit()
             }
 
+            val trustStoreFile = requireNotNull(trustStoreFile)
             if (createTrustStore) {
                 createTrustStore(trustStoreFile.path, trustStorePassword, certs)
                 trustStoreFile.deleteOnExit()
@@ -637,12 +638,15 @@ object TestSslUtils {
     }
 
     class TestSslEngineFactory : SslEngineFactory {
+
         var closed = false
+
         var defaultSslEngineFactory = DefaultSslEngineFactory()
+
         override fun createClientSslEngine(
             peerHost: String,
             peerPort: Int,
-            endpointIdentification: String
+            endpointIdentification: String?
         ): SSLEngine {
             return defaultSslEngineFactory.createClientSslEngine(
                 peerHost,

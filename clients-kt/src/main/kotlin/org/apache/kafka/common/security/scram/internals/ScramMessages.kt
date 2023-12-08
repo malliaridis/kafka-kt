@@ -55,16 +55,11 @@ class ScramMessages {
             
             const val BASE64_CHAR = "[a-zA-Z0-9/+]"
             
-            val BASE64 = String.format(
-                "(?:%s{4})*(?:%s{3}=|%s{2}==)?",
-                BASE64_CHAR,
-                BASE64_CHAR,
-                BASE64_CHAR
-            )
+            val BASE64 = "(?:$BASE64_CHAR{4})*(?:$BASE64_CHAR{3}=|$BASE64_CHAR{2}==)?"
             
-            val RESERVED = String.format("(m=%s,)?", VALUE)
+            val RESERVED = "(m=$VALUE,)?"
             
-            val EXTENSIONS = String.format("(,%s=%s)*", ALPHA, VALUE)
+            val EXTENSIONS = "(,$ALPHA=$VALUE)*"
         }
     }
 
@@ -163,14 +158,7 @@ class ScramMessages {
 
         companion object {
             private val PATTERN = Pattern.compile(
-                String.format(
-                    "n,(a=(?<authzid>%s))?,%sn=(?<saslname>%s),r=(?<nonce>%s)(?<extensions>%s)",
-                    SASLNAME,
-                    RESERVED,
-                    SASLNAME,
-                    PRINTABLE,
-                    EXTENSIONS
-                )
+                "n,(a=(?<authzid>$SASLNAME))?,${RESERVED}n=(?<saslname>$SASLNAME),r=(?<nonce>$PRINTABLE)(?<extensions>$EXTENSIONS)"
             )
         }
     }
@@ -200,7 +188,8 @@ class ScramMessages {
             
             try {
                 iterations = matcher.group("iterations").toInt()
-                if (iterations <= 0) throw SaslException("Invalid SCRAM server first message format: invalid iterations $iterations")
+                if (iterations <= 0)
+                    throw SaslException("Invalid SCRAM server first message format: invalid iterations $iterations")
             } catch (e: NumberFormatException) {
                 throw SaslException("Invalid SCRAM server first message format: invalid iterations")
             }
@@ -245,13 +234,7 @@ class ScramMessages {
 
         companion object {
             private val PATTERN = Pattern.compile(
-                String.format(
-                    "%sr=(?<nonce>%s),s=(?<salt>%s),i=(?<iterations>[0-9]+)%s",
-                    RESERVED,
-                    PRINTABLE,
-                    BASE64,
-                    EXTENSIONS
-                )
+                "${RESERVED}r=(?<nonce>$PRINTABLE),s=(?<salt>$BASE64),i=(?<iterations>[0-9]+)$EXTENSIONS"
             )
         }
     }
@@ -269,7 +252,7 @@ class ScramMessages {
         
         val nonce: String
         
-        lateinit var proof: ByteArray
+        var proof: ByteArray? = null
 
         constructor(messageBytes: ByteArray?) {
             val message = toMessage(messageBytes)
@@ -301,39 +284,23 @@ class ScramMessages {
             message = "Use property instead",
             replaceWith = ReplaceWith("proof"),
         )
-        fun proof(): ByteArray = proof
+        fun proof(): ByteArray? = proof
 
         @Deprecated("Use property instead")
         fun proof(proof: ByteArray) {
             this.proof = proof
         }
 
-        fun clientFinalMessageWithoutProof(): String {
-            return String.format(
-                "c=%s,r=%s",
-                Base64.getEncoder().encodeToString(channelBinding),
-                nonce
-            )
-        }
+        fun clientFinalMessageWithoutProof(): String =
+            "c=${Base64.getEncoder().encodeToString(channelBinding)},r=$nonce"
 
-        override fun toMessage(): String {
-            return String.format(
-                "%s,p=%s",
-                clientFinalMessageWithoutProof(),
-                Base64.getEncoder().encodeToString(proof)
-            )
-        }
+        override fun toMessage(): String =
+            "${clientFinalMessageWithoutProof()},p=${Base64.getEncoder().encodeToString(proof)}"
 
         companion object {
             
             private val PATTERN = Pattern.compile(
-                String.format(
-                    "c=(?<channel>%s),r=(?<nonce>%s)%s,p=(?<proof>%s)",
-                    BASE64,
-                    PRINTABLE,
-                    EXTENSIONS,
-                    BASE64
-                )
+                "c=(?<channel>$BASE64),r=(?<nonce>$PRINTABLE)$EXTENSIONS,p=(?<proof>$BASE64)"
             )
         }
     }
@@ -361,7 +328,7 @@ class ScramMessages {
             
             try {
                 error = matcher.group("error")
-            } catch (e: IllegalArgumentException) {
+            } catch (_: IllegalArgumentException) {
                 // ignore
             }
             
@@ -399,12 +366,7 @@ class ScramMessages {
         companion object {
             
             private val PATTERN = Pattern.compile(
-                String.format(
-                    "(?:e=(?<error>%s))|(?:v=(?<signature>%s))%s",
-                    VALUE_SAFE,
-                    BASE64,
-                    EXTENSIONS
-                )
+                "(?:e=(?<error>$VALUE_SAFE))|(?:v=(?<signature>$BASE64))$EXTENSIONS"
             )
         }
     }

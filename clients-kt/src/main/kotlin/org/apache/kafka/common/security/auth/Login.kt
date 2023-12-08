@@ -52,7 +52,7 @@ interface Login {
      * Performs login for each login module specified for the login context of this instance.
      */
     @Throws(LoginException::class)
-    fun login(): LoginContext
+    fun login(): LoginContext?
 
     /**
      * Returns the authenticated subject of this login context.

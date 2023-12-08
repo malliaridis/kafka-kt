@@ -65,7 +65,6 @@ import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.Time
 import org.apache.kafka.common.utils.Timer
 import org.apache.kafka.common.utils.Utils
-import org.apache.kafka.common.utils.Utils.join
 import org.slf4j.Logger
 import java.nio.ByteBuffer
 import java.util.*
@@ -94,12 +93,12 @@ class ConsumerCoordinator(
     private val throwOnFetchStableOffsetsUnsupported: Boolean,
     rackId: String?,
 ) : AbstractCoordinator(
-    rebalanceConfig,
-    logContext,
-    client!!,
-    metrics,
-    metricGrpPrefix,
-    time,
+    rebalanceConfig = rebalanceConfig,
+    logContext = logContext,
+    client = client!!,
+    metrics = metrics,
+    metricGrpPrefix = metricGrpPrefix,
+    time = time,
 ) {
 
     private val log: Logger = logContext.logger(ConsumerCoordinator::class.java)
@@ -130,7 +129,7 @@ class ConsumerCoordinator(
     private val asyncCommitFenced = AtomicBoolean(false)
 
     private var groupMetadata: ConsumerGroupMetadata = ConsumerGroupMetadata(
-        groupId = rebalanceConfig.groupId,
+        groupId = rebalanceConfig.groupId!!,
         generationId = JoinGroupRequest.UNKNOWN_GENERATION_ID,
         memberId = JoinGroupRequest.UNKNOWN_MEMBER_ID,
         groupInstanceId = rebalanceConfig.groupInstanceId,
@@ -212,7 +211,7 @@ class ConsumerCoordinator(
     }
 
     fun updatePatternSubscription(cluster: Cluster) {
-        val topicsToSubscribe = cluster.topics()
+        val topicsToSubscribe = cluster.topics
             .filter { topic -> subscriptions.matchesSubscribedPattern(topic) }
             .toSet()
         if (subscriptions.subscribeFromPattern(topicsToSubscribe))
@@ -342,7 +341,7 @@ class ConsumerCoordinator(
         return null
     }
 
-    override fun onJoinComplete(
+    public override fun onJoinComplete(
         generation: Int,
         memberId: String,
         protocol: String?,
@@ -356,12 +355,13 @@ class ConsumerCoordinator(
 
         // Only the leader is responsible for monitoring for metadata changes (i.e. partition changes)
         if (!isLeader) assignmentSnapshot = null
-        val assignor = lookupAssignor(protocol)
-            ?: throw IllegalStateException("Coordinator selected invalid assignment protocol: $protocol")
+        val assignor = checkNotNull(lookupAssignor(protocol)) {
+            "Coordinator selected invalid assignment protocol: $protocol"
+        }
 
         // Give the assignor a chance to update internal state based on the received assignment
         groupMetadata = ConsumerGroupMetadata(
-            groupId = rebalanceConfig.groupId,
+            groupId = rebalanceConfig.groupId!!,
             generationId = generation,
             memberId = memberId,
             groupInstanceId = rebalanceConfig.groupInstanceId,
@@ -617,14 +617,15 @@ class ConsumerCoordinator(
         }
     }
 
-    override fun onLeaderElected(
+    public override fun onLeaderElected(
         leaderId: String,
         protocol: String,
         allMemberMetadata: List<JoinGroupResponseMember>,
         skipAssignment: Boolean,
     ): Map<String, ByteBuffer> {
-        val assignor = lookupAssignor(protocol)
-            ?: error("Coordinator selected invalid assignment protocol: $protocol")
+        val assignor = checkNotNull(lookupAssignor(protocol)) {
+            "Coordinator selected invalid assignment protocol: $protocol"
+        }
         val assignorName = assignor.name()
         val allSubscribedTopics: MutableSet<String> = HashSet()
         val subscriptions: MutableMap<String, ConsumerPartitionAssignor.Subscription> = HashMap()
@@ -725,7 +726,7 @@ class ConsumerCoordinator(
         }
     }
 
-    override fun onJoinPrepare(timer: Timer, generation: Int, memberId: String): Boolean {
+    public override fun onJoinPrepare(timer: Timer, generation: Int, memberId: String): Boolean {
         log.debug(
             "Executing onJoinPrepare with generation {} and memberId {}",
             generation,
@@ -735,7 +736,7 @@ class ConsumerCoordinator(
         joinPrepareTimer?.update() ?: run {
             // We should complete onJoinPrepare before rebalanceTimeout, and continue to join group
             // to avoid member got kicked out from group
-            joinPrepareTimer = time.timer(rebalanceConfig.rebalanceTimeoutMs.toLong())
+            joinPrepareTimer = time.timer(rebalanceConfig.rebalanceTimeoutMs!!.toLong())
         }
 
         // async commit offsets prior to rebalance if auto-commit enabled and there is no in-flight
@@ -779,7 +780,7 @@ class ConsumerCoordinator(
             if (requestFuture.isDone) this.autoCommitOffsetRequestFuture = null
 
             if (!onJoinPrepareAsyncCommitCompleted) {
-                pollTimer.sleep(min(pollTimer.remainingMs, rebalanceConfig.retryBackoffMs))
+                pollTimer.sleep(min(pollTimer.remainingMs, rebalanceConfig.retryBackoffMs!!))
                 timer.update()
                 return false
             }
@@ -992,7 +993,7 @@ class ConsumerCoordinator(
                 pendingCommittedOffsetRequest = null
                 if (future.succeeded()) return future.value()
                 else if (!future.isRetriable) throw future.exception()
-                else timer.sleep(rebalanceConfig.retryBackoffMs)
+                else timer.sleep(rebalanceConfig.retryBackoffMs!!)
             } else return null
 
         } while (timer.isNotExpired)
@@ -1143,9 +1144,8 @@ class ConsumerCoordinator(
         invokeCompletedOffsetCommitCallbacks()
         if (offsets.isEmpty()) return true
         do {
-            if (coordinatorUnknownAndUnreadySync(timer)) {
-                return false
-            }
+            if (coordinatorUnknownAndUnreadySync(timer)) return false
+
             val future = sendOffsetCommitRequest(offsets)
             client.poll(future, timer)
 
@@ -1153,13 +1153,17 @@ class ConsumerCoordinator(
             // ensure that the corresponding callbacks are invoked prior to returning in order to
             // preserve the order that the offset commits were applied.
             invokeCompletedOffsetCommitCallbacks()
+
             if (future.succeeded()) {
                 interceptors?.onCommit(offsets)
                 return true
             }
+
             if (future.failed() && !future.isRetriable) throw future.exception()
-            timer.sleep(rebalanceConfig.retryBackoffMs)
+
+            timer.sleep(rebalanceConfig.retryBackoffMs!!)
         } while (timer.isNotExpired)
+
         return false
     }
 
@@ -1220,7 +1224,7 @@ class ConsumerCoordinator(
                         offsets,
                         exception,
                     )
-                    nextAutoCommitTimer!!.updateAndReset(rebalanceConfig.retryBackoffMs)
+                    nextAutoCommitTimer!!.updateAndReset(rebalanceConfig.retryBackoffMs!!)
                 } else {
                     log.warn(
                         "Asynchronous auto-commit of offsets {} failed: {}",
@@ -1239,13 +1243,9 @@ class ConsumerCoordinator(
 
         override fun onComplete(
             offsets: Map<TopicPartition, OffsetAndMetadata>?,
-            exception: Exception?
+            exception: Exception?,
         ) {
-            if (exception != null) log.error(
-                "Offset commit with offsets {} failed",
-                offsets,
-                exception,
-            )
+            if (exception != null) log.error("Offset commit with offsets {} failed", offsets, exception)
         }
     }
 
@@ -1320,7 +1320,7 @@ class ConsumerCoordinator(
         }
         val builder = OffsetCommitRequest.Builder(
             OffsetCommitRequestData()
-                .setGroupId(rebalanceConfig.groupId)
+                .setGroupId(rebalanceConfig.groupId!!)
                 .setGenerationId(generation.generationId)
                 .setMemberId(generation.memberId)
                 .setGroupInstanceId(groupInstanceId)
@@ -1334,9 +1334,9 @@ class ConsumerCoordinator(
 
     private inner class OffsetCommitResponseHandler(
         private val offsets: Map<TopicPartition, OffsetAndMetadata>,
-        generation: Generation
-    ) :
-        CoordinatorResponseHandler<OffsetCommitResponse, Unit>(generation) {
+        generation: Generation,
+    ) : CoordinatorResponseHandler<OffsetCommitResponse, Unit>(generation) {
+
         override fun handle(response: OffsetCommitResponse, future: RequestFuture<Unit>) {
             sensors.commitSensor.record(this.response!!.requestLatencyMs.toDouble())
             val unauthorizedTopics = mutableSetOf<String>()
@@ -1509,7 +1509,7 @@ class ConsumerCoordinator(
         log.debug("Fetching committed offsets for partitions: {}", partitions)
         // construct the request
         val requestBuilder = OffsetFetchRequest.Builder(
-            groupId = rebalanceConfig.groupId,
+            groupId = rebalanceConfig.groupId!!,
             requireStable = true,
             partitions = ArrayList(partitions),
             throwOnFetchStableOffsetsUnsupported = throwOnFetchStableOffsetsUnsupported
@@ -1527,7 +1527,7 @@ class ConsumerCoordinator(
             response: OffsetFetchResponse,
             future: RequestFuture<Map<TopicPartition, OffsetAndMetadata?>>,
         ) {
-            val responseError = response.groupLevelError(rebalanceConfig.groupId)
+            val responseError = response.groupLevelError(rebalanceConfig.groupId!!)
             if (responseError !== Errors.NONE) {
                 log.debug("Offset fetch failed: {}", responseError!!.message)
                 if (responseError === Errors.COORDINATOR_LOAD_IN_PROGRESS) {
@@ -1576,9 +1576,9 @@ class ConsumerCoordinator(
                     // record the position with the offset (-1 indicates no committed offset to fetch);
                     // if there's no committed offset, record as null
                     offsets[tp] = OffsetAndMetadata(
-                        partitionData.offset,
-                        partitionData.leaderEpoch,
-                        partitionData.metadata
+                        offset = partitionData.offset,
+                        leaderEpoch = partitionData.leaderEpoch,
+                        metadata = partitionData.metadata ?: "",
                     )
                 } else {
                     log.info("Found no committed offset for partition {}", tp)

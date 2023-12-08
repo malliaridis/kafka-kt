@@ -112,14 +112,11 @@ class ValidatorAccessTokenValidator(
         val jwt: JwtContext = try {
             jwtConsumer.process(serializedJwt.token)
         } catch (e: InvalidJwtException) {
-            throw ValidateException(
-                String.format("Could not validate the access token: %s", e.message),
-                e
-            )
+            throw ValidateException("Could not validate the access token: ${e.message}", e)
         }
 
         val claims = jwt.jwtClaims
-        val scopeRaw = getClaim<Any>(
+        val scopeRaw = getClaim(
             supplier = { claims.getClaimValue(scopeClaimName) },
             claimName = scopeClaimName,
         )
@@ -135,7 +132,7 @@ class ValidatorAccessTokenValidator(
             claimName = ReservedClaimNames.EXPIRATION_TIME,
         )
 
-        val subRaw = getClaim<String?>(
+        val subRaw: String? = getClaim(
             supplier = { claims.getStringClaimValue(subClaimName) },
             claimName = subClaimName,
         )
@@ -158,11 +155,11 @@ class ValidatorAccessTokenValidator(
         )
 
         return BasicOAuthBearerToken(
-            accessToken,
-            scopes,
-            expiration,
-            sub,
-            issuedAt
+            token = accessToken,
+            scopes = scopes,
+            lifetimeMs = expiration,
+            principalName = sub,
+            startTimeMs = issuedAt
         )
     }
 
@@ -173,12 +170,7 @@ class ValidatorAccessTokenValidator(
             log.debug("getClaim - {}: {}", claimName, value)
             value
         } catch (e: MalformedClaimException) {
-            throw ValidateException(
-                String.format(
-                    "Could not extract the '%s' claim from the access token",
-                    claimName
-                ), e
-            )
+            throw ValidateException("Could not extract the '$claimName' claim from the access token", e)
         }
     }
 

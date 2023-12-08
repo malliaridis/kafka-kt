@@ -31,10 +31,11 @@ import javax.net.ssl.SSLException
  * authentication failure or server host name verification failure.
  *
  */
-class SslAuthenticationException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : AuthenticationException(message = message, cause = cause) {
+class SslAuthenticationException : AuthenticationException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

@@ -33,10 +33,13 @@ import javax.net.ssl.SSLException
  *  * [SslAuthenticationException] if SSL handshake failed due to any [SSLException].
  *
  */
-open class AuthenticationException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : ApiException(message = message, cause = cause) {
+open class AuthenticationException : ApiException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(cause: Throwable?) : super(cause)
+
+    constructor(message: String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

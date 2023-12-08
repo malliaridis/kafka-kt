@@ -118,7 +118,7 @@ class LeaveGroupResponse : AbstractResponse {
                 && other.data == data
     }
 
-    override fun hashCode(): Int = Objects.hashCode(data)
+    override fun hashCode(): Int = data.hashCode()
 
     override fun toString(): String = data.toString()
 

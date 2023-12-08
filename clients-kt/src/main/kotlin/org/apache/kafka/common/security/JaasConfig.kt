@@ -69,7 +69,9 @@ internal class JaasConfig(
         else null
     }
 
-    private fun loginModuleControlFlag(flag: String): AppConfigurationEntry.LoginModuleControlFlag {
+    private fun loginModuleControlFlag(flag: String?): AppConfigurationEntry.LoginModuleControlFlag {
+        requireNotNull(flag) { "Login module control flag is not available in the JAAS config" }
+
         val controlFlag: AppConfigurationEntry.LoginModuleControlFlag = when (flag.uppercase()) {
             "REQUIRED" -> AppConfigurationEntry.LoginModuleControlFlag.REQUIRED
             "REQUISITE" -> AppConfigurationEntry.LoginModuleControlFlag.REQUISITE

@@ -18,7 +18,8 @@
 package org.apache.kafka.common
 
 import java.nio.ByteBuffer
-import java.util.*
+import java.util.Base64
+import java.util.UUID
 
 /**
  * This class defines an immutable universally unique identifier (UUID). It represents a 128-bit
@@ -35,7 +36,7 @@ import java.util.*
  */
 data class Uuid(
     val mostSignificantBits: Long,
-    val leastSignificantBits: Long
+    val leastSignificantBits: Long,
 ) : Comparable<Uuid?> {
 
     /**

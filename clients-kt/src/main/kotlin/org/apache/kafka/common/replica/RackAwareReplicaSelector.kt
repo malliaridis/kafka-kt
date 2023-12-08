@@ -28,11 +28,11 @@ class RackAwareReplicaSelector : ReplicaSelector {
     override fun select(
         topicPartition: TopicPartition,
         clientMetadata: ClientMetadata,
-        partitionView: PartitionView
+        partitionView: PartitionView,
     ): ReplicaView {
         return if (clientMetadata.rackId().isNotEmpty()) {
             val sameRackReplicas = partitionView.replicas()
-                .filter { replicaInfo -> clientMetadata.rackId() == replicaInfo.endpoint().rack() }
+                .filter { replicaInfo -> clientMetadata.rackId() == replicaInfo.endpoint().rack }
                 .toSet()
 
             if (sameRackReplicas.isEmpty()) partitionView.leader()

@@ -179,7 +179,7 @@ class SubscriptionState(
     @Synchronized
     fun groupSubscribe(topics: Collection<String>): Boolean {
         check(hasAutoAssignedPartitions()) { SUBSCRIPTION_EXCEPTION_MESSAGE }
-        groupSubscription = HashSet(topics)
+        groupSubscription = topics.toHashSet()
         return !subscription.containsAll(groupSubscription)
     }
 
@@ -326,7 +326,7 @@ class SubscriptionState(
         else {
             // When subscription changes `groupSubscription` may be outdated, ensure that new
             // subscription topics are returned.
-            val topics: MutableSet<String> = HashSet(groupSubscription)
+            val topics: MutableSet<String> = groupSubscription.toHashSet()
             topics.addAll(subscription)
             topics
         }
@@ -380,7 +380,7 @@ class SubscriptionState(
      */
     @Synchronized
     fun assignedPartitions(): Set<TopicPartition> {
-        return HashSet(assignment.partitionSet())
+        return assignment.partitionSet().toHashSet()
     }
 
     /**
@@ -653,8 +653,9 @@ class SubscriptionState(
         val allConsumed: MutableMap<TopicPartition, OffsetAndMetadata> = HashMap()
         assignment.forEach { topicPartition: TopicPartition, partitionState: TopicPartitionState ->
             if (partitionState.hasValidPosition()) allConsumed[topicPartition] = OffsetAndMetadata(
-                partitionState.position!!.offset,
-                partitionState.position!!.offsetEpoch, ""
+                offset = partitionState.position!!.offset,
+                leaderEpoch = partitionState.position!!.offsetEpoch,
+                metadata = "",
             )
         }
         return allConsumed
@@ -855,7 +856,7 @@ class SubscriptionState(
             if (nextState == newState) {
                 fetchState = nextState
                 runIfTransitioned.run()
-                check(!(position == null && nextState.requiresPosition())) {
+                check(position != null || !nextState.requiresPosition()) {
                     "Transitioned subscription state to $nextState, but position is null"
                 }
                 if (!nextState.requiresPosition()) position = null

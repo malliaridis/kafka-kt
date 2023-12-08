@@ -128,7 +128,7 @@ open class Metadata(
      */
     @Synchronized
     fun timeToAllowUpdate(nowMs: Long): Long {
-        return Math.max(lastRefreshMs + refreshBackoffMs - nowMs, 0)
+        return (lastRefreshMs + refreshBackoffMs - nowMs).coerceAtLeast(0)
     }
 
     /**
@@ -141,11 +141,9 @@ open class Metadata(
      */
     @Synchronized
     fun timeToNextUpdate(nowMs: Long): Long {
-        val timeToExpire = if (updateRequested()) 0 else Math.max(
-            lastSuccessfulRefreshMs + metadataExpireMs - nowMs,
-            0
-        )
-        return Math.max(timeToExpire, timeToAllowUpdate(nowMs))
+        val timeToExpire = if (updateRequested()) 0
+        else (lastSuccessfulRefreshMs + metadataExpireMs - nowMs).coerceAtLeast(0)
+        return timeToExpire.coerceAtLeast(timeToAllowUpdate(nowMs))
     }
 
     fun metadataExpireMs(): Long {
@@ -181,7 +179,6 @@ open class Metadata(
      */
     @Synchronized
     fun updateLastSeenEpochIfNewer(topicPartition: TopicPartition, leaderEpoch: Int): Boolean {
-        Objects.requireNonNull(topicPartition, "TopicPartition cannot be null")
         require(leaderEpoch >= 0) { "Invalid leader epoch $leaderEpoch (must be non-negative)" }
         val oldEpoch = lastSeenLeaderEpochs[topicPartition]
         log.trace(
@@ -299,7 +296,6 @@ open class Metadata(
         isPartialUpdate: Boolean,
         nowMs: Long
     ) {
-        Objects.requireNonNull(response, "Metadata response cannot be null")
         check(!isClosed) { "Update requested after metadata close" }
         needPartialUpdate = requestVersion < this.requestVersion
         lastRefreshMs = nowMs
@@ -321,7 +317,7 @@ open class Metadata(
         }
         val newClusterId = cache.clusterResource().clusterId
         if (previousClusterId != newClusterId) {
-            log.info("Cluster ID: {}", newClusterId)
+            log.info("Cluster ID: {}", newClusterId.toString())
         }
         clusterResourceListeners.onUpdate(cache.clusterResource())
         log.debug("Updated cluster metadata updateVersion {} to {}", updateVersion, cache)
@@ -336,14 +332,14 @@ open class Metadata(
     private fun checkInvalidTopics(cluster: Cluster) {
         if (cluster.invalidTopics.isNotEmpty()) {
             log.error("Metadata response reported invalid topics {}", cluster.invalidTopics)
-            invalidTopics = HashSet(cluster.invalidTopics)
+            invalidTopics = cluster.invalidTopics.toHashSet()
         }
     }
 
     private fun checkUnauthorizedTopics(cluster: Cluster) {
         if (cluster.unauthorizedTopics.isNotEmpty()) {
             log.error("Topic authorization failed for topics {}", cluster.unauthorizedTopics)
-            unauthorizedTopics = HashSet(cluster.unauthorizedTopics)
+            unauthorizedTopics = cluster.unauthorizedTopics.toHashSet()
         }
     }
 
@@ -359,11 +355,11 @@ open class Metadata(
         val topics: MutableSet<String> = mutableSetOf()
 
         // Retained topics to be passed to the metadata cache.
-        val internalTopics: MutableSet<String> = HashSet()
-        val unauthorizedTopics: MutableSet<String> = HashSet()
-        val invalidTopics: MutableSet<String> = HashSet()
+        val internalTopics: MutableSet<String> = hashSetOf()
+        val unauthorizedTopics: MutableSet<String> = hashSetOf()
+        val invalidTopics: MutableSet<String> = hashSetOf()
         val partitions: MutableList<PartitionMetadata> = ArrayList()
-        val topicIds: MutableMap<String, Uuid> = HashMap()
+        val topicIds: MutableMap<String, Uuid> = hashMapOf()
         val oldTopicIds = cache.topicIds()
         metadataResponse.topicMetadata().forEach { metadata ->
             val topicName = metadata.topic
@@ -516,9 +512,7 @@ open class Metadata(
     @Synchronized
     fun maybeThrowExceptionForTopic(topic: String) {
         clearErrorsAndMaybeThrowException {
-            recoverableExceptionForTopic(
-                topic
-            )
+            recoverableExceptionForTopic(topic)
         }
     }
 
@@ -571,17 +565,13 @@ open class Metadata(
      * @return The current metadata updateVersion
      */
     @Synchronized
-    fun updateVersion(): Int {
-        return updateVersion
-    }
+    fun updateVersion(): Int = updateVersion
 
     /**
      * The last time metadata was successfully updated.
      */
     @Synchronized
-    fun lastSuccessfulUpdate(): Long {
-        return lastSuccessfulRefreshMs
-    }
+    fun lastSuccessfulUpdate(): Long = lastSuccessfulRefreshMs
 
     /**
      * Close this metadata instance to indicate that metadata updates are no longer possible.
@@ -624,7 +614,7 @@ open class Metadata(
      *
      * @return the constructed metadata builder, or null if not supported
      */
-    private fun newMetadataRequestBuilderForNewTopics(): MetadataRequest.Builder? {
+    internal open fun newMetadataRequestBuilderForNewTopics(): MetadataRequest.Builder? {
         return null
     }
 

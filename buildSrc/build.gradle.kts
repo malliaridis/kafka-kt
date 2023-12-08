@@ -10,7 +10,7 @@ repositories {
 
 dependencies {
     // TODO Move to Deps
-    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.20")
+    implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.0")
 }
 
 //kotlin {
@@ -18,12 +18,12 @@ dependencies {
 //}
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
 }
 
 tasks.withType<KotlinCompile>().configureEach {
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "11"
     }
 }

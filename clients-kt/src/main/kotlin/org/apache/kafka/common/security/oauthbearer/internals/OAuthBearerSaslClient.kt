@@ -167,7 +167,7 @@ class OAuthBearerSaslClient(private val callbackHandler: AuthenticateCallbackHan
     class OAuthBearerSaslClientFactory : SaslClientFactory {
         override fun createSaslClient(
             mechanisms: Array<String>,
-            authorizationId: String,
+            authorizationId: String?,
             protocol: String,
             serverName: String,
             props: Map<String?, *>?,

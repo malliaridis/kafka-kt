@@ -24,15 +24,15 @@ package org.apache.kafka.common
  * specified values. The order of the tags is maintained, if an ordered set
  * is provided, so that the mBean names can be compared and sorted lexicographically.
  */
-data class MetricNameTemplate(
-    val name: String,
-    val group: String,
-    val tags: Set<String>,
-) {
+class MetricNameTemplate {
 
-    private lateinit var _description: String
+    val name: String
+
+    val group: String
+
+    val tags: Set<String>
+
     val description: String
-        get() = _description
 
     /**
      * Create a new template. Note that the order of the tags will be preserved if the supplied
@@ -49,12 +49,11 @@ data class MetricNameTemplate(
         group: String,
         description: String,
         tagsNames: Set<String>,
-    ) : this(
-        name = name,
-        group = group,
-        tags = tagsNames,
     ) {
-        this._description = description
+        this.name = name
+        this.group = group
+        this.description = description
+        this.tags = tagsNames.toSet()
     }
 
     /**
@@ -74,10 +73,9 @@ data class MetricNameTemplate(
     ) : this(
         name = name,
         group = group,
-        tags = tagsNames.toSet()
-    ) {
-        this._description = description
-    }
+        description = description,
+        tagsNames = tagsNames.toSet()
+    )
 
     /**
      * Get the name of the metric.
@@ -88,9 +86,7 @@ data class MetricNameTemplate(
         message = "Use property instead.",
         replaceWith = ReplaceWith("name"),
     )
-    fun name(): String {
-        return name
-    }
+    fun name(): String = name
 
     /**
      * Get the name of the group.
@@ -101,9 +97,7 @@ data class MetricNameTemplate(
         message = "Use property instead.",
         replaceWith = ReplaceWith("group"),
     )
-    fun group(): String {
-        return group
-    }
+    fun group(): String = group
 
     /**
      * Get the description of the metric.
@@ -114,9 +108,7 @@ data class MetricNameTemplate(
         message = "Use property instead.",
         replaceWith = ReplaceWith("description"),
     )
-    fun description(): String {
-        return description
-    }
+    fun description(): String = description
 
     /**
      * Get the set of tag names for the metric.
@@ -127,9 +119,27 @@ data class MetricNameTemplate(
         message = "Use property instead.",
         replaceWith = ReplaceWith("tags"),
     )
-    fun tags(): Set<String> {
-        return tags
-    }
+    fun tags(): Set<String> = tags
 
     override fun toString(): String = "name=$name, group=$group, tags=$tags"
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as MetricNameTemplate
+
+        if (name != other.name) return false
+        if (group != other.group) return false
+        if (tags != other.tags) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = name.hashCode()
+        result = 31 * result + group.hashCode()
+        result = 31 * result + tags.hashCode()
+        return result
+    }
 }

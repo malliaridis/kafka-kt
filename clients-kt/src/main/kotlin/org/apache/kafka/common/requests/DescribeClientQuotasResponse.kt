@@ -33,7 +33,7 @@ class DescribeClientQuotasResponse(
         val error = Errors.forCode(data.errorCode)
 
         if (error !== Errors.NONE) {
-            future.completeExceptionally(error.exception(data.errorMessage))
+            future.completeExceptionally(error.exception(data.errorMessage)!!)
             return
         }
 

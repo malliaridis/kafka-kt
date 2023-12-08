@@ -46,17 +46,17 @@ class MockConsumer<K, V>(offsetResetStrategy: OffsetResetStrategy) : Consumer<K,
     private val subscriptions: SubscriptionState =
         SubscriptionState(LogContext(), offsetResetStrategy)
 
-    private val beginningOffsets: MutableMap<TopicPartition, Long?> = HashMap()
+    private val beginningOffsets = mutableMapOf<TopicPartition, Long?>()
 
-    private val endOffsets: MutableMap<TopicPartition, Long> = HashMap()
+    private val endOffsets = mutableMapOf<TopicPartition, Long>()
 
-    private val committed: MutableMap<TopicPartition, OffsetAndMetadata> = HashMap()
+    private val committed = mutableMapOf<TopicPartition, OffsetAndMetadata>()
 
     private val pollTasks: Queue<Runnable> = LinkedList()
 
-    private val paused: MutableSet<TopicPartition> = HashSet()
+    private val paused = mutableSetOf<TopicPartition>()
 
-    private val records: MutableMap<TopicPartition, MutableList<ConsumerRecord<K?, V?>>> = HashMap()
+    private val records = mutableMapOf<TopicPartition, MutableList<ConsumerRecord<K, V>>>()
 
     private var pollException: KafkaException? = null
 
@@ -98,7 +98,7 @@ class MockConsumer<K, V>(offsetResetStrategy: OffsetResetStrategy) : Consumer<K,
         ensureNotClosed()
         committed.clear()
         subscriptions.subscribe(pattern, callback)
-        val topicsToSubscribe: MutableSet<String> = HashSet()
+        val topicsToSubscribe: MutableSet<String> = hashSetOf()
         for (topic in partitions.keys) if (
             pattern.matcher(topic).matches()
             && !subscriptions.subscription().contains(topic)
@@ -106,7 +106,7 @@ class MockConsumer<K, V>(offsetResetStrategy: OffsetResetStrategy) : Consumer<K,
 
         ensureNotClosed()
         subscriptions.subscribeFromPattern(topicsToSubscribe)
-        val assignedPartitions: MutableSet<TopicPartition> = HashSet()
+        val assignedPartitions: MutableSet<TopicPartition> = hashSetOf()
 
         for (topic in topicsToSubscribe)
             for ((_, partition) in partitions[topic]!!)
@@ -124,14 +124,14 @@ class MockConsumer<K, V>(offsetResetStrategy: OffsetResetStrategy) : Consumer<K,
     override fun subscribe(topics: Collection<String>, callback: ConsumerRebalanceListener) {
         ensureNotClosed()
         committed.clear()
-        subscriptions.subscribe(HashSet(topics), callback)
+        subscriptions.subscribe(topics.toHashSet(), callback)
     }
 
     @Synchronized
     override fun assign(partitions: Collection<TopicPartition>) {
         ensureNotClosed()
         committed.clear()
-        subscriptions.assignFromUser(HashSet(partitions))
+        subscriptions.assignFromUser(partitions.toHashSet())
     }
 
     @Synchronized
@@ -143,10 +143,10 @@ class MockConsumer<K, V>(offsetResetStrategy: OffsetResetStrategy) : Consumer<K,
 
     @Deprecated("")
     @Synchronized
-    override fun poll(timeout: Long): ConsumerRecords<K?, V?> = poll(Duration.ofMillis(timeout))
+    override fun poll(timeout: Long): ConsumerRecords<K, V> = poll(Duration.ofMillis(timeout))
 
     @Synchronized
-    override fun poll(timeout: Duration): ConsumerRecords<K?, V?> {
+    override fun poll(timeout: Duration): ConsumerRecords<K, V> {
         ensureNotClosed()
         lastPollTimeout = timeout
 
@@ -171,7 +171,7 @@ class MockConsumer<K, V>(offsetResetStrategy: OffsetResetStrategy) : Consumer<K,
             if (!subscriptions.hasValidPosition(tp)) updateFetchPosition(tp)
 
         // update the consumed offset
-        val results: MutableMap<TopicPartition, MutableList<ConsumerRecord<K?, V?>>> = HashMap()
+        val results = mutableMapOf<TopicPartition, MutableList<ConsumerRecord<K, V>>>()
         val toClear: MutableList<TopicPartition> = ArrayList()
         for ((key, recs) in records) {
             if (!subscriptions.isPaused(key)) {
@@ -199,7 +199,7 @@ class MockConsumer<K, V>(offsetResetStrategy: OffsetResetStrategy) : Consumer<K,
     }
 
     @Synchronized
-    fun addRecord(record: ConsumerRecord<K?, V?>) {
+    fun addRecord(record: ConsumerRecord<K, V>) {
         ensureNotClosed()
         val tp = TopicPartition(record.topic, record.partition)
         val currentAssigned = subscriptions.assignedPartitions()

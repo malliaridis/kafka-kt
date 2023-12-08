@@ -47,7 +47,7 @@ import kotlin.math.min
  * @param time time instance
  * @param metricGrpName logical group name for metrics
  */
-class BufferPool(
+open class BufferPool(
     val totalMemory: Long,
     val poolableSize: Int,
     private val metrics: Metrics,
@@ -136,7 +136,7 @@ class BufferPool(
      * pool (and hence we would block forever)
      */
     @Throws(InterruptedException::class)
-    fun allocate(size: Int, maxTimeToBlockMs: Long): ByteBuffer {
+    open fun allocate(size: Int, maxTimeToBlockMs: Long): ByteBuffer {
         require(size <= totalMemory) {
             "Attempt to allocate $size bytes, but there is a hard limit of $totalMemory on " +
                     "memory allocations."
@@ -178,10 +178,12 @@ class BufferPool(
                                 !moreMemory.await(remainingTimeToBlockNs, TimeUnit.NANOSECONDS)
                         } finally {
                             val endWaitNs = time.nanoseconds()
-                            timeNs = Math.max(0L, endWaitNs - startWaitNs)
+                            timeNs = (endWaitNs - startWaitNs).coerceAtLeast(0L)
                             recordWaitTime(timeNs)
                         }
+
                         if (closed) throw KafkaException("Producer closed while allocating memory")
+
                         if (waitingTimeElapsed) {
                             metrics.sensor("buffer-exhausted-records").record()
                             throw BufferExhaustedException(
@@ -208,7 +210,7 @@ class BufferPool(
                                 (size - accumulated).toLong(),
                                 nonPooledAvailableMemory,
                             ).toInt()
-                            nonPooledAvailableMemory -= got.toLong()
+                            nonPooledAvailableMemory -= got
                             accumulated += got
                         }
                     }
@@ -217,7 +219,7 @@ class BufferPool(
                 } finally {
                     // When this loop was not able to successfully terminate don't loose available
                     // memory
-                    nonPooledAvailableMemory += accumulated.toLong()
+                    nonPooledAvailableMemory += accumulated
                     waiters.remove(moreMemory)
                 }
             }
@@ -236,7 +238,7 @@ class BufferPool(
 
     // Protected for testing
     internal fun recordWaitTime(timeNs: Long) {
-        waitTime.record(timeNs.toDouble(), time.milliseconds())
+        waitTime.record(value = timeNs.toDouble(), timeMs = time.milliseconds())
     }
 
     /**
@@ -253,7 +255,7 @@ class BufferPool(
             if (error) {
                 lock.lock()
                 try {
-                    nonPooledAvailableMemory += size.toLong()
+                    nonPooledAvailableMemory += size
                     if (!waiters.isEmpty()) waiters.peekFirst().signal()
                 } finally {
                     lock.unlock()
@@ -263,7 +265,7 @@ class BufferPool(
     }
 
     // Protected for testing.
-    internal fun allocateByteBuffer(size: Int): ByteBuffer {
+    internal open fun allocateByteBuffer(size: Int): ByteBuffer {
         return ByteBuffer.allocate(size)
     }
 
@@ -273,7 +275,7 @@ class BufferPool(
      */
     private fun freeUp(size: Int) {
         while (!free.isEmpty() && nonPooledAvailableMemory < size)
-            nonPooledAvailableMemory += free.pollLast().capacity().toLong()
+            nonPooledAvailableMemory += free.pollLast().capacity()
     }
 
     /**
@@ -284,16 +286,15 @@ class BufferPool(
      * @param size The size of the buffer to mark as deallocated, note that this may be smaller than
      * `buffer.capacity` since the buffer may re-allocate itself during in-place compression
      */
-    fun deallocate(buffer: ByteBuffer, size: Int) {
+    open fun deallocate(buffer: ByteBuffer, size: Int) {
         lock.lock()
         try {
             if (size == poolableSize && size == buffer.capacity()) {
                 buffer.clear()
                 free.add(buffer)
-            } else {
-                nonPooledAvailableMemory += size.toLong()
-            }
-            val moreMem = waiters.peekFirst()
+            } else nonPooledAvailableMemory += size.toLong()
+
+            val moreMem: Condition? = waiters.peekFirst()
             moreMem?.signal()
         } finally {
             lock.unlock()
@@ -301,7 +302,7 @@ class BufferPool(
     }
 
     fun deallocate(buffer: ByteBuffer?) {
-        if (buffer != null) deallocate(buffer, buffer.capacity())
+        buffer?.let { deallocate(it, it.capacity()) }
     }
 
     /**
@@ -321,10 +322,10 @@ class BufferPool(
         replaceWith = ReplaceWith("freeSize"),
     )
     // Protected for testing.
-    protected fun freeSize(): Int = free.size
+    protected open fun freeSize(): Int = free.size
 
-    internal val freeSize: Int
-        get() =  free.size
+    internal open val freeSize: Int
+        get() = free.size
 
     /**
      * Get the unallocated memory (not in the free list or in use)
@@ -383,7 +384,7 @@ class BufferPool(
         lock.lock()
         closed = true
         try {
-            for (waiter: Condition in waiters) waiter.signal()
+            for (waiter in waiters) waiter.signal()
         } finally {
             lock.unlock()
         }

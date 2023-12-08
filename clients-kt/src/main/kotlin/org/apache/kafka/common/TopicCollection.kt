@@ -82,14 +82,7 @@ sealed class TopicCollection {
         /**
          * @return a collection of topics defined by topic name
          */
-        @Deprecated("Use function with List param.")
         fun ofTopicNames(topics: Collection<String>): TopicNameCollection {
-            return TopicNameCollection(topics.toList())
-        }
-        /**
-         * @return a collection of topics defined by topic name
-         */
-        fun ofTopicNames(topics: List<String>): TopicNameCollection {
             return TopicNameCollection(topics.toList())
         }
     }

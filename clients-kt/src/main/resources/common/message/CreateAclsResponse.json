@@ -30,7 +30,7 @@
       { "name": "ErrorCode", "type": "int16", "versions": "0+",
         "about": "The result error, or zero if there was no error." },
       { "name": "ErrorMessage", "type": "string", "nullableVersions": "0+", "versions": "0+",
-        "about": "The result message, or null if there was no error." }
+        "default": "", "about": "The result message, or null if there was no error." }
     ]}
   ]
 }

@@ -103,6 +103,7 @@ class JsonConverterGenerator internal constructor(
         struct: StructSpec,
         parentVersions: Versions,
     ) {
+        buffer.printf("@JvmStatic%n")
         headerGenerator.addImport(MessageGenerator.JSON_NODE_CLASS)
         buffer.printf(
             "fun read(node: JsonNode, version: Short): %s {%n",
@@ -317,9 +318,7 @@ class JsonConverterGenerator internal constructor(
                 buffer.printf(
                     "%s%n",
                     target.assignmentStatement(
-                        String.format(
-                            "Uuid.fromString(%s.asText())", target.sourceVariable
-                        )
+                        String.format("Uuid.fromString(%s.asText())", target.sourceVariable)
                     )
                 )
             }
@@ -361,7 +360,7 @@ class JsonConverterGenerator internal constructor(
                     .conditionalGenerator { name, negated ->
                         String.format("%s%s.isNull", if (negated) "!" else "", name)
                     }
-                    .ifNull { buffer.printf("%s%n", target.assignmentStatement(target.field.fieldDefault(headerGenerator, structRegistry))) }
+                    .ifNull { buffer.printf("%s%n", target.assignmentStatement("null")) }
                     .ifShouldNotBeNull { generateVariableLengthTargetFromJson(target, curVersions) }
                     .generate(buffer)
             }
@@ -478,6 +477,7 @@ class JsonConverterGenerator internal constructor(
     }
 
     private fun generateOverloadWrite(className: String) {
+        buffer.printf("@JvmStatic%n")
         buffer.printf(
             "fun write(obj: %s, version: Short): JsonNode {%n",
             className
@@ -493,6 +493,7 @@ class JsonConverterGenerator internal constructor(
         struct: StructSpec,
         parentVersions: Versions,
     ) {
+        buffer.printf("@JvmStatic%n")
         headerGenerator.addImport(MessageGenerator.JSON_NODE_CLASS)
         buffer.printf(
             "fun write(obj: %s, version: Short, serializeRecords: Boolean): JsonNode {%n",
@@ -532,6 +533,8 @@ class JsonConverterGenerator internal constructor(
                 )
             }
             val cond = VersionConditional.forVersions(field.versions, curVersions)
+                .emitBlockScope { field.type.isNullable }
+                .ifInBlockScope { buffer.printf("val %s = obj.%s%n", field.camelCaseName(), field.camelCaseName()) }
                 .ifMember { presentVersions ->
                     VersionConditional.forVersions(field.taggedVersions, presentVersions)
                         .ifMember { presentAndTaggedVersions ->
@@ -550,7 +553,7 @@ class JsonConverterGenerator internal constructor(
                     field.generateNonIgnorableFieldCheck(
                         headerGenerator = headerGenerator,
                         structRegistry = structRegistry,
-                        fieldPrefix = "obj.",
+                        fieldPrefix = if (field.type.isNullable) null else "obj.",
                         buffer = buffer,
                     )
                 }

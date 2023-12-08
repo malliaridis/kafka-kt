@@ -18,7 +18,7 @@
 package org.apache.kafka.server.authorizer
 
 import java.io.Closeable
-import java.util.*
+import java.util.EnumMap
 import java.util.concurrent.CompletionStage
 import org.apache.kafka.common.Configurable
 import org.apache.kafka.common.Endpoint
@@ -221,21 +221,15 @@ interface Authorizer : Configurable, Closeable {
         val resourceTypeFilter = ResourcePatternFilter(resourceType, null, PatternType.ANY)
         val aclFilter = AclBindingFilter(resourceTypeFilter, AccessControlEntryFilter.ANY)
 
-        val denyPatterns: EnumMap<PatternType, MutableSet<String>> =
-            object : EnumMap<PatternType, MutableSet<String>>(PatternType::class.java) {
-                init {
-                    put(PatternType.LITERAL, HashSet())
-                    put(PatternType.PREFIXED, HashSet())
-                }
-            }
+        val denyPatterns: Map<PatternType, MutableSet<String>> = mapOf(
+            PatternType.LITERAL to mutableSetOf(),
+            PatternType.PREFIXED to mutableSetOf(),
+        )
 
-        val allowPatterns: EnumMap<PatternType, MutableSet<String>> =
-            object : EnumMap<PatternType, MutableSet<String>>(PatternType::class.java) {
-                init {
-                    put(PatternType.LITERAL, HashSet())
-                    put(PatternType.PREFIXED, HashSet())
-                }
-            }
+        val allowPatterns: Map<PatternType, MutableSet<String>> = mapOf(
+            PatternType.LITERAL to mutableSetOf(),
+            PatternType.PREFIXED to mutableSetOf(),
+        )
 
         var hasWildCardAllow = false
         val principal = KafkaPrincipal(

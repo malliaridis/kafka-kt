@@ -41,7 +41,7 @@ data class TransactionListing(
 
     @Deprecated(
         message = "User property instead",
-        replaceWith = ReplaceWith("transactionState"),
+        replaceWith = ReplaceWith("state"),
     )
     fun state(): TransactionState = state
 

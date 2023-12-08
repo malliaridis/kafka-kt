@@ -90,7 +90,7 @@ open class SaslServerAuthenticator(
     private val listenerName: ListenerName?,
     private val securityProtocol: SecurityProtocol,
     private val transportLayer: TransportLayer,
-    private val connectionsMaxReauthMsByMechanism: Map<String?, Long>,
+    private val connectionsMaxReauthMsByMechanism: Map<String, Long>,
     private val metadataRegistry: ChannelMetadataRegistry,
     private val time: Time,
     private val apiVersionSupplier: Supplier<ApiVersionsResponse>
@@ -213,8 +213,8 @@ open class SaslServerAuthenticator(
             throw KafkaException("Principal has name with unexpected format $servicePrincipal")
         }
 
-        val servicePrincipalName = kerberosName.serviceName()
-        val serviceHostname = kerberosName.hostName()
+        val servicePrincipalName = kerberosName.serviceName
+        val serviceHostname = kerberosName.hostName
         log.debug("Creating SaslServer for {} with mechanism {}", kerberosName, saslMechanism)
 
         return try {
@@ -257,16 +257,13 @@ open class SaslServerAuthenticator(
             // allocate on heap (as opposed to any socket server memory pool)
             if (netInBuffer == null) netInBuffer = NetworkReceive(
                 maxSize = saslAuthRequestMaxReceiveSize,
-                source = connectionId
+                source = connectionId,
             )
 
             try {
                 netInBuffer!!.readFrom(transportLayer)
             } catch (e: InvalidReceiveException) {
-                throw SaslAuthenticationException(
-                    "Failing SASL authentication due to invalid receive size",
-                    e
-                )
+                throw SaslAuthenticationException("Failing SASL authentication due to invalid receive size", e)
             }
 
             if (!netInBuffer!!.complete()) return
@@ -332,7 +329,7 @@ open class SaslServerAuthenticator(
         )
         val principal = principalBuilder.build(context)
         if (ScramMechanism.isScram(saslMechanism) && java.lang.Boolean.parseBoolean(
-                saslServer!!.getNegotiatedProperty(ScramLoginModule.TOKEN_AUTH_CONFIG) as String
+                saslServer!!.getNegotiatedProperty(ScramLoginModule.TOKEN_AUTH_CONFIG) as String?
             )
         ) {
             principal.tokenAuthenticated(true)
@@ -370,11 +367,11 @@ open class SaslServerAuthenticator(
                 "Invalid saslHandshakeReceive in server-side re-authentication context: null"
             )
         val previousSaslServerAuthenticator =
-            reauthenticationContext.previousAuthenticator() as SaslServerAuthenticator
+            reauthenticationContext.previousAuthenticator as SaslServerAuthenticator
         reauthInfo.reauthenticating(
             previousSaslServerAuthenticator.saslMechanism,
-            previousSaslServerAuthenticator.principal(),
-            reauthenticationContext.reauthenticationBeginNanos()
+            previousSaslServerAuthenticator.principal()!!,
+            reauthenticationContext.reauthenticationBeginNanos
         )
         previousSaslServerAuthenticator.close()
         netInBuffer = saslHandshakeReceive
@@ -743,11 +740,12 @@ open class SaslServerAuthenticator(
         var badMechanismErrorMessage: String? = null
 
         fun reauthenticating(
-            previousSaslMechanism: String?, previousKafkaPrincipal: KafkaPrincipal?,
+            previousSaslMechanism: String,
+            previousKafkaPrincipal: KafkaPrincipal,
             reauthenticationBeginNanos: Long
         ) {
-            this.previousSaslMechanism = Objects.requireNonNull(previousSaslMechanism)
-            this.previousKafkaPrincipal = Objects.requireNonNull(previousKafkaPrincipal)
+            this.previousSaslMechanism = previousSaslMechanism
+            this.previousKafkaPrincipal = previousKafkaPrincipal
             this.reauthenticationBeginNanos = reauthenticationBeginNanos
         }
 
@@ -763,13 +761,9 @@ open class SaslServerAuthenticator(
         fun ensurePrincipalUnchanged(reauthenticatedKafkaPrincipal: KafkaPrincipal?) {
             if (previousKafkaPrincipal != reauthenticatedKafkaPrincipal) {
                 throw SaslAuthenticationException(
-                    String.format(
-                        "Cannot change principals during re-authentication from %s.%s: %s.%s",
-                        previousKafkaPrincipal!!.principalType,
-                        previousKafkaPrincipal!!.name,
-                        reauthenticatedKafkaPrincipal!!.principalType,
-                        reauthenticatedKafkaPrincipal.name
-                    )
+                    "Cannot change principals during re-authentication from " +
+                            "${previousKafkaPrincipal!!.principalType}.${previousKafkaPrincipal!!.name}: " +
+                            "${reauthenticatedKafkaPrincipal!!.principalType}.${reauthenticatedKafkaPrincipal.name}"
                 )
             }
         }

@@ -23,10 +23,15 @@ import org.apache.kafka.common.KafkaException
  * Any API exception that is part of the public protocol and should be a subclass of this class and be part of this
  * package.
  */
-open class ApiException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : KafkaException(message = message, cause = cause) {
+open class ApiException : KafkaException {
+
+    constructor() : super()
+
+    constructor(message: String?) : super(message)
+
+    constructor(cause: Throwable?) : super(cause)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     /* avoid the expensive and useless stack trace for api exceptions */
     override fun fillInStackTrace(): Throwable = this

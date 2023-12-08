@@ -17,7 +17,6 @@
 
 package org.apache.kafka.common.acl
 
-import java.util.*
 import org.apache.kafka.common.annotation.InterfaceStability.Evolving
 import org.apache.kafka.common.resource.ResourcePatternFilter
 

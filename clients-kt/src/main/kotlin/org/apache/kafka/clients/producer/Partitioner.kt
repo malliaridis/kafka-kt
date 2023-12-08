@@ -25,6 +25,7 @@ import java.io.Closeable
  * Partitioner Interface
  */
 interface Partitioner : Configurable, Closeable {
+
     /**
      * Compute the partition for the given record.
      *

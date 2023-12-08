@@ -56,8 +56,8 @@ internal class ClusterConnectionStates(
             connectionSetupTimeoutMaxMs,
             CONNECTION_SETUP_TIMEOUT_JITTER
         )
-        nodeState = HashMap()
-        connectingNodes = HashSet()
+        nodeState = hashMapOf()
+        connectingNodes = hashSetOf()
     }
 
     /**
@@ -158,7 +158,7 @@ internal class ClusterConnectionStates(
             "Hostname for node {} changed from {} to {}.",
             id,
             connectionState.host,
-            host
+            host,
         )
 
         // Create a new NodeConnectionState if nodeState does not already contain one for the

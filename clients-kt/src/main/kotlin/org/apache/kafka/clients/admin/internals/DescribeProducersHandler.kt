@@ -92,9 +92,8 @@ class DescribeProducersHandler(
                     apiError.exception()
                 )
                 failed[topicPartition] = apiError.error.exception(
-                    "Failed to describe active producers for partition $topicPartition on" +
-                            " brokerId $brokerId"
-                )
+                    "Failed to describe active producers for partition $topicPartition on brokerId $brokerId"
+                )!!
             } ?: run {
                 // Otherwise, we unmap the partition so that we can find the new leader
                 log.debug(
@@ -142,9 +141,8 @@ class DescribeProducersHandler(
                     apiError.exception(),
                 )
                 failed[topicPartition] = apiError.error.exception(
-                    "Failed to describe active producers for partition $topicPartition due to" +
-                            " unexpected error"
-                )
+                    "Failed to describe active producers for partition $topicPartition due to unexpected error"
+                )!!
             }
         }
     }
@@ -206,7 +204,7 @@ class DescribeProducersHandler(
         fun newFuture(
             topicPartitions: Collection<TopicPartition>
         ): SimpleAdminApiFuture<TopicPartition, PartitionProducerState> {
-            return AdminApiFuture.forKeys(HashSet(topicPartitions))
+            return AdminApiFuture.forKeys(topicPartitions.toHashSet())
         }
     }
 }

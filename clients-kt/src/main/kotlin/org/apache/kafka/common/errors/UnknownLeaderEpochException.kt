@@ -22,10 +22,11 @@ package org.apache.kafka.common.errors
  * request. This can happen if the client observes a metadata update before it has been propagated
  * to all brokers. Clients need not refresh metadata before retrying.
  */
-class UnknownLeaderEpochException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : RetriableException(message = message, cause = cause) {
+class UnknownLeaderEpochException : RetriableException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

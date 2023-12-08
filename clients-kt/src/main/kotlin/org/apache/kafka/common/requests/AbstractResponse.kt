@@ -10,7 +10,7 @@ import org.apache.kafka.common.protocol.Errors
 import org.apache.kafka.common.protocol.MessageUtil
 import org.apache.kafka.common.protocol.SendBuilder
 
-abstract class AbstractResponse protected constructor(
+abstract class AbstractResponse(
     val apiKey: ApiKeys,
 ) : AbstractRequestResponse {
 
@@ -99,11 +99,11 @@ abstract class AbstractResponse protected constructor(
             val apiVersion = requestHeader.apiVersion
             val responseHeader =
                 ResponseHeader.parse(buffer, apiKey.responseHeaderVersion(apiVersion))
-            if (requestHeader.correlationId != responseHeader.correlationId()) {
+            if (requestHeader.correlationId != responseHeader.correlationId) {
                 throw CorrelationIdMismatchException(
-                    "Correlation id for response (${responseHeader.correlationId()}) does not match request (" +
+                    "Correlation id for response (${responseHeader.correlationId}) does not match request (" +
                             "${requestHeader.correlationId}), request header: $requestHeader",
-                    requestHeader.correlationId, responseHeader.correlationId()
+                    requestHeader.correlationId, responseHeader.correlationId
                 )
             }
             return parseResponse(apiKey, buffer, apiVersion)

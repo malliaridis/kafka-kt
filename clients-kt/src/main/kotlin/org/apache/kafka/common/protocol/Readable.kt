@@ -56,8 +56,8 @@ interface Readable {
         unknowns: MutableList<RawTaggedField>?,
         tag: Int,
         size: Int
-    ): List<RawTaggedField> {
-        val unknownList = unknowns ?: ArrayList()
+    ): MutableList<RawTaggedField> {
+        val unknownList = unknowns ?: mutableListOf()
 
         val data = readArray(size)
         unknownList.add(RawTaggedField(tag, data))

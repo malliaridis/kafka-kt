@@ -27,7 +27,7 @@ import java.util.*
  * @property voters
  * @property observers
  */
-class QuorumInfo internal constructor(
+data class QuorumInfo internal constructor(
     val leaderId: Int,
     val leaderEpoch: Long,
     val highWatermark: Long,

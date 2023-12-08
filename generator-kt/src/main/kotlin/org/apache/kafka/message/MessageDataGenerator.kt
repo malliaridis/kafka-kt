@@ -35,8 +35,8 @@ import org.apache.kafka.message.FieldType.Uint64FieldType
 import org.apache.kafka.message.FieldType.Uint8FieldType
 import org.apache.kafka.message.MessageGenerator.sizeOfUnsignedVarint
 import java.io.BufferedWriter
-import java.util.*
-import kotlin.collections.LinkedHashSet
+import java.nio.ByteBuffer
+import java.util.TreeMap
 
 /**
  * Generates Kafka MessageData classes.
@@ -164,7 +164,7 @@ class MessageDataGenerator internal constructor(
         isTopLevel: Boolean,
         isSetElement: Boolean,
     ) {
-        val implementedInterfaces: MutableSet<String> = HashSet()
+        val implementedInterfaces = mutableSetOf<String>()
         if (isTopLevel) {
             implementedInterfaces.add("ApiMessage")
             headerGenerator.addImport(MessageGenerator.API_MESSAGE_CLASS)
@@ -176,7 +176,7 @@ class MessageDataGenerator internal constructor(
             headerGenerator.addImport(MessageGenerator.IMPLICIT_LINKED_HASH_COLLECTION_CLASS)
             implementedInterfaces.add("ImplicitLinkedHashCollection.Element")
         }
-        val classModifiers: MutableSet<String> = LinkedHashSet()
+        val classModifiers = linkedSetOf<String>()
         // TODO Add data class modifier once properties added to constructor
         // classModifiers.add("data")
         // if (!isTopLevel) classModifiers.add("inner")
@@ -335,7 +335,7 @@ class MessageDataGenerator internal constructor(
 
         headerGenerator.addImport(MessageGenerator.LIST_CLASS)
         headerGenerator.addImport(MessageGenerator.RAW_TAGGED_FIELD_CLASS)
-        buffer.printf("private var unknownTaggedFields: List<RawTaggedField>? = null%n")
+        buffer.printf("private var unknownTaggedFields: MutableList<RawTaggedField>? = null%n")
         generateFieldEpilogue(isSetElement)
     }
 
@@ -374,14 +374,14 @@ class MessageDataGenerator internal constructor(
     private fun generateUnknownTaggedFieldsAccessor() {
         headerGenerator.addImport(MessageGenerator.LIST_CLASS)
         headerGenerator.addImport(MessageGenerator.RAW_TAGGED_FIELD_CLASS)
-        buffer.printf("override fun unknownTaggedFields(): List<RawTaggedField> {%n")
+        buffer.printf("override fun unknownTaggedFields(): MutableList<RawTaggedField> {%n")
         buffer.incrementIndent()
         // Optimize unknownTaggedFields by not creating a new list object
         // unless we need it.
         buffer.printf("if (unknownTaggedFields == null) {%n")
         buffer.incrementIndent()
         headerGenerator.addImport(MessageGenerator.ARRAYLIST_CLASS)
-        buffer.printf("unknownTaggedFields = ArrayList()%n")
+        buffer.printf("unknownTaggedFields = mutableListOf()%n")
         buffer.decrementIndent()
         buffer.printf("}%n")
         buffer.printf("return unknownTaggedFields!!%n")
@@ -501,10 +501,7 @@ class MessageDataGenerator internal constructor(
                                 type = field.type,
                                 possibleVersions = versions,
                                 nullableVersions = field.nullableVersions,
-                                assignmentPrefix = String.format(
-                                    "%s = ",
-                                    field.prefixedCamelCaseName()
-                                ),
+                                assignmentPrefix = String.format("%s = ", field.prefixedCamelCaseName()),
                                 fieldDefault = field.fieldDefault(headerGenerator, structRegistry),
                                 assignmentSuffix = String.format("%n"),
                                 isStructArrayWithKeys = structRegistry.isStructArrayWithKeys(field),
@@ -567,10 +564,8 @@ class MessageDataGenerator internal constructor(
                                         type = field.type,
                                         possibleVersions = presentAndTaggedVersions,
                                         nullableVersions = field.nullableVersions,
-                                        assignmentPrefix =
-                                        String.format("%s = ", field.prefixedCamelCaseName()),
-                                        fieldDefault =
-                                        field.fieldDefault(headerGenerator, structRegistry),
+                                        assignmentPrefix = String.format("%s = ", field.prefixedCamelCaseName()),
+                                        fieldDefault = field.fieldDefault(headerGenerator, structRegistry),
                                         assignmentSuffix = String.format("%n"),
                                         isStructArrayWithKeys =
                                         structRegistry.isStructArrayWithKeys(field),
@@ -596,7 +591,7 @@ class MessageDataGenerator internal constructor(
                 buffer.printf("else -> %n")
                 buffer.incrementIndent()
                 buffer.printf(
-                    "this.unknownTaggedFields = readable.readUnknownTaggedField(this.unknownTaggedFields?.toMutableList(), tag, size)%n"
+                    "this.unknownTaggedFields = readable.readUnknownTaggedField(this.unknownTaggedFields, tag, size)%n"
                 )
                 buffer.decrementIndent()
                 buffer.decrementIndent()
@@ -661,7 +656,7 @@ class MessageDataGenerator internal constructor(
                     name,
                 )
             }
-            .ifMember { buffer.printf("%s%s%s", assignmentPrefix, fieldDefault, assignmentSuffix) }
+            .ifMember { buffer.printf("%s%s%s", assignmentPrefix, null, assignmentSuffix) }
             .generate(buffer)
 
         buffer.decrementIndent()
@@ -797,6 +792,11 @@ class MessageDataGenerator internal constructor(
         val taggedFields = TreeMap<Int, FieldSpec?>()
         for (field in struct.fields) {
             val cond = VersionConditional.forVersions(field.versions, curVersions)
+                // Emit block scope if the field type is nullable to create immutable field for safe read
+                .emitBlockScope { field.type.isNullable }
+                .ifInBlockScope {
+                    buffer.printf("val %s = this.%s%n", field.camelCaseName(), field.camelCaseName())
+                }
                 .ifMember { presentVersions ->
                     VersionConditional.forVersions(field.taggedVersions, presentVersions)
                         .ifNotMember { presentAndUntaggedVersions ->
@@ -805,7 +805,7 @@ class MessageDataGenerator internal constructor(
                                     generateVariableLengthWriter(
                                         fieldFlexibleVersions = fieldFlexibleVersions(field),
                                         name = field.camelCaseName(),
-                                        fieldPrefix = "this.",
+                                        fieldPrefix = null,
                                         type = field.type,
                                         possibleVersions = versions,
                                         nullableVersions = field.nullableVersions,
@@ -841,19 +841,16 @@ class MessageDataGenerator internal constructor(
                                 headerGenerator = headerGenerator,
                                 structRegistry = structRegistry,
                                 buffer = buffer,
-                                fieldPrefix = "this.",
-                                nullableVersions = field.nullableVersions,
-                                disableSafeUnwrap = true,
+                                fieldPrefix = null,
                             )
+
                             buffer.incrementIndent()
                             buffer.printf("numTaggedFields++%n")
                             buffer.decrementIndent()
                             buffer.printf("}%n")
-                            if (taggedFields.put(field.tag!!, field) != null)
-                                throw RuntimeException(
-                                    "Field ${field.name} has tag ${field.tag}, but another field " +
-                                            "already used that tag."
-                                )
+                            if (taggedFields.put(field.tag!!, field) != null) throw RuntimeException(
+                                "Field ${field.name} has tag ${field.tag}, but another field already used that tag."
+                            )
                         }
                         .generate(buffer)
                 }
@@ -862,13 +859,14 @@ class MessageDataGenerator internal constructor(
                     field.generateNonIgnorableFieldCheck(
                         headerGenerator = headerGenerator,
                         structRegistry = structRegistry,
-                        fieldPrefix = "this.",
+                        fieldPrefix = null,
                         buffer = buffer,
                     )
                 }
             }
             cond.generate(buffer)
         }
+
         headerGenerator.addImport(MessageGenerator.RAW_TAGGED_FIELD_WRITER_CLASS)
         buffer.printf("val rawWriter: RawTaggedFieldWriter = RawTaggedFieldWriter.forFields(unknownTaggedFields)%n")
         buffer.printf("numTaggedFields += rawWriter.numFields%n")
@@ -881,104 +879,110 @@ class MessageDataGenerator internal constructor(
                 if (prevTag + 1 != field!!.tag)
                     buffer.printf("rawWriter.writeRawTags(writable, %d)%n", field.tag)
 
-                VersionConditional.forVersions(
-                    field.taggedVersions.intersect(field.versions),
-                    flexibleVersions,
-                ).allowMembershipCheckAlwaysFalse(false).ifMember { presentAndTaggedVersions ->
-                    val cond = IsNullConditional.forName(field.camelCaseName(), "this.")
-                        .nullableVersions(field.nullableVersions)
-                        .possibleVersions(presentAndTaggedVersions)
-                        .alwaysEmitBlockScope(true)
-                        .ifShouldNotBeNull {
-                            if (field.fieldDefault != "null") {
-                                field.generateNonDefaultValueCheck(
-                                    headerGenerator = headerGenerator,
-                                    structRegistry = structRegistry,
-                                    buffer = buffer,
-                                    fieldPrefix = "this.",
-                                    nullableVersions = Versions.NONE,
-                                )
-                                buffer.incrementIndent()
+                VersionConditional
+                    .forVersions(
+                        field.taggedVersions.intersect(field.versions),
+                        flexibleVersions,
+                    )
+                    .allowMembershipCheckAlwaysFalse(false)
+                    .ifMember { presentAndTaggedVersions ->
+                        val cond = IsNullConditional.forName(field.camelCaseName(), "this.")
+                            .nullableVersions(field.nullableVersions)
+                            .possibleVersions(presentAndTaggedVersions)
+                            .emitBlockScope { true }
+                            .ifInBlockScope {
+                                buffer.printf("val %s = %s%n", field.camelCaseName(), field.camelCaseName())
                             }
-                            buffer.printf("writable.writeUnsignedVarint(%d)%n", field.tag)
-                            if (field.type.isString) {
-                                buffer.printf(
-                                    "val stringBytes: ByteArray = cache.getSerializedValue(%s)%n",
-                                    field.safePrefixedCamelCaseName(),
+                            .ifShouldNotBeNull {
+                                if (field.fieldDefault != "null") {
+                                    field.generateNonDefaultValueCheck(
+                                        headerGenerator = headerGenerator,
+                                        structRegistry = structRegistry,
+                                        buffer = buffer,
+                                        fieldPrefix = null,
+                                        fromIfNotNull = true,
+                                    )
+                                    buffer.incrementIndent()
+                                }
+                                buffer.printf("writable.writeUnsignedVarint(%d)%n", field.tag)
+                                if (field.type.isString) {
+                                    buffer.printf(
+                                        "val stringBytes: ByteArray = cache.getSerializedValue(%s)%n",
+                                        field.safePrefixedCamelCaseName(),
+                                    )
+                                    headerGenerator.addImport(MessageGenerator.BYTE_UTILS_CLASS)
+                                    buffer.printf(
+                                        "writable.writeUnsignedVarint(stringBytes.size + ByteUtils.sizeOfUnsignedVarint(stringBytes.size + 1))%n"
+                                    )
+                                    buffer.printf("writable.writeUnsignedVarint(stringBytes.size + 1)%n")
+                                    buffer.printf("writable.writeByteArray(stringBytes)%n")
+                                } else if (field.type.isBytes) {
+                                    headerGenerator.addImport(MessageGenerator.BYTE_UTILS_CLASS)
+                                    buffer.printf(
+                                        "writable.writeUnsignedVarint(%s.size + ByteUtils.sizeOfUnsignedVarint(%s.size + 1))%n",
+                                        field.camelCaseName(),
+                                        field.camelCaseName(),
+                                    )
+                                    buffer.printf(
+                                        "writable.writeUnsignedVarint(%s.size + 1)%n",
+                                        field.camelCaseName(),
+                                    )
+                                    buffer.printf(
+                                        "writable.writeByteArray(%s)%n",
+                                        field.camelCaseName(),
+                                    )
+                                } else if (field.type.isArray) {
+                                    headerGenerator.addImport(MessageGenerator.BYTE_UTILS_CLASS)
+                                    buffer.printf(
+                                        "writable.writeUnsignedVarint(cache.getArraySizeInBytes(%s))%n",
+                                        field.prefixedCamelCaseName()
+                                    )
+                                    generateVariableLengthWriter(
+                                        fieldFlexibleVersions = fieldFlexibleVersions(field),
+                                        name = field.camelCaseName(),
+                                        fieldPrefix = "this.",
+                                        type = field.type,
+                                        possibleVersions = presentAndTaggedVersions,
+                                        nullableVersions = Versions.NONE,
+                                        zeroCopy = field.zeroCopy,
+                                    )
+                                } else if (field.type.isStruct) {
+                                    buffer.printf(
+                                        "writable.writeUnsignedVarint(%s.size(cache, version))%n",
+                                        field.prefixedCamelCaseName(),
+                                    )
+                                    buffer.printf(
+                                        "%s%n",
+                                        primitiveWriteExpression(field.type, field.camelCaseName()),
+                                    )
+                                } else if (field.type.isRecords) throw RuntimeException(
+                                    "Unsupported attempt to declare field `${field.name}` with " +
+                                            "`records` type as a tagged field."
                                 )
-                                headerGenerator.addImport(MessageGenerator.BYTE_UTILS_CLASS)
-                                buffer.printf(
-                                    "writable.writeUnsignedVarint(stringBytes.size + ByteUtils.sizeOfUnsignedVarint(stringBytes.size + 1))%n"
-                                )
-                                buffer.printf("writable.writeUnsignedVarint(stringBytes.size + 1)%n")
-                                buffer.printf("writable.writeByteArray(stringBytes)%n")
-                            } else if (field.type.isBytes) {
-                                headerGenerator.addImport(MessageGenerator.BYTE_UTILS_CLASS)
-                                buffer.printf(
-                                    "writable.writeUnsignedVarint(%s.length + ByteUtils.sizeOfUnsignedVarint(%s.length + 1))%n",
-                                    field.prefixedCamelCaseName(),
-                                    field.prefixedCamelCaseName(),
-                                )
-                                buffer.printf(
-                                    "writable.writeUnsignedVarint(%s.length + 1)%n",
-                                    field.prefixedCamelCaseName(),
-                                )
-                                buffer.printf(
-                                    "writable.writeByteArray(%s)%n",
-                                    field.prefixedCamelCaseName(),
-                                )
-                            } else if (field.type.isArray) {
-                                headerGenerator.addImport(MessageGenerator.BYTE_UTILS_CLASS)
-                                buffer.printf(
-                                    "writable.writeUnsignedVarint(cache.getArraySizeInBytes(%s))%n",
-                                    field.prefixedCamelCaseName()
-                                )
-                                generateVariableLengthWriter(
-                                    fieldFlexibleVersions = fieldFlexibleVersions(field),
-                                    name = field.camelCaseName(),
-                                    fieldPrefix = "this.",
-                                    type = field.type,
-                                    possibleVersions = presentAndTaggedVersions,
-                                    nullableVersions = Versions.NONE,
-                                    zeroCopy = field.zeroCopy,
-                                )
-                            } else if (field.type.isStruct) {
-                                buffer.printf(
-                                    "writable.writeUnsignedVarint(%s.size(cache, version))%n",
-                                    field.prefixedCamelCaseName(),
-                                )
-                                buffer.printf(
-                                    "%s%n",
-                                    primitiveWriteExpression(field.type, field.camelCaseName()),
-                                )
-                            } else if (field.type.isRecords) throw RuntimeException(
-                                "Unsupported attempt to declare field `${field.name}` with " +
-                                        "`records` type as a tagged field."
-                            )
-                            else {
-                                buffer.printf(
-                                    "writable.writeUnsignedVarint(%d)%n",
-                                    field.type.fixedLength()
-                                )
-                                buffer.printf(
-                                    "%s%n",
-                                    primitiveWriteExpression(field.type, field.camelCaseName()),
-                                )
+                                else {
+                                    buffer.printf(
+                                        "writable.writeUnsignedVarint(%d)%n",
+                                        field.type.fixedLength()
+                                    )
+                                    buffer.printf(
+                                        "%s%n",
+                                        primitiveWriteExpression(field.type, field.camelCaseName()),
+                                    )
+                                }
+                                if (field.fieldDefault != "null") {
+                                    buffer.decrementIndent()
+                                    buffer.printf("}%n")
+                                }
                             }
-                            if (field.fieldDefault != "null") {
-                                buffer.decrementIndent()
-                                buffer.printf("}%n")
+                        if (field.fieldDefault != "null") {
+                            cond.ifNull {
+                                buffer.printf("writable.writeUnsignedVarint(%d)%n", field.tag)
+                                buffer.printf("writable.writeUnsignedVarint(1)%n")
+                                buffer.printf("writable.writeUnsignedVarint(0)%n")
                             }
                         }
-                    if (field.fieldDefault != "null") {
-                        cond.ifNull {
-                            buffer.printf("writable.writeUnsignedVarint(%d)%n", field.tag)
-                            buffer.printf("writable.writeUnsignedVarint(1)%n")
-                            buffer.printf("writable.writeUnsignedVarint(0)%n")
-                        }
-                    }
-                    cond.generate(buffer)
-                }.generate(buffer)
+                        cond.generate(buffer)
+                    }.generate(buffer)
                 prevTag = field.tag!!
             }
             if (prevTag < Int.MAX_VALUE)
@@ -1036,7 +1040,8 @@ class MessageDataGenerator internal constructor(
         IsNullConditional.forName(name, fieldPrefix)
             .possibleVersions(possibleVersions)
             .nullableVersions(nullableVersions)
-            .alwaysEmitBlockScope(type.isString)
+            .emitBlockScope { type.isNullable || type.isString }
+            .ifInBlockScope { if (type.isNullable) buffer.printf("val %s = %s%n", name, name) }
             .ifNull {
                 VersionConditional.forVersions(nullableVersions, possibleVersions)
                     .ifMember { presentVersions ->
@@ -1053,10 +1058,7 @@ class MessageDataGenerator internal constructor(
             }
             .ifShouldNotBeNull {
                 val lengthExpression: String = if (type.isString) {
-                    buffer.printf(
-                        "val stringBytes: ByteArray = cache.getSerializedValue(%s)%n",
-                        name
-                    )
+                    buffer.printf("val stringBytes: ByteArray = cache.getSerializedValue(%s)%n", name)
                     "stringBytes.size"
                 } else if (type.isBytes) {
                     if (type.isNullable) {
@@ -1149,6 +1151,8 @@ class MessageDataGenerator internal constructor(
         val curVersions = parentVersions.intersect(struct.versions)
         for (field in struct.fields) {
             VersionConditional.forVersions(field.versions, curVersions)
+                .emitBlockScope { field.type.isNullable }
+                .ifInBlockScope { buffer.printf("val %s = %s%n", field.camelCaseName(), field.camelCaseName()) }
                 .ifMember { presentVersions ->
                     VersionConditional.forVersions(field.taggedVersions, presentVersions)
                         .ifMember { presentAndTaggedVersions ->
@@ -1256,8 +1260,7 @@ class MessageDataGenerator internal constructor(
                 headerGenerator = headerGenerator,
                 structRegistry = structRegistry,
                 buffer = buffer,
-                fieldPrefix = "this.",
-                nullableVersions = field.nullableVersions,
+                fieldPrefix = null,
             )
             buffer.incrementIndent()
             buffer.printf("numTaggedFields++%n")
@@ -1273,10 +1276,10 @@ class MessageDataGenerator internal constructor(
     private fun generateVariableLengthFieldSize(
         field: FieldSpec,
         possibleVersions: Versions,
-        tagged: Boolean
+        tagged: Boolean,
     ) {
         IsNullConditional.forField(field, "this.")
-            .alwaysEmitBlockScope(true)
+            .emitBlockScope { true }
             .possibleVersions(possibleVersions)
             .nullableVersions(field.nullableVersions)
             .ifNull {
@@ -1314,8 +1317,8 @@ class MessageDataGenerator internal constructor(
                             headerGenerator = headerGenerator,
                             structRegistry = structRegistry,
                             buffer = buffer,
-                            fieldPrefix = "this.",
-                            nullableVersions = Versions.NONE,
+                            fieldPrefix = null,
+                            fromIfNotNull = true,
                         )
                         buffer.incrementIndent()
                     }
@@ -1590,7 +1593,8 @@ class MessageDataGenerator internal constructor(
             is Uint64FieldType,
             is Float32FieldType,
             is Float64FieldType,
-            is UUIDFieldType ->
+            is UUIDFieldType,
+            ->
                 buffer.printf(
                     "hashCode = 31 * hashCode + %s.hashCode()%n",
                     field.prefixedCamelCaseName()
@@ -1598,20 +1602,52 @@ class MessageDataGenerator internal constructor(
 
             is Int8FieldType,
             is Int16FieldType,
-            is Int32FieldType ->
+            is Int32FieldType,
+            ->
                 buffer.printf("hashCode = 31 * hashCode + %s%n", field.prefixedCamelCaseName())
 
             else -> {
-                if (field.type.isBytes) buffer.printf(
-                    "hashCode = 31 * hashCode + %s.hashCode()%n",
-                    field.prefixedCamelCaseName(),
-                )
-                else if (field.type.isRecords) buffer.printf(
+                if (field.type.isBytes) {
+                    val s =
+                        if (field.zeroCopy) "hashCode = 31 * hashCode + %s.hashCode()%n" // is a ByteBuffer
+                        else "hashCode = 31 * hashCode + %s.contentHashCode()%n" // is a ByteArray
+                    buffer.printf(s, field.prefixedCamelCaseName())
+                } else if (field.type.isRecords) buffer.printf(
                     // TODO Validate if records can use hashCode()
                     "hashCode = 31 * hashCode + %s.hashCode()%n",
                     field.prefixedCamelCaseName(),
                 )
-                else if (field.type.isStruct || field.type.isArray || field.type.isString)
+                else if (field.type.isArray) {
+                    val arrayType = field.type as FieldType.ArrayType
+                    when (arrayType.elementType) {
+                        is BoolFieldType,
+                        is Int8FieldType,
+                        is Uint8FieldType,
+                        is Int16FieldType,
+                        is Uint16FieldType,
+                        is Int32FieldType,
+                        is Uint32FieldType,
+                        is Int64FieldType,
+                        is Uint64FieldType,
+                        is Float32FieldType,
+                        is Float64FieldType,
+                        -> buffer.printf(
+                            "hashCode = 31 * hashCode + %s%s%s.contentHashCode()%s%n",
+                            if (field.type.isNullable) "(" else "",
+                            field.prefixedCamelCaseName(),
+                            if (field.type.isNullable) "?" else "",
+                            if (field.type.isNullable) " ?: 0)" else "",
+                        )
+
+                        else -> buffer.printf(
+                            "hashCode = 31 * hashCode + %s%s%s.hashCode()%s%n",
+                            if (field.type.isNullable) "(" else "",
+                            field.prefixedCamelCaseName(),
+                            if (field.type.isNullable) "?" else "",
+                            if (field.type.isNullable) " ?: 0)" else "",
+                        )
+                    }
+                } else if (field.type.isStruct || field.type.isString)
                 // TODO Consider moving nullable logic to all hashcode and equals calls
                     buffer.printf(
                         "hashCode = 31 * hashCode + %s%s%s.hashCode()%s%n",
@@ -1662,15 +1698,10 @@ class MessageDataGenerator internal constructor(
         ) buffer.printf("%s%n", target.assignmentStatement(target.sourceVariable))
         else {
             val cond = IsNullConditional.forName(target.sourceVariable, "this.")
+                .emitBlockScope { field.type.isNullable }
+                .ifInBlockScope { buffer.printf("val %s = %s%n", field.camelCaseName(), field.camelCaseName())}
                 .nullableVersions(target.field.nullableVersions)
-                .ifNull {
-                    buffer.printf(
-                        "%s%n",
-                        target.assignmentStatement(
-                            field.fieldDefault(headerGenerator, structRegistry)
-                        ),
-                    )
-                }
+                .ifNull { buffer.printf("%s%n", target.assignmentStatement("null")) }
             if (field.type.isBytes) {
                 if (field.zeroCopy) {
                     cond.ifShouldNotBeNull {
@@ -1792,7 +1823,7 @@ class MessageDataGenerator internal constructor(
             )
         } else if (field.type.isString) {
             if (field.type.isNullable) buffer.printf(
-                "\"%s%s=\" + if (%s == null) \"null\" else \"'\$%s'\" +%n",
+                "\"%s%s=\" + (if (%s == null) \"null\" else \"'\$%s'\") +%n",
                 prefix,
                 field.camelCaseName(),
                 field.camelCaseName(),
@@ -1805,19 +1836,20 @@ class MessageDataGenerator internal constructor(
             )
         } else if (field.type.isBytes) {
             if (field.zeroCopy) buffer.printf(
+                // ByteBuffer
                 "\"%s%s=\" + %s +%n",
                 prefix,
                 field.camelCaseName(),
                 field.camelCaseName(),
             )
-            else {
-                buffer.printf(
-                    "\"%s%s=\" + %s.toString() +%n",
-                    prefix,
-                    field.camelCaseName(),
-                    field.camelCaseName(),
-                )
-            }
+            else buffer.printf(
+                // ByteArray
+                "\"%s%s=\" + %s.contentToString() +%n",
+                prefix,
+                field.camelCaseName(),
+                field.camelCaseName(),
+            )
+            String(ByteBuffer.allocate(0).array())
         } else if (field.type.isRecords) buffer.printf(
             "\"%s%s=\" + %s +%n",
             prefix,

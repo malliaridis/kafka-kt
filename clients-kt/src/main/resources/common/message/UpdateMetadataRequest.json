@@ -72,8 +72,8 @@
           { "name": "SecurityProtocol", "type": "int16", "versions": "1+",
             "about": "The security protocol type." }
         ]},
-        { "name": "Rack", "type": "string", "versions": "2+", "nullableVersions": "0+", "ignorable": true,
-          "about": "The rack which this broker belongs to." }
+        { "name": "Rack", "type": "string", "versions": "2+", "nullableVersions": "0+", "default": "",
+          "ignorable": true, "about": "The rack which this broker belongs to." }
     ]}
   ],
   "commonStructs": [

@@ -21,9 +21,9 @@ package org.apache.kafka.clients.consumer
  * A container class for offset and timestamp.
  */
 data class OffsetAndTimestamp(
-    val timestamp: Long,
     val offset: Long,
-    val leaderEpoch: Int?,
+    val timestamp: Long,
+    val leaderEpoch: Int? = null,
 ) {
 
     init {

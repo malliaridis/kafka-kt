@@ -48,7 +48,7 @@ class LegacyRecord(
     /**
      * Compute the checksum of the record from the record contents
      */
-    fun computeChecksum(): Long = crc32(
+    fun computeChecksum(): UInt = crc32(
         buffer = buffer,
         offset = MAGIC_OFFSET,
         size = buffer.limit() - MAGIC_OFFSET
@@ -57,7 +57,7 @@ class LegacyRecord(
     /**
      * Retrieve the previously computed CRC for this record
      */
-    fun checksum(): Long = readUnsignedInt(buffer, CRC_OFFSET)
+    fun checksum(): UInt = readUnsignedInt(buffer, CRC_OFFSET)
 
     /**
      * `true` if the crc stored with the record matches the crc computed off the record contents
@@ -435,7 +435,7 @@ class LegacyRecord(
             value: ByteArray?,
             compressionType: CompressionType,
             timestampType: TimestampType
-        ): Long {
+        ): UInt {
             return write(
                 out = out,
                 magic = magic,
@@ -456,7 +456,7 @@ class LegacyRecord(
             value: ByteBuffer?,
             compressionType: CompressionType,
             timestampType: TimestampType
-        ): Long {
+        ): UInt {
             val attributes = computeAttributes(
                 magic = magic,
                 type = compressionType,
@@ -474,7 +474,7 @@ class LegacyRecord(
         fun write(
             out: DataOutputStream,
             magic: Byte,
-            crc: Long,
+            crc: UInt,
             attributes: Byte,
             timestamp: Long,
             key: ByteArray?,
@@ -487,7 +487,7 @@ class LegacyRecord(
         private fun write(
             out: DataOutputStream,
             magic: Byte,
-            crc: Long,
+            crc: UInt,
             attributes: Byte,
             timestamp: Long,
             key: ByteBuffer?,
@@ -503,7 +503,7 @@ class LegacyRecord(
             }
 
             // write crc
-            out.writeInt((crc and 0xffffffffL).toInt())
+            out.writeInt(crc.toInt())
             // write magic value
             out.writeByte(magic.toInt())
             // write attributes
@@ -562,7 +562,7 @@ class LegacyRecord(
             timestamp: Long,
             key: ByteArray?,
             value: ByteArray?
-        ): Long {
+        ): UInt {
             return computeChecksum(
                 magic,
                 attributes,
@@ -572,10 +572,10 @@ class LegacyRecord(
             )
         }
 
-        private fun crc32(buffer: ByteBuffer, offset: Int, size: Int): Long {
+        private fun crc32(buffer: ByteBuffer, offset: Int, size: Int): UInt {
             val crc = CRC32()
             update(crc, buffer, offset, size)
-            return crc.value
+            return crc.value.toUInt()
         }
 
         /**
@@ -587,7 +587,7 @@ class LegacyRecord(
             timestamp: Long,
             key: ByteBuffer?,
             value: ByteBuffer?
-        ): Long {
+        ): UInt {
             val crc = CRC32()
             crc.update(magic.toInt())
             crc.update(attributes.toInt())
@@ -606,7 +606,7 @@ class LegacyRecord(
                 updateInt(crc, size)
                 update(crc, value, size)
             }
-            return crc.value
+            return crc.value.toUInt()
         }
 
         fun recordOverhead(magic: Byte): Int {

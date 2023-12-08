@@ -17,7 +17,9 @@
 
 package org.apache.kafka.common.errors
 
-class ElectionNotNeededException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : InvalidMetadataException(message = message, cause = cause)
+class ElectionNotNeededException : InvalidMetadataException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
+}

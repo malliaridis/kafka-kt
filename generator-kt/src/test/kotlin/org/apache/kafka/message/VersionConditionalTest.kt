@@ -100,7 +100,7 @@ class VersionConditionalTest {
         ).ifMember { buffer.printf("println(\"hello world\")%n") }
             .ifNotMember { buffer.printf("println(\"foobar\")%n") }
             .alwaysEmitBlockScope(true).generate(buffer)
-        claimEquals(buffer, "run {%n", "    println(\"hello world\")%n", "}%n")
+        claimEquals(buffer, "run<Unit> {%n", "    println(\"hello world\")%n", "}%n")
     }
 
     @Test

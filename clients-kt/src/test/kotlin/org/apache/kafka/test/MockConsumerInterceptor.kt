@@ -48,17 +48,15 @@ class MockConsumerInterceptor : ClusterResourceListener, ConsumerInterceptor<Str
         )
     }
 
-    override fun onConsume(
-        records: ConsumerRecords<String?, String?>,
-    ): ConsumerRecords<String?, String?> {
+    override fun onConsume(records: ConsumerRecords<String, String>): ConsumerRecords<String, String> {
 
         // This will ensure that we get the cluster metadata when onConsume is called for the first
         // time as subsequent compareAndSet operations will fail.
         CLUSTER_ID_BEFORE_ON_CONSUME.compareAndSet(NO_CLUSTER_ID, CLUSTER_META.get())
-        val recordMap = mutableMapOf<TopicPartition, List<ConsumerRecord<String?, String?>>>()
+        val recordMap = mutableMapOf<TopicPartition, List<ConsumerRecord<String, String>>>()
 
         for (tp in records.partitions()) {
-            val lst: List<ConsumerRecord<String?, String?>> = records.records(tp).map { record ->
+            val lst: List<ConsumerRecord<String, String>> = records.records(tp).map { record ->
                 with(record) {
                     ConsumerRecord(
                         topic = topic,
@@ -69,7 +67,7 @@ class MockConsumerInterceptor : ClusterResourceListener, ConsumerInterceptor<Str
                         serializedKeySize = serializedKeySize,
                         serializedValueSize = serializedValueSize,
                         key = key,
-                        value = value!!.uppercase(),
+                        value = value.uppercase(),
                     )
                 }
             }

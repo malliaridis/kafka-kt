@@ -459,12 +459,14 @@ class RecordAccumulator(
 
         val recordsBuilder = recordsBuilder(buffer, apiVersions.maxUsableProduceMagic())
         val batch = ProducerBatch(TopicPartition(topic, partition), recordsBuilder, nowMs)
-        val future = Objects.requireNonNull(
-            batch.tryAppend(
-                timestamp, key, value, headers,
-                callbacks, nowMs
-            )
-        )
+        val future = batch.tryAppend(
+            timestamp = timestamp,
+            key = key,
+            value = value,
+            headers = headers,
+            callback = callbacks,
+            now = nowMs,
+        )!!
         dq.addLast(batch)
         incomplete.add(batch)
         return RecordAppendResult(
@@ -520,30 +522,28 @@ class RecordAccumulator(
         nowMs: Long,
     ): RecordAppendResult? {
         if (closed) throw KafkaException("Producer closed while send in progress")
-        val last = deque.peekLast()
+        val last = deque.peekLast() ?: return null
 
-        if (last != null) {
-            val initialBytes = last.estimatedSizeInBytes
-            val future = last.tryAppend(
-                timestamp = timestamp,
-                key = key,
-                value = value,
-                headers = headers,
-                callback = callback,
-                now = nowMs,
+        val initialBytes = last.estimatedSizeInBytes
+        val future = last.tryAppend(
+            timestamp = timestamp,
+            key = key,
+            value = value,
+            headers = headers,
+            callback = callback,
+            now = nowMs,
+        )
+
+        if (future == null) last.closeForRecordAppends()
+        else {
+            val appendedBytes = last.estimatedSizeInBytes - initialBytes
+            return RecordAppendResult(
+                future = future,
+                batchIsFull = deque.size > 1 || last.isFull,
+                newBatchCreated = false,
+                abortForNewBatch = false,
+                appendedBytes = appendedBytes,
             )
-
-            if (future == null) last.closeForRecordAppends()
-            else {
-                val appendedBytes = last.estimatedSizeInBytes - initialBytes
-                return RecordAppendResult(
-                    future = future,
-                    batchIsFull = deque.size > 1 || last.isFull,
-                    newBatchCreated = false,
-                    abortForNewBatch = false,
-                    appendedBytes = appendedBytes,
-                )
-            }
         }
         return null
     }
@@ -886,7 +886,8 @@ class RecordAccumulator(
         // stats. NOTE: the stats are calculated in place, modifying the queueSizes array.
         topicInfo.builtInPartitioner.updatePartitionLoadStats(
             queueSizes = queueSizes,
-            partitionIds = partitionIds!!, length = queueSizesIndex + 1,
+            partitionIds = partitionIds,
+            length = queueSizesIndex + 1,
         )
         return nextReadyCheckDelayMs
     }
@@ -911,9 +912,9 @@ class RecordAccumulator(
      * - The accumulator has been closed
      */
     fun ready(cluster: Cluster, nowMs: Long): ReadyCheckResult {
-        val readyNodes: MutableSet<Node> = HashSet()
+        val readyNodes = mutableSetOf<Node>()
         var nextReadyCheckDelayMs = Long.MAX_VALUE
-        val unknownLeaderTopics: MutableSet<String> = HashSet()
+        val unknownLeaderTopics = mutableSetOf<String>()
 
         // Go topic by topic so that we can get queue sizes for partitions in a topic and calculate
         // cumulative frequency table (used in partitioner).
@@ -1346,7 +1347,7 @@ class RecordAccumulator(
      * The set of nodes that have at least one complete record batch in the accumulator
      */
     class ReadyCheckResult(
-        val readyNodes: Set<Node>,
+        val readyNodes: MutableSet<Node>,
         val nextReadyCheckDelayMs: Long,
         val unknownLeaderTopics: Set<String>,
     )

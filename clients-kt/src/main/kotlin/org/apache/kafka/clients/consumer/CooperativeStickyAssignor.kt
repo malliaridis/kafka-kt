@@ -17,6 +17,7 @@
 
 package org.apache.kafka.clients.consumer
 
+import java.nio.ByteBuffer
 import org.apache.kafka.clients.consumer.ConsumerPartitionAssignor.RebalanceProtocol
 import org.apache.kafka.clients.consumer.internals.AbstractStickyAssignor
 import org.apache.kafka.common.TopicPartition
@@ -24,7 +25,6 @@ import org.apache.kafka.common.protocol.types.Field
 import org.apache.kafka.common.protocol.types.Schema
 import org.apache.kafka.common.protocol.types.Struct
 import org.apache.kafka.common.protocol.types.Type
-import java.nio.ByteBuffer
 
 /**
  * A cooperative version of the [AbstractStickyAssignor]. This follows the same (sticky) assignment
@@ -52,7 +52,7 @@ class CooperativeStickyAssignor : AbstractStickyAssignor() {
         listOf(RebalanceProtocol.COOPERATIVE, RebalanceProtocol.EAGER)
 
     override fun onAssignment(
-        assignment: ConsumerPartitionAssignor.Assignment,
+        assignment: ConsumerPartitionAssignor.Assignment?,
         metadata: ConsumerGroupMetadata?,
     ) {
         generation = metadata!!.generationId
@@ -77,7 +77,7 @@ class CooperativeStickyAssignor : AbstractStickyAssignor() {
         else try {
             val struct = COOPERATIVE_STICKY_ASSIGNOR_USER_DATA_V0.read(buffer)
             struct.getInt(GENERATION_KEY_NAME)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             DEFAULT_GENERATION
         }
 
@@ -86,8 +86,8 @@ class CooperativeStickyAssignor : AbstractStickyAssignor() {
 
     override fun assign(
         partitionsPerTopic: Map<String, Int>,
-        subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>
-    ): Map<String, MutableList<TopicPartition>> {
+        subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>,
+    ): MutableMap<String, MutableList<TopicPartition>> {
         val assignments = super.assign(partitionsPerTopic, subscriptions)
         val partitionsTransferringOwnership = super.partitionsTransferringOwnership
             ?: computePartitionsTransferringOwnership(subscriptions, assignments)
@@ -99,27 +99,28 @@ class CooperativeStickyAssignor : AbstractStickyAssignor() {
     // be revoked from the assignment
     private fun adjustAssignment(
         assignments: Map<String, MutableList<TopicPartition>>,
-        partitionsTransferringOwnership: Map<TopicPartition, String>
+        partitionsTransferringOwnership: Map<TopicPartition, String>,
     ) {
-        for ((key, value) in partitionsTransferringOwnership) {
-            assignments[value]!!.remove(key)
+        for ((topicPartition, key) in partitionsTransferringOwnership) {
+            assignments[key]!!.remove(topicPartition)
         }
     }
 
     private fun computePartitionsTransferringOwnership(
         subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>,
-        assignments: Map<String, MutableList<TopicPartition>>
+        assignments: Map<String, List<TopicPartition>>,
     ): Map<TopicPartition, String> {
-        val allAddedPartitions: MutableMap<TopicPartition, String> = HashMap()
-        val allRevokedPartitions: MutableSet<TopicPartition> = HashSet()
+        val allAddedPartitions = mutableMapOf<TopicPartition, String>()
+        val allRevokedPartitions = mutableSetOf<TopicPartition>()
+
         for ((consumer, assignedPartitions) in assignments) {
             val ownedPartitions = subscriptions[consumer]!!.ownedPartitions
-            val ownedPartitionsSet: Set<TopicPartition> = HashSet(ownedPartitions)
+            val ownedPartitionsSet: Set<TopicPartition> = ownedPartitions.toSet()
 
             for (tp in assignedPartitions) {
                 if (!ownedPartitionsSet.contains(tp)) allAddedPartitions[tp] = consumer
             }
-            val assignedPartitionsSet: Set<TopicPartition> = HashSet(assignedPartitions)
+            val assignedPartitionsSet = assignedPartitions.toSet()
             for (tp in ownedPartitions) {
                 if (!assignedPartitionsSet.contains(tp)) allRevokedPartitions.add(tp)
             }

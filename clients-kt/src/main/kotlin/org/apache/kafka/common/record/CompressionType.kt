@@ -17,16 +17,6 @@
 
 package org.apache.kafka.common.record
 
-import org.apache.kafka.common.KafkaException
-import org.apache.kafka.common.compress.KafkaLZ4BlockInputStream
-import org.apache.kafka.common.compress.KafkaLZ4BlockOutputStream
-import org.apache.kafka.common.compress.SnappyFactory.wrapForInput
-import org.apache.kafka.common.compress.SnappyFactory.wrapForOutput
-import org.apache.kafka.common.compress.ZstdFactory
-import org.apache.kafka.common.compress.ZstdFactory.wrapForOutput
-import org.apache.kafka.common.utils.BufferSupplier
-import org.apache.kafka.common.utils.ByteBufferInputStream
-import org.apache.kafka.common.utils.ByteBufferOutputStream
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.InputStream
@@ -34,23 +24,31 @@ import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
+import org.apache.kafka.common.KafkaException
+import org.apache.kafka.common.compress.KafkaLZ4BlockInputStream
+import org.apache.kafka.common.compress.KafkaLZ4BlockOutputStream
+import org.apache.kafka.common.compress.SnappyFactory
+import org.apache.kafka.common.compress.ZstdFactory
+import org.apache.kafka.common.utils.BufferSupplier
+import org.apache.kafka.common.utils.ByteBufferInputStream
+import org.apache.kafka.common.utils.ByteBufferOutputStream
 
 /**
  * The compression type to use
  */
 enum class CompressionType(
     val id: Int,
-    val _name: String,
+    val altName: String,
     val rate: Float,
 ) {
     NONE(
         id = 0,
-        _name = "none",
+        altName = "none",
         rate = 1.0f
     ) {
         override fun wrapForOutput(
             bufferStream: ByteBufferOutputStream,
-            messageVersion: Byte
+            messageVersion: Byte,
         ): OutputStream = bufferStream
 
         override fun wrapForInput(
@@ -63,7 +61,7 @@ enum class CompressionType(
     // Shipped with the JDK
     GZIP(
         id = 1,
-        _name = "gzip",
+        altName = "gzip",
         rate = 1.0f
     ) {
         override fun wrapForOutput(
@@ -107,28 +105,28 @@ enum class CompressionType(
     // library code from classes that are only invoked when actual usage happens.
     SNAPPY(
         id = 2,
-        _name = "snappy",
+        altName = "snappy",
         rate = 1.0f
     ) {
         override fun wrapForOutput(
             bufferStream: ByteBufferOutputStream,
-            messageVersion: Byte
-        ): OutputStream = wrapForOutput(bufferStream)
+            messageVersion: Byte,
+        ): OutputStream = SnappyFactory.wrapForOutput(bufferStream)
 
         override fun wrapForInput(
             buffer: ByteBuffer,
             messageVersion: Byte,
             decompressionBufferSupplier: BufferSupplier,
-        ): InputStream = wrapForInput(buffer)
+        ): InputStream = SnappyFactory.wrapForInput(buffer)
     },
     LZ4(
         id = 3,
-        _name = "lz4",
+        altName = "lz4",
         rate = 1.0f
     ) {
         override fun wrapForOutput(
             bufferStream: ByteBufferOutputStream,
-            messageVersion: Byte
+            messageVersion: Byte,
         ): OutputStream {
             return try {
                 KafkaLZ4BlockOutputStream(
@@ -143,7 +141,7 @@ enum class CompressionType(
         override fun wrapForInput(
             buffer: ByteBuffer,
             messageVersion: Byte,
-            decompressionBufferSupplier: BufferSupplier
+            decompressionBufferSupplier: BufferSupplier,
         ): InputStream {
             return try {
                 KafkaLZ4BlockInputStream(
@@ -158,21 +156,22 @@ enum class CompressionType(
     },
     ZSTD(
         id = 4,
-        _name = "zstd",
+        altName = "zstd",
         rate = 1.0f
     ) {
         override fun wrapForOutput(
             bufferStream: ByteBufferOutputStream,
-            messageVersion: Byte
-        ): OutputStream = wrapForOutput(bufferStream)
+            messageVersion: Byte,
+        ): OutputStream = ZstdFactory.wrapForOutput(bufferStream)
 
         override fun wrapForInput(
             buffer: ByteBuffer,
             messageVersion: Byte,
-            decompressionBufferSupplier: BufferSupplier
+            decompressionBufferSupplier: BufferSupplier,
         ): InputStream = ZstdFactory.wrapForInput(
-            buffer, messageVersion,
-            decompressionBufferSupplier
+            buffer = buffer,
+            messageVersion = messageVersion,
+            decompressionBufferSupplier = decompressionBufferSupplier,
         )
     };
 
@@ -188,7 +187,7 @@ enum class CompressionType(
      */
     abstract fun wrapForOutput(
         bufferStream: ByteBufferOutputStream,
-        messageVersion: Byte
+        messageVersion: Byte,
     ): OutputStream
 
     /**
@@ -202,13 +201,13 @@ enum class CompressionType(
     abstract fun wrapForInput(
         buffer: ByteBuffer,
         messageVersion: Byte,
-        decompressionBufferSupplier: BufferSupplier
+        decompressionBufferSupplier: BufferSupplier,
     ): InputStream
 
-    override fun toString(): String = _name
+    override fun toString(): String = altName
 
     companion object {
-        
+
         fun forId(id: Int): CompressionType {
             return when (id) {
                 0 -> NONE
@@ -220,13 +219,13 @@ enum class CompressionType(
             }
         }
 
-        fun forName(name: String): CompressionType {
+        fun forName(name: String?): CompressionType {
             return requireNotNull(
-                if (NONE._name == name) NONE
-                else if (GZIP._name == name) GZIP
-                else if (SNAPPY._name == name) SNAPPY
-                else if (LZ4._name == name) LZ4
-                else if (ZSTD._name == name) ZSTD
+                if (NONE.altName == name) NONE
+                else if (GZIP.altName == name) GZIP
+                else if (SNAPPY.altName == name) SNAPPY
+                else if (LZ4.altName == name) LZ4
+                else if (ZSTD.altName == name) ZSTD
                 else null
             ) { "Unknown compression name: $name" }
         }

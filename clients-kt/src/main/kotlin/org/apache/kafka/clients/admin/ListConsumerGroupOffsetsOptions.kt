@@ -28,11 +28,13 @@ import org.apache.kafka.common.annotation.InterfaceStability.Evolving
 @Evolving
 class ListConsumerGroupOffsetsOptions : AbstractOptions<ListConsumerGroupOffsetsOptions>() {
 
+
+    @set:Deprecated("Since 3.3." +
+            "Use [Admin#listConsumerGroupOffsets(Map, ListConsumerGroupOffsetsOptions)]" +
+            " to specify topic partitions.")
     var topicPartitions: List<TopicPartition>? = null
-        private set
 
     var requireStable = false
-        private set
 
     /**
      * Set the topic partitions to list as part of the result. `null` includes all topic partitions.

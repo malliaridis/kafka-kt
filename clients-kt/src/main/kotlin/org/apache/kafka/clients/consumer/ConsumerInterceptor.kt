@@ -70,7 +70,7 @@ interface ConsumerInterceptor<K, V> : Configurable, AutoCloseable {
      * @return records that are either modified by the interceptor or same as records passed to this
      * method.
      */
-    fun onConsume(records: ConsumerRecords<K?, V?>): ConsumerRecords<K?, V?>
+    fun onConsume(records: ConsumerRecords<K, V>): ConsumerRecords<K, V>
 
     /**
      * This is called when offsets get committed.

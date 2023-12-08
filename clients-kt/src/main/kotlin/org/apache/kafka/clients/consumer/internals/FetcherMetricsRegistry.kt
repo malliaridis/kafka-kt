@@ -232,10 +232,10 @@ class FetcherMetricsRegistry(
             tagsNames = partitionTags
         )
         partitionPreferredReadReplica = MetricNameTemplate(
-            "preferred-read-replica",
-            "consumer-fetch-manager-metrics",
-            "The current read replica for the partition, or -1 if reading from leader",
-            partitionTags
+            name = "preferred-read-replica",
+            group = "consumer-fetch-manager-metrics",
+            description = "The current read replica for the partition, or -1 if reading from leader",
+            tagsNames = partitionTags
         )
     }
 

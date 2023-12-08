@@ -1,6 +1,7 @@
 object Deps {
-    val kotlinVersion = "1.8.20"
-    val jvmTarget = "1.8"
+    val kotlinVersion = "1.9.0"
+    val jvmTarget = "11"
+    val jvmToolchain = 11
     val availableScalaVersions = listOf("2.12", "2.13")
 
     // Add Scala version
@@ -76,7 +77,7 @@ object Deps {
         const val lz4 = "1.8.0"
         const val mavenArtifact = "3.8.4"
         const val metrics = "2.2.0"
-        const val mockito = "4.6.1"
+        const val mockito = "5.1.0"
         const val netty = "4.1.78.Final"
         const val powermock = "2.0.9"
         const val reflections = "0.9.12"
@@ -168,6 +169,7 @@ object Deps {
         val dropwizardMetrics = "io.dropwizard.metrics:metrics-core:${Version.dropwizardMetrics}"
         val mockitoCore = "org.mockito:mockito-core:${Version.mockito}"
         val mockitoInline = "org.mockito:mockito-inline:${Version.mockito}"
+        val mockitoKotlin = "org.mockito.kotlin:mockito-kotlin:${Version.mockito}"
         val mockitoJunitJupiter = "org.mockito:mockito-junit-jupiter:${Version.mockito}"
         val nettyHandler = "io.netty:netty-handler:${Version.netty}"
         val nettyTransportNativeEpoll = "io.netty:netty-transport-native-epoll:${Version.netty}"

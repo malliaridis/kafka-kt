@@ -17,10 +17,11 @@
 
 package org.apache.kafka.common.errors
 
-class NotControllerException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : RetriableException(message = message, cause = cause) {
+class NotControllerException : RetriableException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

@@ -379,8 +379,7 @@ enum class ApiKeys(
         private fun shouldRetainsBufferReference(requestSchemas: Array<Schema?>): Boolean =
             requestSchemas.any { schema -> schema?.let { retainsBufferReference(it) } ?: false }
 
-        fun forId(id: Int): ApiKeys = ID_TO_TYPE[id.toShort()]
-            ?: throw IllegalArgumentException("Unexpected api key: $id")
+        fun forId(id: Int): ApiKeys = requireNotNull(ID_TO_TYPE[id.toShort()]) { "Unexpected api key: $id" }
 
         fun hasId(id: Int): Boolean = ID_TO_TYPE.containsKey(id.toShort())
 
@@ -394,7 +393,7 @@ enum class ApiKeys(
             for (key in clientApis()) {
                 b.append("<tr>\n")
                 b.append("<td>")
-                b.append("<a href=\"#The_Messages_" + key.name + "\">" + key.name + "</a>")
+                b.append("<a href=\"#The_Messages_${key.name}\">${key.name}</a>")
                 b.append("</td>")
                 b.append("<td>")
                 b.append(key.id.toInt())

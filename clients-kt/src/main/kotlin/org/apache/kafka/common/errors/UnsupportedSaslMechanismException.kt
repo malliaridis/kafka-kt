@@ -21,10 +21,11 @@ package org.apache.kafka.common.errors
  * This exception indicates that the SASL mechanism requested by the client
  * is not enabled on the broker.
  */
-class UnsupportedSaslMechanismException(
-    message: String? = null,
-    cause: Throwable? = null
-) : AuthenticationException(message, cause) {
+class UnsupportedSaslMechanismException : AuthenticationException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

@@ -17,9 +17,11 @@
 
 package org.apache.kafka.common.errors
 
-class InvalidFetchSessionEpochException(
-    message: String? = null,
-) : RetriableException(message = message) {
+class InvalidFetchSessionEpochException : RetriableException {
+
+    constructor() : super()
+
+    constructor(message: String?) : super(message)
 
     companion object {
         private const val serialVersionUID = 1L

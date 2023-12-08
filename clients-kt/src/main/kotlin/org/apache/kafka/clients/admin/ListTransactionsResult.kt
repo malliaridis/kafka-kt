@@ -82,7 +82,7 @@ class ListTransactionsResult internal constructor(
                 allFuture.completeExceptionally(topLevelException)
                 return@whenComplete
             }
-            val remainingResponses: MutableSet<Int> = HashSet(map!!.keys)
+            val remainingResponses: MutableSet<Int> = map!!.keys.toHashSet()
             map.forEach { (brokerId, future) ->
                 future.whenComplete { listings, brokerException ->
                     if (brokerException != null) allFuture.completeExceptionally(brokerException)

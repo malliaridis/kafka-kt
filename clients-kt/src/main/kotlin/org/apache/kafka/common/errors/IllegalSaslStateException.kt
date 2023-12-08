@@ -22,10 +22,11 @@ package org.apache.kafka.common.errors
  * This could be due to misconfigured security, e.g. if PLAINTEXT protocol
  * is used to connect to a SASL endpoint.
  */
-class IllegalSaslStateException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : AuthenticationException(message = message, cause = cause) {
+class IllegalSaslStateException : AuthenticationException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

@@ -76,9 +76,7 @@ enum class ResourceType(val code: Byte) {
         message = "User property instead",
         replaceWith = ReplaceWith("code"),
     )
-    fun code(): Byte {
-        return code
-    }
+    fun code(): Byte = code
 
     /**
      * Whether this resource type is UNKNOWN.

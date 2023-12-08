@@ -47,7 +47,7 @@ class ProducerMetadata(
      */
     private val topics: MutableMap<String, Long?> = HashMap()
 
-    private val newTopics: MutableSet<String> = HashSet()
+    private val newTopics: MutableSet<String> = hashSetOf()
 
     private val log: Logger = logContext.logger(ProducerMetadata::class.java)
 
@@ -57,7 +57,7 @@ class ProducerMetadata(
     }
 
     @Synchronized
-    fun newMetadataRequestBuilderForNewTopics(): MetadataRequest.Builder {
+    override fun newMetadataRequestBuilderForNewTopics(): MetadataRequest.Builder {
         return MetadataRequest.Builder(ArrayList(newTopics), true)
     }
 
@@ -120,7 +120,7 @@ class ProducerMetadata(
             else currentTimeMs + timeoutMs
 
         time.waitObject(
-            obj = this,
+            obj = this as Object,
             condition = {
                 // Throw fatal exceptions, if there are any. Recoverable topic errors will be handled by the caller.
                 maybeThrowFatalException()
@@ -146,14 +146,22 @@ class ProducerMetadata(
         if (newTopics.isNotEmpty()) response.topicMetadata().forEach { (_, topic) ->
             newTopics.remove(topic)
         }
+
+        (this as Object).notifyAll()
     }
 
     @Synchronized
-    override fun fatalError(exception: KafkaException?) = super.fatalError(exception)
+    override fun fatalError(exception: KafkaException?) {
+        super.fatalError(exception)
+        (this as Object).notifyAll()
+    }
 
     /**
      * Close this instance and notify any awaiting threads.
      */
     @Synchronized
-    override fun close() = super.close()
+    override fun close() {
+        super.close()
+        (this as Object).notifyAll()
+    }
 }

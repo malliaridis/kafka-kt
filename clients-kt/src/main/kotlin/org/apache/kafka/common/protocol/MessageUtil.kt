@@ -101,14 +101,14 @@ object MessageUtil {
         return value.toUShort()
     }
 
-    fun jsonNodeToUnsignedInt(node: JsonNode, about: String): Long {
+    fun jsonNodeToUnsignedInt(node: JsonNode, about: String): UInt {
         val value = jsonNodeToLong(node, about)
 
         if (value < 0 || value > UNSIGNED_INT_MAX) throw RuntimeException(
             "$about: value $value does not fit in a 32-bit unsigned integer."
         )
 
-        return value
+        return value.toUInt()
     }
 
     fun jsonNodeToInt(node: JsonNode, about: String): Int {

@@ -26,6 +26,7 @@ dependencies {
     testImplementation(Deps.Libs.junitJupiter)
     testImplementation(Deps.Libs.log4j)
     testImplementation(Deps.Libs.mockitoInline)
+    testImplementation(Deps.Libs.mockitoKotlin)
 
     testRuntimeOnly(Deps.Libs.slf4jlog4j)
     testRuntimeOnly(Deps.Libs.jacksonDatabind)
@@ -63,6 +64,7 @@ tasks.register("createVersionFile") {
 
 tasks.test {
     useJUnitPlatform()
+    maxParallelForks = Runtime.getRuntime().availableProcessors()
 }
 
 tasks.withType<Jar> {

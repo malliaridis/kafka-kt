@@ -20,10 +20,18 @@ package org.apache.kafka.common
 /**
  * The base class of all other Kafka exceptions
  */
-open class KafkaException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : RuntimeException(message, cause) {
+open class KafkaException : RuntimeException {
+
+    constructor() : super()
+
+    constructor(message: String?) : super(message)
+
+    constructor(cause: Throwable?) : super(cause)
+
+    constructor (
+        message: String?,
+        cause: Throwable?,
+    ) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

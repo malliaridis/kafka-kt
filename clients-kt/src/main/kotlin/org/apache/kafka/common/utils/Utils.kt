@@ -47,7 +47,12 @@ import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.*
+import java.util.AbstractMap
+import java.util.EnumSet
+import java.util.Locale
+import java.util.Properties
+import java.util.SortedSet
+import java.util.TreeSet
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.BiConsumer
 import java.util.function.BinaryOperator
@@ -584,7 +589,7 @@ object Utils {
      */
     @Deprecated("Use Kotlin collection operator.")
     fun <T> join(strs: Array<T>, separator: String): String {
-        return join(Arrays.asList(*strs), separator)
+        return strs.joinToString(separator)
     }
 
     /**
@@ -596,7 +601,6 @@ object Utils {
      */
     @Deprecated("Use Kotlin collection operator.")
     fun <T> join(collection: Collection<T>, separator: String): String {
-        Objects.requireNonNull(collection)
         return mkString(collection.stream(), "", "", separator)
     }
 
@@ -606,7 +610,6 @@ object Utils {
      * @return The string representation.
      */
     fun <T> mkString(stream: Stream<T>, begin: String, end: String, separator: String): String {
-        Objects.requireNonNull(stream)
         val sb = StringBuilder()
         sb.append(begin)
         val iter = stream.iterator()
@@ -778,6 +781,7 @@ object Utils {
      * @param T the type of element
      * @return Set
      */
+    @Deprecated("Use Kotlin built-in function setOf() instead")
     @SafeVarargs
     fun <T> mkSet(vararg elems: T): Set<T> {
         val result: MutableSet<T> = HashSet((elems.size / 0.75).toInt() + 1)
@@ -802,12 +806,13 @@ object Utils {
     /**
      * Creates a map entry (for use with [Utils.mkMap])
      *
-     * @param k   The key
-     * @param v   The value
-     * @param <K> The key type
-     * @param <V> The value type
+     * @param k The key
+     * @param v The value
+     * @param K The key type
+     * @param V The value type
      * @return An entry
-    </V></K> */
+     */
+    @Deprecated("Use Kotlin map functions instead")
     fun <K, V> mkEntry(k: K, v: V): Map.Entry<K, V> {
         return AbstractMap.SimpleEntry(k, v)
     }
@@ -816,10 +821,11 @@ object Utils {
      * Creates a map from a sequence of entries
      *
      * @param entries The entries to map
-     * @param <K>     The key type
-     * @param <V>     The value type
+     * @param K The key type
+     * @param V The value type
      * @return A map
-    </V></K> */
+     */
+    @Deprecated("Use Kotlin map functions instead")
     @SafeVarargs
     fun <K, V> mkMap(vararg entries: Map.Entry<K, V>): Map<K, V> {
         val result = LinkedHashMap<K, V>()
@@ -865,24 +871,22 @@ object Utils {
         if (rootFile == null) return
         Files.walkFileTree(rootFile.toPath(), object : SimpleFileVisitor<Path>() {
             @Throws(IOException::class)
-            override fun visitFileFailed(path: Path, exc: IOException): FileVisitResult {
+            override fun visitFileFailed(path: Path?, exc: IOException): FileVisitResult {
                 // If the root path did not exist, ignore the error; otherwise throw it.
-                if (exc is NoSuchFileException && path.toFile() == rootFile) return FileVisitResult.TERMINATE
+                if (exc is NoSuchFileException && path?.toFile() == rootFile) return FileVisitResult.TERMINATE
                 throw exc
             }
 
             @Throws(IOException::class)
-            override fun visitFile(path: Path, attrs: BasicFileAttributes): FileVisitResult {
+            override fun visitFile(path: Path?, attrs: BasicFileAttributes?): FileVisitResult {
                 Files.delete(path)
                 return FileVisitResult.CONTINUE
             }
 
             @Throws(IOException::class)
-            override fun postVisitDirectory(path: Path, exc: IOException): FileVisitResult {
+            override fun postVisitDirectory(path: Path?, exc: IOException?): FileVisitResult {
                 // KAFKA-8999: if there's an exception thrown previously already, we should throw it
-                if (exc != null) {
-                    throw exc
-                }
+                if (exc != null) throw exc
                 Files.delete(path)
                 return FileVisitResult.CONTINUE
             }
@@ -1269,11 +1273,7 @@ object Utils {
 
     @Deprecated("Use Kotlin operator for list concatenation.")
     fun <T> concatListsUnmodifiable(left: List<T>, right: List<T>): List<T> {
-        return concatLists(
-            left, right
-        ) { list: List<T>? ->
-            Collections.unmodifiableList(list)
-        }
+        return left + right
     }
 
     @Deprecated("Use Kotlin operator for list concatenation.")
@@ -1296,7 +1296,7 @@ object Utils {
     }
 
     fun from32BitField(intValue: Int): Set<Byte> {
-        val result: MutableSet<Byte> = HashSet()
+        val result: MutableSet<Byte> = hashSetOf()
         var itr = intValue
         var count = 0
         while (itr != 0) {
@@ -1417,7 +1417,11 @@ object Utils {
      */
     fun propsToMap(properties: Properties): Map<String, Any?> {
         return properties.map { (key, value) ->
-            if (key !is String) throw ConfigException(key.toString(), value, "Key must be a string.")
+            if (key !is String) throw ConfigException(
+                name = key.toString(),
+                value = value,
+                message = "Key must be a string."
+            )
             key to value
         }.toMap()
     }
@@ -1478,6 +1482,10 @@ object Utils {
      * @param str a string to be checked
      * @return true if the string is null, empty or whitespace only; otherwise, return false.
      */
+    @Deprecated(
+        message = "Use String.isNullOrBlank()",
+        replaceWith = ReplaceWith("str.isNullOrBlank()"),
+    )
     fun isBlank(str: String?): Boolean {
         return str == null || str.trim { it <= ' ' }.isEmpty()
     }

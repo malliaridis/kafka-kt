@@ -47,7 +47,7 @@ open class KafkaChannel(
     private val authenticatorCreator: Supplier<Authenticator>,
     private val maxReceiveSize: Int,
     private val memoryPool: MemoryPool,
-    private val metadataRegistry: ChannelMetadataRegistry?
+    private val metadataRegistry: ChannelMetadataRegistry?,
 ) : AutoCloseable {
 
     private var authenticator: Authenticator = authenticatorCreator.get()
@@ -108,7 +108,7 @@ open class KafkaChannel(
         } catch (exception: AuthenticationException) {
             // Clients are notified of authentication exceptions to enable operations to be terminated
             // without retries. Other errors are handled as network exceptions in Selector.
-            val remoteDesc = if (remoteAddress != null) remoteAddress.toString() else null
+            val remoteDesc = remoteAddress?.toString()
             state = ChannelState(
                 state = ChannelState.State.AUTHENTICATION_FAILED,
                 exception = exception,
@@ -154,18 +154,13 @@ open class KafkaChannel(
         //we need to grab remoteAddr before finishConnect() is called otherwise
         //it becomes inaccessible if the connection was refused.
         val socketChannel = transportLayer.socketChannel()
-        if (socketChannel != null) {
-            remoteAddress = socketChannel.remoteAddress
-        }
+        if (socketChannel != null) remoteAddress = socketChannel.remoteAddress
+
         val connected = transportLayer.finishConnect()
         if (connected) {
-            state = if (ready()) {
-                ChannelState.READY
-            } else if (remoteAddress != null) {
-                ChannelState(ChannelState.State.AUTHENTICATE, remoteAddress.toString())
-            } else {
-                ChannelState.AUTHENTICATE
-            }
+            state = if (ready()) ChannelState.READY
+            else if (remoteAddress != null) ChannelState(ChannelState.State.AUTHENTICATE, remoteAddress.toString())
+            else ChannelState.AUTHENTICATE
         }
         return connected
     }
@@ -241,7 +236,7 @@ open class KafkaChannel(
                 }
             }
         }
-        check(stateChanged) { "Cannot transition from " + muteState.name + " for " + event.name }
+        check(stateChanged) { "Cannot transition from ${muteState.name} for ${event.name}" }
     }
 
     @Deprecated(
@@ -340,16 +335,15 @@ open class KafkaChannel(
         return bytesReceived
     }
 
-    fun currentReceive(): NetworkReceive? {
-        return receive
-    }
+    fun currentReceive(): NetworkReceive? = receive
 
     fun maybeCompleteReceive(): NetworkReceive? {
         receive?.let {
             if (it.complete()) {
-                it.payload()?.rewind()
+                it.payload()!!.rewind()
+                val result = it
                 receive = null
-                return it
+                return result
             }
         }
         return null
@@ -369,25 +363,24 @@ open class KafkaChannel(
         networkThreadTimeNanos += nanos
     }
 
-    val andResetNetworkThreadTimeNanos: Long
-        /**
-         * Returns accumulated network thread time for this channel and resets
-         * the value to zero.
-         */
-        get() {
-            val current = networkThreadTimeNanos
-            networkThreadTimeNanos = 0
-            return current
-        }
+    /**
+     * Returns accumulated network thread time for this channel and resets
+     * the value to zero.
+     */
+    fun getAndResetNetworkThreadTimeNanos(): Long {
+        val current = networkThreadTimeNanos
+        networkThreadTimeNanos = 0
+        return current
+    }
 
     @Throws(IOException::class)
-    private fun receive(receive: NetworkReceive?): Long {
+    private fun receive(receive: NetworkReceive): Long {
         return try {
-            receive!!.readFrom(transportLayer)
+            receive.readFrom(transportLayer)
         } catch (exception: SslAuthenticationException) {
             // With TLSv1.3, post-handshake messages may throw SSLExceptions, which are
             // handled as authentication failures
-            val remoteDesc = if (remoteAddress != null) remoteAddress.toString() else null
+            val remoteDesc = remoteAddress?.toString()
             state = ChannelState(
                 state = ChannelState.State.AUTHENTICATION_FAILED,
                 remoteAddress = remoteDesc,
@@ -450,11 +443,10 @@ open class KafkaChannel(
     @Throws(AuthenticationException::class, IOException::class)
     fun maybeBeginServerReauthentication(
         saslHandshakeNetworkReceive: NetworkReceive,
-        nowNanosSupplier: Supplier<Long>
+        nowNanosSupplier: Supplier<Long>,
     ): Boolean {
         check(ready()) {
-            "KafkaChannel should be \"ready\" when processing SASL Handshake for potential " +
-                    "re-authentication"
+            """KafkaChannel should be "ready" when processing SASL Handshake for potential re-authentication"""
         }
 
         /*
@@ -513,11 +505,10 @@ open class KafkaChannel(
     @Throws(AuthenticationException::class, IOException::class)
     fun maybeBeginClientReauthentication(nowNanosSupplier: Supplier<Long>): Boolean {
         check(ready()) { "KafkaChannel should always be \"ready\" when it is checked for possible re-authentication" }
-        val reAuthenticationNanos = authenticator.clientSessionReauthenticationTimeNanos()
         if (
             muteState != ChannelMuteState.NOT_MUTED
             || midWrite
-            || reAuthenticationNanos == null
+            || authenticator.clientSessionReauthenticationTimeNanos() == null
         ) return false
 
         /*
@@ -525,7 +516,7 @@ open class KafkaChannel(
          * but at this point we need it -- so get it now.
          */
         val nowNanos = nowNanosSupplier.get()
-        if (nowNanos < reAuthenticationNanos) return false
+        if (nowNanos < authenticator.clientSessionReauthenticationTimeNanos()!!) return false
         swapAuthenticatorsAndBeginReauthentication(
             ReauthenticationContext(
                 previousAuthenticator = authenticator,

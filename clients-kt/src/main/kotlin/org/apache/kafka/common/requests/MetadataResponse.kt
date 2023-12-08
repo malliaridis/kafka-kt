@@ -18,7 +18,6 @@
 package org.apache.kafka.common.requests
 
 import java.nio.ByteBuffer
-import java.util.*
 import org.apache.kafka.common.Cluster
 import org.apache.kafka.common.Node
 import org.apache.kafka.common.PartitionInfo
@@ -30,7 +29,6 @@ import org.apache.kafka.common.message.MetadataResponseData.MetadataResponseTopi
 import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.protocol.ByteBufferAccessor
 import org.apache.kafka.common.protocol.Errors
-import org.apache.kafka.common.utils.Utils
 
 /**
  * Possible topic-level error codes:
@@ -114,7 +112,7 @@ class MetadataResponse internal constructor(
      * Returns the set of topics with the specified error
      */
     fun topicsByError(error: Errors): Set<String> {
-        val errorTopics: MutableSet<String> = HashSet()
+        val errorTopics: MutableSet<String> = hashSetOf()
         for (metadata in data.topics)
             if (metadata.errorCode == error.code) errorTopics.add(metadata.name!!)
 
@@ -126,7 +124,7 @@ class MetadataResponse internal constructor(
      * @return the cluster snapshot
      */
     fun buildCluster(): Cluster {
-        val internalTopics: MutableSet<String> = HashSet()
+        val internalTopics: MutableSet<String> = hashSetOf()
         val partitions: MutableList<PartitionInfo> = ArrayList()
         val topicIds: MutableMap<String, Uuid> = mutableMapOf()
         for (metadata in topicMetadata())
@@ -343,12 +341,12 @@ class MetadataResponse internal constructor(
         val topicMetadata: Collection<TopicMetadata>
 
         init {
-            brokers = Collections.unmodifiableMap(createBrokers(data))
+            brokers = createBrokers(data)
             topicMetadata = createTopicMetadata(data)
             controller = brokers[data.controllerId]
         }
 
-        private fun createBrokers(data: MetadataResponseData): Map<Int?, Node> {
+        private fun createBrokers(data: MetadataResponseData): Map<Int, Node> {
             return data.brokers.valuesList().map { broker: MetadataResponseBroker ->
                 Node(
                     id = broker.nodeId,

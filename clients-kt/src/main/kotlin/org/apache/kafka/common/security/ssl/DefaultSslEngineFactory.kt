@@ -83,7 +83,7 @@ class DefaultSslEngineFactory : SslEngineFactory {
     override fun createClientSslEngine(
         peerHost: String,
         peerPort: Int,
-        endpointIdentification: String
+        endpointIdentification: String?
     ): SSLEngine {
         return createSslEngine(
             mode = Mode.CLIENT,
@@ -137,22 +137,22 @@ class DefaultSslEngineFactory : SslEngineFactory {
         )
 
         sslClientAuth =
-            createSslClientAuth(configs[BrokerSecurityConfigs.SSL_CLIENT_AUTH_CONFIG] as String)
+            createSslClientAuth(configs[BrokerSecurityConfigs.SSL_CLIENT_AUTH_CONFIG] as String?)
 
         kmfAlgorithm = configs[SslConfigs.SSL_KEYMANAGER_ALGORITHM_CONFIG] as String?
         tmfAlgorithm = configs[SslConfigs.SSL_TRUSTMANAGER_ALGORITHM_CONFIG] as String?
 
         keystore = createKeystore(
-            configs[SslConfigs.SSL_KEYSTORE_TYPE_CONFIG] as String,
-            configs[SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG] as String?,
-            configs[SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG] as Password?,
-            configs[SslConfigs.SSL_KEY_PASSWORD_CONFIG] as Password?,
-            configs[SslConfigs.SSL_KEYSTORE_KEY_CONFIG] as Password?,
-            configs[SslConfigs.SSL_KEYSTORE_CERTIFICATE_CHAIN_CONFIG] as Password?
+            type = configs[SslConfigs.SSL_KEYSTORE_TYPE_CONFIG] as String?,
+            path = configs[SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG] as String?,
+            password = configs[SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG] as Password?,
+            keyPassword = configs[SslConfigs.SSL_KEY_PASSWORD_CONFIG] as Password?,
+            privateKey = configs[SslConfigs.SSL_KEYSTORE_KEY_CONFIG] as Password?,
+            certificateChain = configs[SslConfigs.SSL_KEYSTORE_CERTIFICATE_CHAIN_CONFIG] as Password?
         )
 
         truststore = createTruststore(
-            configs[SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG] as String,
+            configs[SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG] as String?,
             configs[SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG] as String?,
             configs[SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG] as Password?,
             configs[SslConfigs.SSL_TRUSTSTORE_CERTIFICATES_CONFIG] as Password?
@@ -232,7 +232,7 @@ class DefaultSslEngineFactory : SslEngineFactory {
 
     // Visibility to override for testing
     internal fun createKeystore(
-        type: String,
+        type: String?,
         path: String?,
         password: Password?,
         keyPassword: Password?,
@@ -249,9 +249,9 @@ class DefaultSslEngineFactory : SslEngineFactory {
             ) else if (password != null) throw InvalidConfigurationException(
                 "SSL key store password cannot be specified with PEM format, only key password may be specified."
             ) else PemStore(
-                certificateChain,
-                privateKey,
-                keyPassword
+                certificateChain = certificateChain,
+                privateKey = privateKey,
+                keyPassword = keyPassword,
             )
         } else if (certificateChain != null) throw InvalidConfigurationException(
             "SSL certificate chain is specified, but private key is not specified"
@@ -269,7 +269,7 @@ class DefaultSslEngineFactory : SslEngineFactory {
         ) else if (path != null && password == null) throw InvalidConfigurationException(
             "SSL key store is specified, but key store password is not specified."
         ) else if (path != null && password != null) FileBasedStore(
-            type = type,
+            type = type!!,
             path = path,
             password = password,
             keyPassword = keyPassword,
@@ -295,7 +295,7 @@ class DefaultSslEngineFactory : SslEngineFactory {
         isKeyStore: Boolean
     ) : SecurityStore {
 
-        private val type: String
+        private val type: String?
 
         protected val path: String
 
@@ -308,7 +308,6 @@ class DefaultSslEngineFactory : SslEngineFactory {
         private val keyStore: KeyStore
 
         init {
-            Objects.requireNonNull(type, "type must not be null")
             this.type = type
             this.path = path
             this.password = password
@@ -601,7 +600,7 @@ class DefaultSslEngineFactory : SslEngineFactory {
         }
 
         private fun createTruststore(
-            type: String,
+            type: String?,
             path: String?,
             password: Password?,
             trustStoreCerts: Password?
@@ -625,7 +624,7 @@ class DefaultSslEngineFactory : SslEngineFactory {
             } else if (path == null && password != null) throw InvalidConfigurationException(
                 "SSL trust store is not specified, but trust store password is specified."
             ) else if (path != null) FileBasedStore(
-                type = type,
+                type = type!!,
                 path = path,
                 password = password,
                 isKeyStore = false

@@ -61,12 +61,11 @@ class SaslClientCallbackHandler : AuthenticateCallbackHandler {
         callbacks.forEach { callback ->
             when (callback) {
                 is NameCallback -> {
-                    callback.name =
-                        if (
-                            subject != null
-                            && subject.getPublicCredentials(String::class.java).isNotEmpty()
-                        ) subject.getPublicCredentials(String::class.java).iterator().next()
-                        else callback.defaultName
+                    callback.name = if (
+                        subject != null
+                        && subject.getPublicCredentials(String::class.java).isNotEmpty()
+                    ) subject.getPublicCredentials(String::class.java).first()
+                    else callback.defaultName
                 }
 
                 is PasswordCallback -> {
@@ -75,7 +74,7 @@ class SaslClientCallbackHandler : AuthenticateCallbackHandler {
                         && subject.getPrivateCredentials(String::class.java).isNotEmpty()
                     ) {
                         val password = subject.getPrivateCredentials(String::class.java)
-                            .iterator().next().toCharArray()
+                            .first().toCharArray()
 
                         callback.password = password
                     } else throw UnsupportedCallbackException(
@@ -102,7 +101,7 @@ class SaslClientCallbackHandler : AuthenticateCallbackHandler {
                         && subject.getPublicCredentials(Map::class.java).isNotEmpty()
                     ) {
                         val extensions = subject.getPublicCredentials(Map::class.java)
-                            .iterator().next() as Map<String, String>
+                            .first() as Map<String, String>
 
                         callback.extensions = extensions
                     }
@@ -114,15 +113,14 @@ class SaslClientCallbackHandler : AuthenticateCallbackHandler {
                         && subject != null
                         && subject.getPublicCredentials(SaslExtensions::class.java).isNotEmpty()
                     ) {
-                        val extensions = subject.getPublicCredentials(SaslExtensions::class.java)
-                            .iterator().next()
+                        val extensions =
+                            subject.getPublicCredentials(SaslExtensions::class.java).first()
 
                         callback.extensions = extensions
                     }
                 }
 
-                else ->
-                    throw UnsupportedCallbackException(callback, "Unrecognized SASL ClientCallback")
+                else -> throw UnsupportedCallbackException(callback, "Unrecognized SASL ClientCallback")
             }
         }
     }

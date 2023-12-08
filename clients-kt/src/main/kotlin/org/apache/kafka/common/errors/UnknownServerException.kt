@@ -22,10 +22,15 @@ package org.apache.kafka.common.errors
  * unexpected error.
  *
  */
-class UnknownServerException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : ApiException(message = message, cause = cause) {
+class UnknownServerException : ApiException {
+
+    constructor() : super()
+
+    constructor(message: String?) : super(message)
+
+    constructor(cause: Throwable?) : super(cause)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

@@ -27,10 +27,11 @@ package org.apache.kafka.common.errors
  * is raised from [org.apache.kafka.clients.consumer.KafkaConsumer.offsetsForTimes], it would
  * be possible to revert to alternative logic to set the consumer's position.
  */
-open class UnsupportedVersionException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : ApiException(message = message, cause = cause) {
+open class UnsupportedVersionException : ApiException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

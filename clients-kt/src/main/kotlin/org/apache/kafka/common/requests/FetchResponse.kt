@@ -232,14 +232,14 @@ class FetchResponse(private val data: FetchResponseData) : AbstractResponse(ApiK
             error: Errors,
             throttleTimeMs: Int,
             sessionId: Int,
-            responseData: LinkedHashMap<TopicIdPartition, FetchResponseData.PartitionData>,
+            responseData: Map<TopicIdPartition, FetchResponseData.PartitionData>,
         ): FetchResponse {
             return FetchResponse(
                 toMessage(
-                    error,
-                    throttleTimeMs,
-                    sessionId,
-                    responseData.entries.iterator()
+                    error = error,
+                    throttleTimeMs = throttleTimeMs,
+                    sessionId = sessionId,
+                    partIterator = responseData.entries.iterator(),
                 )
             )
         }

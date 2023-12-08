@@ -438,7 +438,7 @@ class MemoryRecords private constructor(private val buffer: ByteBuffer) : Abstra
 
                 // If we had to allocate a new buffer to fit the filtered buffer (see KAFKA-5316), return early to
                 // avoid the need for additional allocations.
-                val outputBuffer = bufferOutputStream.buffer()
+                val outputBuffer = bufferOutputStream.buffer
                 if (outputBuffer !== destinationBuffer) {
                     filterResult.outputBuffer = outputBuffer
                     return filterResult
@@ -679,20 +679,19 @@ class MemoryRecords private constructor(private val buffer: ByteBuffer) : Abstra
             producerId: Long = RecordBatch.NO_PRODUCER_ID,
             producerEpoch: Short = RecordBatch.NO_PRODUCER_EPOCH,
             baseSequence: Int = RecordBatch.NO_SEQUENCE,
-            partitionLeaderEpoch: Int,
+            partitionLeaderEpoch: Int = RecordBatch.NO_PARTITION_LEADER_EPOCH,
             isTransactional: Boolean = false,
             vararg records: SimpleRecord
         ): MemoryRecords {
             if (records.isEmpty()) return EMPTY
             val sizeEstimate = estimateSizeInBytes(
-                magic,
-                (compressionType)!!,
-                listOf(*records),
+                magic = magic,
+                compressionType = compressionType!!,
+                records = records.toList(),
             )
             val bufferStream = ByteBufferOutputStream(sizeEstimate)
             var logAppendTime = RecordBatch.NO_TIMESTAMP
-            if (timestampType == TimestampType.LOG_APPEND_TIME) logAppendTime =
-                System.currentTimeMillis()
+            if (timestampType == TimestampType.LOG_APPEND_TIME) logAppendTime = System.currentTimeMillis()
             val builder = MemoryRecordsBuilder(
                 bufferStream = bufferStream,
                 magic = magic,
@@ -708,7 +707,7 @@ class MemoryRecords private constructor(private val buffer: ByteBuffer) : Abstra
                 partitionLeaderEpoch = partitionLeaderEpoch,
                 writeLimit = sizeEstimate,
             )
-            for (record: SimpleRecord in records) builder.append(record)
+            records.forEach { record -> builder.append(record) }
             return builder.build()
         }
 

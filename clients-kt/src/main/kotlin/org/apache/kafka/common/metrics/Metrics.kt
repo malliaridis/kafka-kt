@@ -124,11 +124,12 @@ class Metrics(
         group: String,
         description: String = "",
         tags: Map<String, String?> = emptyMap()
-    ): MetricName {
-        val combinedTag: MutableMap<String, String?> = LinkedHashMap(config.tags)
-        combinedTag.putAll(tags)
-        return MetricName(name, group, description, combinedTag.toMap())
-    }
+    ): MetricName = MetricName(
+        name = name,
+        group = group,
+        description = description,
+        tags = config.tags + tags,
+    )
 
     /**
      * Create a MetricName with the given name, group, description, and keyValue as tags, plus
@@ -276,8 +277,8 @@ class Metrics(
     ) {
         val metric = KafkaMetric(
             lock = ReentrantLock(),
-            metricName = Objects.requireNonNull(metricName),
-            metricValueProvider = Objects.requireNonNull(metricValueProvider),
+            metricName = metricName,
+            metricValueProvider = metricValueProvider,
             config = config,
             time = time,
         )
@@ -395,7 +396,6 @@ class Metrics(
     )
     fun reporters(): List<MetricsReporter> = reporters
 
-    @Deprecated("Use property metrics directly instead")
     fun metric(metricName: MetricName): KafkaMetric? = metrics[metricName]
 
     /**
@@ -423,7 +423,7 @@ class Metrics(
     }
 
     /* For testing use only. */
-    fun childrenSensors(): Map<Sensor, MutableList<Sensor>> = childrenSensors.toMap()
+    fun childrenSensors(): Map<Sensor, List<Sensor>> = childrenSensors.toMap()
 
     fun metricInstance(template: MetricNameTemplate, vararg keyValue: String): MetricName =
         metricInstance(template, MetricsUtils.getTags(*keyValue))

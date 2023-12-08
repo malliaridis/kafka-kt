@@ -223,13 +223,13 @@ object MessageGenerator {
         packageName: String,
         outputDir: String,
         inputDir: String,
-        typeClassGeneratorTypes: List<String>,
+        typeClassGeneratorTypes: List<String>?,
         messageClassGeneratorTypes: List<String>?,
     ) {
         Files.createDirectories(Paths.get(outputDir))
         var numProcessed = 0
         val typeClassGenerators = createTypeClassGenerators(packageName, typeClassGeneratorTypes)
-        val outputFileNames = HashSet<String>()
+        val outputFileNames = hashSetOf<String>()
         Files.newDirectoryStream(Paths.get(inputDir), JSON_GLOB).use { directoryStream ->
             for (inputPath in directoryStream) try {
                 val spec = JSON_SERDE.readValue(inputPath.toFile(), MessageSpec::class.java)

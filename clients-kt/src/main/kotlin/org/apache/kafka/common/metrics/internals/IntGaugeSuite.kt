@@ -55,7 +55,7 @@ class IntGaugeSuite<K>(
      * The keys of gauges that can be removed, since their value is zero.
      * Protected by the object monitor.
      */
-    private val removable: MutableSet<K> = HashSet()
+    private val removable: MutableSet<K> = hashSetOf()
 
     /**
      * A lockless list of pending metrics additions and removals.

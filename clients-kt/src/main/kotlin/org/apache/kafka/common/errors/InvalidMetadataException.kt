@@ -20,10 +20,15 @@ package org.apache.kafka.common.errors
 /**
  * An exception that may indicate the client's metadata is out of date
  */
-abstract class InvalidMetadataException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : RetriableException(message = message, cause = cause) {
+abstract class InvalidMetadataException : RetriableException {
+
+    constructor() : super()
+
+    constructor(message: String?) : super(message = message)
+
+    constructor(cause: Throwable?) : super(cause = cause)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

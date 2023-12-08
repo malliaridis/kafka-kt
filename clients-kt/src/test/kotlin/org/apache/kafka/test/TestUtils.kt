@@ -32,9 +32,6 @@ import org.apache.kafka.common.requests.RequestHeader
 import org.apache.kafka.common.utils.Exit.addShutdownHook
 import org.apache.kafka.common.utils.KafkaThread
 import org.apache.kafka.common.utils.Utils.delete
-import org.apache.kafka.common.utils.Utils.toList
-import org.junit.jupiter.api.Assertions
-import org.junit.jupiter.api.Assertions.fail
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.IOException
@@ -49,6 +46,12 @@ import java.util.function.Consumer
 import java.util.function.Supplier
 import java.util.regex.Pattern
 import kotlin.math.min
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
+import kotlin.test.fail
 
 /**
  * Helper functions for writing unit tests
@@ -83,7 +86,7 @@ object TestUtils {
     )
 
     fun clusterWith(nodes: Int, topicPartitionCounts: Map<String, Int> = emptyMap()): Cluster {
-        val ns = Array(nodes) { Node(it, "localhost", 1969) }
+        val ns = MutableList(nodes) { Node(it, "localhost", 1969) }
         for (i in 0 until nodes) ns[i] = Node(i, "localhost", 1969)
         val parts: MutableList<PartitionInfo> = ArrayList()
         for ((topic, partitions) in topicPartitionCounts) {
@@ -162,6 +165,7 @@ object TestUtils {
      * as the prefix and `tmp` as the suffix to generate its name.
      */
     @Throws(IOException::class)
+    @JvmName("tempFileWithContents")
     fun tempFile(contents: String): File {
         val file = tempFile()
         Files.write(file.toPath(), contents.toByteArray(StandardCharsets.UTF_8))
@@ -273,9 +277,9 @@ object TestUtils {
             val conditionDetailsSupplied = conditionDetailsSupplier?.get()
             val conditionDetails = conditionDetailsSupplied ?: ""
 
-            Assertions.assertTrue(
-                testCondition.conditionMet(),
-                "Condition not met within timeout $maxWaitMs. $conditionDetails"
+            assertTrue(
+                actual = testCondition.conditionMet(),
+                message = "Condition not met within timeout $maxWaitMs. $conditionDetails"
             )
         }
     }
@@ -322,31 +326,27 @@ object TestUtils {
      * @param clusterId
      */
     fun isValidClusterId(clusterId: String) {
-        Assertions.assertNotNull(clusterId)
+        assertNotNull(clusterId)
 
         // Base 64 encoded value is 22 characters
-        Assertions.assertEquals(clusterId.length, 22)
+        assertEquals(clusterId.length, 22)
         val clusterIdPattern = Pattern.compile("[a-zA-Z0-9_\\-]+")
         val matcher = clusterIdPattern.matcher(clusterId)
-        Assertions.assertTrue(matcher.matches())
+        assertTrue(matcher.matches())
 
         // Convert into normal variant and add padding at the end.
-        val originalClusterId = String.format(
-            "%s==",
-            clusterId.replace("_", "/")
-                .replace("-", "+"),
-        )
+        val originalClusterId = "${clusterId.replace("_", "/").replace("-", "+")}=="
         val decodedUuid = Base64.getDecoder().decode(originalClusterId)
 
         // We expect 16 bytes, same as the input UUID.
-        Assertions.assertEquals(decodedUuid.size, 16)
+        assertEquals(decodedUuid.size, 16)
 
         //Check if it can be converted back to a UUID.
         try {
             val uuidBuffer = ByteBuffer.wrap(decodedUuid)
             UUID(uuidBuffer.getLong(), uuidBuffer.getLong()).toString()
         } catch (e: Exception) {
-            Assertions.fail<Any>("$clusterId cannot be converted back to UUID.")
+            fail("$clusterId cannot be converted back to UUID.")
         }
     }
 
@@ -354,44 +354,43 @@ object TestUtils {
      * Checks the two iterables for equality by first converting both to a list.
      */
     fun <T> checkEquals(it1: Iterable<T>, it2: Iterable<T>) {
-        Assertions.assertEquals(it1.toList(), it2.toList())
+        assertEquals(it1.toList(), it2.toList())
     }
 
     fun <T> checkEquals(it1: Iterator<T>?, it2: Iterator<T>?) {
-        Assertions.assertEquals(it1?.asSequence()?.toList(), it2?.asSequence()?.toList())
+        assertEquals(it1?.asSequence()?.toList(), it2?.asSequence()?.toList())
     }
 
     fun <T> checkEquals(c1: Set<T>, c2: Set<T>, firstDesc: String?, secondDesc: String?) {
         if (c1 != c2) {
-            val missing1: MutableSet<T> = HashSet(c2)
+            val missing1: MutableSet<T> = c2.toHashSet()
             missing1.removeAll(c1)
-            val missing2: MutableSet<T> = HashSet(c1)
+            val missing2: MutableSet<T> = c1.toHashSet()
             missing2.removeAll(c2)
-            Assertions.fail<Any>(
-                String.format(
-                    "Sets not equal, missing %s=%s, missing %s=%s",
-                    firstDesc,
-                    missing1,
-                    secondDesc,
-                    missing2
-                )
-            )
+            fail("Sets not equal, missing $firstDesc=$missing1, missing $secondDesc=$missing2")
         }
     }
 
+    @Deprecated(
+        message = "Use Iterable.toList() instead.",
+        replaceWith = ReplaceWith("iterable.toList()")
+    )
     fun <T> toList(iterable: Iterable<T>): List<T> {
         val list: MutableList<T> = ArrayList()
         for (item: T in iterable) list.add(item)
         return list
     }
 
-    @Deprecated("Use Collection.toSet() instead.")
+    @Deprecated(
+        message = "Use Collection.toSet() instead.",
+        replaceWith = ReplaceWith("collection.toSet()"),
+    )
     fun <T> toSet(collection: Collection<T>): Set<T> = collection.toSet()
 
     fun toBuffer(send: Send): ByteBuffer {
         val channel = ByteBufferChannel(send.size())
         try {
-            Assertions.assertEquals(send.size(), send.writeTo(channel))
+            assertEquals(send.size(), send.writeTo(channel))
             channel.close()
             return channel.buffer()
         } catch (e: IOException) {
@@ -405,7 +404,7 @@ object TestUtils {
         numTopic: Int,
         numPartitionPerTopic: Int
     ): Set<TopicPartition> {
-        val tps: MutableSet<TopicPartition> = HashSet()
+        val tps: MutableSet<TopicPartition> = hashSetOf()
         for (i in 0 until numTopic) {
             val topic = randomString(32)
             for (j in 0 until numPartitionPerTopic) tps.add(TopicPartition(topic, j))
@@ -419,16 +418,14 @@ object TestUtils {
      *
      * @param future The future to await
      * @param exceptionCauseClass Class of the expected exception cause
-     * @param <T> Exception cause type parameter
+     * @param T Exception cause type parameter
      * @return The caught exception cause
-    </T> */
+     */
     fun <T : Throwable?> assertFutureThrows(future: Future<*>, exceptionCauseClass: Class<T>): T {
-        val exception = Assertions.assertThrows(
-            ExecutionException::class.java,
-            { future.get() })
-        Assertions.assertTrue(
-            exceptionCauseClass.isInstance(exception.cause),
-            "Unexpected exception cause " + exception.cause
+        val exception = assertFailsWith<ExecutionException> { future.get() }
+        assertTrue(
+            actual = exceptionCauseClass.isInstance(exception.cause),
+            message = "Unexpected exception cause " + exception.cause,
         )
         return exceptionCauseClass.cast(exception.cause)
     }
@@ -439,20 +436,34 @@ object TestUtils {
         expectedMessage: String?
     ) {
         val receivedException = assertFutureThrows(future, expectedCauseClassApiException)
-        Assertions.assertEquals(expectedMessage, receivedException!!.message)
+        assertEquals(expectedMessage, receivedException!!.message)
     }
 
     @Throws(InterruptedException::class)
     fun assertFutureError(future: Future<*>, exceptionClass: Class<out Throwable?>) {
         try {
             future.get()
-            Assertions.fail<Any>("Expected a " + exceptionClass.simpleName + " exception, but got success.")
+            fail("Expected a ${exceptionClass.simpleName} exception, but got success.")
         } catch (ee: ExecutionException) {
             val cause = ee.cause
-            Assertions.assertEquals(
-                exceptionClass, cause!!.javaClass,
-                "Expected a " + exceptionClass.simpleName + " exception, but got " +
-                        cause.javaClass.simpleName
+            assertEquals(
+                expected = exceptionClass,
+                actual = cause!!.javaClass,
+                message = "Expected a ${exceptionClass.simpleName} exception, but got ${cause.javaClass.simpleName}"
+            )
+        }
+    }
+
+    @Throws(InterruptedException::class)
+    inline fun <reified T : Throwable?> assertFutureError(future: Future<*>) {
+        try {
+            future.get()
+            fail("Expected a ${T::class.simpleName} exception, but got success.")
+        } catch (ee: ExecutionException) {
+            val cause = ee.cause
+            assertIs<T>(
+                value = cause!!,
+                message = "Expected a ${T::class.simpleName} exception, but got ${cause.javaClass.simpleName}",
             )
         }
     }
@@ -464,7 +475,7 @@ object TestUtils {
     @Deprecated("Use assertNullable() instead.")
     fun <T> assertOptional(optional: Optional<T>, assertion: Consumer<T>) {
         if (optional.isPresent) assertion.accept(optional.get())
-        else Assertions.fail<Any>("Missing value from Optional")
+        else fail("Missing value from Optional")
     }
 
     fun <T> assertNullable(nullable: T?, assertion: (T) -> Unit) {
@@ -523,5 +534,13 @@ object TestUtils {
         val allSegmentsSet = iterator1.asSequence().toHashSet()
         val expectedSegmentsSet = iterator2.asSequence().toHashSet()
         return (allSegmentsSet == expectedSegmentsSet)
+    }
+
+    fun <T> assertNotFails(block: () -> T) : T {
+        try {
+            return block()
+        } catch (e: Exception) {
+            fail("Unexpected exception thrown: ${e.message}")
+        }
     }
 }

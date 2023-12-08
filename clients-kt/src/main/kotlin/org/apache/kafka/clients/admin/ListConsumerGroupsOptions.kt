@@ -38,7 +38,7 @@ class ListConsumerGroupsOptions : AbstractOptions<ListConsumerGroupsOptions?>() 
      * This operation is supported by brokers with version 2.6.0 or later.
      */
     fun inStates(states: Set<ConsumerGroupState>?): ListConsumerGroupsOptions {
-        this.states = if (states == null) emptySet() else HashSet(states)
+        this.states = states?.toHashSet() ?: emptySet()
         return this
     }
 

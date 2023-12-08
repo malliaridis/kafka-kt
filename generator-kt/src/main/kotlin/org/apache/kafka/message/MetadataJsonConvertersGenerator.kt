@@ -61,6 +61,7 @@ class MetadataJsonConvertersGenerator(packageName: String) : TypeClassGenerator 
     private fun generateWriteJson() {
         headerGenerator.addImport(MessageGenerator.JSON_NODE_CLASS)
         headerGenerator.addImport(MessageGenerator.API_MESSAGE_CLASS)
+        buffer.printf("@JvmStatic%n")
         buffer.printf("fun writeJson(apiMessage: ApiMessage, apiVersion: Short): JsonNode {%n")
         buffer.incrementIndent()
         buffer.printf("return when (apiMessage.apiKey().toInt()) {%n")
@@ -85,6 +86,7 @@ class MetadataJsonConvertersGenerator(packageName: String) : TypeClassGenerator 
     private fun generateReadJson() {
         headerGenerator.addImport(MessageGenerator.JSON_NODE_CLASS)
         headerGenerator.addImport(MessageGenerator.API_MESSAGE_CLASS)
+        buffer.printf("@JvmStatic%n")
         buffer.printf(
             "fun readJson(json: JsonNode, apiKey: Short, apiVersion: Short): ApiMessage {%n"
         )

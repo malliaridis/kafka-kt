@@ -211,7 +211,7 @@ open class ForwardingAdmin(configs: Map<String, Any?>) : Admin {
     ): AlterClientQuotasResult = delegate.alterClientQuotas(entries, options)
 
     override fun describeUserScramCredentials(
-        users: List<String>?,
+        users: List<String?>?,
         options: DescribeUserScramCredentialsOptions,
     ): DescribeUserScramCredentialsResult = delegate.describeUserScramCredentials(users, options)
 

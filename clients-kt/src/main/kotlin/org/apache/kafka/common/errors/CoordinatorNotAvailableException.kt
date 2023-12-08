@@ -24,10 +24,13 @@ package org.apache.kafka.common.errors
  * In the context of the transactional coordinator, this error will be returned if the underlying transactional log
  * is under replicated or if an append to the log times out.
  */
-class CoordinatorNotAvailableException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : RetriableException(message = message, cause = cause) {
+class CoordinatorNotAvailableException : RetriableException {
+
+    constructor() : super()
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         val INSTANCE = CoordinatorNotAvailableException()

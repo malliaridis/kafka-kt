@@ -21,10 +21,11 @@ package org.apache.kafka.common.errors
  * The transaction coordinator returns this error code if the timeout received via the
  * InitProducerIdRequest is larger than the `transaction.max.timeout.ms` config value.
  */
-class InvalidTxnTimeoutException(
-    message: String? = null,
-    cause: Throwable? = null,
-) : ApiException(message = message, cause = cause) {
+class InvalidTxnTimeoutException : ApiException {
+
+    constructor(message: String?) : super(message)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

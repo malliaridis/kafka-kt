@@ -22,6 +22,7 @@ class TopicAuthorizationException(
     message: String? = null,
     val unauthorizedTopics: Set<String> = emptySet()
 ) : AuthorizationException(message) {
+
     constructor(unauthorizedTopics: Set<String>) : this(
         message = "Not authorized to access topics: $unauthorizedTopics",
         unauthorizedTopics = unauthorizedTopics,

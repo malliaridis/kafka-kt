@@ -21,11 +21,17 @@ package org.apache.kafka.common.errors
  * This exception indicates a record has failed its internal CRC check, this generally indicates network or disk
  * corruption.
  */
-class CorruptRecordException(
-    message: String? = "This message has failed its CRC checksum, exceeds the valid size, has a" +
-            " null key for a compacted topic, or is otherwise corrupt.",
-    cause: Throwable? = null,
-) : RetriableException(message = message, cause = cause) {
+class CorruptRecordException : RetriableException {
+
+    constructor() : super(
+        "This message has failed its CRC checksum, exceeds the valid size, has a null key for a compacted topic, or is otherwise corrupt."
+    )
+
+    constructor(message: String?) : super(message = message)
+
+    constructor(cause: Throwable?) : super(cause = cause)
+
+    constructor(message : String?, cause: Throwable?) : super(message, cause)
 
     companion object {
         private const val serialVersionUID = 1L

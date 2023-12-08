@@ -475,7 +475,7 @@ class MemoryRecordsBuilder(
             require(timestamp >= 0 || timestamp == RecordBatch.NO_TIMESTAMP) {
                 "Invalid negative timestamp $timestamp"
             }
-            require(magic >= RecordBatch.MAGIC_VALUE_V2 || !headers.isNullOrEmpty()) {
+            require(magic >= RecordBatch.MAGIC_VALUE_V2 || headers.isNullOrEmpty()) {
                 "Magic v$magic does not support record headers"
             }
 
@@ -847,7 +847,7 @@ class MemoryRecordsBuilder(
         key: ByteBuffer?,
         value: ByteBuffer?,
         magic: Byte
-    ): Long {
+    ): UInt {
         var timestamp = timestamp
         ensureOpenForRecordAppend()
         if (

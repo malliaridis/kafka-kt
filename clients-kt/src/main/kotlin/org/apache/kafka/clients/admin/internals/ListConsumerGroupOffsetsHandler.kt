@@ -35,7 +35,7 @@ import org.slf4j.Logger
 class ListConsumerGroupOffsetsHandler(
     private val groupSpecs: Map<String, ListConsumerGroupOffsetsSpec>,
     private val requireStable: Boolean,
-    logContext: LogContext
+    logContext: LogContext,
 ) : AdminApiHandler<CoordinatorKey, Map<TopicPartition, OffsetAndMetadata?>> {
 
     private val log: Logger = logContext.logger(ListConsumerGroupOffsetsHandler::class.java)
@@ -56,25 +56,24 @@ class ListConsumerGroupOffsetsHandler(
 
     fun buildBatchedRequest(groupIds: Set<CoordinatorKey>): OffsetFetchRequest.Builder {
         // Create a map that only contains the consumer groups owned by the coordinator.
-        val coordinatorGroupIdToTopicPartitions: MutableMap<String, List<TopicPartition>> =
+        val coordinatorGroupIdToTopicPartitions: MutableMap<String, List<TopicPartition>?> =
             HashMap(groupIds.size)
 
-        groupIds.forEach { g: CoordinatorKey ->
-            val spec = groupSpecs[g.idValue]
-
-            val partitions: List<TopicPartition>? =
-                if (spec!!.topicPartitions() != null) ArrayList(spec.topicPartitions())
-                else null
-
-            coordinatorGroupIdToTopicPartitions[g.idValue] = partitions!!
+        groupIds.forEach { coordinatorKey ->
+            val spec = groupSpecs[coordinatorKey.idValue]!!
+            coordinatorGroupIdToTopicPartitions[coordinatorKey.idValue] = spec.topicPartitions?.toList()
         }
 
-        return OffsetFetchRequest.Builder(coordinatorGroupIdToTopicPartitions, requireStable, false)
+        return OffsetFetchRequest.Builder(
+            groupIdToTopicPartitionMap = coordinatorGroupIdToTopicPartitions,
+            requireStable = requireStable,
+            throwOnFetchStableOffsetsUnsupported = false,
+        )
     }
 
     override fun buildRequest(
         brokerId: Int,
-        keys: Set<CoordinatorKey>
+        keys: Set<CoordinatorKey>,
     ): Collection<RequestAndKeys<CoordinatorKey>> {
         validateKeys(keys)
 
@@ -82,15 +81,16 @@ class ListConsumerGroupOffsetsHandler(
         // the batching end-to-end, including the FindCoordinatorRequest.
         return if (lookupStrategy.batch)
             listOf(RequestAndKeys(buildBatchedRequest(keys), keys))
-        else keys.map { groupId: CoordinatorKey ->
-            RequestAndKeys(buildBatchedRequest(setOf(groupId)), keys)
+        else keys.map { groupId ->
+            val groupIds = setOf(groupId)
+            RequestAndKeys(buildBatchedRequest(groupIds), groupIds)
         }
     }
 
     override fun handleResponse(
         broker: Node,
         keys: Set<CoordinatorKey>,
-        response: AbstractResponse
+        response: AbstractResponse,
     ): ApiResult<CoordinatorKey, Map<TopicPartition, OffsetAndMetadata?>> {
         validateKeys(keys)
         response as OffsetFetchResponse
@@ -103,14 +103,13 @@ class ListConsumerGroupOffsetsHandler(
 
             val group = coordinatorKey.idValue
 
-            response.groupLevelError(group)?.let { error ->
-                handleGroupError(
-                    groupId = CoordinatorKey.byGroupId(group),
-                    error = error,
-                    failed = failed,
-                    groupsToUnmap = unmapped
-                )
-            } ?: run {
+            if (response.groupHasError(group)) handleGroupError(
+                groupId = CoordinatorKey.byGroupId(group),
+                error = response.groupLevelError(group)!!,
+                failed = failed,
+                groupsToUnmap = unmapped
+            )
+            else {
                 val groupOffsetsListing: MutableMap<TopicPartition, OffsetAndMetadata?> = HashMap()
                 val responseData = response.partitionDataMap(group)
 
@@ -121,7 +120,11 @@ class ListConsumerGroupOffsetsHandler(
                         // Negative offset indicates that the group has no committed offset for this partition
                         groupOffsetsListing[topicPartition] =
                             if (offset < 0) null
-                            else OffsetAndMetadata(offset, leaderEpoch, metadata)
+                            else OffsetAndMetadata(
+                                offset = offset,
+                                leaderEpoch = leaderEpoch,
+                                metadata = metadata ?: "",
+                            )
                     } else log.warn(
                         "Skipping return offset for {} due to error {}.",
                         topicPartition,
@@ -138,7 +141,7 @@ class ListConsumerGroupOffsetsHandler(
         groupId: CoordinatorKey,
         error: Errors,
         failed: MutableMap<CoordinatorKey, Throwable>,
-        groupsToUnmap: MutableList<CoordinatorKey>
+        groupsToUnmap: MutableList<CoordinatorKey>,
     ) {
         when (error) {
             Errors.GROUP_AUTHORIZATION_FAILED -> {
@@ -159,7 +162,8 @@ class ListConsumerGroupOffsetsHandler(
                 )
 
             Errors.COORDINATOR_NOT_AVAILABLE,
-            Errors.NOT_COORDINATOR -> {
+            Errors.NOT_COORDINATOR,
+            -> {
                 // If the coordinator is unavailable or there was a coordinator change, then we unmap
                 // the key so that we retry the `FindCoordinator` request
                 log.debug(

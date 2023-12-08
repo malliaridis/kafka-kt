@@ -25,7 +25,13 @@ import org.apache.kafka.common.TopicPartition
  * @constructor Creates an instance with the specified parameters.
  * @property topicPartitions List of topic partitions
  */
-data class MemberAssignment(val topicPartitions: Set<TopicPartition> = emptySet()) {
+class MemberAssignment(topicPartitions: Set<TopicPartition> = emptySet()) {
+
+    val topicPartitions: Set<TopicPartition>
+
+    init {
+        this.topicPartitions = topicPartitions.toSet()
+    }
 
     /**
      * The topic partitions assigned to a group member.
@@ -36,6 +42,18 @@ data class MemberAssignment(val topicPartitions: Set<TopicPartition> = emptySet(
     )
     fun topicPartitions(): Set<TopicPartition> = topicPartitions
 
-    override fun toString(): String =
-        "(topicPartitions=${topicPartitions.joinToString(",")})"
+    override fun toString(): String = "(topicPartitions=${topicPartitions.joinToString(",")})"
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as MemberAssignment
+
+        return topicPartitions == other.topicPartitions
+    }
+
+    override fun hashCode(): Int {
+        return topicPartitions.hashCode()
+    }
 }

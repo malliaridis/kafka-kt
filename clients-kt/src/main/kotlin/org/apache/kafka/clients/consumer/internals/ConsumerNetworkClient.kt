@@ -144,9 +144,8 @@ class ConsumerNetworkClient(
      */
     fun awaitMetadataUpdate(timer: Timer): Boolean {
         val version = metadata.requestUpdate()
-        do {
-            poll(timer)
-        } while (metadata.updateVersion() == version && timer.isNotExpired)
+        do poll(timer)
+        while (metadata.updateVersion() == version && timer.isNotExpired)
         return metadata.updateVersion() > version
     }
 
@@ -196,10 +195,10 @@ class ConsumerNetworkClient(
      * `false`
      * @throws InterruptException if the calling thread is interrupted
      */
-    @JvmOverloads
     fun poll(future: RequestFuture<*>, timer: Timer, disableWakeup: Boolean = false): Boolean {
-        do poll(timer, future, disableWakeup)
-        while (!future.isDone && timer.isNotExpired)
+        do {
+            poll(timer, future, disableWakeup)
+        } while (!future.isDone && timer.isNotExpired)
 
         return future.isDone
     }
@@ -213,7 +212,6 @@ class ConsumerNetworkClient(
      * @throws WakeupException if [wakeup] is called from another thread
      * @throws InterruptException if the calling thread is interrupted
      */
-    @JvmOverloads
     fun poll(timer: Timer, pollCondition: PollCondition? = null, disableWakeup: Boolean = false) {
         // there may be handlers which need to be invoked if we woke up the previous call to poll
         firePendingCompletedRequests()
@@ -412,7 +410,7 @@ class ConsumerNetworkClient(
                             receivedTimeMs = now,
                             disconnected = true,
                             versionMismatch = null,
-                            authenticationException = authenticationException!!,
+                            authenticationException = authenticationException,
                             responseBody = null
                         )
                     )
@@ -465,7 +463,7 @@ class ConsumerNetworkClient(
     }
 
     // Visible for testing
-    fun trySend(now: Long): Long {
+    internal fun trySend(now: Long): Long {
         var pollDelayMs = maxPollTimeoutMs.toLong()
 
         // send any requests that can be sent now
@@ -609,8 +607,7 @@ class ConsumerNetworkClient(
      */
     private class UnsentRequests {
 
-        private val unsent: ConcurrentMap<Node, ConcurrentLinkedQueue<ClientRequest>> =
-            ConcurrentHashMap()
+        private val unsent: ConcurrentMap<Node, ConcurrentLinkedQueue<ClientRequest>> = ConcurrentHashMap()
 
         fun put(node: Node, request: ClientRequest) {
             // the lock protects the put from a concurrent removal of the queue for the node

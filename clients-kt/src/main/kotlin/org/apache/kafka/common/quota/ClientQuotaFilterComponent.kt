@@ -63,12 +63,8 @@ data class ClientQuotaFilterComponent(
          * @param entityType the entity type the filter component applies to
          * @param entityName the entity name that's matched exactly
          */
-        @Deprecated("Use ClientQuotaFilterComponent constructor instead")
         fun ofEntity(entityType: String, entityName: String): ClientQuotaFilterComponent {
-            return ClientQuotaFilterComponent(
-                entityType,
-                entityName
-            )
+            return ClientQuotaFilterComponent(entityType, entityName)
         }
 
         /**
@@ -77,9 +73,8 @@ data class ClientQuotaFilterComponent(
          *
          * @param entityType the entity type the filter component applies to
          */
-        @Deprecated("Use ClientQuotaFilterComponent constructor instead with `null` for `match`.")
         fun ofDefaultEntity(entityType: String): ClientQuotaFilterComponent {
-            return ClientQuotaFilterComponent(entityType, null)
+            return ClientQuotaFilterComponent(entityType, "")
         }
 
         /**
@@ -88,7 +83,6 @@ data class ClientQuotaFilterComponent(
          *
          * @param entityType the entity type the filter component applies to
          */
-        @Deprecated("Use ClientQuotaFilterComponent constructor instead.")
         fun ofEntityType(entityType: String): ClientQuotaFilterComponent {
             return ClientQuotaFilterComponent(entityType, null)
         }

@@ -95,9 +95,9 @@ class OAuthBearerSaslServer(private val callbackHandler: CallbackHandler) : Sasl
         }
 
         return process(
-            clientResponse.tokenValue(),
-            clientResponse.authorizationId(),
-            clientResponse.extensions()
+            clientResponse.tokenValue,
+            clientResponse.authorizationId,
+            clientResponse.saslExtensions
         )
     }
 
@@ -108,13 +108,13 @@ class OAuthBearerSaslServer(private val callbackHandler: CallbackHandler) : Sasl
 
     override fun getMechanismName(): String = OAuthBearerLoginModule.OAUTHBEARER_MECHANISM
 
-    override fun getNegotiatedProperty(propName: String): Any {
+    override fun getNegotiatedProperty(propName: String): Any? {
         check(complete) { "Authentication exchange has not completed" }
 
-        return if (NEGOTIATED_PROPERTY_KEY_TOKEN == propName) tokenForNegotiatedProperty!!
+        return if (NEGOTIATED_PROPERTY_KEY_TOKEN == propName) tokenForNegotiatedProperty
         else if (SaslInternalConfigs.CREDENTIAL_LIFETIME_MS_SASL_NEGOTIATED_PROPERTY_KEY == propName)
             tokenForNegotiatedProperty.lifetimeMs()
-        else extensions!!.map()[propName]!!
+        else extensions!!.map()[propName]
     }
 
     override fun isComplete(): Boolean = complete

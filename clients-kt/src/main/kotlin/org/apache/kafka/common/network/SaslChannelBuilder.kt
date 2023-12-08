@@ -73,7 +73,7 @@ open class SaslChannelBuilder(
     private val securityProtocol: SecurityProtocol,
     private val listenerName: ListenerName?,
     private val isInterBrokerListener: Boolean,
-    private val clientSaslMechanism: String,
+    private val clientSaslMechanism: String?,
     private val handshakeRequestEnable: Boolean,
     private val credentialCache: CredentialCache?,
     private val tokenCache: DelegationTokenCache?,
@@ -93,9 +93,9 @@ open class SaslChannelBuilder(
 
     private var kerberosShortNamer: KerberosShortNamer? = null
 
-    private val saslCallbackHandlers: MutableMap<String, AuthenticateCallbackHandler> = HashMap()
+    private val saslCallbackHandlers = mutableMapOf<String, AuthenticateCallbackHandler>()
 
-    private val connectionsMaxReauthMsByMechanism: MutableMap<String?, Long> = HashMap()
+    private val connectionsMaxReauthMsByMechanism = mutableMapOf<String, Long>()
 
     private val log: Logger = logContext.logger(javaClass)
 
@@ -124,7 +124,7 @@ open class SaslChannelBuilder(
             if (mode === Mode.SERVER && jaasContexts.containsKey(SaslConfigs.GSSAPI_MECHANISM)) {
                 val defaultRealm = try {
                     defaultKerberosRealm()
-                } catch (ke: Exception) {
+                } catch (_: Exception) {
                     ""
                 }
 
@@ -198,32 +198,31 @@ open class SaslChannelBuilder(
                         id = id,
                         transportLayer = transportLayer,
                         subjects = subjects,
-                        connectionsMaxReauthMsByMechanism =
-                        connectionsMaxReauthMsByMechanism.toMap(),
+                        connectionsMaxReauthMsByMechanism = connectionsMaxReauthMsByMechanism.toMap(),
                         metadataRegistry = metadataRegistry
                     )
                 }
             } else {
-                val loginManager = loginManagers[clientSaslMechanism]
+                val loginManager = loginManagers[clientSaslMechanism]!!
                 Supplier {
                     buildClientAuthenticator(
-                        configs,
-                        saslCallbackHandlers[clientSaslMechanism]!!,
-                        id,
-                        socket.inetAddress.hostName,
-                        loginManager!!.serviceName!!,
-                        transportLayer,
-                        subjects[clientSaslMechanism]!!
+                        configs = configs,
+                        callbackHandler = saslCallbackHandlers[clientSaslMechanism]!!,
+                        id = id,
+                        serverHost = socket.inetAddress.hostName,
+                        servicePrincipal = loginManager.serviceName!!,
+                        transportLayer = transportLayer,
+                        subject = subjects[clientSaslMechanism]!!,
                     )
                 }
             }
             KafkaChannel(
-                id,
-                transportLayer,
-                authenticatorCreator,
-                maxReceiveSize,
-                memoryPool ?: MemoryPool.NONE,
-                metadataRegistry
+                id = id,
+                transportLayer = transportLayer,
+                authenticatorCreator = authenticatorCreator,
+                maxReceiveSize = maxReceiveSize,
+                memoryPool = memoryPool ?: MemoryPool.NONE,
+                metadataRegistry = metadataRegistry
             )
         } catch (e: Exception) {
             throw KafkaException(cause = e)
@@ -240,7 +239,7 @@ open class SaslChannelBuilder(
 
     // Visible to override for testing
     @Throws(IOException::class)
-    protected fun buildTransportLayer(
+    internal open fun buildTransportLayer(
         id: String,
         key: SelectionKey,
         socketChannel: SocketChannel,
@@ -255,14 +254,14 @@ open class SaslChannelBuilder(
     }
 
     // Visible to override for testing
-    protected open fun buildServerAuthenticator(
+    internal open fun buildServerAuthenticator(
         configs: Map<String, *>,
         callbackHandlers: Map<String, AuthenticateCallbackHandler>,
         id: String,
         transportLayer: TransportLayer,
         subjects: Map<String, Subject>,
-        connectionsMaxReauthMsByMechanism: Map<String?, Long>,
-        metadataRegistry: ChannelMetadataRegistry?
+        connectionsMaxReauthMsByMechanism: Map<String, Long>,
+        metadataRegistry: ChannelMetadataRegistry,
     ): SaslServerAuthenticator = SaslServerAuthenticator(
         configs = configs,
         callbackHandlers = callbackHandlers,
@@ -273,13 +272,13 @@ open class SaslChannelBuilder(
         securityProtocol = securityProtocol,
         transportLayer = transportLayer,
         connectionsMaxReauthMsByMechanism = connectionsMaxReauthMsByMechanism,
-        metadataRegistry = metadataRegistry!!,
+        metadataRegistry = metadataRegistry,
         time = time,
         apiVersionSupplier = apiVersionSupplier!!
     )
 
     // Visible to override for testing
-    protected open fun buildClientAuthenticator(
+    internal open fun buildClientAuthenticator(
         configs: Map<String, *>,
         callbackHandler: AuthenticateCallbackHandler,
         id: String,
@@ -294,7 +293,7 @@ open class SaslChannelBuilder(
         subject = subject,
         servicePrincipal = servicePrincipal,
         host = serverHost,
-        mechanism = clientSaslMechanism,
+        mechanism = clientSaslMechanism!!,
         handshakeRequestEnable = handshakeRequestEnable,
         transportLayer = transportLayer,
         time = time,
@@ -302,16 +301,14 @@ open class SaslChannelBuilder(
     )
 
     // Package private for testing
-    fun loginManagers(): Map<String, LoginManager> {
-        return loginManagers
-    }
+    internal fun loginManagers(): Map<String, LoginManager> = loginManagers
 
     private fun createClientCallbackHandler(configs: Map<String, *>) {
         val callbackHandlerClass =
             configs[SaslConfigs.SASL_CLIENT_CALLBACK_HANDLER_CLASS] as? Class<out AuthenticateCallbackHandler>
             ?: clientCallbackHandlerClass()
 
-        saslCallbackHandlers[clientSaslMechanism] = newInstance(callbackHandlerClass)
+        saslCallbackHandlers[clientSaslMechanism!!] = newInstance(callbackHandlerClass)
     }
 
     private fun createServerCallbackHandlers(configs: Map<String, *>) {
@@ -326,7 +323,7 @@ open class SaslChannelBuilder(
                 else if (mechanism == PlainSaslServer.PLAIN_MECHANISM) PlainServerCallbackHandler()
                 else if (ScramMechanism.isScram(mechanism)) ScramServerCallbackHandler(
                     credentialCache = credentialCache!!.cache(mechanism, ScramCredential::class.java)!!,
-                    tokenCache = tokenCache!!,
+                    tokenCache = tokenCache,
                 ) else if (mechanism == OAuthBearerLoginModule.OAUTHBEARER_MECHANISM)
                     OAuthBearerUnsecuredValidatorCallbackHandler()
                 else SaslServerCallbackHandler()
@@ -340,14 +337,14 @@ open class SaslChannelBuilder(
             val prefix = ListenerName.saslMechanismPrefix(mechanism)
             var connectionsMaxReauthMs =
                 configs[prefix + BrokerSecurityConfigs.CONNECTIONS_MAX_REAUTH_MS] as Long?
-            if (connectionsMaxReauthMs == null) connectionsMaxReauthMs =
-                configs[BrokerSecurityConfigs.CONNECTIONS_MAX_REAUTH_MS] as Long?
-            if (connectionsMaxReauthMs != null) connectionsMaxReauthMsByMechanism[mechanism] =
-                connectionsMaxReauthMs
+            if (connectionsMaxReauthMs == null)
+                connectionsMaxReauthMs = configs[BrokerSecurityConfigs.CONNECTIONS_MAX_REAUTH_MS] as Long?
+            if (connectionsMaxReauthMs != null)
+                connectionsMaxReauthMsByMechanism[mechanism] = connectionsMaxReauthMs
         }
     }
 
-    protected fun defaultLoginClass(): Class<out Login> {
+    internal fun defaultLoginClass(): Class<out Login> {
         return if (jaasContexts.containsKey(SaslConfigs.GSSAPI_MECHANISM)) KerberosLogin::class.java
         else if (OAuthBearerLoginModule.OAUTHBEARER_MECHANISM == clientSaslMechanism)
             OAuthBearerRefreshingLogin::class.java
@@ -396,27 +393,20 @@ open class SaslChannelBuilder(
                     GSSContext.INDEFINITE_LIFETIME, krb5Mechanism, GSSCredential.ACCEPT_ONLY
                 )
                 subject.privateCredentials.add(cred)
-                log.info(
-                    "Configured native GSSAPI private credentials for {}@{}",
-                    serviceHostname,
-                    serviceHostname
-                )
+                log.info("Configured native GSSAPI private credentials for {}@{}", serviceHostname, serviceHostname)
             } catch (ex: GSSException) {
-                log.warn(
-                    "Cannot add private credential to subject; clients authentication may fail",
-                    ex
-                )
+                log.warn("Cannot add private credential to subject; clients authentication may fail", ex)
             }
         }
     }
 
     // Visibility to override for testing
-    protected open fun gssManager(): GSSManager {
+    internal open fun gssManager(): GSSManager {
         return GSSManager.getInstance()
     }
 
     // Visibility for testing
-    protected fun subject(saslMechanism: String): Subject? {
+    internal fun subject(saslMechanism: String): Subject? {
         return subjects[saslMechanism]
     }
 
