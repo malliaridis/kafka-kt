@@ -286,7 +286,7 @@ class FieldSpec @JsonCreator constructor(
 
             // Error cases / Invalid input (null or empty fieldDefault values already returned)
             type is StructType -> throw RuntimeException(
-                "Invalid default for struct field $name: custom defaults are not supported for struct fields."
+                "Invalid default for struct field $name. The only valid default for a struct field is the empty struct or null"
             )
 
             type is ArrayType -> throw RuntimeException(

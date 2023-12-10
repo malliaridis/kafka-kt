@@ -1,10 +1,11 @@
 package org.apache.kafka.message
 
+import java.util.concurrent.TimeUnit
 import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.Timeout
-import java.util.concurrent.TimeUnit
+import kotlin.test.assertContains
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import kotlin.test.fail
@@ -498,6 +499,67 @@ class MessageDataGeneratorTest {
                     MessageSpec::class.java,
                 )
             }.message!!
+        )
+    }
+
+
+    @Test
+    @Throws(java.lang.Exception::class)
+    fun testInvalidNullDefaultForNullableStruct() {
+        val testMessageSpec = MessageGenerator.JSON_SERDE.readValue(
+            """
+            {
+              "type": "request",
+              "name": "FooBar",
+              "validVersions": "0",
+              "flexibleVersions": "none",
+              "fields": [
+                { "name": "struct1", "type": "MyStruct", "versions": "0+", "nullableVersions": "0+",
+                  "default": "not-null", "fields": [
+                    { "name": "field1", "type": "string", "versions": "0+" }
+                  ]
+                }
+              ]
+            }
+            """.trimIndent(),
+            MessageSpec::class.java,
+        )
+        assertContains(
+            assertFailsWith<RuntimeException> {
+                MessageDataGenerator("org.apache.kafka.common.message")
+                    .generate(testMessageSpec)
+            }.message!!,
+            "Invalid default for struct field struct1. The only valid default for a struct field is the empty struct or null",
+        )
+    }
+
+    @Test
+    @Throws(java.lang.Exception::class)
+    fun testInvalidNullDefaultForPotentiallyNonNullableStruct() {
+        val testMessageSpec = MessageGenerator.JSON_SERDE.readValue(
+            """
+            {
+              "type": "request",
+              "name": "FooBar",
+              "validVersions": "0-1",
+              "flexibleVersions": "none",
+              "fields": [
+                { "name": "struct1", "type": "MyStruct", "versions": "0+", "nullableVersions": "1+", 
+                  "default": "null", "fields": [
+                    { "name": "field1", "type": "string", "versions": "0+" }
+                  ]
+                }
+              ]
+            }
+            """.trimIndent(),
+            MessageSpec::class.java,
+        )
+        assertContains(
+            assertFailsWith<RuntimeException> {
+                MessageDataGenerator("org.apache.kafka.common.message")
+                    .generate(testMessageSpec)
+            }.message!!,
+            "not all versions of this field are nullable",
         )
     }
 }

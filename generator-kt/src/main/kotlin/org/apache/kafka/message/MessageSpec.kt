@@ -29,6 +29,7 @@ class MessageSpec @JsonCreator constructor(
     @JsonProperty("commonStructs") commonStructs: List<StructSpec>?,
     @JsonProperty("flexibleVersions") flexibleVersions: String?,
     @JsonProperty("listeners") val listeners: List<RequestListenerType>?,
+    @JsonProperty("latestVersionUnstable") val latestVersionUnstable: Boolean,
 ) {
 
     val struct: StructSpec = StructSpec(name, validVersions, fields)
@@ -53,6 +54,10 @@ class MessageSpec @JsonCreator constructor(
         if (!listeners.isNullOrEmpty() && (type != MessageSpecType.REQUEST)) throw RuntimeException(
             "The `requestScope` property is only valid for messages with type `request`"
         )
+
+        if (latestVersionUnstable == true && type != MessageSpecType.REQUEST) throw RuntimeException(
+            "The `latestVersionUnstable` property is only valid for messages with type `request`"
+        )
     }
 
     @get:JsonProperty("name")
@@ -76,7 +81,8 @@ class MessageSpec @JsonCreator constructor(
     fun dataClassName(): String = when (type) {
         MessageSpecType.HEADER,
         MessageSpecType.REQUEST,
-        MessageSpecType.RESPONSE ->
+        MessageSpecType.RESPONSE,
+        ->
             // We append the Data suffix to request/response/header classes to avoid
             // collisions with existing objects. This can go away once the protocols
             // have all been converted and we begin using the generated types directly.

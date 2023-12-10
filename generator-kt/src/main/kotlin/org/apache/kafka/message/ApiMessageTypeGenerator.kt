@@ -17,13 +17,12 @@
 
 package org.apache.kafka.message
 
-import org.apache.kafka.message.MessageGenerator.capitalizeFirst
-import org.apache.kafka.message.MessageGenerator.stripSuffix
-import org.apache.kafka.message.MessageGenerator.toSnakeCase
 import java.io.BufferedWriter
 import java.io.IOException
 import java.util.*
-import kotlin.collections.ArrayList
+import org.apache.kafka.message.MessageGenerator.capitalizeFirst
+import org.apache.kafka.message.MessageGenerator.stripSuffix
+import org.apache.kafka.message.MessageGenerator.toSnakeCase
 
 class ApiMessageTypeGenerator(packageName: String) : TypeClassGenerator {
 
@@ -112,9 +111,13 @@ class ApiMessageTypeGenerator(packageName: String) : TypeClassGenerator {
         buffer.printf("%n")
         generateAccessor(name = "lowestSupportedVersion", type = "Short")
         buffer.printf("%n")
+        generateHighestSupportedVersion()
+        buffer.printf("%n")
         generateAccessor(name = "highestSupportedVersion", type = "Short")
         buffer.printf("%n")
         generateAccessor(name = "listeners", type = "EnumSet<ListenerType>")
+        buffer.printf("%n")
+        generateAccessor(name = "latestVersionUnstable", type = "Boolean")
         buffer.printf("%n")
         generateAccessor(name = "apiKey", type = "Short")
         buffer.printf("%n")
@@ -146,6 +149,7 @@ class ApiMessageTypeGenerator(packageName: String) : TypeClassGenerator {
                 private val lowestSupportedVersion: Short,
                 private val highestSupportedVersion: Short,
                 private val listeners: EnumSet<ListenerType>,
+                private val latestVersionUnstable: Boolean,
             ) {%n
         """.trimIndent(),
         )
@@ -174,7 +178,7 @@ class ApiMessageTypeGenerator(packageName: String) : TypeClassGenerator {
             val listeners = requestSpec.listeners?.map(RequestListenerType::name) ?: emptyList()
 
             buffer.printf(
-                "%s(\"%s\", %d.toShort(), %s, %s, %d.toShort(), %d.toShort(), %s)%s%n",
+                "%s(\"%s\", %d.toShort(), %s, %s, %d.toShort(), %d.toShort(), %s, %s)%s%n",
                 toSnakeCase(name).uppercase(),
                 capitalizeFirst(name),
                 key,
@@ -183,6 +187,7 @@ class ApiMessageTypeGenerator(packageName: String) : TypeClassGenerator {
                 requestSpec.struct.versions.lowest,
                 requestSpec.struct.versions.highest,
                 generateListenerTypeEnumSet(listeners),
+                requestSpec.latestVersionUnstable,
                 if (numProcessed != apis.size) "," else ";"
             )
         }
@@ -313,6 +318,23 @@ class ApiMessageTypeGenerator(packageName: String) : TypeClassGenerator {
             val scope = listenerIter.next()
             buffer.printf("%s%s%n", scope.name, if (listenerIter.hasNext()) "," else "")
         }
+        buffer.decrementIndent()
+        buffer.printf("}%n")
+    }
+
+    private fun generateHighestSupportedVersion() {
+        buffer.printf("fun highestSupportedVersion(enableUnstableLastVersion: Boolean): Short {%n")
+        buffer.incrementIndent()
+        buffer.printf("if (!this.latestVersionUnstable() || enableUnstableLastVersion) {%n")
+        buffer.incrementIndent()
+        buffer.printf("return this.highestSupportedVersion%n")
+        buffer.decrementIndent()
+        buffer.printf("} else {%n")
+        buffer.incrementIndent()
+        buffer.printf("// A negative value means that the API has no enabled versions.%n")
+        buffer.printf("return (this.highestSupportedVersion - 1).toShort()%n")
+        buffer.decrementIndent()
+        buffer.printf("}%n")
         buffer.decrementIndent()
         buffer.printf("}%n")
     }
