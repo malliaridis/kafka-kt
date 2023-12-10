@@ -175,8 +175,8 @@ class ImplicitLinkedHashMultiCollectionTest {
                 i += 1
             }
             assertEquals(
-                expected = i,
-                actual = sequence.size,
+                expected = sequence.size,
+                actual = i,
                 message = "Iterator yieled ${i + 1} elements, but ${sequence.size} were expected.",
             )
         }

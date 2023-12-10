@@ -30,7 +30,6 @@ class AclPermissionTypeTest {
     )
 
     @Test
-    @Throws(Exception::class)
     fun testIsUnknown() {
         for (info in INFOS) assertEquals(
             expected = info.unknown,
@@ -40,7 +39,6 @@ class AclPermissionTypeTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testCode() {
         assertEquals(
             expected = AclPermissionType.values().size,
@@ -77,7 +75,6 @@ class AclPermissionTypeTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testExhaustive() {
         assertEquals(INFOS.size, AclPermissionType.values().size)
         for (i in INFOS.indices) assertEquals(

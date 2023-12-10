@@ -17,6 +17,8 @@
 
 package org.apache.kafka.test
 
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerInterceptor
 import org.apache.kafka.clients.consumer.ConsumerRecord
@@ -27,8 +29,6 @@ import org.apache.kafka.common.ClusterResource
 import org.apache.kafka.common.ClusterResourceListener
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.config.ConfigException
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicReference
 
 class MockConsumerInterceptor : ClusterResourceListener, ConsumerInterceptor<String, String> {
 

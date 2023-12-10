@@ -30,7 +30,6 @@ import kotlin.test.assertNull
 class RecordsSerdeTest {
 
     @Test
-    @Throws(Exception::class)
     fun testSerdeRecords() {
         val records = MemoryRecords.withRecords(
             compressionType = CompressionType.NONE,
@@ -46,7 +45,6 @@ class RecordsSerdeTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testSerdeNullRecords() {
         val message = SimpleRecordsMessageData().setTopic("foo")
         assertNull(message.recordSet)
@@ -54,7 +52,6 @@ class RecordsSerdeTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testSerdeEmptyRecords() {
         val message = SimpleRecordsMessageData()
             .setTopic("foo")
@@ -62,7 +59,6 @@ class RecordsSerdeTest {
         testAllRoundTrips(message)
     }
 
-    @Throws(Exception::class)
     private fun testAllRoundTrips(message: SimpleRecordsMessageData) {
         with(SimpleRecordsMessageData) {
             for (version in LOWEST_SUPPORTED_VERSION..HIGHEST_SUPPORTED_VERSION)

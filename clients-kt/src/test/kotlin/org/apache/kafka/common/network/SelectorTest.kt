@@ -476,8 +476,6 @@ open class SelectorTest {
                 memoryPool: MemoryPool?,
                 metadataRegistry: ChannelMetadataRegistry,
             ): KafkaChannel = throw RuntimeException("Test exception")
-
-            override fun close() = Unit
         }
         val selector = Selector(
             connectionMaxIdleMs = CONNECTION_MAX_IDLE_MS,

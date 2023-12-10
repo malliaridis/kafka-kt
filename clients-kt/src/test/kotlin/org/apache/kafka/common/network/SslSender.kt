@@ -68,10 +68,8 @@ class SslSender(
      */
     private class NaiveTrustManager : X509TrustManager {
 
-        @Throws(CertificateException::class)
         override fun checkClientTrusted(x509Certificates: Array<X509Certificate>, s: String) = Unit
 
-        @Throws(CertificateException::class)
         override fun checkServerTrusted(x509Certificates: Array<X509Certificate>, s: String) = Unit
 
         override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()

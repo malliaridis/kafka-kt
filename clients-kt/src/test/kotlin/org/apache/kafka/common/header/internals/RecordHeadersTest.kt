@@ -94,7 +94,6 @@ class RecordHeadersTest {
     }
 
     @Test
-    @Throws(IOException::class)
     fun testReadOnly() {
         val headers = RecordHeaders()
         headers.add(RecordHeader("key", "value".toByteArray()))
@@ -150,7 +149,6 @@ class RecordHeadersTest {
     }
 
     @Test
-    @Throws(IOException::class)
     fun testNew() {
         val headers = RecordHeaders()
         headers.add(RecordHeader("key", "value".toByteArray()))

@@ -36,6 +36,7 @@ import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeFormatterBuilder
 import java.time.temporal.ChronoField
 import java.time.temporal.ChronoUnit
+import java.util.Collections
 import java.util.Date
 import java.util.Properties
 import java.util.TreeSet
@@ -50,6 +51,7 @@ import org.apache.kafka.common.utils.Utils.closeAll
 import org.apache.kafka.common.utils.Utils.closeAllQuietly
 import org.apache.kafka.common.utils.Utils.delete
 import org.apache.kafka.common.utils.Utils.diff
+import org.apache.kafka.common.utils.Utils.entriesWithPrefix
 import org.apache.kafka.common.utils.Utils.formatAddress
 import org.apache.kafka.common.utils.Utils.formatBytes
 import org.apache.kafka.common.utils.Utils.from32BitField
@@ -69,6 +71,7 @@ import org.apache.kafka.common.utils.Utils.readBytes
 import org.apache.kafka.common.utils.Utils.readFileAsString
 import org.apache.kafka.common.utils.Utils.readFully
 import org.apache.kafka.common.utils.Utils.readFullyOrFail
+import org.apache.kafka.common.utils.Utils.replaceSuffix
 import org.apache.kafka.common.utils.Utils.to32BitField
 import org.apache.kafka.common.utils.Utils.toArray
 import org.apache.kafka.common.utils.Utils.toLogDateTimeFormat
@@ -929,9 +932,11 @@ class UtilsTest {
     fun testToLogDateTimeFormat() {
         val timestampWithMilliSeconds = LocalDateTime.of(2020, 11, 9, 12, 34, 5, 123000000)
         val timestampWithSeconds = LocalDateTime.of(2020, 11, 9, 12, 34, 5)
+        
         val offsetFormatter = DateTimeFormatter.ofPattern("XXX")
         val offset = ZoneId.systemDefault().rules.getOffset(timestampWithSeconds)
         val requiredOffsetFormat = offsetFormatter.format(offset)
+        
         assertEquals(
             expected = "2020-11-09 12:34:05,123 $requiredOffsetFormat",
             actual = toLogDateTimeFormat(
@@ -944,6 +949,32 @@ class UtilsTest {
                 timestampWithSeconds.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
             ),
         )
+    }
+    
+    @Test
+    fun testReplaceSuffix() {
+        assertEquals("blah.foo.text", replaceSuffix("blah.foo.txt", ".txt", ".text"))
+        assertEquals("blah.foo", replaceSuffix("blah.foo.txt", ".txt", ""))
+        assertEquals("txt.txt", replaceSuffix("txt.txt.txt", ".txt", ""))
+        assertEquals("foo.txt", replaceSuffix("foo", "", ".txt"))
+    }
+
+    @Test
+    fun testEntriesWithPrefix() {
+        val props = mapOf(
+            "foo.bar" to "abc",
+            "setting" to "def",
+        )
+
+        // With stripping
+        var expected = mapOf("bar" to "abc")
+        var actual = entriesWithPrefix(props, "foo.")
+        assertEquals(expected, actual)
+
+        // Without stripping
+        expected = mapOf("foo.bar" to "abc")
+        actual = entriesWithPrefix(props, "foo.", false)
+        assertEquals(expected, actual)
     }
 
     companion object {

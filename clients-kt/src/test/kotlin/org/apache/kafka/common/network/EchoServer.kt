@@ -88,11 +88,7 @@ class EchoServer @Throws(Exception::class) constructor(
                         return@synchronized
                     }
                     sockets.add(socket)
-                    val thread = object : Thread() {
-                        override fun run() {
-                            processSocket(socket)
-                        }
-                    }
+                    val thread = Thread { processSocket(socket) }
                     thread.start()
                     threads.add(thread)
                 }

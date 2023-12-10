@@ -36,6 +36,7 @@ class ProtoUtilsTest {
                 ApiKeys.RENEW_DELEGATION_TOKEN,
                 ApiKeys.ALTER_USER_SCRAM_CREDENTIALS,
                 ApiKeys.ENVELOPE,
+                ApiKeys.CONSUMER_GROUP_HEARTBEAT,
                 -> assertTrue(
                     actual = key.requiresDelayedAllocation,
                     message = "$key should require delayed allocation",

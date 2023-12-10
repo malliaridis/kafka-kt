@@ -90,7 +90,7 @@ class ProduceRequestTest {
     @Test
     fun shouldNotBeFlaggedAsIdempotentWhenRecordsNotIdempotent() {
         val request = createNonIdempotentNonTransactionalRecords()
-        assertFalse(hasTransactionalRecords(request))
+        assertFalse(hasIdempotentRecords(request))
     }
 
     @Test
@@ -411,11 +411,11 @@ class ProduceRequestTest {
         val producerId = 15L
         val producerEpoch: Short = 5
         val sequence = 10
-        val nonTxnRecords = MemoryRecords.withRecords(
+        val nonIdempotentRecords = MemoryRecords.withRecords(
             compressionType = CompressionType.NONE,
             records = arrayOf(SimpleRecord(value = "foo".toByteArray()))
         )
-        val txnRecords = MemoryRecords.withIdempotentRecords(
+        val idempotentRecords = MemoryRecords.withIdempotentRecords(
             compressionType = CompressionType.NONE,
             producerId = producerId,
             producerEpoch = producerEpoch,
@@ -429,10 +429,10 @@ class ProduceRequestTest {
                     TopicProduceDataCollection(
                         listOf(
                             TopicProduceData().setName("foo").setPartitionData(
-                                listOf(PartitionProduceData().setIndex(0).setRecords(txnRecords))
+                                listOf(PartitionProduceData().setIndex(0).setRecords(idempotentRecords))
                             ),
                             TopicProduceData().setName("foo").setPartitionData(
-                                listOf(PartitionProduceData().setIndex(1).setRecords(nonTxnRecords))
+                                listOf(PartitionProduceData().setIndex(1).setRecords(nonIdempotentRecords))
                             ),
                         ).iterator()
                     )

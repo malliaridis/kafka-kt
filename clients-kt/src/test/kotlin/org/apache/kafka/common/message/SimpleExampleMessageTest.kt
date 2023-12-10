@@ -150,91 +150,73 @@ class SimpleExampleMessageTest {
     @Test
     fun testMyTaggedIntArray() {
         // Verify that the tagged int array reads as empty when not set.
-        testRoundTrip(
-            message = SimpleExampleMessageData(),
-            validator = { message -> assertContentEquals(intArrayOf(), message.myTaggedIntArray) },
-        )
+        testRoundTrip(SimpleExampleMessageData()) { message ->
+            assertContentEquals(intArrayOf(), message.myTaggedIntArray)
+        }
 
         // Verify that we can set a tagged array of ints.
-        testRoundTrip(
-            message = SimpleExampleMessageData().setMyTaggedIntArray(intArrayOf(1, 2, 3)),
-            validator = { message -> assertContentEquals(intArrayOf(1, 2, 3), message.myTaggedIntArray) },
-        )
+        testRoundTrip(SimpleExampleMessageData().setMyTaggedIntArray(intArrayOf(1, 2, 3))) { message ->
+            assertContentEquals(intArrayOf(1, 2, 3), message.myTaggedIntArray)
+        }
     }
 
     @Test
     fun testMyNullableString() {
         // Verify that the tagged field reads as null when not set.
-        testRoundTrip(
-            message = SimpleExampleMessageData(),
-            validator = { message -> assertNull(message.myNullableString) },
-        )
+        testRoundTrip(SimpleExampleMessageData())  { message -> assertNull(message.myNullableString) }
 
         // Verify that we can set and retrieve a string for the tagged field.
-        testRoundTrip(
-            message = SimpleExampleMessageData().setMyNullableString("foobar"),
-            validator = { message -> assertEquals("foobar", message.myNullableString) },
-        )
+        testRoundTrip(SimpleExampleMessageData().setMyNullableString("foobar")) { message ->
+            assertEquals("foobar", message.myNullableString)
+        }
     }
 
     @Test
     fun testMyInt16() {
         // Verify that the tagged field reads as 123 when not set.
-        testRoundTrip(
-            message = SimpleExampleMessageData(),
-            validator = { message -> assertEquals(123, message.myInt16) },
-        )
-        testRoundTrip(
-            message = SimpleExampleMessageData().setMyInt16(456),
-            validator = { message -> assertEquals(456, message.myInt16) },
-        )
+        testRoundTrip(SimpleExampleMessageData()) { message -> assertEquals(123, message.myInt16) }
+        testRoundTrip(SimpleExampleMessageData().setMyInt16(456)) { message ->
+            assertEquals(456, message.myInt16)
+        }
     }
 
     @Test
     fun testMyUint32() {
         // Verify that the uint16 field reads as 33000 when not set.
-        testRoundTrip(
-            message = SimpleExampleMessageData(),
-            validator = { message -> assertEquals(1234567u, message.myUint32) },
-        )
-        testRoundTrip(
-            message = SimpleExampleMessageData().setMyUint32(123u),
-            validator = { message -> assertEquals(123u, message.myUint32) },
-        )
-        testRoundTrip(
-            message = SimpleExampleMessageData().setMyUint32(60000u),
-            validator = { message -> assertEquals(60000u, message.myUint32) },
-        )
+        testRoundTrip(SimpleExampleMessageData()) { message ->
+            assertEquals(1234567u, message.myUint32)
+        }
+
+        testRoundTrip(SimpleExampleMessageData().setMyUint32(123u)) { message ->
+            assertEquals(123u, message.myUint32)
+        }
+
+        testRoundTrip(SimpleExampleMessageData().setMyUint32(60000u)) { message ->
+            assertEquals(60000u, message.myUint32)
+        }
     }
 
     @Test
     fun testMyUint16() {
         // Verify that the uint16 field reads as 33000 when not set.
-        testRoundTrip(
-            message = SimpleExampleMessageData(),
-            validator = { message -> assertEquals(33000u, message.myUint16) },
-        )
-        testRoundTrip(
-            message = SimpleExampleMessageData().setMyUint16(123u),
-            validator = { message -> assertEquals(123u, message.myUint16) },
-        )
-        testRoundTrip(
-            message = SimpleExampleMessageData().setMyUint16(60000u),
-            validator = { message -> assertEquals(60000u, message.myUint16) },
-        )
+        testRoundTrip(SimpleExampleMessageData()) { message ->
+            assertEquals(33000u, message.myUint16)
+        }
+        testRoundTrip(SimpleExampleMessageData().setMyUint16(123u)) { message ->
+            assertEquals(123u, message.myUint16)
+        }
+        testRoundTrip(SimpleExampleMessageData().setMyUint16(60000u)) { message ->
+            assertEquals(60000u, message.myUint16)
+        }
     }
 
     @Test
     fun testMyString() {
         // Verify that the tagged field reads as empty when not set.
-        testRoundTrip(
-            message = SimpleExampleMessageData(),
-            validator = { message -> assertEquals("", message.myString) },
-        )
-        testRoundTrip(
-            message = SimpleExampleMessageData().setMyString("abc"),
-            validator = { message -> assertEquals("abc", message.myString) },
-        )
+        testRoundTrip(SimpleExampleMessageData()) { message -> assertEquals("", message.myString) }
+        testRoundTrip(SimpleExampleMessageData().setMyString("abc")) { message ->
+            assertEquals("abc", message.myString)
+        }
     }
 
     @Test
@@ -247,46 +229,35 @@ class SimpleExampleMessageTest {
         // assertFailsWith<RuntimeException> { SimpleExampleMessageData().setMyUint32(UInt.MAX_VALUE + 1) }
 
         // Verify that the tagged field reads as empty when not set.
-        testRoundTrip(
-            message = SimpleExampleMessageData(),
-            validator = { message -> assertContentEquals(byteArrayOf(), message.myBytes) },
-        )
-        testRoundTrip(
-            message = SimpleExampleMessageData().setMyBytes(byteArrayOf(0x43, 0x66)),
-            validator = { message -> assertContentEquals(byteArrayOf(0x43, 0x66), message.myBytes) },
-        )
-        testRoundTrip(
-            message = SimpleExampleMessageData().setMyBytes(null),
-            validator = { message -> assertNull(message.myBytes) },
-        )
+        testRoundTrip(SimpleExampleMessageData()) { message -> assertContentEquals(byteArrayOf(), message.myBytes) }
+        testRoundTrip(SimpleExampleMessageData().setMyBytes(byteArrayOf(0x43, 0x66))) { message ->
+            assertContentEquals(byteArrayOf(0x43, 0x66), message.myBytes)
+        }
+        testRoundTrip(SimpleExampleMessageData().setMyBytes(null)) { message -> assertNull(message.myBytes) }
     }
 
     @Test
     fun testTaggedUuid() {
-        testRoundTrip(
-            message = SimpleExampleMessageData(),
-            validator = { message -> assertEquals(Uuid.fromString("H3KKO4NTRPaCWtEmm3vW7A"), message.taggedUuid) },
-        )
+        testRoundTrip(SimpleExampleMessageData()) { message ->
+            assertEquals(Uuid.fromString("H3KKO4NTRPaCWtEmm3vW7A"), message.taggedUuid)
+        }
         val randomUuid = Uuid.randomUuid()
-        testRoundTrip(
-            message = SimpleExampleMessageData().setTaggedUuid(randomUuid),
-            validator = { message -> assertEquals(randomUuid, message.taggedUuid) },
-        )
+        testRoundTrip(SimpleExampleMessageData().setTaggedUuid(randomUuid)) { message ->
+            assertEquals(randomUuid, message.taggedUuid)
+        }
     }
 
     @Test
     fun testTaggedLong() {
+        testRoundTrip(SimpleExampleMessageData()) { message ->
+            assertEquals(0xcafcacafcacafcaL, message.taggedLong)
+        }
         testRoundTrip(
-            message = SimpleExampleMessageData(),
-            validator = { message -> assertEquals(0xcafcacafcacafcaL, message.taggedLong) },
-        )
-        testRoundTrip(
-            message = SimpleExampleMessageData()
+            SimpleExampleMessageData()
                 .setMyString("blah")
                 .setMyTaggedIntArray(intArrayOf(4))
                 .setTaggedLong(0x123443211234432L),
-            validator = { message -> assertEquals(0x123443211234432L, message.taggedLong) },
-        )
+        ) { message -> assertEquals(0x123443211234432L, message.taggedLong) }
     }
 
     @Test
@@ -297,9 +268,8 @@ class SimpleExampleMessageTest {
             .setArrayInStruct(listOf(SimpleExampleMessageData.StructArray().setArrayFieldId(20)))
         testRoundTrip(
             message = SimpleExampleMessageData().setMyStruct(myStruct),
-            validator = { message -> assertEquals(myStruct, message.myStruct)},
-            version = 2,
-        )
+            version = 2
+        ) { message -> assertEquals(myStruct, message.myStruct) }
     }
 
     @Test
@@ -325,21 +295,19 @@ class SimpleExampleMessageTest {
         val myStruct = TaggedStruct().setStructId("abc")
         testRoundTrip(
             message = SimpleExampleMessageData().setMyTaggedStruct(myStruct),
-            validator = { message -> assertEquals(myStruct, message.myTaggedStruct) },
-            version = 2,
-        )
+            version = 2
+        ) { message -> assertEquals(myStruct, message.myTaggedStruct) }
 
         // Not setting field works for both version 1 and version 2 protocol
         testRoundTrip(
             message = SimpleExampleMessageData().setMyString("abc"),
-            validator = { message -> assertEquals("abc", message.myString)},
             version = 1,
-        )
+        ) { message -> assertEquals("abc", message.myString) }
+
         testRoundTrip(
             message = SimpleExampleMessageData().setMyString("abc"),
-            validator = { message -> assertEquals("abc", message.myString) },
             version = 2,
-        )
+        ) { message -> assertEquals("abc", message.myString) }
     }
 
     @Test
@@ -367,26 +335,27 @@ class SimpleExampleMessageTest {
     private fun testRoundTrip(message: SimpleExampleMessageData, version: Short) {
         testRoundTrip(
             message = message,
-            validator = { },
+            validate = { },
             version = version,
         )
     }
 
     private fun testRoundTrip(
         message: SimpleExampleMessageData,
-        validator: Consumer<SimpleExampleMessageData>,
-        version: Short = 1.toShort(),
+        version: Short = 1,
+        validate: (SimpleExampleMessageData) -> Unit,
     ) {
-        validator.accept(message)
+        validate(message)
+
         val message2 = roundTripSerde(message, version)
-        validator.accept(message2)
+        validate(message2)
         assertEquals(message, message2)
         assertEquals(message.hashCode(), message2.hashCode())
 
         // Check JSON serialization
         val serializedJson = write(message, version)
         val messageFromJson = read(serializedJson, version)
-        validator.accept(messageFromJson)
+        validate(messageFromJson)
         assertEquals(message, messageFromJson)
         assertEquals(message.hashCode(), messageFromJson.hashCode())
     }
@@ -404,7 +373,7 @@ class SimpleExampleMessageTest {
         val message = SimpleExampleMessageData().setTaggedLongFlexibleVersionSubset(15L)
         testRoundTrip(
             message = message,
-            validator = { msg -> assertEquals(15, msg.taggedLongFlexibleVersionSubset) },
+            validate = { msg -> assertEquals(15, msg.taggedLongFlexibleVersionSubset) },
             version = 2,
         )
         val deserialized = roundTripSerde(message, 1.toShort())

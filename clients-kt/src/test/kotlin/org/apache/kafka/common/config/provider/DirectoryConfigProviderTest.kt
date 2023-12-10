@@ -81,7 +81,6 @@ class DirectoryConfigProviderTest {
     }
 
     @Test
-    @Throws(IOException::class)
     fun testGetAllKeysAtPath() {
         val (data, ttl) = provider!![dir!!.absolutePath]
         assertEquals(setOf(foo!!.getName(), bar!!.getName()), data.keys)

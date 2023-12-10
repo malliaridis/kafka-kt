@@ -695,7 +695,6 @@ class ConfigDefTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testCanAddInternalConfig() {
         val configName = "internal.config"
         val configDef = ConfigDef().defineInternal(
@@ -738,7 +737,6 @@ class ConfigDefTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testDynamicUpdateModeInDocs() {
         val configDef = ConfigDef().define(
             name = "my.broker.config",

@@ -17,16 +17,25 @@
 
 package org.apache.kafka.common.protocol
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.BinaryNode
+import com.fasterxml.jackson.databind.node.IntNode
+import com.fasterxml.jackson.databind.node.TextNode
+import java.io.IOException
+import java.io.StringWriter
+import java.io.UncheckedIOException
 import java.nio.ByteBuffer
 import org.apache.kafka.common.protocol.MessageUtil.byteBufferToArray
 import org.apache.kafka.common.protocol.MessageUtil.compareRawTaggedFields
 import org.apache.kafka.common.protocol.MessageUtil.deepToString
 import org.apache.kafka.common.protocol.MessageUtil.duplicate
+import org.apache.kafka.common.protocol.MessageUtil.jsonNodeToBinary
 import org.apache.kafka.common.protocol.types.RawTaggedField
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -101,5 +110,31 @@ class MessageUtilTest {
     fun testConstants() {
         assertEquals(MessageUtil.UNSIGNED_SHORT_MAX, 0xFFFF)
         assertEquals(MessageUtil.UNSIGNED_INT_MAX, 0xFFFFFFFFL)
+    }
+
+    @Test
+    @Throws(IOException::class)
+    fun testBinaryNode() {
+        val expected = byteArrayOf(5, 2, 9, 4, 1, 8, 7, 0, 3, 6)
+        val writer = StringWriter()
+        val mapper = ObjectMapper()
+
+        mapper.writeTree(mapper.createGenerator(writer), BinaryNode(expected))
+
+        val textNode = mapper.readTree(writer.toString())
+
+        assertTrue(textNode.isTextual, "Expected a JSON string but was: $textNode")
+        val actual = jsonNodeToBinary(textNode, "Test base64 JSON string")
+        assertContentEquals(expected, actual)
+    }
+
+    @Test
+    fun testInvalidBinaryNode() {
+        assertFailsWith<IllegalArgumentException> {
+            jsonNodeToBinary(IntNode(42), "Test int to binary")
+        }
+        assertFailsWith<UncheckedIOException> {
+            jsonNodeToBinary(TextNode("This is not base64!"), "Test non-base64 to binary")
+        }
     }
 }

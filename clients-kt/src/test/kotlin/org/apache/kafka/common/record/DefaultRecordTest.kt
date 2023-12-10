@@ -17,7 +17,6 @@
 
 package org.apache.kafka.common.record
 
-import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer
@@ -29,7 +28,7 @@ import org.apache.kafka.common.utils.ByteBufferOutputStream
 import org.apache.kafka.common.utils.ByteUtils.sizeOfVarint
 import org.apache.kafka.common.utils.ByteUtils.writeVarint
 import org.apache.kafka.common.utils.ByteUtils.writeVarlong
-import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -37,13 +36,6 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 
 class DefaultRecordTest {
-    
-    private lateinit var skipArray: ByteArray
-    
-    @BeforeEach
-    fun setUp() {
-        skipArray = ByteArray(64)
-    }
 
     @Test
     @Throws(IOException::class)
@@ -135,6 +127,19 @@ class DefaultRecordTest {
         val buffer = out.buffer
         buffer.flip()
         buffer.put(14, 8.toByte())
+        // test for input stream input
+        ByteBufferInputStream(buffer.asReadOnlyBuffer()).use { inpStream ->
+            assertFailsWith<InvalidRecordException> {
+                DefaultRecord.readFrom(
+                    input = inpStream,
+                    baseOffset = baseOffset,
+                    baseTimestamp = baseTimestamp,
+                    baseSequence = baseSequence,
+                    logAppendTime = null,
+                )
+            }
+        }
+        // test for buffer input
         assertFailsWith<InvalidRecordException> {
             DefaultRecord.readFrom(
                 buffer = buffer,
@@ -189,6 +194,7 @@ class DefaultRecordTest {
     }
 
     @Test
+    @Throws(IOException::class)
     fun testInvalidKeySize() {
         val attributes: Byte = 0
         val timestampDelta: Long = 2
@@ -203,24 +209,18 @@ class DefaultRecordTest {
         writeVarint(keySize, buf)
         buf.position(buf.limit())
         buf.flip()
-        assertFailsWith<InvalidRecordException> {
-            DefaultRecord.readFrom(
-                buffer = buf,
-                baseOffset = 0L,
-                baseTimestamp = 0L,
-                baseSequence = RecordBatch.NO_SEQUENCE,
-                logAppendTime = null,
-            )
-        }
+        assertDecodingRecordFromBufferThrowsInvalidRecordException(buf)
     }
 
     @Test
+    @Throws(IOException::class)
     fun testInvalidKeySizePartial() {
         val attributes: Byte = 0
         val timestampDelta: Long = 2
         val offsetDelta = 1
         val sizeOfBodyInBytes = 100
         val keySize = 105 // use a key size larger than the full message
+
         val buf = ByteBuffer.allocate(sizeOfBodyInBytes + sizeOfVarint(sizeOfBodyInBytes))
         writeVarint(sizeOfBodyInBytes, buf)
         buf.put(attributes)
@@ -228,27 +228,20 @@ class DefaultRecordTest {
         writeVarint(offsetDelta, buf)
         writeVarint(keySize, buf)
         buf.position(buf.limit())
+
         buf.flip()
-        val inputStream = DataInputStream(ByteBufferInputStream(buf))
-        assertFailsWith<InvalidRecordException> {
-            DefaultRecord.readPartiallyFrom(
-                input = inputStream,
-                skipArray = skipArray,
-                baseOffset = 0L,
-                baseTimestamp = 0L,
-                baseSequence = RecordBatch.NO_SEQUENCE,
-                logAppendTime = null,
-            )
-        }
+        assertPartiallyDecodingRecordsFromBufferThrowsInvalidRecordException(buf)
     }
 
     @Test
+    @Throws(IOException::class)
     fun testInvalidValueSize() {
         val attributes: Byte = 0
         val timestampDelta: Long = 2
         val offsetDelta = 1
         val sizeOfBodyInBytes = 100
         val valueSize = 105 // use a value size larger than the full message
+
         val buf = ByteBuffer.allocate(sizeOfBodyInBytes + sizeOfVarint(sizeOfBodyInBytes))
         writeVarint(sizeOfBodyInBytes, buf)
         buf.put(attributes)
@@ -257,16 +250,9 @@ class DefaultRecordTest {
         writeVarint(-1, buf) // null key
         writeVarint(valueSize, buf)
         buf.position(buf.limit())
+
         buf.flip()
-        assertFailsWith<InvalidRecordException> {
-            DefaultRecord.readFrom(
-                buffer = buf,
-                baseOffset = 0L,
-                baseTimestamp = 0L,
-                baseSequence = RecordBatch.NO_SEQUENCE,
-                logAppendTime = null,
-            )
-        }
+        assertDecodingRecordFromBufferThrowsInvalidRecordException(buf)
     }
 
     @Test
@@ -277,6 +263,7 @@ class DefaultRecordTest {
         val offsetDelta = 1
         val sizeOfBodyInBytes = 100
         val valueSize = 105 // use a value size larger than the full message
+
         val buf = ByteBuffer.allocate(sizeOfBodyInBytes + sizeOfVarint(sizeOfBodyInBytes))
         writeVarint(sizeOfBodyInBytes, buf)
         buf.put(attributes)
@@ -285,26 +272,19 @@ class DefaultRecordTest {
         writeVarint(-1, buf) // null key
         writeVarint(valueSize, buf)
         buf.position(buf.limit())
+
         buf.flip()
-        val inputStream = DataInputStream(ByteBufferInputStream(buf))
-        assertFailsWith<InvalidRecordException> {
-            DefaultRecord.readPartiallyFrom(
-                input = inputStream,
-                skipArray = skipArray,
-                baseOffset = 0L,
-                baseTimestamp = 0L,
-                baseSequence = RecordBatch.NO_SEQUENCE,
-                logAppendTime = null,
-            )
-        }
+        assertPartiallyDecodingRecordsFromBufferThrowsInvalidRecordException(buf)
     }
 
     @Test
+    @Throws(IOException::class)
     fun testInvalidNumHeaders() {
         val attributes: Byte = 0
         val timestampDelta: Long = 2
         val offsetDelta = 1
         val sizeOfBodyInBytes = 100
+
         val buf = ByteBuffer.allocate(sizeOfBodyInBytes + sizeOfVarint(sizeOfBodyInBytes))
         writeVarint(sizeOfBodyInBytes, buf)
         buf.put(attributes)
@@ -314,16 +294,10 @@ class DefaultRecordTest {
         writeVarint(-1, buf) // null value
         writeVarint(-1, buf) // -1 num.headers, not allowed
         buf.position(buf.limit())
+
         buf.flip()
-        assertFailsWith<InvalidRecordException> {
-            DefaultRecord.readFrom(
-                buffer = buf,
-                baseOffset = 0L,
-                baseTimestamp = 0L,
-                baseSequence = RecordBatch.NO_SEQUENCE,
-                logAppendTime = null,
-            )
-        }
+        assertDecodingRecordFromBufferThrowsInvalidRecordException(buf)
+
         val buf2 = ByteBuffer.allocate(sizeOfBodyInBytes + sizeOfVarint(sizeOfBodyInBytes))
         writeVarint(sizeOfBodyInBytes, buf2)
         buf2.put(attributes)
@@ -333,24 +307,19 @@ class DefaultRecordTest {
         writeVarint(-1, buf2) // null value
         writeVarint(sizeOfBodyInBytes, buf2) // more headers than remaining buffer size, not allowed
         buf2.position(buf2.limit())
+
         buf2.flip()
-        assertFailsWith<InvalidRecordException> {
-            DefaultRecord.readFrom(
-                buffer = buf2,
-                baseOffset = 0L,
-                baseTimestamp = 0L,
-                baseSequence = RecordBatch.NO_SEQUENCE,
-                logAppendTime = null,
-            )
-        }
+        assertDecodingRecordFromBufferThrowsInvalidRecordException(buf2)
     }
 
     @Test
+    @Throws(IOException::class)
     fun testInvalidNumHeadersPartial() {
         val attributes: Byte = 0
         val timestampDelta: Long = 2
         val offsetDelta = 1
         val sizeOfBodyInBytes = 100
+
         val buf = ByteBuffer.allocate(sizeOfBodyInBytes + sizeOfVarint(sizeOfBodyInBytes))
         writeVarint(sizeOfBodyInBytes, buf)
         buf.put(attributes)
@@ -360,26 +329,19 @@ class DefaultRecordTest {
         writeVarint(-1, buf) // null value
         writeVarint(-1, buf) // -1 num.headers, not allowed
         buf.position(buf.limit())
+
         buf.flip()
-        val inputStream = DataInputStream(ByteBufferInputStream(buf))
-        assertFailsWith<InvalidRecordException> {
-            DefaultRecord.readPartiallyFrom(
-                input = inputStream,
-                skipArray = skipArray,
-                baseOffset = 0L,
-                baseTimestamp = 0L,
-                baseSequence = RecordBatch.NO_SEQUENCE,
-                logAppendTime = null
-            )
-        }
+        assertPartiallyDecodingRecordsFromBufferThrowsInvalidRecordException(buf)
     }
 
     @Test
+    @Throws(IOException::class)
     fun testInvalidHeaderKey() {
         val attributes: Byte = 0
         val timestampDelta: Long = 2
         val offsetDelta = 1
         val sizeOfBodyInBytes = 100
+
         val buf = ByteBuffer.allocate(sizeOfBodyInBytes + sizeOfVarint(sizeOfBodyInBytes))
         writeVarint(sizeOfBodyInBytes, buf)
         buf.put(attributes)
@@ -390,24 +352,19 @@ class DefaultRecordTest {
         writeVarint(1, buf)
         writeVarint(105, buf) // header key too long
         buf.position(buf.limit())
+
         buf.flip()
-        assertFailsWith<InvalidRecordException> {
-            DefaultRecord.readFrom(
-                buffer = buf,
-                baseOffset = 0L,
-                baseTimestamp = 0L,
-                baseSequence = RecordBatch.NO_SEQUENCE,
-                logAppendTime = null,
-            )
-        }
+        assertDecodingRecordFromBufferThrowsInvalidRecordException(buf)
     }
 
     @Test
+    @Throws(IOException::class)
     fun testInvalidHeaderKeyPartial() {
         val attributes: Byte = 0
         val timestampDelta: Long = 2
         val offsetDelta = 1
         val sizeOfBodyInBytes = 100
+
         val buf = ByteBuffer.allocate(sizeOfBodyInBytes + sizeOfVarint(sizeOfBodyInBytes))
         writeVarint(sizeOfBodyInBytes, buf)
         buf.put(attributes)
@@ -418,26 +375,19 @@ class DefaultRecordTest {
         writeVarint(1, buf)
         writeVarint(105, buf) // header key too long
         buf.position(buf.limit())
+
         buf.flip()
-        val inputStream = DataInputStream(ByteBufferInputStream(buf))
-        assertFailsWith<InvalidRecordException> {
-            DefaultRecord.readPartiallyFrom(
-                input = inputStream,
-                skipArray = skipArray,
-                baseOffset = 0L,
-                baseTimestamp = 0L,
-                baseSequence = RecordBatch.NO_SEQUENCE,
-                logAppendTime = null,
-            )
-        }
+        assertPartiallyDecodingRecordsFromBufferThrowsInvalidRecordException(buf)
     }
 
     @Test
+    @Throws(IOException::class)
     fun testNullHeaderKey() {
         val attributes: Byte = 0
         val timestampDelta: Long = 2
         val offsetDelta = 1
         val sizeOfBodyInBytes = 100
+
         val buf = ByteBuffer.allocate(sizeOfBodyInBytes + sizeOfVarint(sizeOfBodyInBytes))
         writeVarint(sizeOfBodyInBytes, buf)
         buf.put(attributes)
@@ -448,24 +398,19 @@ class DefaultRecordTest {
         writeVarint(1, buf)
         writeVarint(-1, buf) // null header key not allowed
         buf.position(buf.limit())
+
         buf.flip()
-        assertFailsWith<InvalidRecordException> {
-            DefaultRecord.readFrom(
-                buffer = buf,
-                baseOffset = 0L,
-                baseTimestamp = 0L,
-                baseSequence = RecordBatch.NO_SEQUENCE,
-                logAppendTime = null
-            )
-        }
+        assertDecodingRecordFromBufferThrowsInvalidRecordException(buf)
     }
 
     @Test
+    @Throws(IOException::class)
     fun testNullHeaderKeyPartial() {
         val attributes: Byte = 0
         val timestampDelta: Long = 2
         val offsetDelta = 1
         val sizeOfBodyInBytes = 100
+
         val buf = ByteBuffer.allocate(sizeOfBodyInBytes + sizeOfVarint(sizeOfBodyInBytes))
         writeVarint(sizeOfBodyInBytes, buf)
         buf.put(attributes)
@@ -476,26 +421,19 @@ class DefaultRecordTest {
         writeVarint(1, buf)
         writeVarint(-1, buf) // null header key not allowed
         buf.position(buf.limit())
+
         buf.flip()
-        val inputStream = DataInputStream(ByteBufferInputStream(buf))
-        assertFailsWith<InvalidRecordException> {
-            DefaultRecord.readPartiallyFrom(
-                input = inputStream,
-                skipArray = skipArray,
-                baseOffset = 0L,
-                baseTimestamp = 0L,
-                baseSequence = RecordBatch.NO_SEQUENCE,
-                logAppendTime = null,
-            )
-        }
+        assertPartiallyDecodingRecordsFromBufferThrowsInvalidRecordException(buf)
     }
 
     @Test
+    @Throws(IOException::class)
     fun testInvalidHeaderValue() {
         val attributes: Byte = 0
         val timestampDelta: Long = 2
         val offsetDelta = 1
         val sizeOfBodyInBytes = 100
+
         val buf = ByteBuffer.allocate(sizeOfBodyInBytes + sizeOfVarint(sizeOfBodyInBytes))
         writeVarint(sizeOfBodyInBytes, buf)
         buf.put(attributes)
@@ -508,24 +446,19 @@ class DefaultRecordTest {
         buf.put(1.toByte())
         writeVarint(105, buf) // header value too long
         buf.position(buf.limit())
+
         buf.flip()
-        assertFailsWith<InvalidRecordException> {
-            DefaultRecord.readFrom(
-                buffer = buf,
-                baseOffset = 0L,
-                baseTimestamp = 0L,
-                baseSequence = RecordBatch.NO_SEQUENCE,
-                logAppendTime = null
-            )
-        }
+        assertDecodingRecordFromBufferThrowsInvalidRecordException(buf)
     }
 
     @Test
+    @Throws(IOException::class)
     fun testInvalidHeaderValuePartial() {
         val attributes: Byte = 0
         val timestampDelta: Long = 2
         val offsetDelta = 1
         val sizeOfBodyInBytes = 100
+
         val buf = ByteBuffer.allocate(sizeOfBodyInBytes + sizeOfVarint(sizeOfBodyInBytes))
         writeVarint(sizeOfBodyInBytes, buf)
         buf.put(attributes)
@@ -538,21 +471,13 @@ class DefaultRecordTest {
         buf.put(1.toByte())
         writeVarint(105, buf) // header value too long
         buf.position(buf.limit())
+
         buf.flip()
-        val inputStream = DataInputStream(ByteBufferInputStream(buf))
-        assertFailsWith<InvalidRecordException> {
-            DefaultRecord.readPartiallyFrom(
-                input = inputStream,
-                skipArray = skipArray,
-                baseOffset = 0L,
-                baseTimestamp = 0L,
-                baseSequence = RecordBatch.NO_SEQUENCE,
-                logAppendTime = null
-            )
-        }
+        assertPartiallyDecodingRecordsFromBufferThrowsInvalidRecordException(buf)
     }
 
     @Test
+    @Throws(IOException::class)
     fun testUnderflowReadingTimestamp() {
         val attributes: Byte = 0
         val sizeOfBodyInBytes = 1
@@ -560,18 +485,11 @@ class DefaultRecordTest {
         writeVarint(sizeOfBodyInBytes, buf)
         buf.put(attributes)
         buf.flip()
-        assertFailsWith<InvalidRecordException> {
-            DefaultRecord.readFrom(
-                buffer = buf,
-                baseOffset = 0L,
-                baseTimestamp = 0L,
-                baseSequence = RecordBatch.NO_SEQUENCE,
-                logAppendTime = null
-            )
-        }
+        assertDecodingRecordFromBufferThrowsInvalidRecordException(buf)
     }
 
     @Test
+    @Throws(IOException::class)
     fun testUnderflowReadingVarlong() {
         val attributes: Byte = 0
         val sizeOfBodyInBytes = 2 // one byte for attributes, one byte for partial timestamp
@@ -581,37 +499,24 @@ class DefaultRecordTest {
         writeVarlong(156, buf) // needs 2 bytes to represent
         buf.position(buf.limit() - 1)
         buf.flip()
-        assertFailsWith<InvalidRecordException> {
-            DefaultRecord.readFrom(
-                buffer = buf,
-                baseOffset = 0L,
-                baseTimestamp = 0L,
-                baseSequence = RecordBatch.NO_SEQUENCE,
-                logAppendTime = null,
-            )
-        }
+        assertDecodingRecordFromBufferThrowsInvalidRecordException(buf)
     }
 
     @Test
+    @Throws(IOException::class)
     fun testInvalidVarlong() {
         val attributes: Byte = 0
         val sizeOfBodyInBytes = 11 // one byte for attributes, 10 bytes for max timestamp
         val buf = ByteBuffer.allocate(sizeOfBodyInBytes + sizeOfVarint(sizeOfBodyInBytes) + 1)
         writeVarint(sizeOfBodyInBytes, buf)
         val recordStartPosition = buf.position()
+
         buf.put(attributes)
         writeVarlong(Long.MAX_VALUE, buf) // takes 10 bytes
         buf.put(recordStartPosition + 10, Byte.MIN_VALUE) // use an invalid final byte
+
         buf.flip()
-        assertFailsWith<InvalidRecordException> {
-            DefaultRecord.readFrom(
-                buffer = buf,
-                baseOffset = 0L,
-                baseTimestamp = 0L,
-                baseSequence = RecordBatch.NO_SEQUENCE,
-                logAppendTime = null,
-            )
-        }
+        assertDecodingRecordFromBufferThrowsInvalidRecordException(buf)
     }
 
     @Test
@@ -623,6 +528,7 @@ class DefaultRecordTest {
         val offsetDelta = 10
         val baseTimestamp = System.currentTimeMillis()
         val timestampDelta: Long = 323
+
         val out = ByteBufferOutputStream(1024)
         DefaultRecord.writeTo(
             out = DataOutputStream(out),
@@ -634,6 +540,21 @@ class DefaultRecordTest {
         )
         val buffer = out.buffer
         buffer.flip()
+
+        // test for input stream input
+        ByteBufferInputStream(buffer.asReadOnlyBuffer()).use { inpStream ->
+            val record = DefaultRecord.readFrom(
+                input = inpStream,
+                baseOffset = baseOffset,
+                baseTimestamp = baseTimestamp,
+                baseSequence = RecordBatch.NO_SEQUENCE,
+                logAppendTime = null,
+            )
+            assertNotNull(record)
+            assertEquals(RecordBatch.NO_SEQUENCE, record.sequence())
+        }
+
+        // test for buffer input
         val record = DefaultRecord.readFrom(
             buffer = buffer,
             baseOffset = baseOffset,
@@ -646,19 +567,58 @@ class DefaultRecordTest {
     }
 
     @Test
+    @Throws(IOException::class)
     fun testInvalidSizeOfBodyInBytes() {
         val sizeOfBodyInBytes = 10
         val buf = ByteBuffer.allocate(5)
         writeVarint(sizeOfBodyInBytes, buf)
         buf.flip()
-        assertFailsWith<InvalidRecordException> {
-            DefaultRecord.readFrom(
-                buffer = buf,
-                baseOffset = 0L,
-                baseTimestamp = 0L,
-                baseSequence = RecordBatch.NO_SEQUENCE,
-                logAppendTime = null
-            )
+
+        // test for input stream input
+        assertDecodingRecordFromBufferThrowsInvalidRecordException(buf)
+    }
+
+    companion object {
+
+        @Throws(IOException::class)
+        private fun assertPartiallyDecodingRecordsFromBufferThrowsInvalidRecordException(buf: ByteBuffer) {
+            ByteBufferInputStream(buf).use { inputStream ->
+                assertFailsWith<InvalidRecordException> {
+                    DefaultRecord.readPartiallyFrom(
+                        input = inputStream,
+                        baseOffset = 0L,
+                        baseTimestamp = 0L,
+                        baseSequence = RecordBatch.NO_SEQUENCE,
+                        logAppendTime = null
+                    )
+                }
+            }
+        }
+
+        @Throws(IOException::class)
+        private fun assertDecodingRecordFromBufferThrowsInvalidRecordException(buf: ByteBuffer) {
+            // test for input stream input
+            ByteBufferInputStream(buf.asReadOnlyBuffer()).use { inpStream ->
+                assertFailsWith<InvalidRecordException> {
+                    DefaultRecord.readFrom(
+                        input = inpStream,
+                        baseOffset = 0L,
+                        baseTimestamp = 0L,
+                        baseSequence = RecordBatch.NO_SEQUENCE,
+                        logAppendTime = null
+                    )
+                }
+            }
+            // test for buffer input
+            assertFailsWith<InvalidRecordException> {
+                DefaultRecord.readFrom(
+                    buffer = buf,
+                    baseOffset = 0L,
+                    baseTimestamp = 0L,
+                    baseSequence = RecordBatch.NO_SEQUENCE,
+                    logAppendTime = null
+                )
+            }
         }
     }
 }

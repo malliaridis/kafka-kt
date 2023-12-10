@@ -28,7 +28,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 
-class OAuthBearerSaslClienCallbackHandlerTest {
+class OAuthBearerSaslClientCallbackHandlerTest {
 
     @Test
     fun testWithZeroTokens() {

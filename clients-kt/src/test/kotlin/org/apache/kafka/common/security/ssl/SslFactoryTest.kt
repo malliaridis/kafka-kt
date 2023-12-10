@@ -21,9 +21,9 @@ import java.io.File
 import java.io.IOException
 import java.nio.file.Files
 import java.security.GeneralSecurityException
+import java.security.KeyPair
 import java.security.KeyStore
 import java.security.Security
-import java.util.Properties
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.common.config.SecurityConfig
@@ -34,13 +34,15 @@ import org.apache.kafka.common.security.TestSecurityConfig
 import org.apache.kafka.common.security.auth.SslEngineFactory
 import org.apache.kafka.common.security.ssl.DefaultSslEngineFactory.FileBasedStore
 import org.apache.kafka.common.security.ssl.DefaultSslEngineFactory.PemStore
+import org.apache.kafka.common.security.ssl.SslFactory.CertificateEntries.Companion.ensureCompatible
 import org.apache.kafka.common.security.ssl.mock.TestKeyManagerFactory
 import org.apache.kafka.common.security.ssl.mock.TestProviderCreator
 import org.apache.kafka.common.security.ssl.mock.TestTrustManagerFactory
-import org.apache.kafka.common.utils.Utils.mkSet
+import org.apache.kafka.test.TestSslUtils.CertificateBuilder
 import org.apache.kafka.test.TestSslUtils.SslConfigsBuilder
 import org.apache.kafka.test.TestSslUtils.TestSslEngineFactory
 import org.apache.kafka.test.TestSslUtils.createSslConfig
+import org.apache.kafka.test.TestSslUtils.generateKeyPair
 import org.apache.kafka.test.TestUtils.tempFile
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
@@ -68,8 +70,8 @@ abstract class SslFactoryTest(private val tlsProtocol: String) {
         //host and port are hints
         val engine = sslFactory.createSslEngine(peerHost = "localhost", peerPort = 0)
         assertNotNull(engine)
-        assertEquals(setOf(tlsProtocol), mkSet(*engine.enabledProtocols))
-        assertEquals(false, engine.useClientMode)
+        assertEquals(setOf(tlsProtocol), engine.enabledProtocols.toSet())
+        assertFalse(engine.useClientMode)
     }
 
     @Test
@@ -569,6 +571,83 @@ abstract class SslFactoryTest(private val tlsProtocol: String) {
         val sslFactory = SslFactory(Mode.SERVER)
         sslFactory.configure(securityConfig.values())
         assertFalse(securityConfig.unused().contains(SslConfigs.SSL_ENGINE_FACTORY_CLASS_CONFIG))
+    }
+
+    @Test
+    @Throws(java.lang.Exception::class)
+    fun testDynamicUpdateCompatibility() {
+        val keyPair = generateKeyPair("RSA")
+        val ks = createKeyStore(
+            keyPair = keyPair,
+            commonName = "*.example.com",
+            org = "Kafka",
+            utf8 = true,
+            dnsNames = arrayOf("localhost", "*.example.com"),
+        )
+        ensureCompatible(ks, ks)
+        ensureCompatible(ks, createKeyStore(keyPair, "*.example.com", "Kafka", true, "localhost", "*.example.com"))
+        ensureCompatible(ks, createKeyStore(keyPair, " *.example.com", " Kafka ", true, "localhost", "*.example.com"))
+        ensureCompatible(ks, createKeyStore(keyPair, "*.example.COM", "Kafka", true, "localhost", "*.example.com"))
+        ensureCompatible(ks, createKeyStore(keyPair, "*.EXAMPLE.COM", "KAFKA", true, "localhost", "*.example.com"))
+        ensureCompatible(ks, createKeyStore(keyPair, "*.EXAMPLE.COM", "Kafka", true, "*.example.com"))
+        ensureCompatible(ks, createKeyStore(keyPair, "*.EXAMPLE.COM", "Kafka", true, "localhost"))
+        ensureCompatible(ks, createKeyStore(keyPair, "*.example.com", "Kafka", false, "localhost", "*.example.com"))
+        ensureCompatible(ks, createKeyStore(keyPair, "*.example.COM", "Kafka", false, "localhost", "*.example.com"))
+        ensureCompatible(ks, createKeyStore(keyPair, "*.EXAMPLE.COM", "KAFKA", false, "localhost", "*.example.com"))
+        ensureCompatible(ks, createKeyStore(keyPair, "*.EXAMPLE.COM", "Kafka", false, "*.example.com"))
+        ensureCompatible(ks, createKeyStore(keyPair, "*.EXAMPLE.COM", "Kafka", false, "localhost"))
+        assertFailsWith<ConfigException> {
+            ensureCompatible(
+                newKeystore = ks,
+                oldKeystore = createKeyStore(
+                    keyPair = keyPair,
+                    commonName = " *.example.com",
+                    org = " Kafka ",
+                    utf8 = false,
+                    dnsNames = arrayOf("localhost", "*.example.com"),
+                )
+            )
+        }
+        assertFailsWith<ConfigException> {
+            ensureCompatible(
+                newKeystore = ks,
+                oldKeystore = createKeyStore(
+                    keyPair = keyPair,
+                    commonName = "*.another.example.com",
+                    org = "Kafka",
+                    utf8 = true,
+                    dnsNames = arrayOf("*.example.com"),
+                ),
+            )
+        }
+        assertFailsWith<ConfigException> {
+            ensureCompatible(
+                newKeystore = ks,
+                oldKeystore = createKeyStore(
+                    keyPair = keyPair,
+                    commonName = "*.EXAMPLE.COM",
+                    org = "Kafka",
+                    utf8 = true,
+                    dnsNames = arrayOf("*.another.example.com"),
+                ),
+            )
+        }
+    }
+
+    @Throws(java.lang.Exception::class)
+    private fun createKeyStore(
+        keyPair: KeyPair,
+        commonName: String,
+        org: String,
+        utf8: Boolean,
+        vararg dnsNames: String,
+    ): KeyStore {
+        val cert = CertificateBuilder().sanDnsNames(*dnsNames)
+            .generate(commonName, org, utf8, keyPair)
+        val ks = KeyStore.getInstance("PKCS12")
+        ks.load(null, null)
+        ks.setKeyEntry("kafka", keyPair.private, null, arrayOf(cert))
+        return ks
     }
 
     private fun sslKeyStore(sslConfig: Map<String, Any?>): KeyStore {

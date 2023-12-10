@@ -19,7 +19,9 @@ package org.apache.kafka.common.cache
 
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class LRUCacheTest {
 
@@ -44,17 +46,21 @@ class LRUCacheTest {
         cache.put("c", "d")
         cache.put("e", "f")
         assertEquals(3, cache.size())
-        assertEquals(true, cache.remove("a"))
+
+        assertTrue(cache.remove("a"))
         assertEquals(2, cache.size())
         assertNull(cache["a"])
         assertEquals("d", cache["c"])
         assertEquals("f", cache["e"])
-        assertEquals(false, cache.remove("key-does-not-exist"))
-        assertEquals(true, cache.remove("c"))
+
+        assertFalse(cache.remove("key-does-not-exist"))
+
+        assertTrue(cache.remove("c"))
         assertEquals(1, cache.size())
         assertNull(cache["c"])
         assertEquals("f", cache["e"])
-        assertEquals(true, cache.remove("e"))
+
+        assertTrue(cache.remove("e"))
         assertEquals(0, cache.size())
         assertNull(cache["e"])
     }

@@ -30,7 +30,6 @@ class AclOperationTest {
     )
 
     @Test
-    @Throws(Exception::class)
     fun testIsUnknown() {
         for (info in INFOS) {
             assertEquals(
@@ -42,7 +41,6 @@ class AclOperationTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testCode() {
         assertEquals(
             expected = AclOperation.values().size,

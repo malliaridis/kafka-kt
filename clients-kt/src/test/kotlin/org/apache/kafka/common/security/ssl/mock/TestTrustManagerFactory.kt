@@ -19,7 +19,6 @@ package org.apache.kafka.common.security.ssl.mock
 
 import java.net.Socket
 import java.security.KeyStore
-import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
 import javax.net.ssl.ManagerFactoryParameters
 import javax.net.ssl.SSLEngine
@@ -36,36 +35,30 @@ class TestTrustManagerFactory : TrustManagerFactorySpi() {
     override fun engineGetTrustManagers(): Array<TrustManager> = arrayOf(TestTrustManager())
 
     class TestTrustManager : X509ExtendedTrustManager() {
-        @Throws(CertificateException::class)
         override fun checkClientTrusted(x509Certificates: Array<X509Certificate>?, s: String?) = Unit
 
-        @Throws(CertificateException::class)
         override fun checkServerTrusted(x509Certificates: Array<X509Certificate>?, s: String?) = Unit
 
         override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
 
-        @Throws(CertificateException::class)
         override fun checkClientTrusted(
             x509Certificates: Array<X509Certificate>?,
             s: String?,
             socket: Socket?,
         ) = Unit
 
-        @Throws(CertificateException::class)
         override fun checkServerTrusted(
             x509Certificates: Array<X509Certificate>?,
             s: String?,
             socket: Socket?,
         ) = Unit
 
-        @Throws(CertificateException::class)
         override fun checkClientTrusted(
             x509Certificates: Array<X509Certificate>?,
             s: String?,
             sslEngine: SSLEngine?,
         ) = Unit
 
-        @Throws(CertificateException::class)
         override fun checkServerTrusted(
             x509Certificates: Array<X509Certificate>?,
             s: String?,

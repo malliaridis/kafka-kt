@@ -104,7 +104,7 @@ class SslTransportTls12Tls13Test {
         )
         sslClientConfigs[SslConfigs.SSL_ENABLED_PROTOCOLS_CONFIG] = listOf("TLSv1.3")
         sslClientConfigs[SslConfigs.SSL_CIPHER_SUITES_CONFIG] = listOf(cipherSuite)
-        checkAuthentiationFailed()
+        checkAuthenticationFailed()
     }
 
     /**
@@ -128,7 +128,7 @@ class SslTransportTls12Tls13Test {
         )
         sslClientConfigs[SslConfigs.SSL_PROTOCOL_CONFIG] = "TLSv1.3"
         sslClientConfigs[SslConfigs.SSL_CIPHER_SUITES_CONFIG] = listOf(tls13CipherSuite)
-        checkAuthentiationFailed()
+        checkAuthenticationFailed()
     }
 
     /**
@@ -180,7 +180,7 @@ class SslTransportTls12Tls13Test {
 
     /** Checks connection failed using the specified `tlsVersion`.  */
     @Throws(IOException::class, InterruptedException::class)
-    private fun checkAuthentiationFailed() {
+    private fun checkAuthenticationFailed() {
         sslClientConfigs[SslConfigs.SSL_ENABLED_PROTOCOLS_CONFIG] = mutableListOf("TLSv1.3")
         createSelector(sslClientConfigs)
         val addr = InetSocketAddress("localhost", server!!.port)

@@ -156,7 +156,6 @@ class KafkaFutureTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testCompleteFuturesExceptionally() {
         val futureFail = KafkaFutureImpl<Int>()
         assertTrue(futureFail.completeExceptionally(RuntimeException("We require more vespene gas")))

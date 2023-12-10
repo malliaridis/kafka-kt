@@ -496,7 +496,6 @@ class FileRecordsTest {
     }
 
     @Test
-    @Throws(IOException::class)
     fun testFormatConversionWithNoMessages() {
         val tp = TopicPartition("topic-1", 0)
         val lazyRecords = LazyDownConversionRecords(
@@ -514,7 +513,7 @@ class FileRecordsTest {
     @Test
     @Throws(IOException::class)
     fun testSearchForTimestamp() {
-        for (version in RecordVersion.values()) {
+        for (version in RecordVersion.entries) {
             testSearchForTimestamp(version)
         }
     }
@@ -690,18 +689,18 @@ class FileRecordsTest {
     @Throws(IOException::class)
     fun testBytesLengthOfWriteTo() {
         val size = fileRecords.sizeInBytes()
-        val firstWritten = (size / 3).toLong()
+        val firstWritten = size / 3
         val channel = mock<TransferableChannel>()
 
         // Firstly we wrote some of the data
-        fileRecords.writeTo(channel, 0, firstWritten.toInt())
-        verify(channel).transferFrom(any(), any(), eq(firstWritten))
+        fileRecords.writeTo(channel, 0, firstWritten)
+        verify(channel).transferFrom(any(), any(), eq(firstWritten.toLong()))
 
         // Ensure (length > size - firstWritten)
-        val secondWrittenLength = size - firstWritten.toInt() + 1
+        val secondWrittenLength = size - firstWritten + 1
         fileRecords.writeTo(channel, firstWritten, secondWrittenLength)
         // But we still only write (size - firstWritten), which is not fulfilled in the old version
-        verify(channel).transferFrom(any(), any(), eq(size - firstWritten))
+        verify(channel).transferFrom(any(), any(), eq((size - firstWritten).toLong()))
     }
 
     @Throws(IOException::class)

@@ -116,7 +116,6 @@ class MetricsTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testSimpleStats() {
         verifyStats { m -> m!!.metricValue() as Double }
     }
@@ -146,8 +145,8 @@ class MetricsTest {
             Meter(
                 unit = TimeUnit.SECONDS,
                 rateStat = WindowedCount(),
-                rateMetricName = metrics.metricName("test.occurences", "grp1"),
-                totalMetricName = metrics.metricName("test.occurences.total", "grp1"),
+                rateMetricName = metrics.metricName("test.occurrences", "grp1"),
+                totalMetricName = metrics.metricName("test.occurrences.total", "grp1"),
             )
         )
         s.add(metrics.metricName("test.count", "grp1"), WindowedCount())
@@ -166,6 +165,7 @@ class MetricsTest {
         val s2 = metrics.sensor("test.sensor2")
         s2.add(metrics.metricName("s2.total", "grp1"), CumulativeSum())
         s2.record(5.0)
+
         var sum = 0
         val count = 10
         for (i in 0 until count) {
@@ -176,7 +176,7 @@ class MetricsTest {
         var elapsedSecs = config.timeWindowMs * (config.samples - 1) / 1000.0
         assertEquals(
             expected = count / elapsedSecs,
-            actual = metricValueFunc(metrics.metrics[metrics.metricName("test.occurences", "grp1")]),
+            actual = metricValueFunc(metrics.metrics[metrics.metricName("test.occurrences", "grp1")]),
             absoluteTolerance = EPS,
             message = String.format("Occurrences(0...%d) = %f", count, count / elapsedSecs),
         )
@@ -215,7 +215,7 @@ class MetricsTest {
         )
         assertEquals(
             expected = count / elapsedSecs,
-            actual = metricValueFunc(metrics.metric(metrics.metricName("test.occurences", "grp1"))),
+            actual = metricValueFunc(metrics.metric(metrics.metricName("test.occurrences", "grp1"))),
             absoluteTolerance = EPS,
             message = String.format("Occurrences(0...%d) = %f", count, count / elapsedSecs),
         )
@@ -688,7 +688,6 @@ class MetricsTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testRateWindowing() {
         // Use the default time window. Set 3 samples
         val cfg = MetricConfig().apply { samples = 3 }
@@ -915,7 +914,6 @@ class MetricsTest {
      * in errors or deadlock.
      */
     @Test
-    @Throws(Exception::class)
     fun testConcurrentReadUpdate() {
         val sensors: Deque<Sensor> = ConcurrentLinkedDeque()
         metrics = Metrics(time = MockTime(10))
@@ -946,7 +944,6 @@ class MetricsTest {
      * that synchronizes on every reporter method doesn't result in errors or deadlock.
      */
     @Test
-    @Throws(Exception::class)
     fun testConcurrentReadUpdateReport() {
 
         class LockingReporter : MetricsReporter {

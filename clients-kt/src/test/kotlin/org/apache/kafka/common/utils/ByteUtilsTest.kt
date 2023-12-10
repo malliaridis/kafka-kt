@@ -23,9 +23,11 @@ import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer
+import java.util.function.Function
 import java.util.function.IntFunction
 import java.util.function.LongFunction
 import org.apache.kafka.common.utils.ByteUtils.readDouble
+import org.apache.kafka.common.utils.ByteUtils.readIntBE
 import org.apache.kafka.common.utils.ByteUtils.readUnsignedInt
 import org.apache.kafka.common.utils.ByteUtils.readUnsignedIntLE
 import org.apache.kafka.common.utils.ByteUtils.readUnsignedVarint
@@ -39,6 +41,7 @@ import org.apache.kafka.common.utils.ByteUtils.writeUnsignedIntLE
 import org.apache.kafka.common.utils.ByteUtils.writeUnsignedVarint
 import org.apache.kafka.common.utils.ByteUtils.writeVarint
 import org.apache.kafka.common.utils.ByteUtils.writeVarlong
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -299,6 +302,136 @@ class ByteUtilsTest {
     }
 
     @Test
+    @Disabled("TODO Enable this when we change the implementation of UnsignedVarlong")
+    fun testCorrectnessWriteUnsignedVarlong() {
+        // The old well-known implementation for writeVarlong.
+        val simpleImplementation = LongFunction { value: Long ->
+            var value = value
+            val buffer = ByteBuffer.allocate(MAX_LENGTH_VARLONG)
+            while (value and -0x80L != 0L) {
+                val b = (value and 0x7fL or 0x80L).toByte()
+                buffer.put(b)
+                value = value ushr 7
+            }
+            buffer.put(value.toByte())
+            buffer
+        }
+
+        // compare the full range of values
+        val actual = ByteBuffer.allocate(MAX_LENGTH_VARLONG)
+        var i: Long = 1
+        while (i < Long.MAX_VALUE && i >= 0) {
+            ByteUtils.writeUnsignedVarlong(i, actual)
+            val expected = simpleImplementation.apply(i)
+            assertContentEquals(
+                expected = expected.array(),
+                actual = actual.array(),
+                message = "Implementations do not match for number=$i",
+            )
+            actual.clear()
+            i = i shl 1
+        }
+    }
+
+    @Test
+    fun testCorrectnessWriteUnsignedVarint() {
+        // The old well-known implementation for writeUnsignedVarint.
+        val simpleImplementation = IntFunction { value: Int ->
+            var value = value
+            val buffer = ByteBuffer.allocate(MAX_LENGTH_VARINT)
+            while (true) {
+                value = if (value and 0x7F.inv() == 0) {
+                    buffer.put(value.toByte())
+                    break
+                } else {
+                    buffer.put((value and 0x7F or 0x80).toByte())
+                    value ushr 7
+                }
+            }
+            buffer
+        }
+
+        // compare the full range of values
+        val actual = ByteBuffer.allocate(MAX_LENGTH_VARINT)
+        var i = 0
+        while (i < Int.MAX_VALUE && i >= 0) {
+            writeUnsignedVarint(i, actual)
+            val expected = simpleImplementation.apply(i)
+            assertContentEquals(
+                expected = expected.array(),
+                actual = actual.array(),
+                message = "Implementations do not match for integer=$i"
+            )
+            actual.clear()
+            i += 13
+        }
+    }
+
+    @Test
+    fun testCorrectnessReadUnsignedVarint() {
+        // The old well-known implementation for readUnsignedVarint
+        val simpleImplementation = { buffer: ByteBuffer ->
+            var value = 0
+            var i = 0
+            var b: Int
+            while (buffer.get().toInt().also { b = it } and 0x80 != 0) {
+                value = value or (b and 0x7f shl i)
+                i += 7
+                require(i <= 28) { "Invalid varint" }
+            }
+            value = value or (b shl i)
+            value
+        }
+
+        // compare the full range of values
+        val testData = ByteBuffer.allocate(MAX_LENGTH_VARINT)
+        var i = 0
+        while (i < Int.MAX_VALUE && i >= 0) {
+            writeUnsignedVarint(i, testData)
+            // prepare buffer for reading
+            testData.flip()
+            val actual = readUnsignedVarint(testData.duplicate())
+            val expected = simpleImplementation(testData)
+            assertEquals(expected, actual)
+            testData.clear()
+            i += 13
+        }
+    }
+
+    @Test
+    @Disabled // Enable this when we change the implementation of UnsignedVarlong
+    fun testCorrectnessReadUnsignedVarlong() {
+        // The old well-known implementation for readUnsignedVarlong
+        val simpleImplementation =
+            Function { buffer: ByteBuffer ->
+                var value = 0L
+                var i = 0
+                var b: Long
+                while (buffer.get().toLong().also { b = it } and 0x80L != 0L) {
+                    value = value or (b and 0x7fL shl i)
+                    i += 7
+                    if (i > 63) throw IllegalArgumentException()
+                }
+                value = value or (b shl i)
+                value
+            }
+
+        // compare the full range of values
+        val testData = ByteBuffer.allocate(MAX_LENGTH_VARLONG)
+        var i: Long = 1
+        while (i < Long.MAX_VALUE && i >= 0) {
+            ByteUtils.writeUnsignedVarlong(i, testData)
+            // prepare buffer for reading
+            testData.flip()
+            val actual = ByteUtils.readUnsignedVarlong(testData.duplicate())
+            val expected = simpleImplementation.apply(testData)
+            assertEquals(expected, actual)
+            testData.clear()
+            i = i shl 1
+        }
+    }
+
+    @Test
     fun testSizeOfUnsignedVarint() {
         // The old well-known implementation for sizeOfUnsignedVarint
         val simpleImplementation = IntFunction {
@@ -345,9 +478,35 @@ class ByteUtilsTest {
         assertEquals(simpleImplementation.apply(0), sizeOfVarlong(0))
     }
 
+    @Test
+    fun testReadInt() {
+        val values = intArrayOf(
+            0,
+            1,
+            -1,
+            Byte.MAX_VALUE.toInt(),
+            Short.MAX_VALUE.toInt(),
+            2 * Short.MAX_VALUE,
+            Int.MAX_VALUE / 2,
+            Int.MIN_VALUE / 2,
+            Int.MAX_VALUE,
+            Int.MIN_VALUE,
+            Int.MAX_VALUE,
+        )
+        val buffer = ByteBuffer.allocate(4 * values.size)
+        for (i in values.indices) {
+            buffer.putInt(i * 4, values[i])
+            assertEquals(
+                expected = values[i],
+                actual = readIntBE(buffer.array(), i * 4),
+                message = "Written value should match read value.",
+            )
+        }
+    }
+
     @Throws(IOException::class)
     private fun assertUnsignedVarintSerde(value: Int, expectedEncoding: ByteArray) {
-        val buf = ByteBuffer.allocate(32)
+        val buf = ByteBuffer.allocate(MAX_LENGTH_VARINT)
         writeUnsignedVarint(value, buf)
         buf.flip()
         assertContentEquals(expectedEncoding, Utils.toArray(buf))
@@ -357,13 +516,13 @@ class ByteUtilsTest {
         writeUnsignedVarint(value, out)
         buf.flip()
         assertContentEquals(expectedEncoding, Utils.toArray(buf))
-        val inputStream = DataInputStream(ByteBufferInputStream(buf))
+        val inputStream = ByteBufferInputStream(buf)
         assertEquals(value, readUnsignedVarint(inputStream))
     }
 
     @Throws(IOException::class)
     private fun assertVarintSerde(value: Int, expectedEncoding: ByteArray) {
-        val buf = ByteBuffer.allocate(32)
+        val buf = ByteBuffer.allocate(MAX_LENGTH_VARINT)
         writeVarint(value, buf)
         buf.flip()
         assertContentEquals(expectedEncoding, Utils.toArray(buf))
@@ -373,13 +532,13 @@ class ByteUtilsTest {
         writeVarint(value, out)
         buf.flip()
         assertContentEquals(expectedEncoding, Utils.toArray(buf))
-        val inputStream = DataInputStream(ByteBufferInputStream(buf))
+        val inputStream = ByteBufferInputStream(buf)
         assertEquals(value, readVarint(inputStream))
     }
 
     @Throws(IOException::class)
     private fun assertVarlongSerde(value: Long, expectedEncoding: ByteArray) {
-        val buf = ByteBuffer.allocate(32)
+        val buf = ByteBuffer.allocate(MAX_LENGTH_VARLONG)
         writeVarlong(value, buf)
         buf.flip()
         assertEquals(value, readVarlong(buf.duplicate()))
@@ -389,7 +548,7 @@ class ByteUtilsTest {
         writeVarlong(value, out)
         buf.flip()
         assertContentEquals(expectedEncoding, Utils.toArray(buf))
-        val inputStream = DataInputStream(ByteBufferInputStream(buf))
+        val inputStream = ByteBufferInputStream(buf)
         assertEquals(value, readVarlong(inputStream))
     }
 
@@ -413,5 +572,12 @@ class ByteUtilsTest {
         assertContentEquals(expectedEncoding, Utils.toArray(buf))
         val inputStream = DataInputStream(ByteBufferInputStream(buf))
         assertEquals(value, readDouble(inputStream), 0.0)
+    }
+    
+    companion object {
+        
+        private const val MAX_LENGTH_VARINT = 5
+        
+        private const val MAX_LENGTH_VARLONG = 10
     }
 }

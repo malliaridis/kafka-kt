@@ -21,13 +21,17 @@ import java.util.stream.Stream
 import org.apache.kafka.common.TopicIdPartition
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.Uuid
+import org.apache.kafka.common.message.FetchRequestData
 import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.requests.FetchRequest.PartitionData
+import org.apache.kafka.common.requests.FetchRequest.SimpleBuilder
+import org.apache.kafka.common.utils.annotation.ApiKeyVersionsSource
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotEquals
 
 class FetchRequestTest {
@@ -52,6 +56,7 @@ class FetchRequestTest {
             .forReplica(
                 allowedVersion = version,
                 replicaId = 0,
+                replicaEpoch = 1,
                 maxWait = 1,
                 minBytes = 1,
                 fetchData = partitionData,
@@ -114,6 +119,7 @@ class FetchRequestTest {
                 .forReplica(
                     allowedVersion = version,
                     replicaId = 0,
+                    replicaEpoch = 1,
                     maxWait = 1,
                     minBytes = 1,
                     fetchData = partitionData,
@@ -126,6 +132,7 @@ class FetchRequestTest {
             version = version,
         )
 
+        if (version >= 15) assertEquals(1, fetchRequest.data().replicaState.replicaEpoch)
         // For versions < 13, we will be provided a topic name and a zero UUID in FetchRequestData.
         // Versions 13+ will contain a valid topic ID but an empty topic name.
         val expectedData = mutableListOf<TopicIdPartition>()
@@ -201,6 +208,7 @@ class FetchRequestTest {
                     .forReplica(
                         allowedVersion = version,
                         replicaId = 0,
+                        replicaEpoch = 1,
                         maxWait = 1,
                         minBytes = 1,
                         fetchData = emptyMap(),
@@ -261,6 +269,33 @@ class FetchRequestTest {
             }
             assertEquals(expectedForgottenTopics, forgottenTopics)
         }
+    }
+
+    @ParameterizedTest
+    @ApiKeyVersionsSource(apiKey = ApiKeys.FETCH)
+    fun testFetchRequestSimpleBuilderReplicaStateDowngrade(version: Short) {
+        var fetchRequestData = FetchRequestData()
+        fetchRequestData.setReplicaState(FetchRequestData.ReplicaState().setReplicaId(1))
+        val builder = SimpleBuilder(fetchRequestData)
+        fetchRequestData = builder.build(version).data()
+
+        assertEquals(1, FetchRequest.replicaId(fetchRequestData))
+
+        if (version < 15) {
+            assertEquals(1, fetchRequestData.replicaId)
+            assertEquals(-1, fetchRequestData.replicaState.replicaId)
+        } else {
+            assertEquals(-1, fetchRequestData.replicaId)
+            assertEquals(1, fetchRequestData.replicaState.replicaId)
+        }
+    }
+
+    @ParameterizedTest
+    @ApiKeyVersionsSource(apiKey = ApiKeys.FETCH)
+    fun testFetchRequestSimpleBuilderReplicaIdNotSupported(version: Short) {
+        val fetchRequestData = FetchRequestData().setReplicaId(1)
+        val builder = SimpleBuilder(fetchRequestData)
+        assertFailsWith<IllegalStateException> { builder.build(version) }
     }
 
     @Test

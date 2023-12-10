@@ -25,6 +25,8 @@ import org.apache.kafka.common.message.ApiVersionsResponseData.ApiVersionCollect
 import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.record.RecordBatch
 import org.apache.kafka.common.record.RecordVersion
+import org.apache.kafka.test.TestUtils
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
@@ -40,7 +42,7 @@ class ApiVersionsResponseTest {
     @ParameterizedTest
     @EnumSource(ListenerType::class)
     fun shouldHaveCorrectDefaultApiVersionsResponse(scope: ListenerType) {
-        val defaultResponse = ApiVersionsResponse.defaultApiVersionsResponse(listenerType = scope)
+        val defaultResponse = TestUtils.defaultApiVersionsResponse(listenerType = scope)
         assertEquals(
             ApiKeys.apisForListener(scope).size,
             defaultResponse.data().apiKeys.size,
@@ -104,6 +106,7 @@ class ApiVersionsResponseTest {
             listenerType = ListenerType.ZK_BROKER,
             minRecordVersion = RecordVersion.current(),
             activeControllerApiVersions = activeControllerApiVersions,
+            enableUnstableLastVersion = true,
         )
         verifyVersions(
             forwardableAPIKey = forwardableAPIKey.id,
@@ -128,6 +131,8 @@ class ApiVersionsResponseTest {
             finalizedFeaturesEpoch = ApiVersionsResponse.UNKNOWN_FINALIZED_FEATURES_EPOCH,
             controllerApiVersions = null,
             listenerType = ListenerType.ZK_BROKER,
+            enableUnstableLastVersion = true,
+            zkMigrationEnabled = false,
         )
         verifyApiKeysForMagic(response, RecordBatch.MAGIC_VALUE_V1)
         assertEquals(10, response.throttleTimeMs())
@@ -147,7 +152,9 @@ class ApiVersionsResponseTest {
             finalizedFeatures = mapOf("feature" to 3.toShort()),
             finalizedFeaturesEpoch = 10L,
             controllerApiVersions = null,
-            listenerType = ListenerType.ZK_BROKER
+            listenerType = ListenerType.ZK_BROKER,
+            enableUnstableLastVersion = true,
+            zkMigrationEnabled = false,
         )
         verifyApiKeysForMagic(response, RecordBatch.MAGIC_VALUE_V1)
         assertEquals(10, response.throttleTimeMs())
@@ -166,17 +173,21 @@ class ApiVersionsResponseTest {
         assertEquals(10, response.data().finalizedFeaturesEpoch)
     }
 
-    @Test
-    fun shouldReturnAllKeysWhenMagicIsCurrentValueAndThrottleMsIsDefaultThrottle() {
+    @ParameterizedTest
+    @EnumSource(names = ["ZK_BROKER", "BROKER"])
+    fun shouldReturnAllKeysWhenMagicIsCurrentValueAndThrottleMsIsDefaultThrottle(listenerType : ListenerType) {
         val response = ApiVersionsResponse.createApiVersionsResponse(
-            AbstractResponse.DEFAULT_THROTTLE_TIME,
-            RecordVersion.current(),
-            Features.emptySupportedFeatures(), emptyMap(),
-            ApiVersionsResponse.UNKNOWN_FINALIZED_FEATURES_EPOCH,
-            null,
-            ListenerType.ZK_BROKER
+            throttleTimeMs = AbstractResponse.DEFAULT_THROTTLE_TIME,
+            minRecordVersion = RecordVersion.current(),
+            latestSupportedFeatures = Features.emptySupportedFeatures(),
+            finalizedFeatures = emptyMap(),
+            finalizedFeaturesEpoch = ApiVersionsResponse.UNKNOWN_FINALIZED_FEATURES_EPOCH,
+            controllerApiVersions = null,
+            listenerType = listenerType,
+            enableUnstableLastVersion = true,
+            zkMigrationEnabled = false,
         )
-        assertEquals(ApiKeys.zkBrokerApis().toSet(), apiKeysInResponse(response))
+        assertEquals(ApiKeys.apisForListener(listenerType), apiKeysInResponse(response))
         assertEquals(AbstractResponse.DEFAULT_THROTTLE_TIME, response.throttleTimeMs())
         assertTrue(response.data().supportedFeatures.isEmpty())
         assertTrue(response.data().finalizedFeatures.isEmpty())
@@ -192,6 +203,8 @@ class ApiVersionsResponseTest {
             finalizedFeaturesEpoch = ApiVersionsResponse.UNKNOWN_FINALIZED_FEATURES_EPOCH,
             controllerApiVersions = null,
             listenerType = ListenerType.ZK_BROKER,
+            enableUnstableLastVersion = true,
+            zkMigrationEnabled = false,
         )
 
         // Ensure that APIs needed for the KRaft mode are not exposed through ApiVersions until we are ready for them

@@ -126,11 +126,12 @@ object Microbenchmarks {
         t4.start()
         t3.join()
         t4.join()
-        val values: MutableMap<String, Int> = HashMap()
-        for (i in 0..99) values[Integer.toString(i)] = i
+
+        val values = mutableMapOf<String, Int>()
+        for (i in 0..99) values[i.toString()] = i
         println("HashMap:")
         benchMap(2, 1000000, values)
-        println("ConcurentHashMap:")
+        println("ConcurrentHashMap:")
         benchMap(2, 1000000, ConcurrentHashMap(values))
         println("CopyOnWriteMap:")
         benchMap(2, 1000000, CopyOnWriteMap(values))
@@ -140,10 +141,10 @@ object Microbenchmarks {
     private fun benchMap(numThreads: Int, iters: Int, map: Map<String, Int>) {
         val keys: List<String> = ArrayList(map.keys)
         val threads: MutableList<Thread> = ArrayList()
-        for (i in 0 until numThreads) threads.add(object : Thread() {
+        for (i in 0..<numThreads) threads.add(object : Thread() {
             override fun run() {
                 val start = System.nanoTime()
-                for (j in 0 until iters) map[keys[j % threads.size]]
+                for (j in 0..<iters) map[keys[j % threads.size]]
                 println("Map access time: " + (System.nanoTime() - start) / iters.toDouble())
             }
         })

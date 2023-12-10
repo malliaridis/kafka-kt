@@ -18,7 +18,6 @@
 package org.apache.kafka.common.feature
 
 import org.junit.jupiter.api.Disabled
-import kotlin.test.Ignore
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -94,7 +93,7 @@ class FeaturesTest {
     }
 
     @Test
-    fun testSuppportedFeaturesFromMapFailureWithInvalidMissingMaxVersion() {
+    fun testSupportedFeaturesFromMapFailureWithInvalidMissingMaxVersion() {
         // This is invalid because 'max_version' key is missing.
         val invalidFeatures = mapOf("feature_1" to mapOf("min_version" to 1.toShort()))
         assertFailsWith<IllegalArgumentException> { Features.fromSupportedFeaturesMap(invalidFeatures) }

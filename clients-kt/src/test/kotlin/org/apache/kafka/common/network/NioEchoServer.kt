@@ -31,7 +31,6 @@ import org.apache.kafka.common.message.ApiMessageType
 import org.apache.kafka.common.metrics.Metrics
 import org.apache.kafka.common.network.ChannelBuilders.serverChannelBuilder
 import org.apache.kafka.common.protocol.ApiKeys
-import org.apache.kafka.common.requests.ApiVersionsResponse.Companion.defaultApiVersionsResponse
 import org.apache.kafka.common.security.auth.SecurityProtocol
 import org.apache.kafka.common.security.authenticator.CredentialCache
 import org.apache.kafka.common.security.scram.ScramCredential
@@ -41,6 +40,7 @@ import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.MockTime
 import org.apache.kafka.common.utils.Time
 import org.apache.kafka.common.utils.Utils.closeQuietly
+import org.apache.kafka.test.TestUtils
 import org.apache.kafka.test.TestUtils.apiKeyFrom
 import org.apache.kafka.test.TestUtils.waitForCondition
 import org.slf4j.LoggerFactory
@@ -140,9 +140,7 @@ class NioEchoServer(
             tokenCache = tokenCache,
             time = time,
             logContext = logContext,
-        ) {
-            defaultApiVersionsResponse(listenerType = ApiMessageType.ListenerType.ZK_BROKER)
-        }
+        ) { TestUtils.defaultApiVersionsResponse(listenerType = ApiMessageType.ListenerType.ZK_BROKER) }
         metrics = Metrics()
         selector = Selector(
             connectionMaxIdleMs = 10000,

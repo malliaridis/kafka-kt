@@ -58,7 +58,6 @@ class PlainSaslServerTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun noAuthorizationIdSpecified() {
         val nextChallenge = saslServer.evaluateResponse(
             saslMessage(
@@ -71,8 +70,7 @@ class PlainSaslServerTest {
     }
 
     @Test
-    @Throws(Exception::class)
-    fun authorizatonIdEqualsAuthenticationId() {
+    fun authorizationIdEqualsAuthenticationId() {
         val nextChallenge = saslServer.evaluateResponse(
             saslMessage(
                 authorizationId = USER_A,
@@ -84,7 +82,7 @@ class PlainSaslServerTest {
     }
 
     @Test
-    fun authorizatonIdNotEqualsAuthenticationId() {
+    fun authorizationIdNotEqualsAuthenticationId() {
         assertFailsWith<SaslAuthenticationException> {
             saslServer.evaluateResponse(
                 saslMessage(

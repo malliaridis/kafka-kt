@@ -42,7 +42,6 @@ import org.apache.kafka.common.network.TransportLayer
 import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.requests.AbstractRequest
 import org.apache.kafka.common.requests.ApiVersionsRequest
-import org.apache.kafka.common.requests.ApiVersionsResponse
 import org.apache.kafka.common.requests.RequestHeader
 import org.apache.kafka.common.requests.RequestTestUtils.serializeRequestHeader
 import org.apache.kafka.common.requests.ResponseHeader
@@ -60,6 +59,7 @@ import org.apache.kafka.common.security.ssl.SslPrincipalMapper
 import org.apache.kafka.common.utils.AppInfoParser.version
 import org.apache.kafka.common.utils.MockTime
 import org.apache.kafka.common.utils.Time
+import org.apache.kafka.test.TestUtils
 import org.junit.jupiter.api.Test
 import org.mockito.Answers
 import org.mockito.ArgumentCaptor
@@ -468,7 +468,7 @@ class SaslServerAuthenticatorTest {
         )
         val subjects = mapOf(mechanism to Subject())
         val callbackHandlers = mapOf(mechanism to SaslServerCallbackHandler())
-        val apiVersionsResponse = ApiVersionsResponse.defaultApiVersionsResponse(
+        val apiVersionsResponse = TestUtils.defaultApiVersionsResponse(
             listenerType = ApiMessageType.ListenerType.ZK_BROKER,
         )
         val connectionsMaxReauthMsByMechanism =
