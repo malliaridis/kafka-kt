@@ -18,7 +18,6 @@
 package org.apache.kafka.common.requests
 
 import java.nio.ByteBuffer
-import java.util.function.BiConsumer
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.message.AddPartitionsToTxnResponseData
 import org.apache.kafka.common.message.AddPartitionsToTxnResponseData.AddPartitionsToTxnPartitionResult
@@ -57,11 +56,10 @@ class AddPartitionsToTxnResponse(
     fun errors(): Map<String, Map<TopicPartition, Errors>> {
         val errorsMap = mutableMapOf<String, Map<TopicPartition, Errors>>()
         if (!data.resultsByTopicV3AndBelow.isEmpty()) {
-            errorsMap[V3_AND_BELOW_TXN_ID] =
-                AddPartitionsToTxnResponse.errorsForTransaction(data.resultsByTopicV3AndBelow)
+            errorsMap[V3_AND_BELOW_TXN_ID] = errorsForTransaction(data.resultsByTopicV3AndBelow)
         }
         for (result in data.resultsByTransaction)
-            errorsMap[result.transactionalId] = AddPartitionsToTxnResponse.errorsForTransaction(result.topicResults)
+            errorsMap[result.transactionalId] = errorsForTransaction(result.topicResults)
 
         return errorsMap
     }
@@ -75,6 +73,9 @@ class AddPartitionsToTxnResponse(
         errors().forEach { (_, errors) -> allErrors.addAll(errors.values) }
         return errorCounts(allErrors)
     }
+
+    fun getTransactionTopicResults(transactionalId: String): AddPartitionsToTxnTopicResultCollection =
+        data.resultsByTransaction.find(transactionalId)!!.topicResults
 
     override fun data(): AddPartitionsToTxnResponseData = data
 

@@ -38,8 +38,7 @@ class BooleanDeserializer : Deserializer<Boolean?> {
         if (data == null) return null
         if (data.remaining() != 1) throw SerializationException("Size of data received by BooleanDeserializer is not 1")
 
-        val b = data[data.position()]
-        return when (b) {
+        return when (val b = data[data.position()]) {
             TRUE -> true
             FALSE -> false
             else -> throw SerializationException("Unexpected byte received by BooleanDeserializer: $b")

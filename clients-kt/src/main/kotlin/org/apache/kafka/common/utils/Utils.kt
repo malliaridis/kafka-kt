@@ -810,7 +810,10 @@ object Utils {
      * @param T the type of element
      * @return Set
      */
-    @Deprecated("Use Kotlin built-in function setOf() instead")
+    @Deprecated(
+        message = "Use Kotlin built-in function setOf() instead",
+        replaceWith = ReplaceWith("elems.toSet()")
+    )
     @SafeVarargs
     fun <T> mkSet(vararg elems: T): Set<T> {
         val result: MutableSet<T> = HashSet((elems.size / 0.75).toInt() + 1)
@@ -1312,13 +1315,22 @@ object Utils {
         }
     }
 
-    @Deprecated("Use Kotlin function .toList() instead")
+    @Deprecated(
+        message = "Use Kotlin function .toList() instead",
+        replaceWith = ReplaceWith("iterable.toList()"),
+    )
     fun <T> toList(iterable: Iterable<T>): List<T> = iterable.toList()
 
-    @Deprecated("Use Kotlin function .asSequence().toList() instead")
+    @Deprecated(
+        message = "Use Kotlin function .asSequence().toList() instead",
+        replaceWith = ReplaceWith("iterator.asSequence().toList()"),
+    )
     fun <T> toList(iterator: Iterator<T>): List<T> = iterator.asSequence().toList()
 
-    @Deprecated("Use Kotlin function .filter(predicate) instead")
+    @Deprecated(
+        message = "Use Kotlin function .filter(predicate) instead",
+        replaceWith = ReplaceWith("iterator.filter(predicate)"),
+    )
     fun <T> toList(iterator: Iterator<T>, predicate: Predicate<T>): List<T> {
         val res: MutableList<T> = ArrayList()
         while (iterator.hasNext()) {

@@ -62,8 +62,17 @@ interface Deserializer<T> : Closeable {
      * returning a value or null rather than throwing an exception.
      * @return deserialized typed data; may be null
      */
-    fun deserialize(topic: String, headers: Headers, data: ByteArray?): T? =
-        deserialize(topic, data)
+    fun deserialize(topic: String, headers: Headers, data: ByteArray?): T? = deserialize(topic, data)
+
+    /**
+     * Deserialize a record value from a ByteBuffer into a value or object.
+     *
+     * @param topic topic associated with the data
+     * @param data serialized ByteBuffer; may be null; implementations are recommended to handle null by returning
+     * a value or null rather than throwing an exception.
+     * @return deserialized typed data; may be null
+     */
+    fun deserialize(topic: String, data: ByteBuffer?): T? = deserialize(topic, toNullableArray(data))
 
     /**
      * Deserialize a record value from a ByteBuffer into a value or object.
