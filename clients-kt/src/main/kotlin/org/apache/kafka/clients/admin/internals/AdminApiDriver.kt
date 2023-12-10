@@ -18,9 +18,11 @@
 package org.apache.kafka.clients.admin.internals
 
 import java.util.function.BiFunction
+import java.util.stream.Collectors
 import org.apache.kafka.clients.admin.internals.AdminApiHandler.RequestAndKeys
 import org.apache.kafka.common.Node
 import org.apache.kafka.common.errors.DisconnectException
+import org.apache.kafka.common.errors.UnsupportedVersionException
 import org.apache.kafka.common.requests.AbstractRequest
 import org.apache.kafka.common.requests.AbstractResponse
 import org.apache.kafka.common.requests.FindCoordinatorRequest.NoBatchedFindCoordinatorsException
@@ -71,7 +73,7 @@ class AdminApiDriver<K, V>(
     private val future: AdminApiFuture<K, V>,
     private val deadlineMs: Long,
     private val retryBackoffMs: Long,
-    logContext: LogContext
+    logContext: LogContext,
 ) {
 
     private val log: Logger = logContext.logger(AdminApiDriver::class.java)
@@ -216,7 +218,7 @@ class AdminApiDriver<K, V>(
     fun onFailure(
         currentTimeMs: Long,
         spec: RequestSpec<K>,
-        t: Throwable
+        t: Throwable,
     ) {
         clearInflightRequest(currentTimeMs, spec)
         if (t is DisconnectException) {
@@ -234,6 +236,20 @@ class AdminApiDriver<K, V>(
             (handler.lookupStrategy() as CoordinatorStrategy).disableBatch()
             val keysToUnmap = spec.keys.filter { o: K -> future.lookupKeys().contains(o) }
             retryLookup(keysToUnmap)
+        } else if (t is UnsupportedVersionException) {
+            if (spec.scope is FulfillmentScope) {
+                val brokerId = spec.scope.destinationBrokerId
+                val unrecoverableFailures = handler.handleUnsupportedVersionException(brokerId, t, spec.keys)
+                completeExceptionally(unrecoverableFailures)
+            } else {
+                val unrecoverableLookupFailures =
+                    handler.lookupStrategy().handleUnsupportedVersionException(t, spec.keys)
+                completeLookupExceptionally(unrecoverableLookupFailures)
+                val keysToUnmap = spec.keys
+                    .filter { key -> !unrecoverableLookupFailures.containsKey(key) }
+                    .toSet()
+                retryLookup(keysToUnmap)
+            }
         } else {
             val errors = spec.keys.associateBy({ it }, { t })
             if (spec.scope is FulfillmentScope) completeExceptionally(errors)
@@ -252,7 +268,7 @@ class AdminApiDriver<K, V>(
     private fun <T : ApiRequestScope?> collectRequests(
         requests: MutableList<RequestSpec<K>>,
         multimap: BiMultimap<T, K>,
-        buildRequest: BiFunction<Set<K>, T, Collection<RequestAndKeys<K>>>
+        buildRequest: BiFunction<Set<K>, T, Collection<RequestAndKeys<K>>>,
     ) {
         multimap.entrySet().forEach { (scope, keys) ->
             if (keys.isEmpty()) return@forEach
@@ -307,7 +323,7 @@ class AdminApiDriver<K, V>(
         val request: AbstractRequest.Builder<*>,
         val nextAllowedTryMs: Long,
         val deadlineMs: Long,
-        val tries: Int
+        val tries: Int,
     ) {
         override fun toString(): String {
             return "RequestSpec(" +

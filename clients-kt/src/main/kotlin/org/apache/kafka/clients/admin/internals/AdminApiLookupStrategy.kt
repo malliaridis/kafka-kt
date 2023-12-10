@@ -17,6 +17,9 @@
 
 package org.apache.kafka.clients.admin.internals
 
+import java.util.function.Function
+import java.util.stream.Collectors
+import org.apache.kafka.common.errors.UnsupportedVersionException
 import org.apache.kafka.common.requests.AbstractRequest
 import org.apache.kafka.common.requests.AbstractResponse
 
@@ -75,6 +78,21 @@ interface AdminApiLookupStrategy<T> {
     fun handleResponse(keys: Set<T>, response: AbstractResponse): LookupResult<T>
 
     /**
+     * Callback that is invoked when a lookup request hits an UnsupportedVersionException.
+     * Keys for which the exception cannot be handled and the request shouldn't be retried must be mapped
+     * to an error and returned. The remainder of the keys will then be unmapped and the lookup request will
+     * be retried for them.
+     *
+     * @return The failure mappings for the keys for which the exception cannot be handled and the
+     * request shouldn't be retried. If the exception cannot be handled all initial keys will be in
+     * the returned map.
+     */
+    fun handleUnsupportedVersionException(
+        exception: UnsupportedVersionException,
+        keys: Set<T>,
+    ): Map<T, Throwable> = keys.associateWith { exception }
+
+    /**
      * @property completedKeys The set of keys that have been completed by the lookup phase itself.
      * The driver will not attempt lookup or fulfillment for completed keys.
      * @property failedKeys The set of keys that have been mapped to a specific broker for
@@ -85,7 +103,7 @@ interface AdminApiLookupStrategy<T> {
     class LookupResult<K>(
         val completedKeys: List<K> = emptyList(),
         val failedKeys: Map<K, Throwable>,
-        val mappedKeys: Map<K, Int>
+        val mappedKeys: Map<K, Int>,
     ) {
 
         companion object {

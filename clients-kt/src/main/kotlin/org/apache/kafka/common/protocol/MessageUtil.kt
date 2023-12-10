@@ -19,8 +19,8 @@ package org.apache.kafka.common.protocol
 
 import com.fasterxml.jackson.databind.JsonNode
 import java.io.IOException
+import java.io.UncheckedIOException
 import java.nio.ByteBuffer
-import java.util.*
 import org.apache.kafka.common.protocol.types.RawTaggedField
 import org.apache.kafka.common.utils.Utils
 
@@ -154,12 +154,13 @@ object MessageUtil {
     }
 
     fun jsonNodeToBinary(node: JsonNode, about: String): ByteArray {
-        if (!node.isBinary) throw RuntimeException("$about: expected Base64-encoded binary data.")
-
-        try {
-            return node.binaryValue()
+        return try {
+            val value = requireNotNull(node.binaryValue()) {
+                "$about: expected Base64-encoded binary data."
+            }
+            value
         } catch (e: IOException) {
-            throw RuntimeException("$about: unable to retrieve Base64-encoded binary data", e)
+            throw UncheckedIOException("$about: unable to retrieve Base64-encoded binary data", e)
         }
     }
 
@@ -179,7 +180,7 @@ object MessageUtil {
      */
     fun compareRawTaggedFields(
         first: List<RawTaggedField?>?,
-        second: List<RawTaggedField?>?
+        second: List<RawTaggedField?>?,
     ): Boolean {
         return first.isNullOrEmpty() && second.isNullOrEmpty() || first == second
     }

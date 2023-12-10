@@ -40,7 +40,7 @@ interface CreateTopicPolicy : Configurable, AutoCloseable {
     /**
      * Class containing the create request parameters.
      *
-     * @property topic the name of the topic to create.
+     * @param topic the name of the topic to create.
      * @property numPartitions the number of partitions to create or null if replicasAssignments is
      * set.
      * @property replicationFactor the replication factor for the topic or null if

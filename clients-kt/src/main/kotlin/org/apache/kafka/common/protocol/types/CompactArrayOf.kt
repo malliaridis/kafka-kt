@@ -18,7 +18,6 @@
 package org.apache.kafka.common.protocol.types
 
 import java.nio.ByteBuffer
-import java.util.*
 import org.apache.kafka.common.protocol.types.Type.DocumentedType
 import org.apache.kafka.common.utils.ByteUtils.readUnsignedVarint
 import org.apache.kafka.common.utils.ByteUtils.sizeOfUnsignedVarint
@@ -81,7 +80,7 @@ class CompactArrayOf private constructor(
             for (obj in array) type.validate(obj)
             array
         } catch (e: ClassCastException) {
-            throw SchemaException("Not an Object[].")
+            throw SchemaException("Not an Object[]. Found class ${item!!.javaClass.name}")
         }
     }
 

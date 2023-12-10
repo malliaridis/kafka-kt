@@ -33,9 +33,9 @@ abstract class AsyncClient<T1, Req : AbstractRequest, Resp : AbstractResponse, T
         val requestBuilder = prepareRequest(node, requestData)
         return client.send(node, requestBuilder).compose(
             object : RequestFutureAdapter<ClientResponse, T2>() {
-                override fun onSuccess(value: ClientResponse, future: RequestFuture<T2>) {
+                override fun onSuccess(response: ClientResponse, future: RequestFuture<T2>) {
                     val resp: Resp = try {
-                        value.responseBody as Resp
+                        response.responseBody as Resp
                     } catch (cce: ClassCastException) {
                         log.error("Could not cast response body", cce)
                         future.raise(cce)
@@ -52,10 +52,6 @@ abstract class AsyncClient<T1, Req : AbstractRequest, Resp : AbstractResponse, T
                     } catch (e: RuntimeException) {
                         if (!future.isDone) future.raise(e)
                     }
-                }
-
-                override fun onFailure(exception: RuntimeException, future: RequestFuture<T2>) {
-                    future.raise(exception)
                 }
             }
         )

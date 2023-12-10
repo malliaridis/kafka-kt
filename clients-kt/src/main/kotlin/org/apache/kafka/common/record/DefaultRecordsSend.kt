@@ -28,9 +28,9 @@ class DefaultRecordsSend<T : TransferableRecords>(
     @Throws(IOException::class)
     override fun writeTo(
         channel: TransferableChannel,
-        previouslyWritten: Long,
+        previouslyWritten: Int,
         remaining: Int
-    ): Long = records().writeTo(
+    ): Int = records().writeTo(
         channel = channel,
         position = previouslyWritten,
         length = remaining

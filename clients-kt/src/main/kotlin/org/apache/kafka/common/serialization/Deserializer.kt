@@ -18,7 +18,9 @@
 package org.apache.kafka.common.serialization
 
 import java.io.Closeable
+import java.nio.ByteBuffer
 import org.apache.kafka.common.header.Headers
+import org.apache.kafka.common.utils.Utils.toNullableArray
 
 /**
  * An interface for converting bytes to objects.
@@ -60,9 +62,20 @@ interface Deserializer<T> : Closeable {
      * returning a value or null rather than throwing an exception.
      * @return deserialized typed data; may be null
      */
-    fun deserialize(topic: String, headers: Headers, data: ByteArray?): T? {
-        return deserialize(topic, data)
-    }
+    fun deserialize(topic: String, headers: Headers, data: ByteArray?): T? =
+        deserialize(topic, data)
+
+    /**
+     * Deserialize a record value from a ByteBuffer into a value or object.
+     *
+     * @param topic topic associated with the data
+     * @param headers headers associated with the record; may be empty.
+     * @param data serialized ByteBuffer; may be null; implementations are recommended to handle null by returning
+     * a value or null rather than throwing an exception.
+     * @return deserialized typed data; may be null
+     */
+    fun deserialize(topic: String, headers: Headers, data: ByteBuffer?): T? =
+        deserialize(topic, headers, toNullableArray(data))
 
     /**
      * Close this deserializer.

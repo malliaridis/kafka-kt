@@ -230,7 +230,7 @@ class ProduceRequest(
                 if (baseRecords is Records) {
                     val iterator = baseRecords.batches().iterator()
                     if (!iterator.hasNext()) throw InvalidRecordException(
-                        "Produce requests with version $version must have at least one record batch"
+                        "Produce requests with version $version must have at least one record batch per partition"
                     )
 
                     val entry = iterator.next()
@@ -247,7 +247,7 @@ class ProduceRequest(
 
                     if (iterator.hasNext()) throw InvalidRecordException(
                         "Produce requests with version $version are only allowed to " +
-                                "contain exactly one record batch"
+                                "contain exactly one record batch per partition"
                     )
                 }
             }

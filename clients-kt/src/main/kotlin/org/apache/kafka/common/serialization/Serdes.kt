@@ -18,7 +18,7 @@
 package org.apache.kafka.common.serialization
 
 import java.nio.ByteBuffer
-import java.util.*
+import java.util.UUID
 import org.apache.kafka.common.utils.Bytes
 
 /**
@@ -59,10 +59,15 @@ object Serdes {
             return UUID() as Serde<T>
         }
 
+        if (Boolean::class.java.isAssignableFrom(type)) {
+            return Boolean() as Serde<T>
+        }
+
+
         // TODO: we can also serializes objects of type T using generic Java serialization by default
         throw IllegalArgumentException(
             "Unknown class for built-in serializer. Supported types are: " +
-                    "String, Short, Integer, Long, Float, Double, ByteArray, ByteBuffer, Bytes, UUID"
+                    "String, Short, Integer, Long, Float, Double, ByteArray, ByteBuffer, Bytes, UUID, Boolean"
         )
     }
 
@@ -131,17 +136,22 @@ object Serdes {
      */
     fun Void(): Serde<Void> = VoidSerde()
 
+    /**
+     * A serde for nullable `Boolean` type.
+     */
+    fun Boolean(): Serde<Boolean?> = BooleanSerde()
+
     /*
      * A serde for {@code List} type
      */
     fun <L : List<Inner>?, Inner> ListSerde(
         listClass: Class<L?>?,
-        innerSerde: Serde<Inner>
+        innerSerde: Serde<Inner>,
     ): Serde<List<Inner>> = Serdes.ListSerde(listClass, innerSerde)
 
     open class WrapperSerde<T>(
         private val serializer: Serializer<T>,
-        private val deserializer: Deserializer<T>
+        private val deserializer: Deserializer<T>,
     ) : Serde<T> {
 
         override fun configure(configs: Map<String, *>, isKey: Boolean) {
@@ -188,6 +198,8 @@ object Serdes {
 
     class UUIDSerde : WrapperSerde<UUID>(UUIDSerializer(), UUIDDeserializer())
 
+    class BooleanSerde : WrapperSerde<Boolean?>(BooleanSerializer(), BooleanDeserializer())
+
     class ListSerde<Inner> : WrapperSerde<List<Inner>> {
 
         internal enum class SerializationStrategy {
@@ -206,7 +218,7 @@ object Serdes {
 
         constructor(
             listClass: Class<*>,
-            serde: Serde<Inner>
+            serde: Serde<Inner>,
         ) : super(
             serializer = ListSerializer<Inner>(serde.serializer()) as Serializer<List<Inner>>,
             deserializer = ListDeserializer<Inner>(

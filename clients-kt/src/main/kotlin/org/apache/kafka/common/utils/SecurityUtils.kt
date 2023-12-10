@@ -21,8 +21,6 @@ import java.security.Security
 import org.apache.kafka.common.acl.AclOperation
 import org.apache.kafka.common.acl.AclPermissionType
 import org.apache.kafka.common.config.SecurityConfig
-import org.apache.kafka.common.resource.PatternType
-import org.apache.kafka.common.resource.ResourcePattern
 import org.apache.kafka.common.resource.ResourceType
 import org.apache.kafka.common.security.auth.KafkaPrincipal
 import org.apache.kafka.common.security.auth.SecurityProviderCreator
@@ -33,28 +31,28 @@ object SecurityUtils {
     private val LOGGER = LoggerFactory.getLogger(SecurityConfig::class.java)
 
     private val NAME_TO_RESOURCE_TYPES: MutableMap<String, ResourceType> =
-        HashMap(ResourceType.values().size)
+        HashMap(ResourceType.entries.size)
 
     private val NAME_TO_OPERATIONS: MutableMap<String, AclOperation> =
-        HashMap(AclOperation.values().size)
+        HashMap(AclOperation.entries.size)
 
     private val NAME_TO_PERMISSION_TYPES: MutableMap<String, AclPermissionType> =
-        HashMap(AclOperation.values().size)
+        HashMap(AclOperation.entries.size)
 
     init {
-        ResourceType.values().forEach { resourceType ->
+        ResourceType.entries.forEach { resourceType ->
             val resourceTypeName = toPascalCase(resourceType.name)
             NAME_TO_RESOURCE_TYPES[resourceTypeName] = resourceType
             NAME_TO_RESOURCE_TYPES[resourceTypeName.uppercase()] = resourceType
         }
 
-        AclOperation.values().forEach { operation ->
+        AclOperation.entries.forEach { operation ->
             val operationName = toPascalCase(operation.name)
             NAME_TO_OPERATIONS[operationName] = operation
             NAME_TO_OPERATIONS[operationName.uppercase()] = operation
         }
 
-        AclPermissionType.values().forEach { permissionType ->
+        AclPermissionType.entries.forEach { permissionType ->
             val permissionName = toPascalCase(permissionType.name)
             NAME_TO_PERMISSION_TYPES[permissionName] = permissionType
             NAME_TO_PERMISSION_TYPES[permissionName.uppercase()] = permissionType
@@ -95,7 +93,7 @@ object SecurityUtils {
                 securityProviderCreator.configure(configs)
                 Security.insertProviderAt(securityProviderCreator.provider, index + 1)
             }
-        } catch (e: ClassCastException) {
+        } catch (_: ClassCastException) {
             LOGGER.error(
                 "Creators provided through " + SecurityConfig.SECURITY_PROVIDERS_CONFIG +
                         " are expected to be sub-classes of SecurityProviderCreator"
@@ -157,8 +155,4 @@ object SecurityUtils {
 
         require(op !== AclOperation.UNKNOWN) { "Unknown operation type" }
     }
-
-    fun denyAll(pattern: ResourcePattern): Boolean =
-        pattern.patternType === PatternType.LITERAL
-                && (pattern.name == ResourcePattern.WILDCARD_RESOURCE)
 }

@@ -49,11 +49,8 @@ class OffsetCommitRequest(
     }
 
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): OffsetCommitResponse {
-        val responseTopicData = getErrorResponseTopics(data.topics, Errors.forException(e))
-
         return OffsetCommitResponse(
-            OffsetCommitResponseData()
-                .setTopics(responseTopicData)
+            getErrorResponse(data, Errors.forException(e))
                 .setThrottleTimeMs(throttleTimeMs)
         )
     }
@@ -88,29 +85,22 @@ class OffsetCommitRequest(
         // supported
         val DEFAULT_TIMESTAMP = -1L // for V0, V1
 
-        fun getErrorResponseTopics(
-            requestTopics: List<OffsetCommitRequestTopic>,
-            e: Errors,
-        ): List<OffsetCommitResponseTopic> {
-            val responseTopicData = mutableListOf<OffsetCommitResponseTopic>()
 
-            for (entry in requestTopics) {
-                val responsePartitions: MutableList<OffsetCommitResponsePartition> = ArrayList()
-                for (requestPartition in entry.partitions) {
-                    responsePartitions.add(
-                        OffsetCommitResponsePartition()
-                            .setPartitionIndex(requestPartition.partitionIndex)
-                            .setErrorCode(e.code)
-                    )
+        fun getErrorResponse(
+            request: OffsetCommitRequestData,
+            error: Errors,
+        ): OffsetCommitResponseData {
+            val response = OffsetCommitResponseData()
+            request.topics.forEach { topic ->
+                val responseTopic = OffsetCommitResponseTopic().setName(topic.name)
+                response.topics += responseTopic
+                topic.partitions.forEach { partition ->
+                    responseTopic.partitions += OffsetCommitResponsePartition()
+                            .setPartitionIndex(partition.partitionIndex)
+                            .setErrorCode(error.code)
                 }
-
-                responseTopicData.add(
-                    OffsetCommitResponseTopic()
-                        .setName(entry.name)
-                        .setPartitions(responsePartitions)
-                )
             }
-            return responseTopicData
+            return response
         }
 
         fun parse(buffer: ByteBuffer, version: Short): OffsetCommitRequest =

@@ -38,5 +38,5 @@ interface TransferableRecords : BaseRecords {
      * @throws IOException For any IO errors
      */
     @Throws(IOException::class)
-    fun writeTo(channel: TransferableChannel, position: Long, length: Int): Long
+    fun writeTo(channel: TransferableChannel, position: Int, length: Int): Int
 }

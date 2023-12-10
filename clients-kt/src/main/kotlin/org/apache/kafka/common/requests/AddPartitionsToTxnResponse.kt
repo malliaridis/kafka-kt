@@ -17,16 +17,18 @@
 
 package org.apache.kafka.common.requests
 
+import java.nio.ByteBuffer
+import java.util.function.BiConsumer
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.message.AddPartitionsToTxnResponseData
 import org.apache.kafka.common.message.AddPartitionsToTxnResponseData.AddPartitionsToTxnPartitionResult
 import org.apache.kafka.common.message.AddPartitionsToTxnResponseData.AddPartitionsToTxnPartitionResultCollection
+import org.apache.kafka.common.message.AddPartitionsToTxnResponseData.AddPartitionsToTxnResult
 import org.apache.kafka.common.message.AddPartitionsToTxnResponseData.AddPartitionsToTxnTopicResult
 import org.apache.kafka.common.message.AddPartitionsToTxnResponseData.AddPartitionsToTxnTopicResultCollection
 import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.protocol.ByteBufferAccessor
 import org.apache.kafka.common.protocol.Errors
-import java.nio.ByteBuffer
 
 /**
  * Possible error codes:
@@ -42,45 +44,9 @@ import java.nio.ByteBuffer
  * - [Errors.TRANSACTIONAL_ID_AUTHORIZATION_FAILED]
  * - [Errors.UNKNOWN_TOPIC_OR_PARTITION]
  */
-class AddPartitionsToTxnResponse : AbstractResponse {
-    private val data: AddPartitionsToTxnResponseData
-    private lateinit var cachedErrorsMap: MutableMap<TopicPartition, Errors>
-
-    constructor(data: AddPartitionsToTxnResponseData) : super(ApiKeys.ADD_PARTITIONS_TO_TXN) {
-        this.data = data
-    }
-
-    constructor(
-        throttleTimeMs: Int,
-        errors: Map<TopicPartition, Errors>
-    ) : super(ApiKeys.ADD_PARTITIONS_TO_TXN) {
-        val resultMap: MutableMap<String, AddPartitionsToTxnPartitionResultCollection> = HashMap()
-
-        for ((topicPartition, value) in errors) {
-            val topicName = topicPartition.topic
-            val partitionResult = AddPartitionsToTxnPartitionResult()
-                .setErrorCode(value.code)
-                .setPartitionIndex(topicPartition.partition)
-            val partitionResultCollection = resultMap.getOrDefault(
-                topicName, AddPartitionsToTxnPartitionResultCollection()
-            )
-            partitionResultCollection.add(partitionResult)
-            resultMap[topicName] = partitionResultCollection
-        }
-
-        val topicCollection = AddPartitionsToTxnTopicResultCollection()
-        topicCollection.addAll(
-            resultMap.map { (key, value) ->
-                AddPartitionsToTxnTopicResult()
-                    .setName(key)
-                    .setResults(value)
-            }
-        )
-
-        data = AddPartitionsToTxnResponseData()
-            .setThrottleTimeMs(throttleTimeMs)
-            .setResults(topicCollection)
-    }
+class AddPartitionsToTxnResponse(
+    private val data: AddPartitionsToTxnResponseData,
+) : AbstractResponse(ApiKeys.ADD_PARTITIONS_TO_TXN) {
 
     override fun throttleTimeMs(): Int = data.throttleTimeMs
 
@@ -88,21 +54,27 @@ class AddPartitionsToTxnResponse : AbstractResponse {
         data.setThrottleTimeMs(throttleTimeMs)
     }
 
-    fun errors(): Map<TopicPartition, Errors> {
-        if (::cachedErrorsMap.isInitialized) return cachedErrorsMap
-
-        cachedErrorsMap = HashMap()
-        for (topicResult in data.results) {
-            for (partitionResult in topicResult.results) {
-                cachedErrorsMap[TopicPartition(
-                    topicResult.name, partitionResult.partitionIndex
-                )] = Errors.forCode(partitionResult.errorCode)
-            }
+    fun errors(): Map<String, Map<TopicPartition, Errors>> {
+        val errorsMap = mutableMapOf<String, Map<TopicPartition, Errors>>()
+        if (!data.resultsByTopicV3AndBelow.isEmpty()) {
+            errorsMap[V3_AND_BELOW_TXN_ID] =
+                AddPartitionsToTxnResponse.errorsForTransaction(data.resultsByTopicV3AndBelow)
         }
-        return cachedErrorsMap
+        for (result in data.resultsByTransaction)
+            errorsMap[result.transactionalId] = AddPartitionsToTxnResponse.errorsForTransaction(result.topicResults)
+
+        return errorsMap
     }
 
-    override fun errorCounts(): Map<Errors, Int> = errorCounts(errors().values)
+    override fun errorCounts(): Map<Errors, Int> {
+        val allErrors: MutableList<Errors> = ArrayList()
+
+        // If we are not using this field, we have request 4 or later
+        if (data.resultsByTopicV3AndBelow.isEmpty()) allErrors.add(Errors.forCode(data.errorCode))
+
+        errors().forEach { (_, errors) -> allErrors.addAll(errors.values) }
+        return errorCounts(allErrors)
+    }
 
     override fun data(): AddPartitionsToTxnResponseData = data
 
@@ -111,6 +83,53 @@ class AddPartitionsToTxnResponse : AbstractResponse {
     override fun shouldClientThrottle(version: Short): Boolean = version >= 1
 
     companion object {
+
+        const val V3_AND_BELOW_TXN_ID = ""
+
+        private fun topicCollectionForErrors(
+            errors: Map<TopicPartition, Errors>,
+        ): AddPartitionsToTxnTopicResultCollection {
+            val resultMap = mutableMapOf<String, AddPartitionsToTxnPartitionResultCollection>()
+
+            for ((topicPartition, error) in errors) {
+                val topicName = topicPartition.topic
+                val partitionResult = AddPartitionsToTxnPartitionResult()
+                    .setPartitionErrorCode(error.code)
+                    .setPartitionIndex(topicPartition.partition)
+                val partitionResultCollection =
+                    resultMap.getOrDefault(topicName, AddPartitionsToTxnPartitionResultCollection())
+                partitionResultCollection.add(partitionResult)
+                resultMap[topicName] = partitionResultCollection
+            }
+
+            val topicCollection = AddPartitionsToTxnTopicResultCollection()
+            for ((key, value) in resultMap) {
+                topicCollection.add(
+                    AddPartitionsToTxnTopicResult()
+                        .setName(key)
+                        .setResultsByPartition(value)
+                )
+            }
+            return topicCollection
+        }
+
+        fun resultForTransaction(
+            transactionalId: String,
+            errors: Map<TopicPartition, Errors>,
+        ): AddPartitionsToTxnResult = AddPartitionsToTxnResult()
+            .setTransactionalId(transactionalId)
+            .setTopicResults(topicCollectionForErrors(errors))
+
+        fun errorsForTransaction(topicCollection: AddPartitionsToTxnTopicResultCollection): Map<TopicPartition, Errors> {
+            val topicResults: MutableMap<TopicPartition, Errors> = HashMap()
+            for (topicResult in topicCollection) {
+                for (partitionResult in topicResult.resultsByPartition) {
+                    topicResults[TopicPartition(topicResult.name, partitionResult.partitionIndex)] =
+                        Errors.forCode(partitionResult.partitionErrorCode)
+                }
+            }
+            return topicResults
+        }
 
         fun parse(buffer: ByteBuffer, version: Short): AddPartitionsToTxnResponse =
             AddPartitionsToTxnResponse(

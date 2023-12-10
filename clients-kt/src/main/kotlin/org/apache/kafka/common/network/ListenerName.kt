@@ -17,6 +17,7 @@
 
 package org.apache.kafka.common.network
 
+import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.common.security.auth.SecurityProtocol
 
 data class ListenerName(val value: String) {
@@ -47,7 +48,10 @@ data class ListenerName(val value: String) {
         /**
          * Create an instance with the provided value converted to uppercase.
          */
-        fun normalised(value: String): ListenerName = ListenerName(value.uppercase())
+        fun normalised(value: String): ListenerName {
+            if (value.isBlank()) throw ConfigException("The provided listener name is null or empty string")
+            return ListenerName(value.uppercase())
+        }
 
         fun saslMechanismPrefix(saslMechanism: String): String = saslMechanism.lowercase() + "."
     }

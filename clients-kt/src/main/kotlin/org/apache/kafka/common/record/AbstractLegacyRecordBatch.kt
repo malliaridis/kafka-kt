@@ -331,8 +331,6 @@ abstract class AbstractLegacyRecordBatch : AbstractRecordBatch(), Record {
 
         override fun offset(): Long = buffer.getLong(Records.OFFSET_OFFSET)
 
-        override fun deleteHorizonMs(): Long? = null
-
         override fun outerRecord(): LegacyRecord = record
 
         override fun setLastOffset(offset: Long) {

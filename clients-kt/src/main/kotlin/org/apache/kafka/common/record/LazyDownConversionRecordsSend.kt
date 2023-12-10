@@ -17,13 +17,13 @@
 
 package org.apache.kafka.common.record
 
+import java.io.IOException
+import java.nio.ByteBuffer
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.UnsupportedCompressionTypeException
 import org.apache.kafka.common.network.TransferableChannel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import java.io.IOException
-import java.nio.ByteBuffer
 import kotlin.math.max
 
 /**
@@ -69,11 +69,11 @@ class LazyDownConversionRecordsSend(
     }
 
     @Throws(IOException::class)
-    public override fun writeTo(
+    override fun writeTo(
         channel: TransferableChannel,
-        previouslyWritten: Long,
-        remaining: Int
-    ): Long {
+        previouslyWritten: Int,
+        remaining: Int,
+    ): Int {
         if (convertedRecordsWriter == null || convertedRecordsWriter!!.completed()) {
             var convertedRecords: MemoryRecords
             try {
@@ -85,7 +85,7 @@ class LazyDownConversionRecordsSend(
                     recordConversionStats.add(recordsAndStats.recordConversionStats)
                     log.debug(
                         "Down-converted records for partition {} with length={}",
-                        topicPartition(),
+                        topicPartition,
                         convertedRecords.sizeInBytes()
                     )
                 } else {
@@ -101,10 +101,11 @@ class LazyDownConversionRecordsSend(
             }
             convertedRecordsWriter = DefaultRecordsSend(
                 convertedRecords,
-                Math.min(convertedRecords.sizeInBytes(), remaining)
+                convertedRecords.sizeInBytes().coerceAtMost(remaining)
             )
         }
-        return convertedRecordsWriter!!.writeTo(channel)
+        // safe to cast to int since `remaining` is an int
+        return convertedRecordsWriter!!.writeTo(channel).toInt()
     }
 
     @Deprecated(

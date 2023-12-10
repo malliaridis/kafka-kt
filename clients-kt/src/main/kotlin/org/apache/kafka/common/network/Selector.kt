@@ -458,7 +458,7 @@ open class Selector private constructor(
                 isImmediatelyConnected = false,
                 currentTimeNanos = endSelect,
             )
-            // Clear all selected keys so that they are included in the ready count for the next select
+            // Clear all selected keys so that they are excluded from the ready count for the next select
             readyKeys.clear()
 
             pollSelectionKeys(

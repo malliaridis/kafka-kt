@@ -21,6 +21,10 @@ package org.apache.kafka.clients.admin
  * Representation of a SASL/SCRAM Mechanism.
  *
  * @see [KIP-554: Add Broker-side SCRAM Config API](https://cwiki.apache.org/confluence/display/KAFKA/KIP-554%3A+Add+Broker-side+SCRAM+Config+API)
+ *
+ * This code is duplicated in org.apache.kafka.common.security.scram.internals.ScramMechanism.
+ * The type field in both files must match and must not change. The type field is used both for passing
+ * ScramCredentialUpsertion and for the internal UserScramCredentialRecord. Do not change the type field.
  */
 enum class ScramMechanism(val type: Byte) {
     

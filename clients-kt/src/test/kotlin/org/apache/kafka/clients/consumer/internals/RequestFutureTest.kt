@@ -165,7 +165,7 @@ class RequestFutureTest {
         val future = RequestFuture<String>()
         val composed = future.compose(
             adapter = object : RequestFutureAdapter<String, Int>() {
-                override fun onSuccess(value: String, future: RequestFuture<Int>) = future.complete(value.length)
+                override fun onSuccess(response: String, future: RequestFuture<Int>) = future.complete(response.length)
             },
         )
         future.complete("hello")
@@ -179,7 +179,7 @@ class RequestFutureTest {
         val future = RequestFuture<String>()
         val composed = future.compose(
             adapter = object : RequestFutureAdapter<String, Int>() {
-                override fun onSuccess(value: String, future: RequestFuture<Int>) = future.complete(value.length)
+                override fun onSuccess(response: String, future: RequestFuture<Int>) = future.complete(response.length)
             }
         )
         val e = RuntimeException()
@@ -195,11 +195,11 @@ class RequestFutureTest {
 
         val numOnFailureCalls = AtomicInteger(0)
 
-        override fun onSuccess(value: T) {
+        override fun onSuccess(result: T) {
             numOnSuccessCalls.incrementAndGet()
         }
 
-        override fun onFailure(e: RuntimeException) {
+        override fun onFailure(exception: RuntimeException) {
             numOnFailureCalls.incrementAndGet()
         }
     }

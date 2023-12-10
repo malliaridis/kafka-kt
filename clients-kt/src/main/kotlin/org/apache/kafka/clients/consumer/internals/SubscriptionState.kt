@@ -35,20 +35,20 @@ import java.util.function.Consumer
 import java.util.function.LongSupplier
 import java.util.function.Predicate
 import java.util.regex.Pattern
+import org.apache.kafka.clients.consumer.internals.OffsetFetcherUtils.Companion.hasUsableOffsetForLeaderEpochVersion
 
 /**
- * A class for tracking the topics, partitions, and offsets for the consumer. A partition is
- * "assigned" either directly with [assignFromUser] (manual assignment) or with
- * [assignFromSubscribed] (automatic assignment from subscription).
+ * A class for tracking the topics, partitions, and offsets for the consumer. A partition
+ * is "assigned" either directly with {@link #assignFromUser(Set)} (manual assignment)
+ * or with [assignFromSubscribed] (automatic assignment from subscription).
  *
- * Once assigned, the partition is not considered "fetchable" until its initial position has been
- * set with [seekValidated]. Fetchable partitions track a fetch position which is used to set the
- * offset of the next fetch, and a consumed position which is the last offset that has been returned
- * to the user. You can suspend fetching from a partition through [pause] without affecting the
- * fetched/consumed offsets. The partition will remain unfetchable until the [resume] is used. You
- * can also query the pause state independently with [isPaused].
+ * Once assigned, the partition is not considered "fetchable" until its initial position has
+ * been set with [seekValidated]. Fetchable partitions track a position which is the last offset that
+ * has been returned to the user. You can suspend fetching from a partition through [pause] without
+ * affecting the consumed position. The partition will remain unfetchable until the [resume] is
+ * used. You can also query the pause state independently with [isPaused].
  *
- * Note that pause state as well as fetch/consumed positions are not preserved when partition
+ * Note that pause state as well as the consumed positions are not preserved when partition
  * assignment is changed whether directly by the user or through a group rebalance.
  *
  * Thread Safety: this class is thread-safe.
@@ -355,22 +355,22 @@ class SubscriptionState(
 
     @Synchronized
     fun maybeSeekUnvalidated(
-        tp: TopicPartition,
+        topicPartition: TopicPartition,
         position: FetchPosition,
-        requestedResetStrategy: OffsetResetStrategy,
+        requestedResetStrategy: OffsetResetStrategy?,
     ) {
-        val state = assignedStateOrNull(tp)
+        val state = assignedStateOrNull(topicPartition)
         if (state == null)
-            log.debug("Skipping reset of partition {} since it is no longer assigned", tp)
+            log.debug("Skipping reset of partition {} since it is no longer assigned", topicPartition)
         else if (!state.awaitingReset())
-            log.debug("Skipping reset of partition {} since reset is no longer needed", tp)
-        else if (requestedResetStrategy !== state.resetStrategy) {
+            log.debug("Skipping reset of partition {} since reset is no longer needed", topicPartition)
+        else if (requestedResetStrategy != state.resetStrategy) {
             log.debug(
                 "Skipping reset of partition {} since an alternative reset has been requested",
-                tp
+                topicPartition
             )
         } else {
-            log.info("Resetting offset for partition {} to position {}.", tp, position)
+            log.info("Resetting offset for partition {} to position {}.", topicPartition, position)
             state.seekUnvalidated(position)
         }
     }
@@ -426,29 +426,29 @@ class SubscriptionState(
      * OffsetsForLeaderEpoch API. If the leader node does not support the API, simply complete the offset validation.
      *
      * @param apiVersions supported API versions
-     * @param tp topic partition to validate
+     * @param topicPartition topic partition to validate
      * @param leaderAndEpoch leader epoch of the topic partition
      * @return true if we enter the offset validation state
      */
     @Synchronized
     fun maybeValidatePositionForCurrentLeader(
         apiVersions: ApiVersions,
-        tp: TopicPartition,
+        topicPartition: TopicPartition,
         leaderAndEpoch: LeaderAndEpoch
     ): Boolean {
         return if (leaderAndEpoch.leader != null) {
             val nodeApiVersions = apiVersions[leaderAndEpoch.leader.idString()]
             if (
                 nodeApiVersions == null
-                || Fetcher.hasUsableOffsetForLeaderEpochVersion(nodeApiVersions)
-            ) assignedState(tp).maybeValidatePosition(leaderAndEpoch)
+                || hasUsableOffsetForLeaderEpochVersion(nodeApiVersions)
+            ) assignedState(topicPartition).maybeValidatePosition(leaderAndEpoch)
             else {
                 // If the broker does not support a newer version of OffsetsForLeaderEpoch, we skip
                 // validation
-                assignedState(tp).updatePositionLeaderNoValidation(leaderAndEpoch)
+                assignedState(topicPartition).updatePositionLeaderNoValidation(leaderAndEpoch)
                 false
             }
-        } else assignedState(tp).maybeValidatePosition(leaderAndEpoch)
+        } else assignedState(topicPartition).maybeValidatePosition(leaderAndEpoch)
     }
 
     /**

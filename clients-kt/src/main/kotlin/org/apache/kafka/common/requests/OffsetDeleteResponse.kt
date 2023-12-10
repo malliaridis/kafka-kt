@@ -19,6 +19,7 @@ package org.apache.kafka.common.requests
 
 import java.nio.ByteBuffer
 import java.util.function.Consumer
+import java.util.function.Function
 import org.apache.kafka.common.message.OffsetDeleteResponseData
 import org.apache.kafka.common.message.OffsetDeleteResponseData.OffsetDeleteResponsePartition
 import org.apache.kafka.common.message.OffsetDeleteResponseData.OffsetDeleteResponseTopic
@@ -68,6 +69,79 @@ class OffsetDeleteResponse(
     }
 
     override fun shouldClientThrottle(version: Short): Boolean = version >= 0
+
+    class Builder {
+        var data = OffsetDeleteResponseData()
+        private fun getOrCreateTopic(
+            topicName: String,
+        ): OffsetDeleteResponseTopic {
+            var topic = data.topics.find(topicName)
+            if (topic == null) {
+                topic = OffsetDeleteResponseTopic().setName(topicName)
+                data.topics.add(topic)
+            }
+            return topic
+        }
+
+        fun addPartition(
+            topicName: String,
+            partitionIndex: Int,
+            error: Errors,
+        ): Builder {
+            val topicResponse = getOrCreateTopic(topicName)
+            topicResponse.partitions.add(
+                OffsetDeleteResponsePartition()
+                    .setPartitionIndex(partitionIndex)
+                    .setErrorCode(error.code)
+            )
+            return this
+        }
+
+        fun <P> addPartitions(
+            topicName: String,
+            partitions: List<P>,
+            partitionIndex: Function<P, Int?>,
+            error: Errors,
+        ): Builder {
+            val topicResponse = getOrCreateTopic(topicName)
+            partitions.forEach(Consumer { partition: P ->
+                topicResponse.partitions.add(
+                    OffsetDeleteResponsePartition()
+                        .setPartitionIndex(partitionIndex.apply(partition)!!)
+                        .setErrorCode(error.code)
+                )
+            })
+            return this
+        }
+
+        fun merge(
+            newData: OffsetDeleteResponseData,
+        ): Builder {
+            if (data.topics.isEmpty()) {
+                // If the current data is empty, we can discard it and use the new data.
+                data = newData
+            } else {
+                // Otherwise, we have to merge them together.
+                newData.topics.forEach { newTopic ->
+                    val existingTopic = data.topics.find(newTopic.name)
+                    if (existingTopic == null) {
+                        // If no topic exists, we can directly copy the new topic data.
+                        data.topics.add(newTopic.duplicate())
+                    } else {
+                        // Otherwise, we add the partitions to the existing one. Note we
+                        // expect non-overlapping partitions here as we don't verify
+                        // if the partition is already in the list before adding it.
+                        newTopic.partitions.forEach { partition ->
+                            existingTopic.partitions.add(partition.duplicate())
+                        }
+                    }
+                }
+            }
+            return this
+        }
+
+        fun build(): OffsetDeleteResponse = OffsetDeleteResponse(data)
+    }
 
     companion object {
 

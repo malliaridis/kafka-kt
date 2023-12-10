@@ -42,6 +42,7 @@ import org.apache.kafka.common.errors.EligibleLeadersNotAvailableException
 import org.apache.kafka.common.errors.FeatureUpdateFailedException
 import org.apache.kafka.common.errors.FencedInstanceIdException
 import org.apache.kafka.common.errors.FencedLeaderEpochException
+import org.apache.kafka.common.errors.FencedMemberEpochException
 import org.apache.kafka.common.errors.FetchSessionIdNotFoundException
 import org.apache.kafka.common.errors.FetchSessionTopicIdException
 import org.apache.kafka.common.errors.GroupAuthorizationException
@@ -89,6 +90,7 @@ import org.apache.kafka.common.errors.NotEnoughReplicasAfterAppendException
 import org.apache.kafka.common.errors.NotEnoughReplicasException
 import org.apache.kafka.common.errors.NotLeaderOrFollowerException
 import org.apache.kafka.common.errors.OffsetMetadataTooLarge
+import org.apache.kafka.common.errors.OffsetMovedToTieredStorageException
 import org.apache.kafka.common.errors.OffsetNotAvailableException
 import org.apache.kafka.common.errors.OffsetOutOfRangeException
 import org.apache.kafka.common.errors.OperationNotAttemptedException
@@ -109,6 +111,7 @@ import org.apache.kafka.common.errors.SaslAuthenticationException
 import org.apache.kafka.common.errors.SecurityDisabledException
 import org.apache.kafka.common.errors.SnapshotNotFoundException
 import org.apache.kafka.common.errors.StaleBrokerEpochException
+import org.apache.kafka.common.errors.StaleMemberEpochException
 import org.apache.kafka.common.errors.ThrottlingQuotaExceededException
 import org.apache.kafka.common.errors.TimeoutException
 import org.apache.kafka.common.errors.TopicAuthorizationException
@@ -124,7 +127,9 @@ import org.apache.kafka.common.errors.UnknownProducerIdException
 import org.apache.kafka.common.errors.UnknownServerException
 import org.apache.kafka.common.errors.UnknownTopicIdException
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException
+import org.apache.kafka.common.errors.UnreleasedInstanceIdException
 import org.apache.kafka.common.errors.UnstableOffsetCommitException
+import org.apache.kafka.common.errors.UnsupportedAssignorException
 import org.apache.kafka.common.errors.UnsupportedByAuthenticationException
 import org.apache.kafka.common.errors.UnsupportedCompressionTypeException
 import org.apache.kafka.common.errors.UnsupportedForMessageFormatException
@@ -733,6 +738,31 @@ enum class Errors(
         defaultExceptionString = "The AlterPartition request successfully updated the partition " +
                 "state but the leader has changed.",
         builder = { message -> NewLeaderElectedException(message = message) },
+    ),
+    OFFSET_MOVED_TO_TIERED_STORAGE(
+        code = 109,
+        defaultExceptionString = "The requested offset is moved to tiered storage.",
+        builder = { message -> OffsetMovedToTieredStorageException(message = message) },
+    ),
+    FENCED_MEMBER_EPOCH(
+        code = 110,
+        defaultExceptionString = "The member epoch is fenced by the group coordinator. The member must abandon all its partitions and rejoin.",
+        builder = { message -> FencedMemberEpochException(message = message) }
+    ),
+    UNRELEASED_INSTANCE_ID(
+        code = 111,
+        defaultExceptionString = "The instance ID is still used by another member in the consumer group. That member must leave first.",
+        builder = { message -> UnreleasedInstanceIdException(message = message) }
+    ),
+    UNSUPPORTED_ASSIGNOR(
+        code = 112,
+        defaultExceptionString = "The assignor or its version range is not supported by the consumer group.",
+        builder = { message -> UnsupportedAssignorException(message = message) }
+    ),
+    STALE_MEMBER_EPOCH(
+        code = 113,
+        defaultExceptionString = "The member epoch is stale. The member must retry after receiving its updated member epoch via the ConsumerGroupHeartbeat API.",
+        builder = { message -> StaleMemberEpochException(message = message) }
     );
 
     /**

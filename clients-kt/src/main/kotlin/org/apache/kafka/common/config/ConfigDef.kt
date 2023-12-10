@@ -50,6 +50,7 @@ import org.apache.kafka.common.utils.Utils.join
  *     "config_with_default",
  *     Type.STRING,
  *     "default string value",
+ *     Importance.High,
  *     "Configuration with default value."
  * );
  * defs.define(
@@ -57,11 +58,13 @@ import org.apache.kafka.common.utils.Utils.join
  *     Type.INT,
  *     42,
  *     Range.atLeast(0),
+ *     Importance.High,
  *     "Configuration with user provided validator."
  * );
  * defs.define(
  *     "config_with_dependents",
  *     Type.INT,
+ *     Importance.LOW,
  *     "Configuration with dependents.",
  *     "group",
  *     1,
@@ -80,8 +83,8 @@ import org.apache.kafka.common.utils.Utils.join
  * int anotherConfig = (Integer) configs.get("config_with_validator");
  *
  * To validate the full configuration, use:
- * List<Config> configs = defs.validate(props);
- * The [Config] contains updated configuration information given the current configuration values.
+ * List<ConfigValue> configValues = defs.validate(props);
+ * The [ConfigValue] contains updated configuration information given the current configuration values.
  * ```
  *
  * This class can be used standalone or in combination with [AbstractConfig] which provides some

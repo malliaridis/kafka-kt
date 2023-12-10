@@ -17,6 +17,7 @@
 
 package org.apache.kafka.common.requests
 
+import java.nio.ByteBuffer
 import org.apache.kafka.common.message.DescribeGroupsResponseData
 import org.apache.kafka.common.message.DescribeGroupsResponseData.DescribedGroup
 import org.apache.kafka.common.message.DescribeGroupsResponseData.DescribedGroupMember
@@ -24,7 +25,6 @@ import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.protocol.ByteBufferAccessor
 import org.apache.kafka.common.protocol.Errors
 import org.apache.kafka.common.utils.Utils.to32BitField
-import java.nio.ByteBuffer
 
 /**
  * Possible per-group error codes:
@@ -60,13 +60,19 @@ class DescribeGroupsResponse(
 
         const val AUTHORIZED_OPERATIONS_OMITTED = Int.MIN_VALUE
 
+        const val UNKNOWN_STATE = ""
+
+        const val UNKNOWN_PROTOCOL_TYPE = ""
+
+        const val UNKNOWN_PROTOCOL = ""
+
         fun groupMember(
             memberId: String,
             groupInstanceId: String?,
             clientId: String,
             clientHost: String,
             assignment: ByteArray,
-            metadata: ByteArray
+            metadata: ByteArray,
         ): DescribedGroupMember = DescribedGroupMember()
             .setMemberId(memberId)
             .setGroupInstanceId(groupInstanceId)
@@ -82,7 +88,7 @@ class DescribeGroupsResponse(
             protocolType: String,
             protocol: String,
             members: List<DescribedGroupMember>,
-            authorizedOperations: Set<Byte>
+            authorizedOperations: Set<Byte>,
         ): DescribedGroup = DescribedGroup()
             .setGroupId(groupId)
             .setErrorCode(error.code)
@@ -99,7 +105,7 @@ class DescribeGroupsResponse(
             protocolType: String,
             protocol: String,
             members: List<DescribedGroupMember>,
-            authorizedOperations: Int
+            authorizedOperations: Int,
         ): DescribedGroup = DescribedGroup()
             .setGroupId(groupId)
             .setErrorCode(error.code)
@@ -109,37 +115,15 @@ class DescribeGroupsResponse(
             .setMembers(members)
             .setAuthorizedOperations(authorizedOperations)
 
-        const val UNKNOWN_STATE = ""
-
-        const val UNKNOWN_PROTOCOL_TYPE = ""
-
-        const val UNKNOWN_PROTOCOL = ""
-
-        fun forError(groupId: String, error: Errors): DescribedGroup {
-            return groupMetadata(
-                groupId = groupId,
-                error = error,
-                state = UNKNOWN_STATE,
-                protocolType = UNKNOWN_PROTOCOL_TYPE,
-                protocol = UNKNOWN_PROTOCOL,
-                members = emptyList(),
-                authorizedOperations = AUTHORIZED_OPERATIONS_OMITTED,
-            )
-        }
-
-        fun fromError(
-            throttleTimeMs: Int,
-            error: Errors,
-            groupIds: List<String>
-        ): DescribeGroupsResponse {
-            val describeGroupsResponseData = DescribeGroupsResponseData()
-            describeGroupsResponseData.setThrottleTimeMs(throttleTimeMs)
-
-            for (groupId in groupIds)
-                describeGroupsResponseData.groups += forError(groupId, error)
-
-            return DescribeGroupsResponse(describeGroupsResponseData)
-        }
+        fun groupError(groupId: String, error: Errors): DescribedGroup = groupMetadata(
+            groupId = groupId,
+            error = error,
+            state = UNKNOWN_STATE,
+            protocolType = UNKNOWN_PROTOCOL_TYPE,
+            protocol = UNKNOWN_PROTOCOL,
+            members = emptyList(),
+            authorizedOperations = AUTHORIZED_OPERATIONS_OMITTED,
+        )
 
         fun parse(buffer: ByteBuffer, version: Short): DescribeGroupsResponse =
             DescribeGroupsResponse(

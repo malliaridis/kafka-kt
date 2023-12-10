@@ -21,7 +21,7 @@ import java.io.IOException
 
 class NetworkSend(
     val destinationId: String,
-    val send: Send
+    val send: Send,
 ) : Send {
 
     @Deprecated(

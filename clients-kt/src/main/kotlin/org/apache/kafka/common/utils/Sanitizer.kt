@@ -47,9 +47,8 @@ object Sanitizer {
      * URL-encoding.
      */
     fun sanitize(name: String?): String {
-        val encoded: String
         return try {
-            encoded = URLEncoder.encode(name, StandardCharsets.UTF_8.name())
+            val encoded = URLEncoder.encode(name, StandardCharsets.UTF_8.name())
             val builder = StringBuilder()
 
             for (element in encoded) when (element) {

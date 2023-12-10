@@ -124,7 +124,6 @@ import org.apache.kafka.test.TestUtils.checkEquals
 import org.apache.kafka.test.TestUtils.singletonCluster
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -195,7 +194,7 @@ class FetcherTest {
 
     private lateinit var metadata: ConsumerMetadata
 
-    private var metricsRegistry: FetcherMetricsRegistry? = null
+    private var metricsRegistry: FetchMetricsRegistry? = null
 
     private lateinit var client: MockClient
 
@@ -6572,7 +6571,7 @@ class FetcherTest {
         subscriptions.position(tp0, nextPosition)
         subscriptions.maybeValidatePositionForCurrentLeader(
             apiVersions = apiVersions,
-            tp = tp0,
+            topicPartition = tp0,
             leaderAndEpoch = LeaderAndEpoch(
                 leader = leaderAndEpoch.leader,
                 epoch = epochThree,
@@ -7665,7 +7664,7 @@ class FetcherTest {
             requestTimeoutMs = 1000,
             maxPollTimeoutMs = Int.MAX_VALUE,
         )
-        metricsRegistry = FetcherMetricsRegistry(
+        metricsRegistry = FetchMetricsRegistry(
             tags = metricConfig.tags.keys,
             metricGrpPrefix = "consumer$groupId",
         )

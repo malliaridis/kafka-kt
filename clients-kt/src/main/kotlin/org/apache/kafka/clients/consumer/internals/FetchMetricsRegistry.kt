@@ -19,7 +19,7 @@ package org.apache.kafka.clients.consumer.internals
 
 import org.apache.kafka.common.MetricNameTemplate
 
-class FetcherMetricsRegistry(
+class FetchMetricsRegistry(
     tags: Set<String> = emptySet(),
     metricGrpPrefix: String = "",
 ) {

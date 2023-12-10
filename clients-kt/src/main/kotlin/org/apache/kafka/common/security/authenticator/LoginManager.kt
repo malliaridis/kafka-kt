@@ -124,9 +124,7 @@ class LoginManager private constructor(
         configs: Map<String, *>,
     ) {
 
-        val saslConfigs: Map<String, Any?> = configs.filter { (key) ->
-            key.startsWith("sasl.")
-        }
+        val saslConfigs: Map<String, Any?> = configs.filter { (key) -> key.startsWith("sasl.") }
 
         override fun hashCode(): Int {
             return Objects.hash(configInfo, loginClass, loginCallbackClass, saslConfigs)

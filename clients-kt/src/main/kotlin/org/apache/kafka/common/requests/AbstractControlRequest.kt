@@ -37,11 +37,30 @@ abstract class AbstractControlRequest protected constructor(
     abstract class Builder<T : AbstractRequest> protected constructor(
         api: ApiKeys,
         version: Short,
-        protected val controllerId: Int,
-        protected val controllerEpoch: Int,
-        protected val brokerEpoch: Long,
-        protected val kraftController: Boolean = false
-    ) : AbstractRequest.Builder<T>(api, version)
+        val controllerId: Int,
+        val controllerEpoch: Int,
+        val brokerEpoch: Long,
+        protected val kraftController: Boolean = false,
+    ) : AbstractRequest.Builder<T>(api, version) {
+
+        @Deprecated(
+            message = "Use property instead",
+            replaceWith = ReplaceWith("controllerId")
+        )
+        fun controllerId(): Int = controllerId
+
+        @Deprecated(
+            message = "Use property instead",
+            replaceWith = ReplaceWith("controllerEpoch")
+        )
+        fun controllerEpoch(): Int = controllerEpoch
+
+        @Deprecated(
+            message = "Use property instead",
+            replaceWith = ReplaceWith("brokerEpoch")
+        )
+        fun brokerEpoch(): Long = brokerEpoch
+    }
 
     companion object {
         const val UNKNOWN_BROKER_EPOCH = -1L

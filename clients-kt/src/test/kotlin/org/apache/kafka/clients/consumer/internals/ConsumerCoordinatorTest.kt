@@ -753,7 +753,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             OffsetCommitRequest.Builder(offsetCommitRequestData)
         ).compose(
             object : RequestFutureAdapter<ClientResponse, Any>() {
-                override fun onSuccess(value: ClientResponse, future: RequestFuture<Any>) = Unit
+                override fun onSuccess(response: ClientResponse, future: RequestFuture<Any>) = Unit
                 override fun onFailure(exception: RuntimeException, future: RequestFuture<Any>) {
                     assertIs<DisconnectException>(exception, "Unexpected exception type: ${exception.javaClass}")
                     assertTrue(coordinator.coordinatorUnknown())

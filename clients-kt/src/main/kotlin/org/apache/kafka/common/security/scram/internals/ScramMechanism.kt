@@ -17,20 +17,32 @@
 
 package org.apache.kafka.common.security.scram.internals
 
+/*
+ * This code is duplicated in org.apache.kafka.clients.admin.ScramMechanism.
+ * The type field in both files must match and must not change. The type field
+ * is used both for passing ScramCredentialUpsertion and for the internal
+ * UserScramCredentialRecord. Do not change the type field.
+ */
 enum class ScramMechanism(
+    val type: Byte,
     val hashAlgorithm: String,
     val macAlgorithm: String,
     val minIterations: Int,
+    val maxIterations: Int,
 ) {
     SCRAM_SHA_256(
+        type = 1,
         hashAlgorithm = "SHA-256",
         macAlgorithm = "HmacSHA256",
-        minIterations = 4096
+        minIterations = 4096,
+        maxIterations = 16384,
     ),
     SCRAM_SHA_512(
+        type = 2,
         hashAlgorithm = "SHA-512",
         macAlgorithm = "HmacSHA512",
-        minIterations = 4096
+        minIterations = 4096,
+        maxIterations = 16384,
     );
 
     val mechanismName: String = "SCRAM-$hashAlgorithm"
@@ -59,6 +71,21 @@ enum class ScramMechanism(
     )
     fun minIterations(): Int = minIterations
 
+    @Deprecated(
+        message = "Use property instead",
+        replaceWith = ReplaceWith("maxIterations"),
+    )
+    fun maxIterations(): Int = maxIterations
+
+    /**
+     * @return the type indicator for this SASL SCRAM mechanism
+     */
+    @Deprecated(
+        message = "Use property instead",
+        replaceWith = ReplaceWith("type"),
+    )
+    fun type(): Byte = this.type
+
     companion object {
 
         private val MECHANISMS_MAP: Map<String, ScramMechanism>
@@ -79,7 +106,6 @@ enum class ScramMechanism(
 
         val mechanismNames: Collection<String> = MECHANISMS_MAP.keys
 
-        fun isScram(mechanismName: String): Boolean =
-            MECHANISMS_MAP.containsKey(mechanismName)
+        fun isScram(mechanismName: String): Boolean = MECHANISMS_MAP.containsKey(mechanismName)
     }
 }

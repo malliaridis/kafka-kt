@@ -17,22 +17,22 @@
 
 package org.apache.kafka.clients
 
+import java.util.EnumMap
+import java.util.LinkedList
 import org.apache.kafka.common.errors.UnsupportedVersionException
 import org.apache.kafka.common.feature.SupportedVersionRange
 import org.apache.kafka.common.message.ApiVersionsResponseData
 import org.apache.kafka.common.message.ApiVersionsResponseData.SupportedFeatureKey
 import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.requests.ApiVersionsResponse
-import org.apache.kafka.common.utils.Utils.join
-import org.apache.kafka.common.utils.Utils.min
-import java.util.*
 
 /**
  * An internal class which represents the API versions supported by a particular node.
  */
 class NodeApiVersions(
     nodeApiVersions: Collection<ApiVersionsResponseData.ApiVersion>,
-    nodeSupportedFeatures: Collection<SupportedFeatureKey>
+    nodeSupportedFeatures: Collection<SupportedFeatureKey>,
+    val zkMigrationEnabled: Boolean,
 ) {
     // A map of the usable versions of each API, keyed by the ApiKeys instance
     val supportedVersions: MutableMap<ApiKeys, ApiVersionsResponseData.ApiVersion> =
@@ -116,7 +116,7 @@ class NodeApiVersions(
 
         // Also handle the case where some apiKey types are not specified at all in the given
         // ApiVersions, which may happen when the remote is too old.
-        for (apiKey in ApiKeys.zkBrokerApis()) {
+        for (apiKey in ApiKeys.clientApis()) {
             if (!apiKeysText.containsKey(apiKey.id)) {
                 val bld = StringBuilder()
                 bld.append(apiKey.name)
@@ -198,6 +198,12 @@ class NodeApiVersions(
     )
     fun supportedFeatures(): Map<String, SupportedVersionRange> = supportedFeatures
 
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("zkMigrationEnabled"),
+    )
+    fun zkMigrationEnabled(): Boolean = zkMigrationEnabled
+
     companion object {
 
         /**
@@ -208,10 +214,10 @@ class NodeApiVersions(
          * @return A new NodeApiVersions object.
          */
         fun create(
-            overrides: Collection<ApiVersionsResponseData.ApiVersion> = emptyList()
+            overrides: Collection<ApiVersionsResponseData.ApiVersion> = emptyList(),
         ): NodeApiVersions {
             val apiVersions = LinkedList(overrides)
-            for (apiKey in ApiKeys.zkBrokerApis()) {
+            for (apiKey in ApiKeys.clientApis()) {
                 var exists = false
                 for (apiVersion in apiVersions) {
                     if (apiVersion.apiKey == apiKey.id) {
@@ -221,7 +227,11 @@ class NodeApiVersions(
                 }
                 if (!exists) apiVersions.add(ApiVersionsResponse.toApiVersion(apiKey))
             }
-            return NodeApiVersions(apiVersions, emptyList())
+            return NodeApiVersions(
+                nodeApiVersions = apiVersions,
+                nodeSupportedFeatures = emptyList(),
+                zkMigrationEnabled = false,
+            )
         }
 
         /**

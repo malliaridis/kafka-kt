@@ -100,9 +100,9 @@ interface Records : TransferableRecords {
         const val SIZE_LENGTH = 4
         const val LOG_OVERHEAD = SIZE_OFFSET + SIZE_LENGTH
 
-        // the magic offset is at the same offset for all current message formats, but the 4 bytes
+        // The magic offset is at the same offset for all current message formats, but the 4 bytes
         // between the size and the magic is dependent on the version.
-        const val MAGIC_OFFSET = 16
+        const val MAGIC_OFFSET = LOG_OVERHEAD + 4
         const val MAGIC_LENGTH = 1
         const val HEADER_SIZE_UP_TO_MAGIC = MAGIC_OFFSET + MAGIC_LENGTH
     }

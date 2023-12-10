@@ -17,43 +17,52 @@
 
 package org.apache.kafka.clients.consumer.internals
 
+import java.time.Duration
+import java.util.Properties
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
+import java.util.concurrent.atomic.AtomicReference
+import java.util.regex.Pattern
 import org.apache.kafka.clients.ApiVersions
-import org.apache.kafka.clients.CommonClientConfigs
-import org.apache.kafka.clients.CommonClientConfigs.metricsReporters
 import org.apache.kafka.clients.GroupRebalanceConfig
 import org.apache.kafka.clients.consumer.Consumer
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata
-import org.apache.kafka.clients.consumer.ConsumerInterceptor
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp
 import org.apache.kafka.clients.consumer.OffsetCommitCallback
-import org.apache.kafka.clients.consumer.OffsetResetStrategy
-import org.apache.kafka.clients.consumer.internals.events.ApplicationEvent
+import org.apache.kafka.clients.consumer.internals.ConsumerUtils.createConsumerInterceptors
+import org.apache.kafka.clients.consumer.internals.ConsumerUtils.createKeyDeserializer
+import org.apache.kafka.clients.consumer.internals.ConsumerUtils.createLogContext
+import org.apache.kafka.clients.consumer.internals.ConsumerUtils.createMetrics
+import org.apache.kafka.clients.consumer.internals.ConsumerUtils.createSubscriptionState
+import org.apache.kafka.clients.consumer.internals.ConsumerUtils.createValueDeserializer
+import org.apache.kafka.clients.consumer.internals.events.AssignmentChangeApplicationEvent
 import org.apache.kafka.clients.consumer.internals.events.BackgroundEvent
+import org.apache.kafka.clients.consumer.internals.events.CommitApplicationEvent
 import org.apache.kafka.clients.consumer.internals.events.EventHandler
+import org.apache.kafka.clients.consumer.internals.events.NewTopicsMetadataUpdateRequestEvent
+import org.apache.kafka.clients.consumer.internals.events.OffsetFetchApplicationEvent
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.Metric
 import org.apache.kafka.common.MetricName
 import org.apache.kafka.common.PartitionInfo
 import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.config.ConfigException
+import org.apache.kafka.common.errors.InterruptException
+import org.apache.kafka.common.errors.InvalidGroupIdException
 import org.apache.kafka.common.internals.ClusterResourceListeners
-import org.apache.kafka.common.metrics.KafkaMetricsContext
-import org.apache.kafka.common.metrics.MetricConfig
 import org.apache.kafka.common.metrics.Metrics
-import org.apache.kafka.common.metrics.MetricsContext
-import org.apache.kafka.common.metrics.Sensor
 import org.apache.kafka.common.serialization.Deserializer
 import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.Time
+import org.apache.kafka.common.utils.Utils.closeQuietly
+import org.apache.kafka.common.utils.Utils.propsToMap
 import org.slf4j.Logger
-import java.time.Duration
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.TimeoutException
-import java.util.regex.Pattern
 
 /**
  * This prototype consumer uses the EventHandler to process application events so that the network
@@ -71,7 +80,9 @@ class PrototypeAsyncConsumer<K, V> : Consumer<K, V> {
 
     private val groupId: String?
 
-    private val clientId: String?
+    private val keyDeserializer: Deserializer<K>
+
+    private val valueDeserializer: Deserializer<V>
 
     private val log: Logger
 
@@ -82,53 +93,64 @@ class PrototypeAsyncConsumer<K, V> : Consumer<K, V> {
     private val defaultApiTimeoutMs: Long
 
     constructor(
-        time: Time,
+        properties: Properties,
+        keyDeserializer: Deserializer<K>,
+        valueDeserializer: Deserializer<V>,
+    ) : this(
+        configs = propsToMap(properties),
+        keyDeserializer = keyDeserializer,
+        valueDeserializer = valueDeserializer,
+    )
+
+    constructor(
+        configs: Map<String, Any?>,
+        keyDeserializer: Deserializer<K>,
+        valueDeserializer: Deserializer<V>,
+    ) : this(
+        config = ConsumerConfig(
+            appendDeserializerToConfig(
+                configs = configs,
+                keyDeserializer = keyDeserializer,
+                valueDeserializer = valueDeserializer,
+            ),
+        ),
+        keyDeserializer = keyDeserializer,
+        valueDeserializer = valueDeserializer,
+    )
+
+    constructor(
         config: ConsumerConfig,
         keyDeserializer: Deserializer<K>,
         valueDeserializer: Deserializer<V>,
     ) {
-        this.time = time
+        this.time = Time.SYSTEM
         val groupRebalanceConfig = GroupRebalanceConfig(
             config = config,
             protocolType = GroupRebalanceConfig.ProtocolType.CONSUMER,
         )
-        groupId = groupRebalanceConfig.groupId
-        clientId = config.getString(CommonClientConfigs.CLIENT_ID_CONFIG)!!
-        defaultApiTimeoutMs = config.getLong(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG)!!
-
-        // If group.instance.id is set, we will append it to the log context.
-        logContext = LogContext(
-            if (groupRebalanceConfig.groupInstanceId != null)
-                "[Consumer instanceId=${groupRebalanceConfig.groupInstanceId}, " +
-                        "clientId=$clientId, groupId=$groupId] "
-            else "[Consumer clientId=$clientId, groupId=$groupId] "
-        )
-
-        log = logContext.logger(javaClass)
-        val offsetResetStrategy = OffsetResetStrategy.valueOf(
-            config.getString(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG)!!.uppercase()
-        )
-        subscriptions = SubscriptionState(logContext, offsetResetStrategy)
-        metrics = buildMetrics(config, time, clientId)
-
+        this.groupId = groupRebalanceConfig.groupId
+        this.defaultApiTimeoutMs = config.getLong(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG)!!
+        this.logContext = createLogContext(config, groupRebalanceConfig)
+        this.log = logContext.logger(javaClass)
+        this.keyDeserializer = createKeyDeserializer(config, keyDeserializer)
+        this.valueDeserializer = createValueDeserializer(config, valueDeserializer)
+        this.subscriptions = createSubscriptionState(config, logContext)
+        this.metrics = createMetrics(config, time)
+        val interceptorList = createConsumerInterceptors<K, V>(config)
         val clusterResourceListeners = configureClusterResourceListeners(
-            keyDeserializer,
-            valueDeserializer,
-            metrics.reporters,
-            config.getConfiguredInstances(
-                key = ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG,
-                t = ConsumerInterceptor::class.java,
-                configOverrides = mapOf(ConsumerConfig.CLIENT_ID_CONFIG to clientId)
-            )
+            keyDeserializer = this.keyDeserializer,
+            valueDeserializer = this.valueDeserializer,
+            candidateLists = arrayOf(metrics.reporters, interceptorList),
         )
         eventHandler = DefaultEventHandler(
             config = config,
+            groupRebalanceConfig = groupRebalanceConfig,
             logContext = logContext,
             subscriptionState = subscriptions,
             apiVersions = ApiVersions(),
             metrics = metrics,
             clusterResourceListeners = clusterResourceListeners,
-            // fetcherThrottleTimeSensor is coming from the fetcher, but we don't have one
+            fetcherThrottleTimeSensor = null, // this is coming from the fetcher, but we don't have one
         )
     }
 
@@ -136,13 +158,11 @@ class PrototypeAsyncConsumer<K, V> : Consumer<K, V> {
     internal constructor(
         time: Time,
         logContext: LogContext,
-        config: ConsumerConfig?,
+        config: ConsumerConfig,
         subscriptionState: SubscriptionState,
         eventHandler: EventHandler,
         metrics: Metrics,
-        clusterResourceListeners: ClusterResourceListeners?,
         groupId: String?,
-        clientId: String?,
         defaultApiTimeoutMs: Int,
     ) {
         this.time = time
@@ -152,7 +172,8 @@ class PrototypeAsyncConsumer<K, V> : Consumer<K, V> {
         this.metrics = metrics
         this.groupId = groupId
         this.defaultApiTimeoutMs = defaultApiTimeoutMs.toLong()
-        this.clientId = clientId
+        keyDeserializer = createKeyDeserializer(config, null)
+        valueDeserializer = createValueDeserializer(config, null)
         this.eventHandler = eventHandler
     }
 
@@ -216,18 +237,33 @@ class PrototypeAsyncConsumer<K, V> : Consumer<K, V> {
     /**
      * This method sends a commit event to the EventHandler and return.
      */
-    override fun commitAsync() {
-        val commitEvent: ApplicationEvent = CommitApplicationEvent()
-        eventHandler.add(commitEvent)
-    }
+    override fun commitAsync() = commitAsync(null)
 
     override fun commitAsync(callback: OffsetCommitCallback?) =
-        throw KafkaException("method not implemented")
+        commitAsync(subscriptions.allConsumed(), callback)
 
     override fun commitAsync(
         offsets: Map<TopicPartition, OffsetAndMetadata>,
         callback: OffsetCommitCallback?,
-    ) = throw KafkaException("method not implemented")
+    ) {
+        val future = commit(offsets)
+        val commitCallback = callback ?: DefaultOffsetCommitCallback()
+        future.whenComplete { result, throwable ->
+            if (throwable != null) commitCallback.onComplete(offsets, KafkaException(cause = throwable))
+            else commitCallback.onComplete(offsets, null)
+        }.exceptionally { exception: Throwable? ->
+            println(exception)
+            throw KafkaException(cause = exception)
+        }
+    }
+
+    // Visible for testing
+    internal fun commit(offsets: Map<TopicPartition, OffsetAndMetadata>): CompletableFuture<Unit> {
+        maybeThrowInvalidGroupIdException()
+        val commitEvent = CommitApplicationEvent(offsets)
+        eventHandler.add(commitEvent)
+        return commitEvent.future()
+    }
 
     override fun seek(partition: TopicPartition, offset: Long) =
         throw KafkaException("method not implemented")
@@ -256,12 +292,38 @@ class PrototypeAsyncConsumer<K, V> : Consumer<K, V> {
         throw KafkaException("method not implemented")
 
     override fun committed(partitions: Set<TopicPartition>): Map<TopicPartition, OffsetAndMetadata> =
-        throw KafkaException("method not implemented")
+        committed(partitions, Duration.ofMillis(defaultApiTimeoutMs))
 
     override fun committed(
         partitions: Set<TopicPartition>,
-        timeout: Duration
-    ): Map<TopicPartition, OffsetAndMetadata> = throw KafkaException("method not implemented")
+        timeout: Duration,
+    ): Map<TopicPartition, OffsetAndMetadata> {
+        maybeThrowInvalidGroupIdException()
+        if (partitions.isEmpty()) return HashMap()
+
+        val event = OffsetFetchApplicationEvent(partitions)
+        eventHandler.add(event)
+
+        return try {
+            event.future().get(timeout.toMillis(), TimeUnit.MILLISECONDS)
+        } catch (exception: InterruptedException) {
+            throw InterruptException(exception)
+        } catch (exception: TimeoutException) {
+            throw org.apache.kafka.common.errors.TimeoutException(exception)
+        } catch (exception: ExecutionException) {
+            // Execution exception is thrown here
+            throw KafkaException(exception)
+        } catch (excpetion: Exception) {
+            throw excpetion
+        }
+    }
+
+    private fun maybeThrowInvalidGroupIdException() {
+        if (groupId.isNullOrEmpty()) throw InvalidGroupIdException(
+            "To use the group management or offset commit APIs, you must provide " +
+                    "a valid ${ConsumerConfig.GROUP_ID_CONFIG} in the consumer configuration."
+        )
+    }
 
     override fun metrics(): Map<MetricName, Metric> =
         throw KafkaException("method not implemented")
@@ -302,7 +364,7 @@ class PrototypeAsyncConsumer<K, V> : Consumer<K, V> {
 
     override fun beginningOffsets(
         partitions: Collection<TopicPartition>,
-        timeout: Duration
+        timeout: Duration,
     ): Map<TopicPartition, Long> = throw KafkaException("method not implemented")
 
     override fun endOffsets(partitions: Collection<TopicPartition>): Map<TopicPartition, Long> =
@@ -310,7 +372,7 @@ class PrototypeAsyncConsumer<K, V> : Consumer<K, V> {
 
     override fun endOffsets(
         partitions: Collection<TopicPartition>,
-        timeout: Duration
+        timeout: Duration,
     ): Map<TopicPartition, Long> = throw KafkaException("method not implemented")
 
     override fun currentLag(topicPartition: TopicPartition): Long =
@@ -323,11 +385,20 @@ class PrototypeAsyncConsumer<K, V> : Consumer<K, V> {
 
     override fun enforceRebalance(reason: String?) = throw KafkaException("method not implemented")
 
-    override fun close() = throw KafkaException("method not implemented")
+    override fun close() = close(Duration.ofMillis(DEFAULT_CLOSE_TIMEOUT_MS))
 
-    override fun close(timeout: Duration) = throw KafkaException("method not implemented")
+    override fun close(timeout: Duration) {
+        val firstException = AtomicReference<Throwable?>()
+        closeQuietly(eventHandler, "event handler", firstException)
+        log.debug("Kafka consumer has been closed")
+        val exception = firstException.get()
+        if (exception != null) {
+            if (exception is InterruptException) throw exception
+            else throw KafkaException("Failed to close kafka consumer", exception)
+        }
+    }
 
-    override fun wakeup() = throw KafkaException("method not implemented")
+    override fun wakeup() = Unit
 
     /**
      * This method sends a commit event to the EventHandler and waits for
@@ -335,28 +406,27 @@ class PrototypeAsyncConsumer<K, V> : Consumer<K, V> {
      *
      * @param timeout max wait time for the blocking operation.
      */
-    override fun commitSync(timeout: Duration) {
-        val commitEvent = CommitApplicationEvent()
-        eventHandler.add(commitEvent)
-        val commitFuture = commitEvent.commitFuture
+    override fun commitSync(timeout: Duration) = commitSync(subscriptions.allConsumed(), timeout)
 
+    override fun commitSync(offsets: Map<TopicPartition, OffsetAndMetadata>) =
+        commitSync(offsets, Duration.ofMillis(defaultApiTimeoutMs))
+
+    override fun commitSync(offsets: Map<TopicPartition, OffsetAndMetadata>, timeout: Duration) {
+        val commitFuture = commit(offsets)
         try {
             commitFuture[timeout.toMillis(), TimeUnit.MILLISECONDS]
-        } catch (e: TimeoutException) {
-            throw org.apache.kafka.common.errors.TimeoutException("timeout")
-        } catch (e: Exception) {
-            // handle exception here
-            throw RuntimeException(e)
+        } catch (exception: TimeoutException) {
+            throw org.apache.kafka.common.errors.TimeoutException(exception)
+        } catch (exception: InterruptedException) {
+            throw InterruptException(exception)
+        } catch (exception: ExecutionException) {
+            throw KafkaException(exception)
+        } catch (exception: Exception) {
+            throw exception
         }
     }
 
-    override fun commitSync(offsets: Map<TopicPartition, OffsetAndMetadata>) =
-        throw KafkaException("method not implemented")
-
-    override fun commitSync(offsets: Map<TopicPartition, OffsetAndMetadata>, timeout: Duration) =
-        throw KafkaException("method not implemented")
-
-    override fun assignment(): Set<TopicPartition> = throw KafkaException("method not implemented")
+    override fun assignment(): Set<TopicPartition> = subscriptions.assignedPartitions()
 
     /**
      * Get the current subscription. or an empty set if no such call has
@@ -371,11 +441,39 @@ class PrototypeAsyncConsumer<K, V> : Consumer<K, V> {
     override fun subscribe(topics: Collection<String>, callback: ConsumerRebalanceListener) =
         throw KafkaException("method not implemented")
 
-    override fun assign(partitions: Collection<TopicPartition>) =
-        throw KafkaException("method not implemented")
+    override fun assign(partitions: Collection<TopicPartition>) {
+        if (partitions.isEmpty()) {
+            // TODO: implementation of unsubscribe() will be included in forthcoming commits.
+            // this.unsubscribe();
+            return
+        }
+
+        for ((topic) in partitions) {
+            require(topic.isNotBlank()) { "Topic partitions to assign to cannot have null or empty topic" }
+        }
+
+        // TODO: implementation of refactored Fetcher will be included in forthcoming commits.
+        // fetcher.clearBufferedDataForUnassignedPartitions(partitions);
+
+        // assignment change event will trigger autocommit if it is configured and the group id is specified. This is
+        // to make sure offsets of topic partitions the consumer is unsubscribing from are committed since there will
+        // be no following rebalance
+
+        // TODO: implementation of refactored Fetcher will be included in forthcoming commits.
+        // fetcher.clearBufferedDataForUnassignedPartitions(partitions);
+
+        // assignment change event will trigger autocommit if it is configured and the group id is specified. This is
+        // to make sure offsets of topic partitions the consumer is unsubscribing from are committed since there will
+        // be no following rebalance
+        eventHandler.add(AssignmentChangeApplicationEvent(subscriptions.allConsumed(), time.milliseconds()))
+
+        log.info("Assigned to partition(s): {}", partitions.joinToString())
+        if (subscriptions.assignFromUser(HashSet<TopicPartition>(partitions)))
+            eventHandler.add(NewTopicsMetadataUpdateRequestEvent())
+    }
 
     override fun subscribe(pattern: Pattern, callback: ConsumerRebalanceListener) =
-    throw KafkaException("method not implemented")
+        throw KafkaException("method not implemented")
 
     override fun subscribe(pattern: Pattern) = throw KafkaException("method not implemented")
 
@@ -385,22 +483,15 @@ class PrototypeAsyncConsumer<K, V> : Consumer<K, V> {
     override fun poll(timeout: Long): ConsumerRecords<K, V> =
         throw KafkaException("method not implemented")
 
-    /**
-     * A stubbed ApplicationEvent for demonstration purpose
-     */
-    private inner class CommitApplicationEvent : ApplicationEvent() {
-
-        // this is the stubbed commitAsyncEvents
-        var commitFuture = CompletableFuture<Void>()
-
-        override fun process(): Boolean = true
+    private inner class DefaultOffsetCommitCallback : OffsetCommitCallback {
+        override fun onComplete(offsets: Map<TopicPartition, OffsetAndMetadata>?, exception: Exception?) {
+            if (exception != null) log.error("Offset commit with offsets {} failed", offsets, exception)
+        }
     }
 
     companion object {
 
-        private val CLIENT_ID_METRIC_TAG = "client-id"
-
-        private val JMX_PREFIX = "kafka.consumer"
+        internal const val DEFAULT_CLOSE_TIMEOUT_MS = (30 * 1000).toLong()
 
         private fun <K, V> configureClusterResourceListeners(
             keyDeserializer: Deserializer<K>,
@@ -417,37 +508,32 @@ class PrototypeAsyncConsumer<K, V> : Consumer<K, V> {
             return clusterResourceListeners
         }
 
-        private fun buildMetrics(
-            config: ConsumerConfig,
-            time: Time,
-            clientId: String,
-        ): Metrics {
-            val metricsTags = mapOf(CLIENT_ID_METRIC_TAG to clientId)
-            val metricConfig = MetricConfig().apply {
-                samples = config.getInt(ConsumerConfig.METRICS_NUM_SAMPLES_CONFIG)!!
-                timeWindowMs = TimeUnit.MILLISECONDS.convert(
-                    config.getLong(ConsumerConfig.METRICS_SAMPLE_WINDOW_MS_CONFIG)!!,
-                    TimeUnit.MILLISECONDS,
+        // This is here temporary as we don't have public access to the ConsumerConfig in this module.
+        fun appendDeserializerToConfig(
+            configs: Map<String, Any?>,
+            keyDeserializer: Deserializer<*>?,
+            valueDeserializer: Deserializer<*>?,
+        ): Map<String, Any?> {
+            // validate deserializer configuration, if the passed deserializer instance is null,
+            // the user must explicitly set a valid deserializer configuration value
+            val newConfigs = configs.toMutableMap()
+            if (keyDeserializer != null)
+                newConfigs[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = keyDeserializer.javaClass
+            else if (newConfigs[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] == null)
+                throw ConfigException(
+                    name = ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+                    value = null,
+                    message = "must be non-null.",
                 )
-                recordingLevel = Sensor.RecordingLevel.forName(
-                    config.getString(ConsumerConfig.METRICS_RECORDING_LEVEL_CONFIG)!!
+            if (valueDeserializer != null)
+                newConfigs[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = valueDeserializer.javaClass
+            else if (newConfigs[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] == null)
+                throw ConfigException(
+                    name = ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+                    value = null,
+                    message = "must be non-null.",
                 )
-                tags = metricsTags
-            }
-
-            val reporters = metricsReporters(clientId, config).toMutableList()
-            val metricsContext: MetricsContext = KafkaMetricsContext(
-                namespace = JMX_PREFIX,
-                contextLabels =
-                config.originalsWithPrefix(CommonClientConfigs.METRICS_CONTEXT_PREFIX),
-            )
-
-            return Metrics(
-                config = metricConfig,
-                reporters = reporters,
-                time = time,
-                metricsContext = metricsContext,
-            )
+            return newConfigs
         }
     }
 }

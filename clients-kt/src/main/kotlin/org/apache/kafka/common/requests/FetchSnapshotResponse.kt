@@ -105,7 +105,7 @@ class FetchSnapshotResponse(private val data: FetchSnapshotResponseData) :
                 .topics
                 .filter { topic -> topic.name == topicPartition.topic }
                 .flatMap { topic -> topic.partitions }
-                .firstOrNull { partition -> partition.index == topicPartition.partition }
+                .find { partition -> partition.index == topicPartition.partition }
         }
 
         fun parse(buffer: ByteBuffer, version: Short): FetchSnapshotResponse =

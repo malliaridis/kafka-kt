@@ -26,6 +26,9 @@ import java.nio.ByteBuffer
 
 /**
  * This classes exposes low-level methods for reading/writing from byte streams or buffers.
+ *
+ * The implementation of these methods has been tuned for JVM and the empirical calculations could be found
+ * using ByteUtilsBenchmark.java
  */
 object ByteUtils {
 
@@ -85,6 +88,16 @@ object ByteUtils {
                 or (buffer[offset + 3].toInt() and 0xff shl 24))
 
     /**
+     * Read a big-endian integer from a byte array
+     */
+    fun readIntBE(buffer: ByteArray, offset: Int): Int {
+        return (buffer[offset].toInt() and 0xFF shl 24
+                or (buffer[offset + 1].toInt() and 0xFF shl 16)
+                or (buffer[offset + 2].toInt() and 0xFF shl 8)
+                or (buffer[offset + 3].toInt() and 0xFF))
+    }
+
+    /**
      * Write the given long value as a 4 byte unsigned integer. Overflow is ignored.
      *
      * @param buffer The buffer to write to
@@ -137,47 +150,81 @@ object ByteUtils {
      * Read an integer stored in variable-length format using unsigned decoding from
      * [Google Protocol Buffers](http://code.google.com/apis/protocolbuffers/docs/encoding.html).
      *
+     * The implementation is based on Netty's decoding of varint.
+     *
+     * See also [Netty's varint decoding](https://github.com/netty/netty/blob/59aa6e635b9996cf21cd946e64353270679adc73/codec/src/main/java/io/netty/handler/codec/protobuf/ProtobufVarint32FrameDecoder.java#L73)
+     *
      * @param buffer The buffer to read from
      * @return The integer read
      * @throws IllegalArgumentException if variable-length value does not terminate after 5 bytes
      * have been read
      */
     fun readUnsignedVarint(buffer: ByteBuffer): Int {
-        var value = 0
-        var i = 0
-        var b: Int
-        while ((buffer.get().toInt().also { b = it } and 0x80) != 0) {
-            value = value or (b and 0x7f shl i)
-            i += 7
-            if (i > 28) throw illegalVarintException(value)
+        var tmp = buffer.get()
+        return if (tmp >= 0) tmp.toInt()
+        else {
+            var result = tmp.toInt() and 127
+            if (buffer.get().also { tmp = it } >= 0) {
+                result = result or (tmp.toInt() shl 7)
+            } else {
+                result = result or (tmp.toInt() and 127 shl 7)
+                if (buffer.get().also { tmp = it } >= 0) {
+                    result = result or (tmp.toInt() shl 14)
+                } else {
+                    result = result or (tmp.toInt() and 127 shl 14)
+                    if (buffer.get().also { tmp = it } >= 0) {
+                        result = result or (tmp.toInt() shl 21)
+                    } else {
+                        result = result or (tmp.toInt() and 127 shl 21)
+                        result = result or (buffer.get().also { tmp = it }.toInt() shl 28)
+                        if (tmp < 0) throw illegalVarintException(result)
+                    }
+                }
+            }
+            result
         }
-        value = value or (b shl i)
-        return value
     }
 
     /**
      * Read an integer stored in variable-length format using unsigned decoding from
      * [Google Protocol Buffers](http://code.google.com/apis/protocolbuffers/docs/encoding.html).
      *
+     * The implementation is based on Netty's decoding of varint.
+     * See also [Netty's varint decoding](https://github.com/netty/netty/blob/59aa6e635b9996cf21cd946e64353270679adc73/codec/src/main/java/io/netty/handler/codec/protobuf/ProtobufVarint32FrameDecoder.java#L73)
+     *
      * @param input The input to read from
      * @return The integer read
      *
      * @throws IllegalArgumentException if variable-length value does not terminate after 5 bytes
      * have been read
-     * @throws IOException if [DataInput] throws [IOException]
+     * @throws IOException if [InputStream] throws [IOException]
+     * @throws EOFException if [InputStream] throws [EOFException]
      */
     @Throws(IOException::class)
-    fun readUnsignedVarint(input: DataInput): Int {
-        var value = 0
-        var i = 0
-        var b: Int
-        while ((input.readByte().toInt().also { b = it } and 0x80) != 0) {
-            value = value or (b and 0x7f shl i)
-            i += 7
-            if (i > 28) throw illegalVarintException(value)
+    fun readUnsignedVarint(`in`: InputStream): Int {
+        var tmp = `in`.read().toByte()
+        return if (tmp >= 0) tmp.toInt()
+        else {
+            var result = tmp.toInt() and 127
+            if (`in`.read().toByte().also { tmp = it } >= 0) {
+                result = result or (tmp.toInt() shl 7)
+            } else {
+                result = result or (tmp.toInt() and 127 shl 7)
+                if (`in`.read().toByte().also { tmp = it } >= 0) {
+                    result = result or (tmp.toInt() shl 14)
+                } else {
+                    result = result or (tmp.toInt() and 127 shl 14)
+                    if (`in`.read().toByte().also { tmp = it } >= 0) {
+                        result = result or (tmp.toInt() shl 21)
+                    } else {
+                        result = result or (tmp.toInt() and 127 shl 21)
+                        result = result or (`in`.read().toByte().also { tmp = it }.toInt() shl 28)
+                        if (tmp < 0) throw illegalVarintException(result)
+                    }
+                }
+            }
+            result
         }
-        value = value or (b shl i)
-        return value
     }
 
     /**
@@ -207,7 +254,7 @@ object ByteUtils {
      * @throws IOException if [DataInput] throws [IOException]
      */
     @Throws(IOException::class)
-    fun readVarint(input: DataInput): Int {
+    fun readVarint(input: InputStream): Int {
         val value = readUnsignedVarint(input)
         return value ushr 1 xor -(value and 1)
     }
@@ -224,11 +271,11 @@ object ByteUtils {
      * @throws IOException if [DataInput] throws [IOException]
      */
     @Throws(IOException::class)
-    fun readVarlong(input: DataInput): Long {
+    fun readVarlong(input: InputStream): Long {
         var value = 0L
         var i = 0
         var b: Long
-        while ((input.readByte().toLong().also { b = it } and 0x80L) != 0L) {
+        while ((input.read().toLong().also { b = it } and 0x80L) != 0L) {
             value = value or (b and 0x7fL shl i)
             i += 7
             if (i > 63) throw illegalVarlongException(value)
@@ -248,16 +295,22 @@ object ByteUtils {
      * have been read
      */
     fun readVarlong(buffer: ByteBuffer): Long {
+        val raw: Long = readUnsignedVarlong(buffer)
+        return raw ushr 1 xor -(raw and 1L)
+    }
+
+    // visible for testing
+    internal fun readUnsignedVarlong(buffer: ByteBuffer): Long {
         var value = 0L
         var i = 0
         var b: Long
-        while (buffer.get().toLong().also { b = it } and 0x80L != 0L) {
+        while ((buffer.get().toLong().also { b = it } and 0x80L) != 0L) {
             value = value or (b and 0x7fL shl i)
             i += 7
             if (i > 63) throw illegalVarlongException(value)
         }
         value = value or (b shl i)
-        return value ushr 1 xor -(value and 1L)
+        return value
     }
 
     /**
@@ -299,17 +352,34 @@ object ByteUtils {
      * [Google Protocol Buffers](http://code.google.com/apis/protocolbuffers/docs/encoding.html)
      * into the buffer.
      *
+     * Implementation copied from https://github.com/astei/varint-writing-showdown/tree/dev (MIT License)
+     * See also [Sample implementation](https://github.com/astei/varint-writing-showdown/blob/6b1a4baec4b1f0ce65fa40cf0b282ec775fdf43e/src/jmh/java/me/steinborn/varintshowdown/res/SmartNoDataDependencyUnrolledVarIntWriter.java#L8)
+     *
      * @param value The value to write
      * @param buffer The output to write to
      */
     fun writeUnsignedVarint(value: Int, buffer: ByteBuffer) {
-        var value = value
-        while ((value and -0x80).toLong() != 0L) {
-            val b = (value and 0x7f or 0x80).toByte()
-            buffer.put(b)
-            value = value ushr 7
+        if (value and (-0x1 shl 7) == 0) {
+            buffer.put(value.toByte())
+        } else {
+            buffer.put((value and 0x7F or 0x80).toByte())
+            if (value and (-0x1 shl 14) == 0) {
+                buffer.put((value ushr 7 and 0xFF).toByte())
+            } else {
+                buffer.put((value ushr 7 and 0x7F or 0x80).toByte())
+                if (value and (-0x1 shl 21) == 0) {
+                    buffer.put((value ushr 14 and 0xFF).toByte())
+                } else {
+                    buffer.put((value ushr 14 and 0x7F or 0x80).toByte())
+                    if (value and (-0x1 shl 28) == 0) {
+                        buffer.put((value ushr 21 and 0xFF).toByte())
+                    } else {
+                        buffer.put((value ushr 21 and 0x7F or 0x80).toByte())
+                        buffer.put((value ushr 28 and 0xFF).toByte())
+                    }
+                }
+            }
         }
-        buffer.put(value.toByte())
     }
 
     /**
@@ -317,18 +387,30 @@ object ByteUtils {
      * [Google Protocol Buffers](http://code.google.com/apis/protocolbuffers/docs/encoding.html)
      * into the buffer.
      *
+     * For implementation notes, see [writeUnsignedVarint].
+     *
      * @param value The value to write
      * @param out The output to write to
      */
     @Throws(IOException::class)
     fun writeUnsignedVarint(value: Int, out: DataOutput) {
-        var value = value
-        while ((value and -0x80).toLong() != 0L) {
-            val b = (value and 0x7f or 0x80).toByte()
-            out.writeByte(b.toInt())
-            value = value ushr 7
+        if (value and (-0x1 shl 7) == 0) out.writeByte(value)
+        else {
+            out.writeByte(value and 0x7F or 0x80)
+            if (value and (-0x1 shl 14) == 0) out.writeByte(value ushr 7)
+            else {
+                out.writeByte(value ushr 7 and 0x7F or 0x80)
+                if (value and (-0x1 shl 21) == 0) out.writeByte(value ushr 14)
+                else {
+                    out.writeByte((value ushr 14 and 0x7F or 0x80).toByte().toInt())
+                    if (value and (-0x1 shl 28) == 0) out.writeByte(value ushr 21)
+                    else {
+                        out.writeByte(value ushr 21 and 0x7F or 0x80)
+                        out.writeByte(value ushr 28)
+                    }
+                }
+            }
         }
-        out.writeByte(value.toByte().toInt())
     }
 
     /**
@@ -383,7 +465,13 @@ object ByteUtils {
      * @param buffer The buffer to write to
      */
     fun writeVarlong(value: Long, buffer: ByteBuffer) {
-        var v = value shl 1 xor (value shr 63)
+        val v = value shl 1 xor (value shr 63)
+        writeUnsignedVarlong(v, buffer)
+    }
+
+    // visible for testing and benchmarking
+    internal fun writeUnsignedVarlong(v: Long, buffer: ByteBuffer) {
+        var v = v
         while (v and -0x80L != 0L) {
             val b = (v and 0x7fL or 0x80L).toByte()
             buffer.put(b)
@@ -391,6 +479,7 @@ object ByteUtils {
         }
         buffer.put(v.toByte())
     }
+
 
     /**
      * Write the given float following the single-precision 32-bit format IEEE 754 value into the
@@ -468,8 +557,11 @@ object ByteUtils {
      * @see .sizeOfUnsignedVarint
      */
     fun sizeOfVarlong(value: Long): Int {
-        val v = value shl 1 xor (value shr 63)
+        return sizeOfUnsignedVarlong(value shl 1 xor (value shr 63))
+    }
 
+    // visible for benchmarking
+    internal fun sizeOfUnsignedVarlong(v: Long): Int {
         // For implementation notes @see #sizeOfUnsignedVarint(int)
         // Similar logic is applied to allow for 64bit input -> 1-9byte output.
         // return (70 - leadingZeros) / 7 + leadingZeros / 64;

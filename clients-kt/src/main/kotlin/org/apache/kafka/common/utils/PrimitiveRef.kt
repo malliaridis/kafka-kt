@@ -26,5 +26,13 @@ object PrimitiveRef {
 
     fun ofInt(value: Int): IntRef = IntRef(value)
 
-    class IntRef internal constructor(var value: Int)
+    fun ofLong(value: Long): LongRef = LongRef(value)
+
+    class IntRef internal constructor(var value: Int) {
+        override fun toString(): String = "IntRef($value)"
+    }
+
+    class LongRef internal constructor(var value: Long) {
+        override fun toString(): String = "LongRef($value)"
+    }
 }

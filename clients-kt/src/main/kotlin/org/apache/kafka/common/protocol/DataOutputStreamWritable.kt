@@ -88,7 +88,7 @@ class DataOutputStreamWritable(
 
     override fun writeByteBuffer(buf: ByteBuffer) {
         try {
-            if (buf.hasArray()) out.write(buf.array(), buf.position(), buf.limit())
+            if (buf.hasArray()) out.write(buf.array(), buf.arrayOffset() + buf.position(), buf.limit())
             else {
                 val bytes = Utils.toArray(buf)
                 out.write(bytes)

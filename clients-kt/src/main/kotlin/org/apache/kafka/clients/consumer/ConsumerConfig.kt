@@ -17,6 +17,8 @@
 
 package org.apache.kafka.clients.consumer
 
+import java.util.Properties
+import java.util.concurrent.atomic.AtomicInteger
 import org.apache.kafka.clients.ClientDnsLookup
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.CommonClientConfigs.postProcessReconnectBackoffConfigs
@@ -24,11 +26,13 @@ import org.apache.kafka.clients.CommonClientConfigs.postValidateSaslMechanismCon
 import org.apache.kafka.common.IsolationLevel
 import org.apache.kafka.common.config.AbstractConfig
 import org.apache.kafka.common.config.ConfigDef
+import org.apache.kafka.common.config.ConfigDef.CaseInsensitiveValidString
 import org.apache.kafka.common.config.ConfigDef.Importance
 import org.apache.kafka.common.config.ConfigDef.NonEmptyString
 import org.apache.kafka.common.config.ConfigDef.NonNullValidator
-import org.apache.kafka.common.config.ConfigDef.Range.Companion.atLeast
-import org.apache.kafka.common.config.ConfigDef.ValidString.Companion.`in`
+import org.apache.kafka.common.config.ConfigDef.Range
+import org.apache.kafka.common.config.ConfigDef.Type
+import org.apache.kafka.common.config.ConfigDef.ValidString
 import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.common.config.SecurityConfig
 import org.apache.kafka.common.errors.InvalidConfigurationException
@@ -38,8 +42,6 @@ import org.apache.kafka.common.security.auth.SecurityProtocol
 import org.apache.kafka.common.serialization.Deserializer
 import org.apache.kafka.common.utils.Utils.enumOptions
 import org.apache.kafka.common.utils.Utils.propsToMap
-import java.util.*
-import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * The consumer configuration keys
@@ -142,6 +144,7 @@ class ConsumerConfig : AbstractConfig {
                     "<code>$MAX_POLL_RECORDS_CONFIG</code> does not impact the underlying " +
                     "fetching behavior. The consumer will cache the records from each fetch " +
                     "request and returns them incrementally from each poll."
+        const val DEFAULT_MAX_POLL_RECORDS = 500
 
         /**
          * `max.poll.interval.ms`
@@ -220,27 +223,31 @@ class ConsumerConfig : AbstractConfig {
          */
         const val AUTO_OFFSET_RESET_CONFIG = "auto.offset.reset"
         const val AUTO_OFFSET_RESET_DOC =
-            "What to do when there is no initial offset in Kafka or if the current offset does " +
-                    "not exist any more on the server (e.g. because that data has been deleted): " +
+            "What to do when there is no initial offset in Kafka or if the current offset does not exist " +
+                    "any more on the server (e.g. because that data has been deleted): " +
                     "<ul><li>earliest: automatically reset the offset to the earliest offset" +
                     "<li>latest: automatically reset the offset to the latest offset</li>" +
-                    "<li>none: throw exception to the consumer if no previous offset is found " +
-                    "for the consumer's group</li>" +
-                    "<li>anything else: throw exception to the consumer.</li></ul>"
+                    "<li>none: throw exception to the consumer if no previous offset is found for the " +
+                    "consumer's group</li>" +
+                    "<li>anything else: throw exception to the consumer.</li></ul>" +
+                    "<p>Note that altering partition numbers while setting this config to latest may " +
+                    "cause message delivery loss since producers could start to send messages to newly " +
+                    "added partitions (i.e. no initial offsets exist yet) before consumers reset their offsets."
 
         /**
          * `fetch.min.bytes`
          */
         const val FETCH_MIN_BYTES_CONFIG = "fetch.min.bytes"
+        const val DEFAULT_FETCH_MIN_BYTES = 1
         private const val FETCH_MIN_BYTES_DOC =
             "The minimum amount of data the server should return for a fetch request. If " +
-                    "insufficient data is available the request will wait for that much data " +
-                    "to accumulate before answering the request. The default setting of 1 byte " +
-                    "means that fetch requests are answered as soon as a single byte of data is " +
-                    "available or the fetch request times out waiting for data to arrive. " +
-                    "Setting this to something greater than 1 will cause the server to wait for " +
-                    "larger amounts of data to accumulate which can improve server throughput a " +
-                    "bit at the cost of some additional latency."
+                    "insufficient data is available the request will wait for that much data to " +
+                    "accumulate before answering the request. The default setting of " +
+                    "$DEFAULT_FETCH_MIN_BYTES byte means that fetch requests are answered as soon " +
+                    "as that many byte(s) of data is available or the fetch request times out " +
+                    "waiting for data to arrive. Setting this to a larger value will cause the " +
+                    "server to wait for larger amounts of data to accumulate which can improve " +
+                    "server throughput a bit at the cost of some additional latency."
 
         /**
          * `fetch.max.bytes`
@@ -265,6 +272,7 @@ class ConsumerConfig : AbstractConfig {
             "The maximum amount of time the server will block before answering the fetch request " +
                     "if there isn't sufficient data to immediately satisfy the requirement given " +
                     "by fetch.min.bytes."
+        const val DEFAULT_FETCH_MAX_WAIT_MS = 500
 
         /**
          * `metadata.max.age.ms`
@@ -289,63 +297,64 @@ class ConsumerConfig : AbstractConfig {
         /**
          * `send.buffer.bytes`
          */
-        val SEND_BUFFER_CONFIG = CommonClientConfigs.SEND_BUFFER_CONFIG
+        const val SEND_BUFFER_CONFIG = CommonClientConfigs.SEND_BUFFER_CONFIG
 
         /**
          * `receive.buffer.bytes`
          */
-        val RECEIVE_BUFFER_CONFIG = CommonClientConfigs.RECEIVE_BUFFER_CONFIG
+        const val RECEIVE_BUFFER_CONFIG = CommonClientConfigs.RECEIVE_BUFFER_CONFIG
 
         /**
          * `client.id`
          */
-        val CLIENT_ID_CONFIG = CommonClientConfigs.CLIENT_ID_CONFIG
+        const val CLIENT_ID_CONFIG = CommonClientConfigs.CLIENT_ID_CONFIG
 
         /**
          * `client.rack`
          */
-        val CLIENT_RACK_CONFIG = CommonClientConfigs.CLIENT_RACK_CONFIG
+        const val CLIENT_RACK_CONFIG = CommonClientConfigs.CLIENT_RACK_CONFIG
+        const val DEFAULT_CLIENT_RACK = CommonClientConfigs.DEFAULT_CLIENT_RACK
 
         /**
          * `reconnect.backoff.ms`
          */
-        val RECONNECT_BACKOFF_MS_CONFIG = CommonClientConfigs.RECONNECT_BACKOFF_MS_CONFIG
+        const val RECONNECT_BACKOFF_MS_CONFIG = CommonClientConfigs.RECONNECT_BACKOFF_MS_CONFIG
 
         /**
          * `reconnect.backoff.max.ms`
          */
-        val RECONNECT_BACKOFF_MAX_MS_CONFIG = CommonClientConfigs.RECONNECT_BACKOFF_MAX_MS_CONFIG
+        const val RECONNECT_BACKOFF_MAX_MS_CONFIG = CommonClientConfigs.RECONNECT_BACKOFF_MAX_MS_CONFIG
 
         /**
          * `retry.backoff.ms`
          */
-        val RETRY_BACKOFF_MS_CONFIG = CommonClientConfigs.RETRY_BACKOFF_MS_CONFIG
+        const val RETRY_BACKOFF_MS_CONFIG = CommonClientConfigs.RETRY_BACKOFF_MS_CONFIG
 
         /**
          * `metrics.sample.window.ms`
          */
-        val METRICS_SAMPLE_WINDOW_MS_CONFIG = CommonClientConfigs.METRICS_SAMPLE_WINDOW_MS_CONFIG
+        const val METRICS_SAMPLE_WINDOW_MS_CONFIG = CommonClientConfigs.METRICS_SAMPLE_WINDOW_MS_CONFIG
 
         /**
          * `metrics.num.samples`
          */
-        val METRICS_NUM_SAMPLES_CONFIG = CommonClientConfigs.METRICS_NUM_SAMPLES_CONFIG
+        const val METRICS_NUM_SAMPLES_CONFIG = CommonClientConfigs.METRICS_NUM_SAMPLES_CONFIG
 
         /**
          * `metrics.log.level`
          */
-        val METRICS_RECORDING_LEVEL_CONFIG = CommonClientConfigs.METRICS_RECORDING_LEVEL_CONFIG
+        const val METRICS_RECORDING_LEVEL_CONFIG = CommonClientConfigs.METRICS_RECORDING_LEVEL_CONFIG
 
         /**
          * `metric.reporters`
          */
-        val METRIC_REPORTER_CLASSES_CONFIG = CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG
+        const val METRIC_REPORTER_CLASSES_CONFIG = CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG
 
         /**
          * `auto.include.jmx.reporter`
          */
         @Deprecated("")
-        val AUTO_INCLUDE_JMX_REPORTER_CONFIG = CommonClientConfigs.AUTO_INCLUDE_JMX_REPORTER_CONFIG
+        const val AUTO_INCLUDE_JMX_REPORTER_CONFIG = CommonClientConfigs.AUTO_INCLUDE_JMX_REPORTER_CONFIG
 
         /**
          * `check.crcs`
@@ -487,16 +496,16 @@ class ConsumerConfig : AbstractConfig {
         init {
             CONFIG = ConfigDef().define(
                 name = BOOTSTRAP_SERVERS_CONFIG,
-                type = ConfigDef.Type.LIST,
+                type = Type.LIST,
                 defaultValue = emptyList<Any>(),
                 validator = NonNullValidator(),
                 importance = Importance.HIGH,
                 documentation = CommonClientConfigs.BOOTSTRAP_SERVERS_DOC,
             ).define(
                 name = CLIENT_DNS_LOOKUP_CONFIG,
-                type = ConfigDef.Type.STRING,
+                type = Type.STRING,
                 defaultValue = ClientDnsLookup.USE_ALL_DNS_IPS.toString(),
-                validator = `in`(
+                validator = ValidString.`in`(
                     ClientDnsLookup.USE_ALL_DNS_IPS.toString(),
                     ClientDnsLookup.RESOLVE_CANONICAL_BOOTSTRAP_SERVERS_ONLY.toString(),
                 ),
@@ -504,32 +513,32 @@ class ConsumerConfig : AbstractConfig {
                 documentation = CommonClientConfigs.CLIENT_DNS_LOOKUP_DOC,
             ).define(
                 name = GROUP_ID_CONFIG,
-                type = ConfigDef.Type.STRING,
+                type = Type.STRING,
                 defaultValue = null,
                 importance = Importance.HIGH,
                 documentation = GROUP_ID_DOC,
             ).define(
                 name = GROUP_INSTANCE_ID_CONFIG,
-                type = ConfigDef.Type.STRING,
+                type = Type.STRING,
                 defaultValue = null,
                 validator = NonEmptyString(),
                 importance = Importance.MEDIUM,
                 documentation = GROUP_INSTANCE_ID_DOC,
             ).define(
                 name = SESSION_TIMEOUT_MS_CONFIG,
-                type = ConfigDef.Type.INT,
+                type = Type.INT,
                 defaultValue = 45000,
                 importance = Importance.HIGH,
                 documentation = SESSION_TIMEOUT_MS_DOC,
             ).define(
                 name = HEARTBEAT_INTERVAL_MS_CONFIG,
-                type = ConfigDef.Type.INT,
+                type = Type.INT,
                 defaultValue = 3000,
                 importance = Importance.HIGH,
                 documentation = HEARTBEAT_INTERVAL_MS_DOC,
             ).define(
                 name = PARTITION_ASSIGNMENT_STRATEGY_CONFIG,
-                type = ConfigDef.Type.LIST,
+                type = Type.LIST,
                 defaultValue = listOf(
                     RangeAssignor::class.java.name,
                     CooperativeStickyAssignor::class.java.name,
@@ -539,131 +548,131 @@ class ConsumerConfig : AbstractConfig {
                 documentation = PARTITION_ASSIGNMENT_STRATEGY_DOC,
             ).define(
                 name = METADATA_MAX_AGE_CONFIG,
-                type = ConfigDef.Type.LONG,
+                type = Type.LONG,
                 defaultValue = 5 * 60 * 1000,
-                validator = atLeast(0),
+                validator = Range.atLeast(0),
                 importance = Importance.LOW,
                 documentation = CommonClientConfigs.METADATA_MAX_AGE_DOC,
             ).define(
                 name = ENABLE_AUTO_COMMIT_CONFIG,
-                type = ConfigDef.Type.BOOLEAN,
+                type = Type.BOOLEAN,
                 defaultValue = true,
                 importance = Importance.MEDIUM,
                 documentation = ENABLE_AUTO_COMMIT_DOC,
             ).define(
                 name = AUTO_COMMIT_INTERVAL_MS_CONFIG,
-                type = ConfigDef.Type.INT,
+                type = Type.INT,
                 defaultValue = 5000,
-                validator = atLeast(0),
+                validator = Range.atLeast(0),
                 importance = Importance.LOW,
                 documentation = AUTO_COMMIT_INTERVAL_MS_DOC,
             ).define(
                 name = CLIENT_ID_CONFIG,
-                type = ConfigDef.Type.STRING,
+                type = Type.STRING,
                 defaultValue = "",
                 importance = Importance.LOW,
                 documentation = CommonClientConfigs.CLIENT_ID_DOC,
             ).define(
                 name = CLIENT_RACK_CONFIG,
-                type = ConfigDef.Type.STRING,
-                defaultValue = "",
+                type = Type.STRING,
+                defaultValue = DEFAULT_CLIENT_RACK,
                 importance = Importance.LOW,
                 documentation = CommonClientConfigs.CLIENT_RACK_DOC,
             ).define(
                 name = MAX_PARTITION_FETCH_BYTES_CONFIG,
-                type = ConfigDef.Type.INT,
+                type = Type.INT,
                 defaultValue = DEFAULT_MAX_PARTITION_FETCH_BYTES,
-                validator = atLeast(0),
+                validator = Range.atLeast(0),
                 importance = Importance.HIGH,
                 documentation = MAX_PARTITION_FETCH_BYTES_DOC,
             ).define(
                 name = SEND_BUFFER_CONFIG,
-                type = ConfigDef.Type.INT,
+                type = Type.INT,
                 defaultValue = 128 * 1024,
-                validator = atLeast(CommonClientConfigs.SEND_BUFFER_LOWER_BOUND),
+                validator = Range.atLeast(CommonClientConfigs.SEND_BUFFER_LOWER_BOUND),
                 importance = Importance.MEDIUM,
                 documentation = CommonClientConfigs.SEND_BUFFER_DOC,
             ).define(
                 name = RECEIVE_BUFFER_CONFIG,
-                type = ConfigDef.Type.INT,
+                type = Type.INT,
                 defaultValue = 64 * 1024,
-                validator = atLeast(CommonClientConfigs.RECEIVE_BUFFER_LOWER_BOUND),
+                validator = Range.atLeast(CommonClientConfigs.RECEIVE_BUFFER_LOWER_BOUND),
                 importance = Importance.MEDIUM,
                 documentation = CommonClientConfigs.RECEIVE_BUFFER_DOC,
             ).define(
                 name = FETCH_MIN_BYTES_CONFIG,
-                type = ConfigDef.Type.INT,
-                defaultValue = 1,
-                validator = atLeast(0),
+                type = Type.INT,
+                defaultValue = DEFAULT_FETCH_MIN_BYTES,
+                validator = Range.atLeast(0),
                 importance = Importance.HIGH,
                 documentation = FETCH_MIN_BYTES_DOC,
             ).define(
                 name = FETCH_MAX_BYTES_CONFIG,
-                type = ConfigDef.Type.INT,
+                type = Type.INT,
                 defaultValue = DEFAULT_FETCH_MAX_BYTES,
-                validator = atLeast(0),
+                validator = Range.atLeast(0),
                 importance = Importance.MEDIUM,
                 documentation = FETCH_MAX_BYTES_DOC,
             ).define(
                 name = FETCH_MAX_WAIT_MS_CONFIG,
-                type = ConfigDef.Type.INT,
-                defaultValue = 500,
-                validator = atLeast(0),
+                type = Type.INT,
+                defaultValue = DEFAULT_FETCH_MAX_WAIT_MS,
+                validator = Range.atLeast(0),
                 importance = Importance.LOW,
                 documentation = FETCH_MAX_WAIT_MS_DOC,
             ).define(
                 name = RECONNECT_BACKOFF_MS_CONFIG,
-                type = ConfigDef.Type.LONG,
+                type = Type.LONG,
                 defaultValue = 50L,
-                validator = atLeast(0L),
+                validator = Range.atLeast(0L),
                 importance = Importance.LOW,
                 documentation = CommonClientConfigs.RECONNECT_BACKOFF_MS_DOC,
             ).define(
                 name = RECONNECT_BACKOFF_MAX_MS_CONFIG,
-                type = ConfigDef.Type.LONG,
+                type = Type.LONG,
                 defaultValue = 1000L,
-                validator = atLeast(0L),
+                validator = Range.atLeast(0L),
                 importance = Importance.LOW,
                 documentation = CommonClientConfigs.RECONNECT_BACKOFF_MAX_MS_DOC,
             ).define(
                 name = RETRY_BACKOFF_MS_CONFIG,
-                type = ConfigDef.Type.LONG,
+                type = Type.LONG,
                 defaultValue = 100L,
-                validator = atLeast(0L),
+                validator = Range.atLeast(0L),
                 importance = Importance.LOW,
                 documentation = CommonClientConfigs.RETRY_BACKOFF_MS_DOC,
             ).define(
                 name = AUTO_OFFSET_RESET_CONFIG,
-                type = ConfigDef.Type.STRING,
+                type = Type.STRING,
                 defaultValue = OffsetResetStrategy.LATEST.toString(),
-                validator = `in`(*enumOptions(OffsetResetStrategy::class.java)),
+                validator = ValidString.`in`(*enumOptions(OffsetResetStrategy::class.java)),
                 importance = Importance.MEDIUM,
                 documentation = AUTO_OFFSET_RESET_DOC,
             ).define(
                 name = CHECK_CRCS_CONFIG,
-                type = ConfigDef.Type.BOOLEAN,
+                type = Type.BOOLEAN,
                 defaultValue = true,
                 importance = Importance.LOW,
                 documentation = CHECK_CRCS_DOC,
             ).define(
                 name = METRICS_SAMPLE_WINDOW_MS_CONFIG,
-                type = ConfigDef.Type.LONG,
+                type = Type.LONG,
                 defaultValue = 30000,
-                validator = atLeast(0),
+                validator = Range.atLeast(0),
                 importance = Importance.LOW,
                 documentation = CommonClientConfigs.METRICS_SAMPLE_WINDOW_MS_DOC,
             ).define(
                 name = METRICS_NUM_SAMPLES_CONFIG,
-                type = ConfigDef.Type.INT,
+                type = Type.INT,
                 defaultValue = 2,
-                validator = atLeast(1),
+                validator = Range.atLeast(1),
                 importance = Importance.LOW,
                 documentation = CommonClientConfigs.METRICS_NUM_SAMPLES_DOC,
             ).define(
                 name = METRICS_RECORDING_LEVEL_CONFIG,
-                type = ConfigDef.Type.STRING,
+                type = Type.STRING,
                 defaultValue = Sensor.RecordingLevel.INFO.toString(),
-                validator = `in`(
+                validator = ValidString.`in`(
                     Sensor.RecordingLevel.INFO.toString(),
                     Sensor.RecordingLevel.DEBUG.toString(),
                     Sensor.RecordingLevel.TRACE.toString(),
@@ -672,56 +681,56 @@ class ConsumerConfig : AbstractConfig {
                 documentation = CommonClientConfigs.METRICS_RECORDING_LEVEL_DOC,
             ).define(
                 name = METRIC_REPORTER_CLASSES_CONFIG,
-                type = ConfigDef.Type.LIST,
+                type = Type.LIST,
                 defaultValue = emptyList<Any>(),
                 validator = NonNullValidator(),
                 importance = Importance.LOW,
                 documentation = CommonClientConfigs.METRIC_REPORTER_CLASSES_DOC,
             ).define(
                 name = AUTO_INCLUDE_JMX_REPORTER_CONFIG,
-                type = ConfigDef.Type.BOOLEAN,
+                type = Type.BOOLEAN,
                 defaultValue = true,
                 importance = Importance.LOW,
                 documentation = CommonClientConfigs.AUTO_INCLUDE_JMX_REPORTER_DOC,
             ).define(
                 name = KEY_DESERIALIZER_CLASS_CONFIG,
-                type = ConfigDef.Type.CLASS,
+                type = Type.CLASS,
                 importance = Importance.HIGH,
                 documentation = KEY_DESERIALIZER_CLASS_DOC,
             ).define(
                 name = VALUE_DESERIALIZER_CLASS_CONFIG,
-                type = ConfigDef.Type.CLASS,
+                type = Type.CLASS,
                 importance = Importance.HIGH,
                 documentation = VALUE_DESERIALIZER_CLASS_DOC,
             ).define(
                 name = REQUEST_TIMEOUT_MS_CONFIG,
-                type = ConfigDef.Type.INT,
+                type = Type.INT,
                 defaultValue = 30000,
-                validator = atLeast(0),
+                validator = Range.atLeast(0),
                 importance = Importance.MEDIUM,
                 documentation = REQUEST_TIMEOUT_MS_DOC,
             ).define(
                 name = DEFAULT_API_TIMEOUT_MS_CONFIG,
-                type = ConfigDef.Type.INT,
+                type = Type.INT,
                 defaultValue = 60 * 1000,
-                validator = atLeast(0),
+                validator = Range.atLeast(0),
                 importance = Importance.MEDIUM,
                 documentation = CommonClientConfigs.DEFAULT_API_TIMEOUT_MS_DOC,
             ).define(
                 name = SOCKET_CONNECTION_SETUP_TIMEOUT_MS_CONFIG,
-                type = ConfigDef.Type.LONG,
+                type = Type.LONG,
                 defaultValue = CommonClientConfigs.DEFAULT_SOCKET_CONNECTION_SETUP_TIMEOUT_MS,
                 importance = Importance.MEDIUM,
                 documentation = CommonClientConfigs.SOCKET_CONNECTION_SETUP_TIMEOUT_MS_DOC,
             ).define(
                 name = SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS_CONFIG,
-                type = ConfigDef.Type.LONG,
+                type = Type.LONG,
                 defaultValue = CommonClientConfigs.DEFAULT_SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS,
                 importance = Importance.MEDIUM,
                 documentation = CommonClientConfigs.SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS_DOC,
             ).define(
                 name = CONNECTIONS_MAX_IDLE_MS_CONFIG,
-                type = ConfigDef.Type.LONG,
+                type = Type.LONG,
                 // default is set to be a bit lower than the server default (10 min), to avoid both
                 // client and server closing connection at same time
                 defaultValue = 9 * 60 * 1000,
@@ -729,46 +738,46 @@ class ConsumerConfig : AbstractConfig {
                 documentation = CommonClientConfigs.CONNECTIONS_MAX_IDLE_MS_DOC,
             ).define(
                 name = INTERCEPTOR_CLASSES_CONFIG,
-                type = ConfigDef.Type.LIST,
+                type = Type.LIST,
                 defaultValue = emptyList<Any>(),
                 validator = NonNullValidator(),
                 importance = Importance.LOW,
                 documentation = INTERCEPTOR_CLASSES_DOC,
             ).define(
                 name = MAX_POLL_RECORDS_CONFIG,
-                type = ConfigDef.Type.INT,
-                defaultValue = 500,
-                validator = atLeast(1),
+                type = Type.INT,
+                defaultValue = DEFAULT_MAX_POLL_RECORDS,
+                validator = Range.atLeast(1),
                 importance = Importance.MEDIUM,
                 documentation = MAX_POLL_RECORDS_DOC,
             ).define(
                 name = MAX_POLL_INTERVAL_MS_CONFIG,
-                type = ConfigDef.Type.INT,
+                type = Type.INT,
                 defaultValue = 300000,
-                validator = atLeast(1),
+                validator = Range.atLeast(1),
                 importance = Importance.MEDIUM,
                 documentation = MAX_POLL_INTERVAL_MS_DOC,
             ).define(
                 name = EXCLUDE_INTERNAL_TOPICS_CONFIG,
-                type = ConfigDef.Type.BOOLEAN,
+                type = Type.BOOLEAN,
                 defaultValue = DEFAULT_EXCLUDE_INTERNAL_TOPICS,
                 importance = Importance.MEDIUM,
                 documentation = EXCLUDE_INTERNAL_TOPICS_DOC,
             ).defineInternal(
                 name = LEAVE_GROUP_ON_CLOSE_CONFIG,
-                type = ConfigDef.Type.BOOLEAN,
+                type = Type.BOOLEAN,
                 defaultValue = true,
                 importance = Importance.LOW,
             ).defineInternal(
                 name = THROW_ON_FETCH_STABLE_OFFSET_UNSUPPORTED,
-                type = ConfigDef.Type.BOOLEAN,
+                type = Type.BOOLEAN,
                 defaultValue = false,
                 importance = Importance.LOW,
             ).define(
                 name = ISOLATION_LEVEL_CONFIG,
-                type = ConfigDef.Type.STRING,
+                type = Type.STRING,
                 defaultValue = DEFAULT_ISOLATION_LEVEL,
-                validator = `in`(
+                validator = ValidString.`in`(
                     IsolationLevel.READ_COMMITTED.toString().lowercase(),
                     IsolationLevel.READ_UNCOMMITTED.toString().lowercase(),
                 ),
@@ -776,22 +785,22 @@ class ConsumerConfig : AbstractConfig {
                 documentation = ISOLATION_LEVEL_DOC,
             ).define(
                 name = ALLOW_AUTO_CREATE_TOPICS_CONFIG,
-                type = ConfigDef.Type.BOOLEAN,
+                type = Type.BOOLEAN,
                 defaultValue = DEFAULT_ALLOW_AUTO_CREATE_TOPICS,
                 importance = Importance.MEDIUM,
                 documentation = ALLOW_AUTO_CREATE_TOPICS_DOC,
             ).define(
                 // security support
                 name = SECURITY_PROVIDERS_CONFIG,
-                type = ConfigDef.Type.STRING,
+                type = Type.STRING,
                 defaultValue = null,
                 importance = Importance.LOW,
                 documentation = SECURITY_PROVIDERS_DOC,
             ).define(
                 name = CommonClientConfigs.SECURITY_PROTOCOL_CONFIG,
-                type = ConfigDef.Type.STRING,
+                type = Type.STRING,
                 defaultValue = CommonClientConfigs.DEFAULT_SECURITY_PROTOCOL,
-                validator = `in`(*enumOptions(SecurityProtocol::class.java)),
+                validator = CaseInsensitiveValidString.`in`(*enumOptions(SecurityProtocol::class.java)),
                 importance = Importance.MEDIUM,
                 documentation = CommonClientConfigs.SECURITY_PROTOCOL_DOC,
             )
@@ -802,7 +811,7 @@ class ConsumerConfig : AbstractConfig {
         internal fun appendDeserializerToConfig(
             configs: Map<String, Any?>,
             keyDeserializer: Deserializer<*>?,
-            valueDeserializer: Deserializer<*>?
+            valueDeserializer: Deserializer<*>?,
         ): Map<String, Any?> {
             // validate deserializer configuration, if the passed deserializer instance is null, the user must explicitly set a valid deserializer configuration value
             val newConfigs = configs.toMutableMap()

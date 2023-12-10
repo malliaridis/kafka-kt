@@ -39,7 +39,7 @@ class NoOffsetForPartitionException : InvalidOffsetException {
     }
 
     /**
-     * returns all partitions for which no offests are defined.
+     * returns all partitions for which no offsets are defined.
      *
      * @return all partitions without offsets
      */

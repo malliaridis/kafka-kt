@@ -17,7 +17,6 @@
 
 package org.apache.kafka.common.record
 
-import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.InputStream
 import java.io.OutputStream
@@ -28,16 +27,21 @@ import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.compress.KafkaLZ4BlockInputStream
 import org.apache.kafka.common.compress.KafkaLZ4BlockOutputStream
 import org.apache.kafka.common.compress.SnappyFactory
+import org.apache.kafka.common.compress.SnappyFactory.wrapForInput
 import org.apache.kafka.common.compress.ZstdFactory
+import org.apache.kafka.common.compress.ZstdFactory.wrapForInput
 import org.apache.kafka.common.utils.BufferSupplier
 import org.apache.kafka.common.utils.ByteBufferInputStream
 import org.apache.kafka.common.utils.ByteBufferOutputStream
+import org.apache.kafka.common.utils.ChunkedBytesStream
 
 /**
  * The compression type to use
  */
 enum class CompressionType(
-    val id: Int,
+    // compression type is represented by two bits in the attributes field of the record batch header,
+    // so `byte` is large enough
+    val id: Byte,
     val altName: String,
     val rate: Float,
 ) {
@@ -85,17 +89,34 @@ enum class CompressionType(
             decompressionBufferSupplier: BufferSupplier,
         ): InputStream {
             return try {
-                // Set output buffer (uncompressed) to 16 KB (none by default) and input buffer
-                // (compressed) to 8 KB (0.5 KB by default) to ensure reasonable performance in
-                // cases where the caller reads a small number of bytes (potentially a single byte)
-                BufferedInputStream(
-                    GZIPInputStream(ByteBufferInputStream(buffer), 8 * 1024),
-                    16 * 1024,
+                // Set input buffer (compressed) to 8 KB (GZIPInputStream uses 0.5 KB by default) to ensure reasonable
+                // performance in cases where the caller reads a small number of bytes (potentially a single byte).
+                //
+                // Size of output buffer (uncompressed) is provided by decompressionOutputSize.
+                //
+                // ChunkedBytesStream is used to wrap the GZIPInputStream because the default implementation of
+                // GZIPInputStream does not use an intermediate buffer for decompression in chunks.
+
+                // Set input buffer (compressed) to 8 KB (GZIPInputStream uses 0.5 KB by default) to ensure reasonable
+                // performance in cases where the caller reads a small number of bytes (potentially a single byte).
+                //
+                // Size of output buffer (uncompressed) is provided by decompressionOutputSize.
+                //
+                // ChunkedBytesStream is used to wrap the GZIPInputStream because the default implementation of
+                // GZIPInputStream does not use an intermediate buffer for decompression in chunks.
+                ChunkedBytesStream(
+                    inputStream = GZIPInputStream(ByteBufferInputStream(buffer), 8 * 1024),
+                    bufferSupplier = decompressionBufferSupplier,
+                    intermediateBufSize = decompressionOutputSize(),
+                    delegateSkipToSourceStream = false,
                 )
             } catch (e: Exception) {
                 throw KafkaException(cause = e)
             }
         }
+
+        // 16KB has been chosen based on legacy implementation introduced in https://github.com/apache/kafka/pull/6785
+        override fun decompressionOutputSize(): Int = 16 * 1024
     },
 
     // We should only load classes from a given compression library when we actually use said
@@ -117,7 +138,24 @@ enum class CompressionType(
             buffer: ByteBuffer,
             messageVersion: Byte,
             decompressionBufferSupplier: BufferSupplier,
-        ): InputStream = SnappyFactory.wrapForInput(buffer)
+        ): InputStream {
+            // SnappyInputStream uses default implementation of InputStream for skip. Default implementation of
+            // SnappyInputStream allocates a new skip buffer every time, hence, we prefer our own implementation.
+
+            // SnappyInputStream uses default implementation of InputStream for skip. Default implementation of
+            // SnappyInputStream allocates a new skip buffer every time, hence, we prefer our own implementation.
+            return ChunkedBytesStream(
+                wrapForInput(buffer),
+                decompressionBufferSupplier,
+                decompressionOutputSize(),
+                false
+            )
+        }
+
+        // SnappyInputStream already uses an intermediate buffer internally. The size
+        // of this buffer is based on legacy implementation based on skipArray introduced in
+        // https://github.com/apache/kafka/pull/6785
+        override fun decompressionOutputSize(): Int = 2 * 1024 // 2KB
     },
     LZ4(
         id = 3,
@@ -144,15 +182,25 @@ enum class CompressionType(
             decompressionBufferSupplier: BufferSupplier,
         ): InputStream {
             return try {
-                KafkaLZ4BlockInputStream(
-                    buffer = buffer,
+                ChunkedBytesStream(
+                    inputStream = KafkaLZ4BlockInputStream(
+                        buffer = buffer,
+                        bufferSupplier = decompressionBufferSupplier,
+                        ignoreFlagDescriptorChecksum = messageVersion == RecordBatch.MAGIC_VALUE_V0,
+                    ),
                     bufferSupplier = decompressionBufferSupplier,
-                    ignoreFlagDescriptorChecksum = messageVersion == RecordBatch.MAGIC_VALUE_V0,
+                    intermediateBufSize = decompressionOutputSize(),
+                    delegateSkipToSourceStream = true,
                 )
             } catch (e: Throwable) {
                 throw KafkaException(cause = e)
             }
         }
+
+        // KafkaLZ4BlockInputStream uses an internal intermediate buffer to store decompressed data. The size
+        // of this buffer is based on legacy implementation based on skipArray introduced in
+        // https://github.com/apache/kafka/pull/6785
+        override fun decompressionOutputSize(): Int = 2 * 1024 // 2KB
     },
     ZSTD(
         id = 4,
@@ -168,11 +216,24 @@ enum class CompressionType(
             buffer: ByteBuffer,
             messageVersion: Byte,
             decompressionBufferSupplier: BufferSupplier,
-        ): InputStream = ZstdFactory.wrapForInput(
-            buffer = buffer,
-            messageVersion = messageVersion,
-            decompressionBufferSupplier = decompressionBufferSupplier,
+        ): InputStream = ChunkedBytesStream(
+            inputStream = ZstdFactory.wrapForInput(
+                buffer = buffer,
+                messageVersion = messageVersion,
+                decompressionBufferSupplier = decompressionBufferSupplier
+            ),
+            bufferSupplier = decompressionBufferSupplier,
+            intermediateBufSize = decompressionOutputSize(),
+            delegateSkipToSourceStream = false
         )
+
+        /**
+         * Size of intermediate buffer which contains uncompressed data.
+         * This size should be <= ZSTD_BLOCKSIZE_MAX
+         * see: https://github.com/facebook/zstd/blob/189653a9c10c9f4224a5413a6d6a69dd01d7c3bd/lib/zstd.h#L854
+         */
+        // 16KB has been chosen based on legacy implementation introduced in https://github.com/apache/kafka/pull/6785
+        override fun decompressionOutputSize(): Int = 16 * 1024
     };
 
     /**
@@ -203,6 +264,12 @@ enum class CompressionType(
         messageVersion: Byte,
         decompressionBufferSupplier: BufferSupplier,
     ): InputStream
+
+    /**
+     * Recommended size of buffer for storing decompressed output.
+     */
+    open fun decompressionOutputSize(): Int =
+        throw UnsupportedOperationException("Size of decompression buffer is not defined for this compression type=$name")
 
     override fun toString(): String = altName
 

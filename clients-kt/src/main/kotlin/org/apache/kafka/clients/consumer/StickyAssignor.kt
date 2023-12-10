@@ -195,7 +195,7 @@ class StickyAssignor : AbstractStickyAssignor() {
         // group
         val userData = subscription.userData
         return if (userData == null || !userData.hasRemaining())
-            MemberData(emptyList(), null)
+            MemberData(emptyList(), null, subscription.rackId)
         else deserializeTopicPartitionAssignment(userData)
     }
 

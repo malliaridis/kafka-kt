@@ -37,6 +37,7 @@ import org.apache.kafka.common.metrics.Sensor
 import org.apache.kafka.common.record.CompressionType
 import org.apache.kafka.common.security.auth.SecurityProtocol
 import org.apache.kafka.common.serialization.Serializer
+import org.apache.kafka.common.utils.Utils
 import org.apache.kafka.common.utils.Utils.enumOptions
 import org.apache.kafka.common.utils.Utils.propsToMap
 import org.slf4j.Logger
@@ -474,9 +475,9 @@ class ProducerConfig : AbstractConfig {
                     "enabled, idempotence is disabled." +
                     "<p>Allowing retries while setting <code>enable.idempotence</code> to " +
                     "<code>false</code> and <code>$MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION</code> " +
-                    "to 1 will potentially change the ordering of records because if two batches " +
-                    "are sent to a single partition, and the first fails and is retried but the " +
-                    "second succeeds, then the records in the second batch may appear first."
+                    "to greater than 1 will potentially change the ordering of records because if " +
+                    "two batches are sent to a single partition, and the first fails and is retried " +
+                    "but the second succeeds, then the records in the second batch may appear first."
 
         /**
          * `key.serializer`
@@ -516,26 +517,26 @@ class ProducerConfig : AbstractConfig {
          */
         val PARTITIONER_CLASS_CONFIG = "partitioner.class"
         private val PARTITIONER_CLASS_DOC =
-            "A class to use to determine which partition to be send to when produce the records. " +
+            "Determines which partition to send a record to when records are produced. " +
                     "Available options are:" +
                     "<ul>" +
-                    "<li>If not set, the default partitioning logic is used. This strategy will " +
-                    "try sticking to a partition until at least $BATCH_SIZE_CONFIG bytes is " +
-                    "produced to the partition. It works with the strategy:" +
+                    "<li>If not set, the default partitioning logic is used. This strategy send " +
+                    "records try sticking to a partition until at least $BATCH_SIZE_CONFIG bytes " +
+                    "is produced to the partition. It works with the strategy:" +
                     "<ul>" +
-                    "<li>If no partition is specified but a key is present, choose a partition " +
+                    "<p> 1) If no partition is specified but a key is present, choose a partition " +
                     "based on a hash of the key</li>" +
-                    "<li>If no partition or key is present, choose the sticky partition that " +
+                    "<p> 2) If no partition or key is present, choose the sticky partition that " +
                     "changes when at least $BATCH_SIZE_CONFIG bytes are produced to the " +
                     "partition.</li>" +
                     "</ul>" +
                     "</li>" +
                     "<li><code>org.apache.kafka.clients.producer.RoundRobinPartitioner</code>: " +
-                    "This partitioning strategy is that each record in a series of consecutive " +
-                    "records will be sent to a different partition(no matter if the 'key' is " +
-                    "provided or not), until we run out of partitions and start over again. " +
-                    "Note: There's a known issue that will cause uneven distribution when new " +
-                    "batch is created. Please check KAFKA-9965 for more detail." +
+                    "A partitioning strategy where each record in a series of consecutive " +
+                    "records is sent to a different partition, regardless of whether the 'key' is " +
+                    "provided or not, until partitions run out and the process starts over again. " +
+                    "Note: There's a known issue that will cause uneven distribution when a new " +
+                    "batch is created. See KAFKA-9965 for more detail." +
                     "</li>" +
                     "</ul>" +
                     "<p>Implementing the <code>org.apache.kafka.clients.producer.Partitioner</code> " +
@@ -577,11 +578,11 @@ class ProducerConfig : AbstractConfig {
          */
         val TRANSACTION_TIMEOUT_CONFIG = "transaction.timeout.ms"
         val TRANSACTION_TIMEOUT_DOC =
-            "The maximum amount of time in ms that the transaction coordinator will wait for a " +
-                    "transaction status update from the producer before proactively aborting the " +
-                    "ongoing transaction. If this value is larger than the " +
-                    "transaction.max.timeout.ms setting in the broker, the request will fail " +
-                    "with a <code>InvalidTxnTimeoutException</code> error."
+            "The maximum amount of time in milliseconds that a transaction will remain open before " +
+                    "the coordinator proactively aborts it. The start of the transaction is set at " +
+                    "the time that the first partition is added to it. If this value is larger than " +
+                    "the <code>transaction.max.timeout.ms</code> setting in the broker, the request " +
+                    "will fail with a <code>InvalidTxnTimeoutException</code> error.";
 
         /**
          * ` transactional.id `
@@ -860,7 +861,8 @@ class ProducerConfig : AbstractConfig {
                 name = CommonClientConfigs.SECURITY_PROTOCOL_CONFIG,
                 type = ConfigDef.Type.STRING,
                 defaultValue = CommonClientConfigs.DEFAULT_SECURITY_PROTOCOL,
-                validator = `in`(*enumOptions(SecurityProtocol::class.java)),
+                validator = ConfigDef.CaseInsensitiveValidString
+                    .`in`(*enumOptions(SecurityProtocol::class.java)),
                 importance = Importance.MEDIUM,
                 documentation = CommonClientConfigs.SECURITY_PROTOCOL_DOC,
             ).define(

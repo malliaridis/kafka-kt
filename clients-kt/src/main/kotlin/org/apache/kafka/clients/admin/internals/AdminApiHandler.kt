@@ -17,8 +17,8 @@
 
 package org.apache.kafka.clients.admin.internals
 
-import java.util.stream.Collectors
 import org.apache.kafka.common.Node
+import org.apache.kafka.common.errors.UnsupportedVersionException
 import org.apache.kafka.common.requests.AbstractRequest
 import org.apache.kafka.common.requests.AbstractResponse
 
@@ -66,6 +66,21 @@ interface AdminApiHandler<K, V> {
     fun handleResponse(broker: Node, keys: Set<K>, response: AbstractResponse): ApiResult<K, V>
 
     /**
+     * Callback that is invoked when a fulfillment request hits an UnsupportedVersionException.
+     * Keys for which the exception cannot be handled and the request shouldn't be retried must be mapped
+     * to an error and returned. The request will then be retried for the remainder of the keys.
+     *
+     * @return The failure mappings for the keys for which the exception cannot be handled and the
+     * request shouldn't be retried. If the exception cannot be handled all initial keys will be in
+     * the returned map.
+     */
+    fun handleUnsupportedVersionException(
+        brokerId: Int,
+        exception: UnsupportedVersionException,
+        keys: Set<K>,
+    ): Map<K, Throwable> = keys.associateWith { exception }
+
+    /**
      * Get the lookup strategy that is responsible for finding the brokerId
      * which will handle each respective key.
      *
@@ -76,7 +91,7 @@ interface AdminApiHandler<K, V> {
     class ApiResult<K, V>(
         completedKeys: Map<K, V>,
         failedKeys: Map<K, Throwable>,
-        unmappedKeys: List<K>
+        unmappedKeys: List<K>,
     ) {
         val completedKeys: Map<K, V>
         val failedKeys: Map<K, Throwable>
@@ -132,24 +147,22 @@ interface AdminApiHandler<K, V> {
         abstract fun handleSingleResponse(
             broker: Node,
             key: K,
-            response: AbstractResponse
+            response: AbstractResponse,
         ): ApiResult<K, V>
 
         override fun buildRequest(brokerId: Int, keys: Set<K>): Collection<RequestAndKeys<K>> {
-            return keys.stream()
-                .map { key: K ->
-                    RequestAndKeys(
-                        buildSingleRequest(brokerId, key),
-                        setOf(key)
-                    )
-                }
-                .collect(Collectors.toSet())
+            return keys.map { key: K ->
+                RequestAndKeys(
+                    request = buildSingleRequest(brokerId, key),
+                    keys = setOf(key),
+                )
+            }.toSet()
         }
 
         override fun handleResponse(
             broker: Node,
             keys: Set<K>,
-            response: AbstractResponse
+            response: AbstractResponse,
         ): ApiResult<K, V> {
             require(keys.size == 1) {
                 "Unbatched admin handler should only be required to handle responses for a " +

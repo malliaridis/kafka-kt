@@ -53,7 +53,7 @@ import org.slf4j.LoggerFactory
 class SslFactory(
     private val mode: Mode,
     private val clientAuthConfigOverride: String? = null,
-    private val keystoreVerifiableUsingTruststore: Boolean = false
+    private val keystoreVerifiableUsingTruststore: Boolean = false,
 ) : Reconfigurable, Closeable {
 
     private var endpointIdentification: String? = null
@@ -292,19 +292,27 @@ class SslFactory(
                 for (i in newEntries.indices) {
                     val newEntry = newEntries[i]
                     val oldEntry = oldEntries[i]
+                    val newPrincipal = newEntry.subjectPrincipal
+                    val oldPrincipal = oldEntry.subjectPrincipal
 
-                    if (newEntry.subjectPrincipal != oldEntry.subjectPrincipal) {
-                        throw ConfigException(
-                            String.format(
-                                "Keystore DistinguishedName does not match: " +
-                                        " existing={alias=%s, DN=%s}, new={alias=%s, DN=%s}",
-                                oldEntry.alias,
-                                oldEntry.subjectPrincipal,
-                                newEntry.alias,
-                                newEntry.subjectPrincipal
-                            )
+                    // Compare principal objects to compare canonical names (e.g. to ignore leading/trailing
+                    // whitespaces). Canonical names may differ if the tags of a field changes from one with
+                    // a printable string representation to one without or vice-versa due to optional conversion
+                    // to hex representation based on the tag. So we also compare Principal.getName which compares
+                    // the RFC2253 name. If either matches, allow dynamic update.
+                    if (
+                        newPrincipal != oldPrincipal
+                        && !newPrincipal.name.equals(oldPrincipal.name, ignoreCase = true)
+                    ) throw ConfigException(
+                        String.format(
+                            "Keystore DistinguishedName does not match: " +
+                                    " existing={alias=%s, DN=%s}, new={alias=%s, DN=%s}",
+                            oldEntry.alias,
+                            oldEntry.subjectPrincipal,
+                            newEntry.alias,
+                            newEntry.subjectPrincipal
                         )
-                    }
+                    )
 
                     if (!newEntry.subjectAltNames.containsAll(oldEntry.subjectAltNames)) {
                         throw ConfigException(
@@ -435,7 +443,7 @@ class SslFactory(
             @Throws(SSLException::class)
             fun validate(
                 oldEngineBuilder: SslEngineFactory,
-                newEngineBuilder: SslEngineFactory
+                newEngineBuilder: SslEngineFactory,
             ) {
                 validate(
                     createSslEngineForValidation(oldEngineBuilder, Mode.SERVER),
@@ -449,7 +457,7 @@ class SslFactory(
 
             private fun createSslEngineForValidation(
                 sslEngineFactory: SslEngineFactory,
-                mode: Mode
+                mode: Mode,
             ): SSLEngine {
                 // Use empty hostname, disable hostname verification
                 return when(mode) {
@@ -493,7 +501,7 @@ class SslFactory(
         private fun <K, V> copyMapEntries(
             destMap: MutableMap<K, V?>,
             srcMap: Map<K, V?>,
-            keySet: Set<K>
+            keySet: Set<K>,
         ) = keySet.forEach { key -> copyMapEntry(destMap, srcMap, key) }
 
         /**
@@ -508,7 +516,7 @@ class SslFactory(
         private fun <K, V> copyMapEntry(
             destMap: MutableMap<K, V?>,
             srcMap: Map<K, V?>,
-            key: K
+            key: K,
         ) {
             if(srcMap.containsKey(key)) destMap[key] = srcMap[key]
         }

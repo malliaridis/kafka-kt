@@ -17,10 +17,11 @@
 
 package org.apache.kafka.clients.consumer.internals
 
+import java.util.concurrent.BlockingQueue
+import java.util.concurrent.LinkedBlockingQueue
 import org.apache.kafka.clients.ApiVersions
-import org.apache.kafka.clients.ClientUtils.createChannelBuilder
 import org.apache.kafka.clients.ClientUtils.parseAndValidateAddresses
-import org.apache.kafka.clients.NetworkClient
+import org.apache.kafka.clients.GroupRebalanceConfig
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.internals.events.ApplicationEvent
 import org.apache.kafka.clients.consumer.internals.events.BackgroundEvent
@@ -28,11 +29,8 @@ import org.apache.kafka.clients.consumer.internals.events.EventHandler
 import org.apache.kafka.common.internals.ClusterResourceListeners
 import org.apache.kafka.common.metrics.Metrics
 import org.apache.kafka.common.metrics.Sensor
-import org.apache.kafka.common.network.Selector
 import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.Time
-import java.util.concurrent.BlockingQueue
-import java.util.concurrent.LinkedBlockingQueue
 
 /**
  * An `EventHandler` that uses a single background thread to consume `ApplicationEvent` and produce
@@ -49,6 +47,7 @@ class DefaultEventHandler : EventHandler {
     constructor(
         time: Time = Time.SYSTEM,
         config: ConsumerConfig,
+        groupRebalanceConfig: GroupRebalanceConfig,
         logContext: LogContext,
         applicationEventQueue: BlockingQueue<ApplicationEvent> = LinkedBlockingQueue(),
         backgroundEventQueue: BlockingQueue<BackgroundEvent> = LinkedBlockingQueue(),
@@ -60,95 +59,31 @@ class DefaultEventHandler : EventHandler {
     ) {
         this.applicationEventQueue = applicationEventQueue
         this.backgroundEventQueue = backgroundEventQueue
-        val metadata = bootstrapMetadata(
+
+        // Bootstrap a metadata object with the bootstrap server IP address, which will be used once for the
+        // subsequent metadata refresh once the background thread has started up.
+        val metadata = ConsumerMetadata(
+            config = config,
+            subscriptions = subscriptionState,
             logContext = logContext,
             clusterResourceListeners = clusterResourceListeners,
-            config = config,
-            subscriptions = subscriptionState,
         )
-        val channelBuilder = createChannelBuilder(
-            config = config,
-            time = time,
-            logContext = logContext,
-        )
+        val addresses = parseAndValidateAddresses(config)
+        metadata.bootstrap(addresses)
 
-        val selector = Selector(
-            connectionMaxIdleMs = config.getLong(ConsumerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG)!!,
-            metrics = metrics,
+        backgroundThread = DefaultBackgroundThread(
             time = time,
-            metricGrpPrefix = METRIC_GRP_PREFIX,
-            channelBuilder = channelBuilder,
+            config = config,
+            rebalanceConfig = groupRebalanceConfig,
             logContext = logContext,
-        )
-        val netClient = NetworkClient(
-            selector = selector,
+            applicationEventQueue = this.applicationEventQueue,
+            backgroundEventQueue = this.backgroundEventQueue,
             metadata = metadata,
-            clientId = config.getString(ConsumerConfig.CLIENT_ID_CONFIG),
-            maxInFlightRequestsPerConnection = 100, // a fixed large enough value will suffice for
-            // max in-flight requests
-            reconnectBackoffMs = config.getLong(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG)!!,
-            reconnectBackoffMax = config.getLong(ConsumerConfig.RECONNECT_BACKOFF_MAX_MS_CONFIG)!!,
-            socketSendBuffer = config.getInt(ConsumerConfig.SEND_BUFFER_CONFIG)!!,
-            socketReceiveBuffer = config.getInt(ConsumerConfig.RECEIVE_BUFFER_CONFIG)!!,
-            defaultRequestTimeoutMs = config.getInt(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG)!!,
-            connectionSetupTimeoutMs =
-            config.getLong(ConsumerConfig.SOCKET_CONNECTION_SETUP_TIMEOUT_MS_CONFIG)!!,
-            connectionSetupTimeoutMaxMs =
-            config.getLong(ConsumerConfig.SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS_CONFIG)!!,
-            time = time,
-            discoverBrokerVersions = true,
+            subscriptionState = subscriptionState,
             apiVersions = apiVersions,
-            throttleTimeSensor = fetcherThrottleTimeSensor,
-            logContext = logContext,
+            metrics = metrics,
+            fetcherThrottleTimeSensor = fetcherThrottleTimeSensor,
         )
-
-        val networkClient = ConsumerNetworkClient(
-            logContext = logContext,
-            client = netClient,
-            metadata = metadata,
-            time = time,
-            retryBackoffMs = config.getLong(ConsumerConfig.RETRY_BACKOFF_MS_CONFIG)!!,
-            requestTimeoutMs = config.getInt(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG)!!,
-            maxPollTimeoutMs = config.getInt(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG)!!,
-        )
-        backgroundThread = DefaultBackgroundThread(
-            time = time,
-            config = config,
-            logContext = logContext,
-            applicationEventQueue = this.applicationEventQueue,
-            backgroundEventQueue = this.backgroundEventQueue,
-            subscriptions = subscriptionState,
-            metadata = metadata,
-            networkClient = networkClient,
-            metrics = Metrics(time = time),
-        )
-    }
-
-    // VisibleForTesting
-    internal constructor(
-        time: Time,
-        config: ConsumerConfig,
-        logContext: LogContext,
-        applicationEventQueue: BlockingQueue<ApplicationEvent>,
-        backgroundEventQueue: BlockingQueue<BackgroundEvent>,
-        subscriptionState: SubscriptionState?,
-        metadata: ConsumerMetadata?,
-        networkClient: ConsumerNetworkClient,
-    ) {
-        this.applicationEventQueue = applicationEventQueue
-        this.backgroundEventQueue = backgroundEventQueue
-        backgroundThread = DefaultBackgroundThread(
-            time = time,
-            config = config,
-            logContext = logContext,
-            applicationEventQueue = this.applicationEventQueue,
-            backgroundEventQueue = this.backgroundEventQueue,
-            subscriptions = subscriptionState,
-            metadata = metadata,
-            networkClient = networkClient,
-            metrics = Metrics(time = time),
-        )
-        backgroundThread.start()
     }
 
     // VisibleForTesting
@@ -173,40 +108,11 @@ class DefaultEventHandler : EventHandler {
         return applicationEventQueue.add(event)
     }
 
-    // bootstrap a metadata object with the bootstrap server IP address, which will be used once for
-    // the subsequent metadata refresh once the background thread has started up.
-    private fun bootstrapMetadata(
-        logContext: LogContext,
-        clusterResourceListeners: ClusterResourceListeners,
-        config: ConsumerConfig,
-        subscriptions: SubscriptionState,
-    ): ConsumerMetadata {
-        val metadata = ConsumerMetadata(
-            refreshBackoffMs = config.getLong(ConsumerConfig.RETRY_BACKOFF_MS_CONFIG)!!,
-            metadataExpireMs = config.getLong(ConsumerConfig.METADATA_MAX_AGE_CONFIG)!!,
-            includeInternalTopics = !config.getBoolean(ConsumerConfig.EXCLUDE_INTERNAL_TOPICS_CONFIG)!!,
-            allowAutoTopicCreation = config.getBoolean(ConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG)!!,
-            subscription = subscriptions,
-            logContext = logContext,
-            clusterResourceListeners = clusterResourceListeners,
-        )
-        val addresses = parseAndValidateAddresses(
-            urls = config.getList(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG)!!,
-            clientDnsLookupConfig = config.getString(ConsumerConfig.CLIENT_DNS_LOOKUP_CONFIG)!!,
-        )
-        metadata.bootstrap(addresses)
-        return metadata
-    }
-
     fun close() {
         try {
             backgroundThread.close()
         } catch (e: Exception) {
             throw RuntimeException(e)
         }
-    }
-
-    companion object {
-        private const val METRIC_GRP_PREFIX = "consumer"
     }
 }

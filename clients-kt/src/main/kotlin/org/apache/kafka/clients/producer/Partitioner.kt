@@ -51,8 +51,9 @@ interface Partitioner : Configurable, Closeable {
     override fun close()
 
     /**
-     * Note this method is only implemented in DefatultPartitioner and UniformStickyPartitioner
-     * which are now deprecated. See KIP-794 for more info.
+     * Note this method is only implemented in DefaultPartitioner and [UniformStickyPartitioner] which
+     * are now deprecated. See [KIP-794](https://cwiki.apache.org/confluence/display/KAFKA/KIP-794%3A+Strictly+Uniform+Sticky+Partitioner)
+     * for more info.
      *
      * Notifies the partitioner a new batch is about to be created. When using the sticky
      * partitioner, this method can change the chosen sticky partition for the new batch.
@@ -61,6 +62,6 @@ interface Partitioner : Configurable, Closeable {
      * @param prevPartition The partition previously selected for the record that triggered a new
      * batch
      */
-    @Deprecated("")
+    @Deprecated("Since 3.3.0")
     fun onNewBatch(topic: String, cluster: Cluster, prevPartition: Int) = Unit
 }

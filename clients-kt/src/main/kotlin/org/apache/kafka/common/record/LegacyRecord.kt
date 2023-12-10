@@ -32,6 +32,8 @@ import java.io.DataOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.util.zip.CRC32
+import kotlin.experimental.and
+import kotlin.experimental.or
 
 /**
  * This class represents the serialized key and value along with the associated CRC and other fields
@@ -174,7 +176,7 @@ class LegacyRecord(
      * The compression type used with this record
      */
     fun compressionType(): CompressionType =
-        CompressionType.forId(buffer[ATTRIBUTES_OFFSET].toInt() and COMPRESSION_CODEC_MASK)
+        CompressionType.forId(buffer[ATTRIBUTES_OFFSET].toInt() and COMPRESSION_CODEC_MASK.toInt())
 
     /**
      * A ByteBuffer containing the value of this record
@@ -297,7 +299,7 @@ class LegacyRecord(
          * Specifies the mask for the compression code. 3 bits to hold the compression codec. 0 is reserved to indicate no
          * compression
          */
-        private val COMPRESSION_CODEC_MASK = 0x07
+        private val COMPRESSION_CODEC_MASK: Byte = 0x07
 
         /**
          * Specify the mask of timestamp type: 0 for CreateTime, 1 for LogAppendTime.
@@ -541,7 +543,7 @@ class LegacyRecord(
             timestampType: TimestampType,
         ): Byte {
             var attributes: Byte = 0
-            if (type.id > 0) attributes = (0 or (COMPRESSION_CODEC_MASK and type.id)).toByte()
+            if (type.id > 0) attributes = 0.toByte() or (COMPRESSION_CODEC_MASK and type.id)
 
             if (magic > RecordBatch.MAGIC_VALUE_V0) {
                 require(timestampType != TimestampType.NO_TIMESTAMP_TYPE) {

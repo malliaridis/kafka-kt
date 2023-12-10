@@ -36,11 +36,11 @@ class UnalignedFileRecords(
     @Throws(IOException::class)
     override fun writeTo(
         destChannel: TransferableChannel,
-        previouslyWritten: Long,
+        previouslyWritten: Int,
         remaining: Int,
-    ): Long {
+    ): Int {
         val position = position + previouslyWritten
-        val count = min(remaining.toLong(), sizeInBytes() - previouslyWritten)
-        return destChannel.transferFrom(channel, position, count)
+        val count = min(remaining, sizeInBytes() - previouslyWritten)
+        return destChannel.transferFrom(channel, position, count.toLong()).toInt()
     }
 }

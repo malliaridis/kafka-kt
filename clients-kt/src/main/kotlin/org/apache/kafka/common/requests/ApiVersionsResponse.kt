@@ -18,7 +18,6 @@
 package org.apache.kafka.common.requests
 
 import java.nio.ByteBuffer
-import java.util.*
 import org.apache.kafka.clients.NodeApiVersions
 import org.apache.kafka.common.feature.Features
 import org.apache.kafka.common.feature.SupportedVersionRange
@@ -83,17 +82,6 @@ class ApiVersionsResponse(
             }
         }
 
-        fun defaultApiVersionsResponse(
-            throttleTimeMs: Int = 0,
-            listenerType: ListenerType
-        ): ApiVersionsResponse {
-            return createApiVersionsResponse(
-                throttleTimeMs = throttleTimeMs,
-                apiVersions = filterApis(RecordVersion.current(), listenerType),
-                latestSupportedFeatures = Features.emptySupportedFeatures(),
-            )
-        }
-
         fun createApiVersionsResponse(
             throttleTimeMs: Int,
             minRecordVersion: RecordVersion,
@@ -102,11 +90,20 @@ class ApiVersionsResponse(
             finalizedFeaturesEpoch: Long,
             controllerApiVersions: NodeApiVersions?,
             listenerType: ListenerType,
+            enableUnstableLastVersion: Boolean,
+            zkMigrationEnabled: Boolean,
         ): ApiVersionsResponse {
             val apiKeys = if (controllerApiVersions != null) intersectForwardableApis(
-                listenerType, minRecordVersion, controllerApiVersions.supportedVersions
+                listenerType = listenerType,
+                minRecordVersion = minRecordVersion,
+                activeControllerApiVersions = controllerApiVersions.supportedVersions,
+                enableUnstableLastVersion = enableUnstableLastVersion,
             )
-            else filterApis(minRecordVersion, listenerType)
+            else filterApis(
+                minRecordVersion = minRecordVersion,
+                listenerType = listenerType,
+                enableUnstableLastVersion = enableUnstableLastVersion,
+            )
 
             return createApiVersionsResponse(
                 throttleTimeMs = throttleTimeMs,
@@ -114,6 +111,7 @@ class ApiVersionsResponse(
                 latestSupportedFeatures = latestSupportedFeatures,
                 finalizedFeatures = finalizedFeatures,
                 finalizedFeaturesEpoch = finalizedFeaturesEpoch,
+                zkMigrationEnabled = zkMigrationEnabled,
             )
         }
 
@@ -122,37 +120,61 @@ class ApiVersionsResponse(
             apiVersions: ApiVersionCollection,
             latestSupportedFeatures: Features<SupportedVersionRange> = Features.emptySupportedFeatures(),
             finalizedFeatures: Map<String, Short> = emptyMap(),
-            finalizedFeaturesEpoch: Long = UNKNOWN_FINALIZED_FEATURES_EPOCH
+            finalizedFeaturesEpoch: Long = UNKNOWN_FINALIZED_FEATURES_EPOCH,
+            zkMigrationEnabled: Boolean,
         ): ApiVersionsResponse {
             return ApiVersionsResponse(
-                ApiVersionsResponseData().apply {
-                    setThrottleTimeMs(throttleTimeMs)
-                    setErrorCode(Errors.NONE.code)
-                    setApiKeys(apiVersions)
-                    setSupportedFeatures(createSupportedFeatureKeys(latestSupportedFeatures))
-                    setFinalizedFeatures(createFinalizedFeatureKeys(finalizedFeatures))
-                    setFinalizedFeaturesEpoch(finalizedFeaturesEpoch)
-                }
+                ApiVersionsResponse.createApiVersionsResponseData(
+                    throttleTimeMs,
+                    Errors.NONE,
+                    apiVersions,
+                    latestSupportedFeatures,
+                    finalizedFeatures,
+                    finalizedFeaturesEpoch,
+                    zkMigrationEnabled
+                )
             )
+        }
+
+        private fun createApiVersionsResponseData(
+            throttleTimeMs: Int,
+            error: Errors,
+            apiKeys: ApiVersionCollection,
+            latestSupportedFeatures: Features<SupportedVersionRange>,
+            finalizedFeatures: Map<String, Short>,
+            finalizedFeaturesEpoch: Long,
+            zkMigrationEnabled: Boolean,
+        ): ApiVersionsResponseData = ApiVersionsResponseData().apply {
+            setThrottleTimeMs(throttleTimeMs)
+            setErrorCode(error.code)
+            setApiKeys(apiKeys)
+            setSupportedFeatures(createSupportedFeatureKeys(latestSupportedFeatures))
+            setFinalizedFeatures(createFinalizedFeatureKeys(finalizedFeatures))
+            setFinalizedFeaturesEpoch(finalizedFeaturesEpoch)
+            setZkMigrationReady(zkMigrationEnabled)
         }
 
         fun filterApis(
             minRecordVersion: RecordVersion,
             listenerType: ListenerType,
+            enableUnstableLastVersion: Boolean = false,
         ): ApiVersionCollection {
             val apiKeys = ApiVersionCollection()
 
             ApiKeys.apisForListener(listenerType).forEach { apiKey ->
                 if (apiKey.minRequiredInterBrokerMagic <= minRecordVersion.value)
-                    apiKeys.add(toApiVersion(apiKey))
+                    apiKey.toApiVersion(enableUnstableLastVersion)?.let { apiKeys.add(it) }
             }
 
             return apiKeys
         }
 
-        fun collectApis(apiKeys: Set<ApiKeys>): ApiVersionCollection {
+        fun collectApis(
+            apiKeys: Set<ApiKeys>,
+            enableUnstableLastVersion: Boolean,
+        ): ApiVersionCollection {
             val res = ApiVersionCollection()
-            apiKeys.forEach { res.add(toApiVersion(it)) }
+            apiKeys.forEach { apiKey -> apiKey.toApiVersion(enableUnstableLastVersion)?.let { res.add(it) } }
 
             return res
         }
@@ -164,28 +186,34 @@ class ApiVersionsResponse(
          * @param listenerType the listener type which constrains the set of exposed APIs
          * @param minRecordVersion min inter broker magic
          * @param activeControllerApiVersions controller ApiVersions
+         * @param enableUnstableLastVersion whether unstable versions should be advertised or not
          * @return commonly agreed ApiVersion collection
          */
         fun intersectForwardableApis(
             listenerType: ListenerType,
             minRecordVersion: RecordVersion,
-            activeControllerApiVersions: Map<ApiKeys, ApiVersionsResponseData.ApiVersion>
+            activeControllerApiVersions: Map<ApiKeys, ApiVersionsResponseData.ApiVersion>,
+            enableUnstableLastVersion: Boolean,
         ): ApiVersionCollection {
             val apiKeys = ApiVersionCollection()
 
             ApiKeys.apisForListener(listenerType).forEach { apiKey ->
 
                 if (apiKey.minRequiredInterBrokerMagic <= minRecordVersion.value) {
-                    val brokerApiVersion = toApiVersion(apiKey)
+                    val brokerApiVersion =
+                        // Broker does not support this API key.
+                        apiKey.toApiVersion(enableUnstableLastVersion) ?: return@forEach
 
-                    val finalApiVersion = if (!apiKey.forwardable) brokerApiVersion else {
-                        val intersectVersion = intersect(
-                            brokerApiVersion,
-                            activeControllerApiVersions.getOrDefault(apiKey, null)
-                        )
-                        // If controller doesn't support this API key, or there is no intersection, skip
-                        intersectVersion ?: return@forEach
-                    }
+                    val finalApiVersion =
+                        if (!apiKey.forwardable) brokerApiVersion
+                        else {
+                            val intersectVersion = intersect(
+                                brokerApiVersion,
+                                activeControllerApiVersions.getOrDefault(apiKey, null)
+                            )
+                            // If controller doesn't support this API key, or there is no intersection, skip
+                            intersectVersion ?: return@forEach
+                        }
 
                     apiKeys.add(finalApiVersion.duplicate())
                 }
@@ -210,7 +238,7 @@ class ApiVersionsResponse(
         }
 
         private fun createFinalizedFeatureKeys(
-            finalizedFeatures: Map<String, Short>
+            finalizedFeatures: Map<String, Short>,
         ): FinalizedFeatureKeyCollection {
             val converted = FinalizedFeatureKeyCollection()
 
@@ -227,7 +255,7 @@ class ApiVersionsResponse(
 
         fun intersect(
             thisVersion: ApiVersionsResponseData.ApiVersion?,
-            other: ApiVersionsResponseData.ApiVersion?
+            other: ApiVersionsResponseData.ApiVersion?,
         ): ApiVersionsResponseData.ApiVersion? {
             if (thisVersion == null || other == null) return null
 

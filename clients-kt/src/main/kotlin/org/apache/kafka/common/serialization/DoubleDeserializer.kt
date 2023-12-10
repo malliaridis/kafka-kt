@@ -17,7 +17,9 @@
 
 package org.apache.kafka.common.serialization
 
+import java.nio.ByteBuffer
 import org.apache.kafka.common.errors.SerializationException
+import org.apache.kafka.common.header.Headers
 
 class DoubleDeserializer : Deserializer<Double> {
 
@@ -34,5 +36,11 @@ class DoubleDeserializer : Deserializer<Double> {
         }
 
         return Double.fromBits(value)
+    }
+
+    override fun deserialize(topic: String, headers: Headers, data: ByteBuffer?): Double? = when {
+        data == null -> null
+        data.remaining() != 8 -> throw SerializationException("Size of data received by DoubleDeserializer is not 8")
+        else -> data.getDouble(data.position())
     }
 }

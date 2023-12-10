@@ -962,7 +962,7 @@ interface Admin : AutoCloseable {
      * Delete consumer groups from the cluster.
      *
      * @param options The options to use when deleting a consumer group.
-     * @return The DeletConsumerGroupResult.
+     * @return The DeleteConsumerGroupsResult.
      */
     fun deleteConsumerGroups(
         groupIds: Collection<String>,

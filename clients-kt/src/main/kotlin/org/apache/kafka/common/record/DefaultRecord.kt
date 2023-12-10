@@ -17,16 +17,20 @@
 
 package org.apache.kafka.common.record
 
-import java.io.DataInput
 import java.io.DataOutputStream
 import java.io.IOException
+import java.io.InputStream
 import java.nio.BufferUnderflowException
 import java.nio.ByteBuffer
 import org.apache.kafka.common.InvalidRecordException
 import org.apache.kafka.common.header.Header
 import org.apache.kafka.common.header.internals.RecordHeader
 import org.apache.kafka.common.utils.ByteUtils
-import org.apache.kafka.common.utils.PrimitiveRef
+import org.apache.kafka.common.utils.ByteUtils.readVarint
+import org.apache.kafka.common.utils.ByteUtils.readVarlong
+import org.apache.kafka.common.utils.ByteUtils.sizeOfVarint
+import org.apache.kafka.common.utils.Utils.readBytes
+import org.apache.kafka.common.utils.Utils.readFully
 import org.apache.kafka.common.utils.Utils.utf8Length
 import org.apache.kafka.common.utils.Utils.writeTo
 
@@ -65,7 +69,7 @@ open class DefaultRecord internal constructor(
     private val sequence: Int,
     private val key: ByteBuffer?,
     private val value: ByteBuffer?,
-    private val headers: Array<Header>
+    private val headers: Array<Header>,
 ) : Record {
 
     override fun offset(): Long = offset
@@ -98,7 +102,7 @@ open class DefaultRecord internal constructor(
         return magic >= RecordBatch.MAGIC_VALUE_V2
     }
 
-    override val isCompressed: Boolean= false
+    override val isCompressed: Boolean = false
 
     override fun hasTimestampType(timestampType: TimestampType): Boolean = false
 
@@ -156,7 +160,7 @@ open class DefaultRecord internal constructor(
             timestampDelta: Long,
             key: ByteBuffer?,
             value: ByteBuffer?,
-            headers: Array<Header>
+            headers: Array<Header>,
         ): Int {
             val sizeInBytes = sizeOfBodyInBytes(offsetDelta, timestampDelta, key, value, headers)
             ByteUtils.writeVarint(sizeInBytes, out)
@@ -197,26 +201,28 @@ open class DefaultRecord internal constructor(
 
         @Throws(IOException::class)
         fun readFrom(
-            input: DataInput,
+            input: InputStream,
             baseOffset: Long,
             baseTimestamp: Long,
             baseSequence: Int,
-            logAppendTime: Long?
+            logAppendTime: Long?,
         ): DefaultRecord {
             val sizeOfBodyInBytes = ByteUtils.readVarint(input)
             val recordBuffer = ByteBuffer.allocate(sizeOfBodyInBytes)
 
-            input.readFully(recordBuffer.array(), 0, sizeOfBodyInBytes)
-            val totalSizeInBytes = ByteUtils.sizeOfVarint(sizeOfBodyInBytes) + sizeOfBodyInBytes
+            val bytesRead = readFully(input, recordBuffer)
+            if (bytesRead != sizeOfBodyInBytes) throw InvalidRecordException(
+                "Invalid record size: expected $sizeOfBodyInBytes bytes in record payload, but the record payload reached EOF."
+            )
+            recordBuffer.flip() // prepare for reading
 
             return readFrom(
                 buffer = recordBuffer,
-                sizeInBytes = totalSizeInBytes,
                 sizeOfBodyInBytes = sizeOfBodyInBytes,
                 baseOffset = baseOffset,
                 baseTimestamp = baseTimestamp,
                 baseSequence = baseSequence,
-                logAppendTime = logAppendTime
+                logAppendTime = logAppendTime,
             )
         }
 
@@ -225,36 +231,31 @@ open class DefaultRecord internal constructor(
             baseOffset: Long,
             baseTimestamp: Long,
             baseSequence: Int,
-            logAppendTime: Long?
+            logAppendTime: Long?,
         ): DefaultRecord {
-            val sizeOfBodyInBytes = ByteUtils.readVarint(buffer)
-            if (buffer.remaining() < sizeOfBodyInBytes) throw InvalidRecordException(
-                "Invalid record size: expected $sizeOfBodyInBytes bytes in record " +
-                        "payload, but instead the buffer has only ${buffer.remaining()} " +
-                        "remaining bytes."
-            )
-            val totalSizeInBytes = ByteUtils.sizeOfVarint(sizeOfBodyInBytes) + sizeOfBodyInBytes
-
+            val sizeOfBodyInBytes = readVarint(buffer)
             return readFrom(
                 buffer = buffer,
-                sizeInBytes = totalSizeInBytes,
                 sizeOfBodyInBytes = sizeOfBodyInBytes,
                 baseOffset = baseOffset,
                 baseTimestamp = baseTimestamp,
                 baseSequence = baseSequence,
-                logAppendTime = logAppendTime
+                logAppendTime = logAppendTime,
             )
         }
 
         private fun readFrom(
             buffer: ByteBuffer,
-            sizeInBytes: Int,
             sizeOfBodyInBytes: Int,
             baseOffset: Long,
             baseTimestamp: Long,
             baseSequence: Int,
-            logAppendTime: Long?
+            logAppendTime: Long?,
         ): DefaultRecord {
+            if (buffer.remaining() < sizeOfBodyInBytes) throw InvalidRecordException(
+                "Invalid record size: expected $sizeOfBodyInBytes bytes in record payload, but instead the " +
+                        "buffer has only ${buffer.remaining()} remaining bytes."
+            )
             try {
                 val recordStart = buffer.position()
                 val attributes = buffer.get()
@@ -273,29 +274,20 @@ open class DefaultRecord internal constructor(
                     )
                     else RecordBatch.NO_SEQUENCE
 
-                var key: ByteBuffer? = null
-                val keySize = ByteUtils.readVarint(buffer)
+                // read key
+                val keySize = readVarint(buffer)
+                val key = readBytes(buffer, keySize)
 
-                if (keySize >= 0) {
-                    key = buffer.slice()
-                    key.limit(keySize)
-                    buffer.position(buffer.position() + keySize)
-                }
+                // read value
+                val valueSize = readVarint(buffer)
+                val value = readBytes(buffer, valueSize)
 
-                var value: ByteBuffer? = null
-                val valueSize = ByteUtils.readVarint(buffer)
-
-                if (valueSize >= 0) {
-                    value = buffer.slice()
-                    value.limit(valueSize)
-                    buffer.position(buffer.position() + valueSize)
-                }
-                val numHeaders = ByteUtils.readVarint(buffer)
+                val numHeaders = readVarint(buffer)
 
                 if (numHeaders < 0) throw InvalidRecordException(
                     "Found invalid number of record headers $numHeaders"
                 )
-                if (numHeaders > buffer.remaining())throw InvalidRecordException(
+                if (numHeaders > buffer.remaining()) throw InvalidRecordException(
                     "Found invalid number of record headers. $numHeaders is larger than the " +
                             "remaining size of the buffer"
                 )
@@ -309,15 +301,16 @@ open class DefaultRecord internal constructor(
                             "record payload, but instead read ${buffer.position() - recordStart}"
                 )
 
+                val totalSizeInBytes = sizeOfVarint(sizeOfBodyInBytes) + sizeOfBodyInBytes
                 return DefaultRecord(
-                    sizeInBytes = sizeInBytes,
+                    sizeInBytes = totalSizeInBytes,
                     attributes = attributes,
                     offset = offset,
                     timestamp = timestamp,
                     sequence = sequence,
                     key = key,
                     value = value,
-                    headers = headers
+                    headers = headers,
                 )
             } catch (e: BufferUnderflowException) {
                 throw InvalidRecordException("Found invalid record structure", e)
@@ -328,21 +321,18 @@ open class DefaultRecord internal constructor(
 
         @Throws(IOException::class)
         fun readPartiallyFrom(
-            input: DataInput,
-            skipArray: ByteArray,
+            input: InputStream,
             baseOffset: Long,
             baseTimestamp: Long,
             baseSequence: Int,
-            logAppendTime: Long?
+            logAppendTime: Long?,
         ): PartialDefaultRecord {
-            val sizeOfBodyInBytes = ByteUtils.readVarint(input)
-            val totalSizeInBytes = ByteUtils.sizeOfVarint(sizeOfBodyInBytes) + sizeOfBodyInBytes
+            val sizeOfBodyInBytes = readVarint(input)
+            val totalSizeInBytes = sizeOfVarint(sizeOfBodyInBytes) + sizeOfBodyInBytes
 
             return readPartiallyFrom(
                 input = input,
-                skipArray = skipArray,
                 sizeInBytes = totalSizeInBytes,
-                sizeOfBodyInBytes = sizeOfBodyInBytes,
                 baseOffset = baseOffset,
                 baseTimestamp = baseTimestamp,
                 baseSequence = baseSequence,
@@ -352,64 +342,45 @@ open class DefaultRecord internal constructor(
 
         @Throws(IOException::class)
         private fun readPartiallyFrom(
-            input: DataInput,
-            skipArray: ByteArray,
+            input: InputStream,
             sizeInBytes: Int,
-            sizeOfBodyInBytes: Int,
             baseOffset: Long,
             baseTimestamp: Long,
             baseSequence: Int,
-            logAppendTime: Long?
+            logAppendTime: Long?,
         ): PartialDefaultRecord {
-            val skipBuffer = ByteBuffer.wrap(skipArray)
-
-            // set its limit to 0 to indicate no bytes readable yet
-            skipBuffer.limit(0)
-
             try {
-                // reading the attributes / timestamp / offset and key-size does not require
-                // any byte array allocation and therefore we can just read them straight-forwardly
-                val bytesRemaining = PrimitiveRef.ofInt(sizeOfBodyInBytes)
-                val attributes = readByte(skipBuffer, input, bytesRemaining)
-                val timestampDelta = readVarLong(skipBuffer, input, bytesRemaining)
+                val attributes = input.read().toByte()
+                val timestampDelta = readVarlong(input)
                 var timestamp = baseTimestamp + timestampDelta
-
                 if (logAppendTime != null) timestamp = logAppendTime
 
-                val offsetDelta = readVarInt(skipBuffer, input, bytesRemaining)
+                val offsetDelta = readVarint(input)
                 val offset = baseOffset + offsetDelta
-
                 val sequence =
-                    if (baseSequence >= 0) DefaultRecordBatch.incrementSequence(
-                        sequence = baseSequence,
-                        increment = offsetDelta,
-                    )
+                    if (baseSequence >= 0) DefaultRecordBatch.incrementSequence(baseSequence, offsetDelta)
                     else RecordBatch.NO_SEQUENCE
 
-                // first skip key
-                val keySize = skipLengthDelimitedField(skipBuffer, input, bytesRemaining)
+                // skip key
+                val keySize = readVarint(input)
+                skipBytes(input, keySize)
 
-                // then skip value
-                val valueSize = skipLengthDelimitedField(skipBuffer, input, bytesRemaining)
+                // skip value
+                val valueSize = readVarint(input)
+                skipBytes(input, valueSize)
 
-                // then skip header
-                val numHeaders = readVarInt(skipBuffer, input, bytesRemaining)
-                if (numHeaders < 0) throw InvalidRecordException(
-                    "Found invalid number of record headers $numHeaders"
-                )
-                for (i in 0 until numHeaders) {
-                    val headerKeySize = skipLengthDelimitedField(skipBuffer, input, bytesRemaining)
-                    if (headerKeySize < 0) throw InvalidRecordException(
-                        "Invalid negative header key size $headerKeySize"
-                    )
+                // skip header
+                val numHeaders = readVarint(input)
+                if (numHeaders < 0) throw InvalidRecordException("Found invalid number of record headers $numHeaders")
+                for (i in 0..<numHeaders) {
+                    val headerKeySize = readVarint(input)
+                    if (headerKeySize < 0) throw InvalidRecordException("Invalid negative header key size $headerKeySize")
+                    skipBytes(input, headerKeySize)
 
                     // headerValueSize
-                    skipLengthDelimitedField(skipBuffer, input, bytesRemaining)
+                    val headerValueSize = readVarint(input)
+                    skipBytes(input, headerValueSize)
                 }
-                if (bytesRemaining.value > 0 || skipBuffer.remaining() > 0) throw InvalidRecordException(
-                    "Invalid record size: expected to read $sizeOfBodyInBytes" +
-                            " bytes in record payload, but there are still bytes remaining"
-                )
 
                 return PartialDefaultRecord(
                     sizeInBytes = sizeInBytes,
@@ -427,126 +398,57 @@ open class DefaultRecord internal constructor(
             }
         }
 
+        /**
+         * Skips over and discards exactly `bytesToSkip` bytes from the input stream.
+         *
+         * We require a loop over [InputStream.skip] because it is possible for InputStream to skip smaller
+         * number of bytes than expected (see javadoc for InputStream#skip).
+         *
+         * No-op for case where bytesToSkip <= 0. This could occur for cases where field is expected to be null.
+         * @throws InvalidRecordException if end of stream is encountered before we could skip required bytes.
+         * @throws IOException is an I/O error occurs while trying to skip from InputStream.
+         *
+         * @see java.io.InputStream.skip
+         */
         @Throws(IOException::class)
-        private fun readByte(
-            buffer: ByteBuffer,
-            input: DataInput,
-            bytesRemaining: PrimitiveRef.IntRef
-        ): Byte {
-            if (buffer.remaining() < 1 && bytesRemaining.value > 0) {
-                readMore(buffer, input, bytesRemaining)
-            }
-            return buffer.get()
-        }
+        private fun skipBytes(input: InputStream, bytesToSkip: Int) {
+            var toSkip = bytesToSkip
+            if (toSkip <= 0) return
 
-        @Throws(IOException::class)
-        private fun readVarLong(
-            buffer: ByteBuffer,
-            input: DataInput,
-            bytesRemaining: PrimitiveRef.IntRef
-        ): Long {
-            if (buffer.remaining() < 10 && bytesRemaining.value > 0) {
-                readMore(buffer, input, bytesRemaining)
-            }
-            return ByteUtils.readVarlong(buffer)
-        }
+            // Starting JDK 12, this implementation could be replaced by InputStream#skipNBytes
+            while (toSkip > 0) {
+                val ns = input.skip(toSkip.toLong()).toInt()
+                when (ns) {
+                    in 1..toSkip -> toSkip -= ns // adjust number to skip
+                    0 -> { // no bytes skipped
+                        // read one byte to check for EOS
+                        if (input.read() == -1) throw InvalidRecordException(
+                            "Reached end of input stream before skipping all bytes. Remaining bytes:$toSkip"
+                        )
 
-        @Throws(IOException::class)
-        private fun readVarInt(
-            buffer: ByteBuffer,
-            input: DataInput,
-            bytesRemaining: PrimitiveRef.IntRef
-        ): Int {
-            if (buffer.remaining() < 5 && bytesRemaining.value > 0) {
-                readMore(buffer, input, bytesRemaining)
-            }
-            return ByteUtils.readVarint(buffer)
-        }
-
-        @Throws(IOException::class)
-        private fun skipLengthDelimitedField(
-            buffer: ByteBuffer,
-            input: DataInput,
-            bytesRemaining: PrimitiveRef.IntRef
-        ): Int {
-            var needMore = false
-            var sizeInBytes = -1
-            var bytesToSkip = -1
-
-            while (true) {
-                if (needMore) {
-                    readMore(buffer, input, bytesRemaining)
-                    needMore = false
-                }
-
-                if (bytesToSkip < 0) {
-                    if (buffer.remaining() < 5 && bytesRemaining.value > 0) needMore = true
-                    else {
-                        sizeInBytes = ByteUtils.readVarint(buffer)
-                        if (sizeInBytes <= 0) return sizeInBytes else bytesToSkip = sizeInBytes
+                        // one byte read so decrement number to skip
+                        toSkip--
                     }
-                } else {
-                    if (bytesToSkip > buffer.remaining()) {
-                        bytesToSkip -= buffer.remaining()
-                        buffer.position(buffer.limit())
-                        needMore = true
-                    } else {
-                        buffer.position(buffer.position() + bytesToSkip)
-                        return sizeInBytes
-                    }
+
+                    else -> throw IOException("Unable to skip exactly") // skipped negative or too many bytes
                 }
             }
-        }
-
-        @Throws(IOException::class)
-        private fun readMore(
-            buffer: ByteBuffer,
-            input: DataInput,
-            bytesRemaining: PrimitiveRef.IntRef
-        ) {
-            if (bytesRemaining.value > 0) {
-                val array = buffer.array()
-
-                // first copy the remaining bytes to the beginning of the array;
-                // at most 4 bytes would be shifted here
-                val stepsToLeftShift = buffer.position()
-                val bytesToLeftShift = buffer.remaining()
-                for (i in 0 until bytesToLeftShift) {
-                    array[i] = array[i + stepsToLeftShift]
-                }
-
-                // then try to read more bytes to the remaining of the array
-                val bytesRead = bytesRemaining.value.coerceAtMost(array.size - bytesToLeftShift)
-                input.readFully(array, bytesToLeftShift, bytesRead)
-                buffer.rewind()
-                // only those many bytes are readable
-                buffer.limit(bytesToLeftShift + bytesRead)
-                bytesRemaining.value -= bytesRead
-            } else throw InvalidRecordException(
-                "Invalid record size: expected to read more bytes in record payload"
-            )
         }
 
         private fun readHeaders(buffer: ByteBuffer, numHeaders: Int): Array<Header> {
             val headers = arrayOfNulls<Header>(numHeaders)
-            for (i in 0 until numHeaders) {
-                val headerKeySize = ByteUtils.readVarint(buffer)
+            for (i in 0..<numHeaders) {
+                val headerKeySize = readVarint(buffer)
 
                 if (headerKeySize < 0) throw InvalidRecordException(
                     "Invalid negative header key size $headerKeySize"
                 )
 
-                val headerKeyBuffer = buffer.slice()
-                headerKeyBuffer.limit(headerKeySize)
-                buffer.position(buffer.position() + headerKeySize)
-                var headerValue: ByteBuffer? = null
-                val headerValueSize = ByteUtils.readVarint(buffer)
+                val headerKeyBuffer = readBytes(buffer, headerKeySize)!!
 
-                if (headerValueSize >= 0) {
-                    headerValue = buffer.slice()
-                    headerValue.limit(headerValueSize)
-                    buffer.position(buffer.position() + headerValueSize)
-                }
+                val headerValueSize = readVarint(buffer)
+                val headerValue = readBytes(buffer, headerValueSize)
+
                 headers[i] = RecordHeader(headerKeyBuffer, headerValue)
             }
             return headers.filterNotNull().toTypedArray()
@@ -557,7 +459,7 @@ open class DefaultRecord internal constructor(
             timestampDelta: Long,
             key: ByteBuffer?,
             value: ByteBuffer?,
-            headers: Array<Header>
+            headers: Array<Header>,
         ): Int {
             val bodySize = sizeOfBodyInBytes(offsetDelta, timestampDelta, key, value, headers)
             return bodySize + ByteUtils.sizeOfVarint(bodySize)
@@ -568,7 +470,7 @@ open class DefaultRecord internal constructor(
             timestampDelta: Long,
             keySize: Int,
             valueSize: Int,
-            headers: Array<Header>
+            headers: Array<Header>,
         ): Int {
             val bodySize =
                 sizeOfBodyInBytes(offsetDelta, timestampDelta, keySize, valueSize, headers)
@@ -580,7 +482,7 @@ open class DefaultRecord internal constructor(
             timestampDelta: Long,
             key: ByteBuffer?,
             value: ByteBuffer?,
-            headers: Array<Header>
+            headers: Array<Header>,
         ): Int {
             val keySize = key?.remaining() ?: -1
             val valueSize = value?.remaining() ?: -1
@@ -592,7 +494,7 @@ open class DefaultRecord internal constructor(
             timestampDelta: Long,
             keySize: Int,
             valueSize: Int,
-            headers: Array<Header>
+            headers: Array<Header>,
         ): Int {
             var size = 1 // always one byte for attributes
             size += ByteUtils.sizeOfVarint(offsetDelta)
@@ -627,7 +529,7 @@ open class DefaultRecord internal constructor(
         fun recordSizeUpperBound(
             key: ByteBuffer?,
             value: ByteBuffer?,
-            headers: Array<Header>
+            headers: Array<Header>,
         ): Int {
             val keySize = key?.remaining() ?: -1
             val valueSize = value?.remaining() ?: -1

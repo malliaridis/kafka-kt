@@ -427,7 +427,7 @@ class SubscriptionStateTest {
         assertFalse(
             state.maybeValidatePositionForCurrentLeader(
                 apiVersions = apiVersions,
-                tp = tp0,
+                topicPartition = tp0,
                 leaderAndEpoch = LeaderAndEpoch(leader = broker1, epoch = null),
             )
         )
@@ -436,7 +436,7 @@ class SubscriptionStateTest {
         assertFalse(
             state.maybeValidatePositionForCurrentLeader(
                 apiVersions = apiVersions,
-                tp = tp0,
+                topicPartition = tp0,
                 leaderAndEpoch = LeaderAndEpoch(leader = broker1, epoch = 10),
             )
         )
@@ -493,7 +493,7 @@ class SubscriptionStateTest {
         assertTrue(
             state.maybeValidatePositionForCurrentLeader(
                 apiVersions = apiVersions,
-                tp = tp0,
+                topicPartition = tp0,
                 leaderAndEpoch = LeaderAndEpoch(leader = broker1, epoch = 5),
             )
         )
@@ -504,7 +504,7 @@ class SubscriptionStateTest {
         assertTrue(
             state.maybeValidatePositionForCurrentLeader(
                 apiVersions = apiVersions,
-                tp = tp0,
+                topicPartition = tp0,
                 leaderAndEpoch = LeaderAndEpoch(leader = broker1, epoch = 15),
             )
         )
@@ -515,7 +515,7 @@ class SubscriptionStateTest {
         assertFalse(
             state.maybeValidatePositionForCurrentLeader(
                 apiVersions = apiVersions,
-                tp = tp0,
+                topicPartition = tp0,
                 leaderAndEpoch = LeaderAndEpoch(leader = broker1, epoch = null),
             )
         )
@@ -640,7 +640,7 @@ class SubscriptionStateTest {
         assertFalse(
             state.maybeValidatePositionForCurrentLeader(
                 apiVersions = apiVersions,
-                tp = tp0,
+                topicPartition = tp0,
                 leaderAndEpoch = LeaderAndEpoch(leader = broker1, epoch = 10)
             )
         )
@@ -661,7 +661,7 @@ class SubscriptionStateTest {
         assertTrue(
             state.maybeValidatePositionForCurrentLeader(
                 apiVersions = apiVersions,
-                tp = tp0,
+                topicPartition = tp0,
                 leaderAndEpoch = LeaderAndEpoch(leader = broker1, epoch = 10),
             ),
         )
@@ -895,7 +895,7 @@ class SubscriptionStateTest {
         assertFalse(
             state.maybeValidatePositionForCurrentLeader(
                 apiVersions = oldApis,
-                tp = tp0,
+                topicPartition = tp0,
                 leaderAndEpoch = LeaderAndEpoch(leader = broker1, epoch = null),
             )
         )
@@ -913,7 +913,7 @@ class SubscriptionStateTest {
         assertFalse(
             state.maybeValidatePositionForCurrentLeader(
                 apiVersions = oldApis,
-                tp = tp0,
+                topicPartition = tp0,
                 leaderAndEpoch = LeaderAndEpoch(leader = broker1, epoch = null),
             )
         )
@@ -941,7 +941,7 @@ class SubscriptionStateTest {
         assertFalse(
             state.maybeValidatePositionForCurrentLeader(
                 apiVersions = oldApis,
-                tp = tp0,
+                topicPartition = tp0,
                 leaderAndEpoch = LeaderAndEpoch(leader = broker1, epoch = 2),
             )
         )

@@ -21,9 +21,7 @@ import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.BufferUnderflowException
 import java.nio.ByteBuffer
-import java.util.*
 import java.util.concurrent.atomic.AtomicReference
-import java.util.stream.Collectors
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.Node
 import org.apache.kafka.common.TopicPartition
@@ -46,13 +44,12 @@ import org.apache.kafka.common.requests.ApiVersionsResponse
 import org.apache.kafka.common.requests.CorrelationIdMismatchException
 import org.apache.kafka.common.requests.MetadataRequest
 import org.apache.kafka.common.requests.MetadataResponse
-import org.apache.kafka.common.requests.MetadataResponse.PartitionMetadata
 import org.apache.kafka.common.requests.RequestHeader
 import org.apache.kafka.common.security.authenticator.SaslClientAuthenticator
 import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.Time
-import org.apache.kafka.common.utils.Utils
 import org.slf4j.Logger
+import kotlin.random.Random
 
 /**
  * A network client for asynchronous request/response network i/o. This is an internal class used to implement the
@@ -94,7 +91,7 @@ class NetworkClient(
 
     private val log: Logger
 
-    private val randOffset: Random = Random()
+    private val randOffset: Random = Random
 
     private val metadataUpdater: MetadataUpdater
 
@@ -115,7 +112,9 @@ class NetworkClient(
 
     private val nodesNeedingApiVersionsFetch: MutableMap<String, ApiVersionsRequest.Builder> =
         HashMap()
-    private val abortedSends: MutableList<ClientResponse> = LinkedList()
+
+    private val abortedSends = mutableListOf<ClientResponse>()
+
     private val state: AtomicReference<State> = AtomicReference(State.ACTIVE)
 
     init {
@@ -180,7 +179,12 @@ class NetworkClient(
         log.info("Client requested disconnect from node {}", nodeId)
         selector.close(nodeId)
         val now = time.milliseconds()
-        cancelInFlightRequests(nodeId, now, abortedSends)
+        cancelInFlightRequests(
+            nodeId = nodeId,
+            now = now,
+            responses = abortedSends,
+            timedOut = false,
+        )
         connectionStates.disconnected(nodeId, now)
     }
 
@@ -188,9 +192,10 @@ class NetworkClient(
         nodeId: String,
         now: Long,
         responses: MutableCollection<ClientResponse>?,
+        timedOut: Boolean,
     ) {
         val inFlightRequests = inFlightRequests.clearAll(nodeId)
-        for (request: InFlightRequest in inFlightRequests) {
+        for (request in inFlightRequests) {
             if (log.isDebugEnabled) {
                 log.debug(
                     "Cancelled in-flight {} request with correlation id {} due to node {} being disconnected " +
@@ -208,11 +213,12 @@ class NetworkClient(
                     request.requestTimeoutMs
                 )
             }
-            if (!request.isInternalRequest) {
-                responses?.add(request.disconnected(now, null))
-            } else if (request.header.apiKey == ApiKeys.METADATA) {
-                metadataUpdater.handleFailedRequest(now, null)
-            }
+            if (!request.isInternalRequest) responses?.add(
+                if (timedOut) request.timedOut(now)
+                else request.disconnected(now)
+            )
+            else if (request.header.apiKey == ApiKeys.METADATA)
+                metadataUpdater.handleFailedRequest(now = now, maybeFatalException = null)
         }
     }
 
@@ -227,7 +233,12 @@ class NetworkClient(
         log.info("Client requested connection close from node {}", nodeId)
         selector.close(nodeId)
         val now = time.milliseconds()
-        cancelInFlightRequests(nodeId, now, null)
+        cancelInFlightRequests(
+            nodeId = nodeId,
+            now = now,
+            responses = null,
+            timedOut = false,
+        )
         connectionStates.remove(nodeId)
     }
 
@@ -613,15 +624,36 @@ class NetworkClient(
      * Post process disconnection of a node
      *
      * @param responses The list of responses to update
+     * @param nodeId Id of the node to be disconnected
+     * @param now The current time
+     */
+    private fun processTimeoutDisconnection(
+        responses: MutableList<ClientResponse>,
+        nodeId: String,
+        now: Long,
+    ) = processDisconnection(
+        responses = responses,
+        nodeId = nodeId,
+        now = now,
+        disconnectState = ChannelState.LOCAL_CLOSE,
+        timedOut = true,
+    )
+
+    /**
+     * Post process disconnection of a node
+     *
+     * @param responses The list of responses to update
      * @param nodeId ID of the node to be disconnected
      * @param now The current time
      * @param disconnectState The state of the disconnected channel
+     * @param timedOut `true` if the connection is disconnected because of a timeout (request or connection)
      */
     private fun processDisconnection(
         responses: MutableList<ClientResponse>,
         nodeId: String,
         now: Long,
         disconnectState: ChannelState,
+        timedOut: Boolean = false,
     ) {
         connectionStates.disconnected(nodeId, now)
         apiVersions.remove(nodeId)
@@ -655,7 +687,7 @@ class NetworkClient(
 
             else -> {}
         }
-        cancelInFlightRequests(nodeId, now, responses)
+        cancelInFlightRequests(nodeId, now, responses, timedOut)
         metadataUpdater.handleServerDisconnect(now, nodeId, disconnectState.exception)
     }
 
@@ -672,7 +704,7 @@ class NetworkClient(
             // close connection to the node
             selector.close(nodeId)
             log.info("Disconnecting from node {} due to request timeout.", nodeId)
-            processDisconnection(responses, nodeId, now, ChannelState.LOCAL_CLOSE)
+            processTimeoutDisconnection(responses, nodeId, now)
         }
     }
 
@@ -699,7 +731,7 @@ class NetworkClient(
                 nodeId,
                 connectionStates.connectionSetupTimeoutMs(nodeId)
             )
-            processDisconnection(responses, nodeId, now, ChannelState.LOCAL_CLOSE)
+            processTimeoutDisconnection(responses, nodeId, now)
         }
     }
 
@@ -817,17 +849,19 @@ class NetworkClient(
         }
         val nodeVersionInfo = NodeApiVersions(
             apiVersionsResponse.data().apiKeys,
-            apiVersionsResponse.data().supportedFeatures
+            apiVersionsResponse.data().supportedFeatures,
+            apiVersionsResponse.data().zkMigrationReady,
         )
         apiVersions.update(node, nodeVersionInfo)
         connectionStates.ready(node)
         log.debug(
-            "Node {} has finalized features epoch: {}, finalized features: {}, supported features: {}," +
-                    "API versions: {}.",
+            "Node {} has finalized features epoch: {}, finalized features: {}, supported features: {}, " +
+                    "ZK migration ready: {}, API versions: {}.",
             node,
             apiVersionsResponse.data().finalizedFeaturesEpoch,
             apiVersionsResponse.data().finalizedFeatures,
             apiVersionsResponse.data().supportedFeatures,
+            apiVersionsResponse.data().zkMigrationReady,
             nodeVersionInfo
         )
     }
@@ -1194,17 +1228,32 @@ class NetworkClient(
             responseBody = response,
         )
 
-        fun disconnected(
-            timeMs: Long,
-            authenticationException: AuthenticationException?,
-        ): ClientResponse = ClientResponse(
+        fun timedOut(timeMs: Long): ClientResponse {
+            // A timed out request is considered disconnected as well
+            return ClientResponse(
+                requestHeader = header,
+                callback = callback,
+                destination = destination,
+                createdTimeMs = createdTimeMs,
+                receivedTimeMs = timeMs,
+                disconnected = true,
+                timedOut = true,
+                versionMismatch = null,
+                authenticationException = null,
+                responseBody = null,
+            )
+        }
+
+        fun disconnected(timeMs: Long): ClientResponse = ClientResponse(
             requestHeader = header,
             callback = callback,
             destination = destination,
             createdTimeMs = createdTimeMs,
             receivedTimeMs = timeMs,
             disconnected = true,
-            authenticationException = authenticationException,
+            versionMismatch = null,
+            authenticationException = null,
+            responseBody = null,
         )
 
         override fun toString(): String =

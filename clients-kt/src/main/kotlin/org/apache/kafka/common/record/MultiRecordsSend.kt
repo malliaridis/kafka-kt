@@ -76,7 +76,7 @@ class MultiRecordsSend : Send {
         if (completed())
             throw KafkaException("This operation cannot be invoked on a complete request.")
 
-        var totalWrittenPerCall = 0
+        var totalWrittenPerCall = 0L
         var sendComplete: Boolean
         do {
             val written = current!!.writeTo(channel)
@@ -87,7 +87,7 @@ class MultiRecordsSend : Send {
                 current = sendQueue.poll()
             }
         } while (!completed() && sendComplete)
-        totalWritten += totalWrittenPerCall.toLong()
+        totalWritten += totalWrittenPerCall
         if (completed() && totalWritten != size) log.error(
             "mismatch in sending bytes over socket; expected: {} actual: {}",
             size,

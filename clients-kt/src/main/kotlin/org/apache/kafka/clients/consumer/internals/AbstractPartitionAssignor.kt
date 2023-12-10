@@ -17,10 +17,13 @@
 
 package org.apache.kafka.clients.consumer.internals
 
+import java.util.Optional
 import org.apache.kafka.clients.consumer.ConsumerPartitionAssignor
 import org.apache.kafka.clients.consumer.ConsumerPartitionAssignor.GroupAssignment
 import org.apache.kafka.clients.consumer.ConsumerPartitionAssignor.GroupSubscription
 import org.apache.kafka.common.Cluster
+import org.apache.kafka.common.Node
+import org.apache.kafka.common.PartitionInfo
 import org.apache.kafka.common.TopicPartition
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -30,6 +33,9 @@ import org.slf4j.LoggerFactory
  * partition counts which are always needed in assignors).
  */
 abstract class AbstractPartitionAssignor : ConsumerPartitionAssignor {
+
+    // Used only in unit tests to verify rack-aware assignment when all racks have all partitions.
+    var preferRackAwareLogic = false
 
     /**
      * Perform the group assignment given the partition counts and member subscriptions
@@ -44,22 +50,36 @@ abstract class AbstractPartitionAssignor : ConsumerPartitionAssignor {
         subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>,
     ): MutableMap<String, MutableList<TopicPartition>>
 
+    /**
+     * Default implementation of assignPartitions() that does not include racks. This is only
+     * included to avoid breaking any custom implementation that extends AbstractPartitionAssignor.
+     * Note that this class is internal, but to be safe, we are maintaining compatibility.
+     */
+    open fun assignPartitions(
+        partitionsPerTopic: MutableMap<String, MutableList<PartitionInfo>>,
+        subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>,
+    ): MutableMap<String, MutableList<TopicPartition>> {
+        val partitionCountPerTopic = partitionsPerTopic.mapValues { it.value.size }
+        return assign(partitionCountPerTopic, subscriptions)
+    }
+
     override fun assign(metadata: Cluster, groupSubscription: GroupSubscription): GroupAssignment {
         val subscriptions = groupSubscription.subscriptions
         val allSubscribedTopics: MutableSet<String> = hashSetOf()
-        for ((_, value) in subscriptions) allSubscribedTopics.addAll(value.topics)
+        for (subscription in subscriptions)
+            allSubscribedTopics.addAll(subscription.value.topics)
 
-        val partitionsPerTopic: MutableMap<String, Int> = HashMap()
+        val partitionsPerTopic = mutableMapOf<String, MutableList<PartitionInfo>>()
         for (topic in allSubscribedTopics) {
-            val numPartitions = metadata.partitionCountForTopic(topic)
-            if (numPartitions != null && numPartitions > 0)
-                partitionsPerTopic[topic] = numPartitions
-            else log.debug(
-                "Skipping assignment for topic {} since no metadata is available",
-                topic,
-            )
+            var partitions = metadata.partitionsForTopic(topic)
+            if (partitions.isNotEmpty()) {
+                partitions = partitions.toMutableList()
+                partitions.sortWith(Comparator.comparingInt { it.partition })
+                partitionsPerTopic[topic] = partitions
+            } else log.debug("Skipping assignment for topic {} since no metadata is available", topic)
         }
-        val rawAssignments = assign(partitionsPerTopic, subscriptions)
+
+        val rawAssignments = assignPartitions(partitionsPerTopic, subscriptions)
 
         // this class maintains no user data, so just wrap the results
         val assignments = rawAssignments.mapValues { (_, value) ->
@@ -68,9 +88,20 @@ abstract class AbstractPartitionAssignor : ConsumerPartitionAssignor {
         return GroupAssignment(assignments)
     }
 
+    internal fun useRackAwareAssignment(
+        consumerRacks: Set<String>,
+        partitionRacks: Set<String>,
+        racksPerPartition: Map<TopicPartition, Set<String>>,
+    ): Boolean {
+        return if (consumerRacks.isEmpty() || consumerRacks.intersect(partitionRacks).isEmpty()) false
+        else if (preferRackAwareLogic) true
+        else !racksPerPartition.values.stream().allMatch { o -> partitionRacks == o }
+    }
+
     class MemberInfo(
         val memberId: String,
         val groupInstanceId: String?,
+        val rackId: String? = null,
     ) : Comparable<MemberInfo> {
 
         override operator fun compareTo(other: MemberInfo): Int {
@@ -99,6 +130,8 @@ abstract class AbstractPartitionAssignor : ConsumerPartitionAssignor {
 
         private val log: Logger = LoggerFactory.getLogger(AbstractPartitionAssignor::class.java)
 
+        private val NO_NODES = listOf(Node.noNode())
+
         internal fun <K, V> put(map: MutableMap<K, MutableList<V>>, key: K, value: V) {
             val list = map.computeIfAbsent(key) { mutableListOf() }
             list.add(value)
@@ -106,8 +139,26 @@ abstract class AbstractPartitionAssignor : ConsumerPartitionAssignor {
 
         internal fun partitions(topic: String, numPartitions: Int): List<TopicPartition> {
             val partitions: MutableList<TopicPartition> = ArrayList(numPartitions)
-            for (i in 0 until numPartitions) partitions.add(TopicPartition(topic, i))
+            for (i in 0..<numPartitions) partitions.add(TopicPartition(topic, i))
             return partitions
         }
+
+        internal fun partitionInfosWithoutRacks(
+            partitionsPerTopic: Map<String, Int>,
+        ): MutableMap<String, MutableList<PartitionInfo>> =
+            partitionsPerTopic.mapValues { (topic, numPartitions) ->
+                val partitionInfos: MutableList<PartitionInfo> =
+                    java.util.ArrayList(numPartitions)
+                for (index in 0..<numPartitions) partitionInfos.add(
+                    PartitionInfo(
+                        topic = topic,
+                        partition = index,
+                        leader = Node.noNode(),
+                        replicas = NO_NODES,
+                        inSyncReplicas = NO_NODES
+                    )
+                )
+                partitionInfos
+            }.toMutableMap()
     }
 }

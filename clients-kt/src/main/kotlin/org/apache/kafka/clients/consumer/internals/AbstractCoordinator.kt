@@ -350,6 +350,9 @@ abstract class AbstractCoordinator(
         // if we have not joined the group or we are preparing rebalance, we don't need to send
         // heartbeats
         return if (state.hasNotJoinedGroup()) Long.MAX_VALUE
+        else if (heartbeatThread?.hasFailed() == true)
+            // if an exception occurs in the heartbeat thread, raise it.
+            throw heartbeatThread!!.failureCause()!!
         else heartbeat.timeToNextHeartbeat(now)
     }
 
@@ -499,6 +502,10 @@ abstract class AbstractCoordinator(
                 ) continue
                 else if (!future.isRetriable) throw exception
 
+                // We need to return upon expired timer, in case if the client.poll returns immediately and the time
+                // has elapsed.
+                if (timer.isExpired) return false
+
                 timer.sleep(rebalanceConfig.retryBackoffMs!!)
             }
         }
@@ -524,9 +531,9 @@ abstract class AbstractCoordinator(
                 addListener(object : RequestFutureListener<ByteBuffer> {
                     // do nothing since all the handler logic are in SyncGroupResponseHandler
                     // already
-                    override fun onSuccess(value: ByteBuffer) = Unit
+                    override fun onSuccess(result: ByteBuffer) = Unit
 
-                    override fun onFailure(e: RuntimeException) {
+                    override fun onFailure(exception: RuntimeException) {
                         // we handle failures below after the request finishes. if the join
                         // completes after having been woken up, the exception is ignored and we
                         // will rejoin; this can be triggered when either join or sync request
@@ -931,9 +938,9 @@ abstract class AbstractCoordinator(
     private inner class FindCoordinatorResponseHandler
         : RequestFutureAdapter<ClientResponse, Unit>() {
 
-        override fun onSuccess(value: ClientResponse, future: RequestFuture<Unit>) {
-            log.debug("Received FindCoordinator response {}", value)
-            val coordinators = (value.responseBody as FindCoordinatorResponse).coordinators()
+        override fun onSuccess(response: ClientResponse, future: RequestFuture<Unit>) {
+            log.debug("Received FindCoordinator response {}", response)
+            val coordinators = (response.responseBody as FindCoordinatorResponse).coordinators()
             if (coordinators.size != 1) {
                 log.error(
                     "Group coordinator lookup failed: Invalid response containing more than a " +
@@ -1410,10 +1417,10 @@ abstract class AbstractCoordinator(
             future.raise(exception)
         }
 
-        override fun onSuccess(value: ClientResponse, future: RequestFuture<T>) {
+        override fun onSuccess(response: ClientResponse, future: RequestFuture<T>) {
             try {
-                response = value
-                val responseObj = value.responseBody as R
+                this.response = response
+                val responseObj = response.responseBody as R
                 handle(responseObj, future)
             } catch (e: RuntimeException) {
                 if (!future.isDone) future.raise(e)
@@ -1727,13 +1734,13 @@ abstract class AbstractCoordinator(
                             val heartbeatFuture = sendHeartbeatRequest()
                             heartbeatFuture.addListener(object : RequestFutureListener<Unit> {
 
-                                override fun onSuccess(value: Unit) = synchronized(this@AbstractCoordinator) {
+                                override fun onSuccess(result: Unit) = synchronized(this@AbstractCoordinator) {
                                     heartbeat.receiveHeartbeat()
                                 }
 
-                                override fun onFailure(e: RuntimeException) =
+                                override fun onFailure(exception: RuntimeException) =
                                     synchronized(this@AbstractCoordinator) {
-                                        when (e) {
+                                        when (exception) {
                                             is RebalanceInProgressException -> {
                                                 // it is valid to continue heartbeating while the
                                                 // group is rebalancing. This ensures that the
@@ -1750,7 +1757,7 @@ abstract class AbstractCoordinator(
                                                             "heartbeat thread",
                                                     rebalanceConfig.groupInstanceId,
                                                 )
-                                                heartbeatThread!!.failed.set(e)
+                                                heartbeatThread!!.failed.set(exception)
                                             }
 
                                             else -> {
@@ -1784,6 +1791,7 @@ abstract class AbstractCoordinator(
                 if (e is RuntimeException) failed.set(e) else failed.set(RuntimeException(e))
             } finally {
                 log.debug("Heartbeat thread has closed")
+                this.closed = true
             }
         }
     }

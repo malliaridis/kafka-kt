@@ -39,6 +39,27 @@ class OffsetFetchRequest private constructor(
 
     fun requireStable(): Boolean = data.requireStable
 
+    fun groups(): List<OffsetFetchRequestGroup> {
+        return if (version >= 8) data.groups
+        else {
+            val group = OffsetFetchRequestGroup().setGroupId(data.groupId)
+
+            data.topics?.let { topics ->
+                // Otherwise, topics are translated to the new structure.
+                topics.forEach { topic ->
+                    group.topics = (group.topics ?: emptyList()) + OffsetFetchRequestTopics()
+                        .setName(topic.name)
+                        .setPartitionIndexes(topic.partitionIndexes)
+                }
+            } ?: run {
+                // If topics is null, it means that all topic-partitions should
+                // be fetched hence we preserve it.
+                group.setTopics(null)
+            }
+            listOf(group)
+        }
+    }
+
     fun groupIdsToPartitions(): Map<String, List<TopicPartition>?> {
         val groupIdsToPartitions = mutableMapOf<String, List<TopicPartition>?>()
 

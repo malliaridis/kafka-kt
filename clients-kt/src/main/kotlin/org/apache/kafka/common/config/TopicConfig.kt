@@ -89,7 +89,7 @@ object TopicConfig {
     const val REMOTE_LOG_STORAGE_ENABLE_CONFIG = "remote.storage.enable"
 
     const val REMOTE_LOG_STORAGE_ENABLE_DOC =
-        "To enable tier storage for a topic, set `remote.storage.enable` as true. " +
+        "To enable tiered storage for a topic, set `remote.storage.enable` as true. " +
                 "You can not disable this config once it is enabled. It will be provided in future versions."
 
     const val LOCAL_LOG_RETENTION_MS_CONFIG = "local.retention.ms"

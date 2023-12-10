@@ -3185,8 +3185,10 @@ class RequestResponseTest {
 
     private fun createAddPartitionsToTxnRequest(version: Short): AddPartitionsToTxnRequest {
         return AddPartitionsToTxnRequest.Builder(
-            "tid", 21L, 42.toShort(),
-            listOf(TopicPartition("topic", 73))
+            transactionalId = "tid",
+            producerId = 21L,
+            producerEpoch = 42.toShort(),
+            partitions = listOf(TopicPartition("topic", 73))
         ).build(version)
     }
 

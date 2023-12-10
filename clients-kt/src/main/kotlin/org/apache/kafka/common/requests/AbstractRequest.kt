@@ -41,6 +41,20 @@ abstract class AbstractRequest(
     ) {
 
         /**
+         * Construct a new builder which allows any supported version
+         */
+        constructor(apiKey: ApiKeys, enableUnstableLastVersion: Boolean) : this(
+            apiKey = apiKey,
+            oldestAllowedVersion = apiKey.oldestVersion(),
+            latestAllowedVersion = apiKey.latestVersion(enableUnstableLastVersion),
+        )
+
+        /**
+         * Construct a new builder which allows any supported and released version
+         */
+        constructor(apiKey: ApiKeys) : this(apiKey = apiKey, enableUnstableLastVersion = false)
+
+        /**
          * Construct a new builder which allows only a specific version
          */
         constructor(apiKey: ApiKeys, allowedVersion: Short) : this(
@@ -185,11 +199,7 @@ abstract class AbstractRequest(
             ApiKeys.DELETE_TOPICS -> DeleteTopicsRequest.parse(buffer, apiVersion)
             ApiKeys.DELETE_RECORDS -> DeleteRecordsRequest.parse(buffer, apiVersion)
             ApiKeys.INIT_PRODUCER_ID -> InitProducerIdRequest.parse(buffer, apiVersion)
-            ApiKeys.OFFSET_FOR_LEADER_EPOCH -> OffsetsForLeaderEpochRequest.parse(
-                buffer,
-                apiVersion
-            )
-
+            ApiKeys.OFFSET_FOR_LEADER_EPOCH -> OffsetsForLeaderEpochRequest.parse(buffer, apiVersion)
             ApiKeys.ADD_PARTITIONS_TO_TXN -> AddPartitionsToTxnRequest.parse(buffer, apiVersion)
             ApiKeys.ADD_OFFSETS_TO_TXN -> AddOffsetsToTxnRequest.parse(buffer, apiVersion)
             ApiKeys.END_TXN -> EndTxnRequest.parse(buffer, apiVersion)
@@ -200,68 +210,24 @@ abstract class AbstractRequest(
             ApiKeys.DELETE_ACLS -> DeleteAclsRequest.parse(buffer, apiVersion)
             ApiKeys.DESCRIBE_CONFIGS -> DescribeConfigsRequest.parse(buffer, apiVersion)
             ApiKeys.ALTER_CONFIGS -> AlterConfigsRequest.parse(buffer, apiVersion)
-            ApiKeys.ALTER_REPLICA_LOG_DIRS -> AlterReplicaLogDirsRequest.parse(
-                buffer,
-                apiVersion
-            )
-
+            ApiKeys.ALTER_REPLICA_LOG_DIRS -> AlterReplicaLogDirsRequest.parse(buffer, apiVersion)
             ApiKeys.DESCRIBE_LOG_DIRS -> DescribeLogDirsRequest.parse(buffer, apiVersion)
             ApiKeys.SASL_AUTHENTICATE -> SaslAuthenticateRequest.parse(buffer, apiVersion)
             ApiKeys.CREATE_PARTITIONS -> CreatePartitionsRequest.parse(buffer, apiVersion)
-            ApiKeys.CREATE_DELEGATION_TOKEN -> CreateDelegationTokenRequest.parse(
-                buffer,
-                apiVersion
-            )
-
-            ApiKeys.RENEW_DELEGATION_TOKEN -> RenewDelegationTokenRequest.parse(
-                buffer,
-                apiVersion
-            )
-
-            ApiKeys.EXPIRE_DELEGATION_TOKEN -> ExpireDelegationTokenRequest.parse(
-                buffer,
-                apiVersion
-            )
-
-            ApiKeys.DESCRIBE_DELEGATION_TOKEN -> DescribeDelegationTokenRequest.parse(
-                buffer,
-                apiVersion
-            )
-
+            ApiKeys.CREATE_DELEGATION_TOKEN -> CreateDelegationTokenRequest.parse(buffer, apiVersion)
+            ApiKeys.RENEW_DELEGATION_TOKEN -> RenewDelegationTokenRequest.parse(buffer, apiVersion)
+            ApiKeys.EXPIRE_DELEGATION_TOKEN -> ExpireDelegationTokenRequest.parse(buffer, apiVersion)
+            ApiKeys.DESCRIBE_DELEGATION_TOKEN -> DescribeDelegationTokenRequest.parse(buffer, apiVersion)
             ApiKeys.DELETE_GROUPS -> DeleteGroupsRequest.parse(buffer, apiVersion)
             ApiKeys.ELECT_LEADERS -> ElectLeadersRequest.parse(buffer, apiVersion)
-            ApiKeys.INCREMENTAL_ALTER_CONFIGS -> IncrementalAlterConfigsRequest.parse(
-                buffer,
-                apiVersion
-            )
-
-            ApiKeys.ALTER_PARTITION_REASSIGNMENTS -> AlterPartitionReassignmentsRequest.parse(
-                buffer,
-                apiVersion
-            )
-
-            ApiKeys.LIST_PARTITION_REASSIGNMENTS -> ListPartitionReassignmentsRequest.parse(
-                buffer,
-                apiVersion
-            )
-
+            ApiKeys.INCREMENTAL_ALTER_CONFIGS -> IncrementalAlterConfigsRequest.parse(buffer, apiVersion)
+            ApiKeys.ALTER_PARTITION_REASSIGNMENTS -> AlterPartitionReassignmentsRequest.parse(buffer, apiVersion)
+            ApiKeys.LIST_PARTITION_REASSIGNMENTS -> ListPartitionReassignmentsRequest.parse(buffer, apiVersion)
             ApiKeys.OFFSET_DELETE -> OffsetDeleteRequest.parse(buffer, apiVersion)
-            ApiKeys.DESCRIBE_CLIENT_QUOTAS -> DescribeClientQuotasRequest.parse(
-                buffer,
-                apiVersion
-            )
-
+            ApiKeys.DESCRIBE_CLIENT_QUOTAS -> DescribeClientQuotasRequest.parse(buffer, apiVersion)
             ApiKeys.ALTER_CLIENT_QUOTAS -> AlterClientQuotasRequest.parse(buffer, apiVersion)
-            ApiKeys.DESCRIBE_USER_SCRAM_CREDENTIALS -> DescribeUserScramCredentialsRequest.parse(
-                buffer,
-                apiVersion
-            )
-
-            ApiKeys.ALTER_USER_SCRAM_CREDENTIALS -> AlterUserScramCredentialsRequest.parse(
-                buffer,
-                apiVersion
-            )
-
+            ApiKeys.DESCRIBE_USER_SCRAM_CREDENTIALS -> DescribeUserScramCredentialsRequest.parse(buffer, apiVersion)
+            ApiKeys.ALTER_USER_SCRAM_CREDENTIALS -> AlterUserScramCredentialsRequest.parse(buffer, apiVersion)
             ApiKeys.VOTE -> VoteRequest.parse(buffer, apiVersion)
             ApiKeys.BEGIN_QUORUM_EPOCH -> BeginQuorumEpochRequest.parse(buffer, apiVersion)
             ApiKeys.END_QUORUM_EPOCH -> EndQuorumEpochRequest.parse(buffer, apiVersion)
@@ -275,16 +241,10 @@ abstract class AbstractRequest(
             ApiKeys.BROKER_REGISTRATION -> BrokerRegistrationRequest.parse(buffer, apiVersion)
             ApiKeys.BROKER_HEARTBEAT -> BrokerHeartbeatRequest.parse(buffer, apiVersion)
             ApiKeys.UNREGISTER_BROKER -> UnregisterBrokerRequest.parse(buffer, apiVersion)
-            ApiKeys.DESCRIBE_TRANSACTIONS -> DescribeTransactionsRequest.parse(
-                buffer,
-                apiVersion
-            )
-
+            ApiKeys.DESCRIBE_TRANSACTIONS -> DescribeTransactionsRequest.parse(buffer, apiVersion)
             ApiKeys.LIST_TRANSACTIONS -> ListTransactionsRequest.parse(buffer, apiVersion)
-            ApiKeys.ALLOCATE_PRODUCER_IDS -> AllocateProducerIdsRequest.parse(
-                buffer,
-                apiVersion
-            )
+            ApiKeys.ALLOCATE_PRODUCER_IDS -> AllocateProducerIdsRequest.parse(buffer, apiVersion)
+            ApiKeys.CONSUMER_GROUP_HEARTBEAT -> ConsumerGroupHeartbeatRequest.parse(buffer, apiVersion)
         }
     }
 }

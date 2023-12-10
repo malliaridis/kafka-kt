@@ -20,6 +20,7 @@ package org.apache.kafka.clients.consumer
 import java.nio.ByteBuffer
 import org.apache.kafka.clients.consumer.ConsumerPartitionAssignor.RebalanceProtocol
 import org.apache.kafka.clients.consumer.internals.AbstractStickyAssignor
+import org.apache.kafka.common.PartitionInfo
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.protocol.types.Field
 import org.apache.kafka.common.protocol.types.Schema
@@ -81,14 +82,18 @@ class CooperativeStickyAssignor : AbstractStickyAssignor() {
             DEFAULT_GENERATION
         }
 
-        return MemberData(subscription.ownedPartitions, encodedGeneration)
+        return MemberData(
+            subscription.ownedPartitions,
+            encodedGeneration,
+            subscription.rackId
+        )
     }
 
-    override fun assign(
-        partitionsPerTopic: Map<String, Int>,
+    override fun assignPartitions(
+        partitionsPerTopic: Map<String, List<PartitionInfo>>,
         subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>,
     ): MutableMap<String, MutableList<TopicPartition>> {
-        val assignments = super.assign(partitionsPerTopic, subscriptions)
+        val assignments = super.assignPartitions(partitionsPerTopic, subscriptions)
         val partitionsTransferringOwnership = super.partitionsTransferringOwnership
             ?: computePartitionsTransferringOwnership(subscriptions, assignments)
         adjustAssignment(assignments, partitionsTransferringOwnership)

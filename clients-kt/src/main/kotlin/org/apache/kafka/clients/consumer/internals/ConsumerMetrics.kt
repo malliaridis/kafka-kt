@@ -22,7 +22,7 @@ import org.apache.kafka.common.metrics.Metrics
 
 class ConsumerMetrics(metricsTags: Set<String> = emptySet(), metricGrpPrefix: String) {
 
-    var fetcherMetrics: FetcherMetricsRegistry = FetcherMetricsRegistry(metricsTags, metricGrpPrefix)
+    var fetcherMetrics: FetchMetricsRegistry = FetchMetricsRegistry(metricsTags, metricGrpPrefix)
 
     private val allTemplates: List<MetricNameTemplate>
         get() = fetcherMetrics.allTemplates.toList()

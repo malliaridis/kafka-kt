@@ -22,7 +22,7 @@ package org.apache.kafka.clients.consumer.internals
  */
 interface RequestFutureListener<T> {
 
-    fun onSuccess(value: T)
+    fun onSuccess(result: T)
 
-    fun onFailure(e: RuntimeException)
+    fun onFailure(exception: RuntimeException)
 }

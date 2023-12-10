@@ -24,6 +24,8 @@ import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.config.provider.ConfigProvider
 import org.apache.kafka.common.config.types.Password
 import org.apache.kafka.common.utils.Utils
+import org.apache.kafka.common.utils.Utils.closeQuietly
+import org.apache.kafka.common.utils.Utils.entriesWithPrefix
 import org.slf4j.LoggerFactory
 
 /**
@@ -136,7 +138,10 @@ open class AbstractConfig(
 
     fun getBoolean(key: String): Boolean? = get(key)
 
-    fun getString(key: String): String? = get(key)
+    fun getString(key: String): String? {
+        val res = get(key) as String?
+        return res?.trim { it <= ' ' }
+    }
 
     fun typeOf(key: String): ConfigDef.Type? {
         val configKey = definition.configKeys[key] ?: return null
@@ -196,15 +201,9 @@ open class AbstractConfig(
      * @param strip Whether to strip the prefix before adding to the output. Defaults to `true`.
      * @return a Map containing the settings with the prefix
      */
-    fun originalsWithPrefix(prefix: String, strip: Boolean = true): Map<String, Any> {
-        val result = RecordingMap<Any>(prefix, false)
-
-        originals.filterValues { it != null }.forEach { (key, value) ->
-            if (key.startsWith(prefix) && key.length > prefix.length) {
-                if (strip) result[key.substring(prefix.length)] = value!!
-                else result[key] = value!!
-            }
-        }
+    fun originalsWithPrefix(prefix: String, strip: Boolean = true): MutableMap<String, Any?> {
+        val result = RecordingMap<Any?>(prefix, false)
+        result.putAll(entriesWithPrefix(originals, prefix, strip))
         return result
     }
 
@@ -305,12 +304,12 @@ open class AbstractConfig(
     }
 
     /**
-     * Log warnings for any unused configurations
+     * Info level log for any unused configurations
      */
     fun logUnused() {
         val unusedkeys = unused()
         if (unusedkeys.isNotEmpty()) {
-            log.warn("These configurations '{}' were supplied but are not used yet.", unusedkeys)
+            log.info("These configurations '{}' were supplied but are not used yet.", unusedkeys)
         }
     }
 
@@ -336,13 +335,9 @@ open class AbstractConfig(
         }
         try {
             if (!t.isInstance(o)) throw KafkaException("$klass is not an instance of ${t.name}")
-            if (o is Configurable) o.configure(configPairs)
+            if (o is Configurable) (o as Configurable).configure(configPairs)
         } catch (e: Exception) {
-            maybeClose(
-                o,
-                "AutoCloseable object constructed and configured during failed call to " +
-                        "getConfiguredInstance"
-            )
+            maybeClose(o, "AutoCloseable object constructed and configured during failed call to getConfiguredInstance")
             throw e
         }
         return t.cast(o)
@@ -356,8 +351,23 @@ open class AbstractConfig(
      * @param t   The interface the class should implement
      * @return A configured instance of the class
      */
+    @Deprecated(
+        message = "Use inline function instead",
+        replaceWith = ReplaceWith("getConfiguredInstance<T>(key)"),
+    )
     fun <T> getConfiguredInstance(key: String, t: Class<T>): T? =
         getConfiguredInstance(key, t, emptyMap())
+
+    /**
+     * Get a configured instance of the give class specified by the given configuration key. If the object implements
+     * Configurable configure it using the configuration.
+     *
+     * @param key The configuration key for the class
+     * @param T The interface the class should implement
+     * @return A configured instance of the class
+     */
+    inline fun <reified T> getConfiguredInstance(key: String): T? =
+        getConfiguredInstance(key, T::class.java, emptyMap())
 
     /**
      * Get a configured instance of the give class specified by the given configuration key. If the object

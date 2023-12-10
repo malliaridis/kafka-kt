@@ -61,7 +61,7 @@ abstract class KafkaFuture<T> : Future<T> {
     }
 
     /**
-     * Gets a [CompletionStage] with the same completion properties as this [KafkaFuture].
+     * Gets a {@code CompletionStage} with the same completion properties as this {@code KafkaFuture}.
      * The returned instance will complete when this future completes and in the same way
      * (with the same result or exception).
      *

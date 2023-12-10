@@ -17,12 +17,15 @@
 
 package org.apache.kafka.common.requests
 
+import java.nio.ByteBuffer
+import java.util.Objects
+import java.util.Optional
 import org.apache.kafka.common.Node
 import org.apache.kafka.common.message.FindCoordinatorResponseData
+import org.apache.kafka.common.message.FindCoordinatorResponseData.Coordinator
 import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.protocol.ByteBufferAccessor
 import org.apache.kafka.common.protocol.Errors
-import java.nio.ByteBuffer
 
 /**
  * Possible error codes:
@@ -36,6 +39,19 @@ import java.nio.ByteBuffer
 class FindCoordinatorResponse(
     private val data: FindCoordinatorResponseData,
 ) : AbstractResponse(ApiKeys.FIND_COORDINATOR) {
+
+    fun coordinatorByKey(key: String): Coordinator? {
+        return if (data.coordinators.isEmpty()) {
+            // version <= 3
+            Coordinator()
+                .setErrorCode(data.errorCode)
+                .setErrorMessage(data.errorMessage)
+                .setHost(data.host)
+                .setPort(data.port)
+                .setNodeId(data.nodeId)
+                .setKey(key)
+        } else data.coordinators.firstOrNull() { it.key == key } // version >= 4
+    }
 
     override fun data(): FindCoordinatorResponseData = data
 
@@ -64,9 +80,9 @@ class FindCoordinatorResponse(
 
     override fun shouldClientThrottle(version: Short): Boolean = version >= 2
 
-    fun coordinators(): List<FindCoordinatorResponseData.Coordinator> =
+    fun coordinators(): List<Coordinator> =
         data.coordinators.ifEmpty {
-            val coordinator = FindCoordinatorResponseData.Coordinator()
+            val coordinator = Coordinator()
                 .setErrorCode(data.errorCode)
                 .setErrorMessage(data.errorMessage)
                 .setKey("")
@@ -98,7 +114,7 @@ class FindCoordinatorResponse(
             val data = FindCoordinatorResponseData()
             data.setCoordinators(
                 listOf(
-                    FindCoordinatorResponseData.Coordinator()
+                    Coordinator()
                         .setErrorCode(error.code)
                         .setErrorMessage(error.message)
                         .setKey(key)
@@ -115,7 +131,7 @@ class FindCoordinatorResponse(
             val data = FindCoordinatorResponseData()
             data.setCoordinators(
                 keys.map { key ->
-                    FindCoordinatorResponseData.Coordinator()
+                    Coordinator()
                         .setErrorCode(error.code)
                         .setErrorMessage(error.message)
                         .setKey(key)

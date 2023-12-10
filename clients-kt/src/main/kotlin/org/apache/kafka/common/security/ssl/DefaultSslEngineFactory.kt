@@ -184,7 +184,6 @@ class DefaultSslEngineFactory : SslEngineFactory {
                 SslClientAuth.REQUESTED -> sslEngine.wantClientAuth = true
                 SslClientAuth.NONE -> {}
             }
-            sslEngine.useClientMode = false
         } else {
             sslEngine.useClientMode = true
             val sslParams = sslEngine.sslParameters

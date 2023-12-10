@@ -29,6 +29,7 @@ import java.lang.reflect.Constructor
 import java.lang.reflect.InvocationTargetException
 import java.nio.BufferUnderflowException
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.nio.channels.FileChannel
 import java.nio.charset.StandardCharsets
 import java.nio.file.FileVisitResult
@@ -69,6 +70,7 @@ import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.common.network.TransferableChannel
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import org.slf4j.event.Level
 
 object Utils {
     // This matches URIs of formats: host:port and protocol:\\host:port
@@ -655,7 +657,7 @@ object Utils {
     fun parseMap(
         mapStr: String,
         keyValueSeparator: String,
-        elementSeparator: String
+        elementSeparator: String,
     ): Map<String, String> {
         val map: MutableMap<String, String> = HashMap()
         if (mapStr.isNotEmpty()) {
@@ -741,6 +743,33 @@ object Utils {
      */
     fun readBytes(buffer: ByteBuffer): ByteArray {
         return readBytes(buffer, 0, buffer.limit())
+    }
+
+    /**
+     * Reads bytes from a source buffer and returns a new buffer.
+     *
+     * The content of the new buffer will start at this buffer's current position. Changes to this buffer's content
+     * will be visible in the new buffer, and vice versa; the two buffers' position, limit, and mark values
+     * will be independent.
+     *
+     * The new buffer's position will be zero, its limit will be the number of bytes read i.e. `bytesToRead`,
+     * it's capacity will be the number of bytes remaining in source buffer, its mark will be undefined,
+     * and its byte order will be [BIG_ENDIAN][ByteOrder.BIG_ENDIAN].
+     *
+     * Since JDK 13, this method could be replaced with slice(int index, int length).
+     *
+     * @param srcBuf Source buffer where data is read from
+     * @param bytesToRead Number of bytes to read
+     * @return Destination buffer or null if bytesToRead is < 0
+     *
+     * @see ByteBuffer.slice
+     */
+    fun readBytes(srcBuf: ByteBuffer, bytesToRead: Int): ByteBuffer? {
+        if (bytesToRead < 0) return null
+        val dstBuf = srcBuf.slice()
+        dstBuf.limit(bytesToRead)
+        srcBuf.position(srcBuf.position() + bytesToRead)
+        return dstBuf
     }
 
     /**
@@ -940,13 +969,9 @@ object Utils {
             Files.move(source, target, StandardCopyOption.ATOMIC_MOVE)
         } catch (outer: IOException) {
             try {
+                log.warn("Failed atomic move of {} to {} retrying with a non-atomic move", source, target, outer)
                 Files.move(source, target, StandardCopyOption.REPLACE_EXISTING)
-                log.debug(
-                    "Non-atomic move of {} to {} succeeded after atomic move failed due to {}",
-                    source,
-                    target,
-                    outer.message
-                )
+                log.debug("Non-atomic move of {} to {} succeeded after atomic move failed", source, target)
             } catch (inner: IOException) {
                 inner.addSuppressed(outer)
                 throw inner
@@ -977,6 +1002,20 @@ object Utils {
     }
 
     /**
+     * Flushes dirty directories to guarantee crash consistency with swallowing [NoSuchFileException]
+     *
+     * @throws IOException if flushing the directory fails.
+     */
+    @Throws(IOException::class)
+    fun flushDirIfExists(path: Path?) {
+        try {
+            flushDir(path)
+        } catch (_: NoSuchFileException) {
+            log.warn("Failed to flush directory {}", path)
+        }
+    }
+
+    /**
      * Closes all the provided closeables.
      * @throws IOException if any of the close methods throws an IOException.
      * The first IOException is thrown with subsequent exceptions
@@ -995,15 +1034,34 @@ object Utils {
         if (exception != null) throw exception
     }
 
+    fun swallow(log: Logger, level: Level?, what: String?, code: Runnable?) {
+        swallow(log, level, what, code, null)
+    }
+
+    /**
+     * Run the supplied code. If an exception is thrown, it is swallowed and registered to the firstException parameter.
+     */
     fun swallow(
         log: Logger,
+        level: Level?,
         what: String?,
-        runnable: Runnable
+        code: Runnable?,
+        firstException: AtomicReference<Throwable?>?,
     ) {
-        try {
-            runnable.run()
-        } catch (e: Throwable) {
-            log.warn("{} error", what, e)
+        if (code != null) {
+            try {
+                code.run()
+            } catch (t: Throwable) {
+                when (level) {
+                    Level.INFO -> log.info(what, t)
+                    Level.DEBUG -> log.debug(what, t)
+                    Level.ERROR -> log.error(what, t)
+                    Level.TRACE -> log.trace(what, t)
+                    Level.WARN -> log.warn(what, t)
+                    else -> log.warn(what, t)
+                }
+                firstException?.compareAndSet(null, t)
+            }
         }
     }
 
@@ -1011,9 +1069,7 @@ object Utils {
      * Closes `closeable` and if an exception is thrown, it is logged at the WARN level.
      * **Be cautious when passing method references as an argument.** For example:
      *
-     *
      * `closeQuietly(task::stop, "source task");`
-     *
      *
      * Although this method gracefully handles null [AutoCloseable] objects, attempts to take a method
      * reference from a null object will result in a [NullPointerException]. In the example code above,
@@ -1046,7 +1102,7 @@ object Utils {
     fun closeQuietly(
         closeable: AutoCloseable?,
         name: String?,
-        firstException: AtomicReference<Throwable?>
+        firstException: AtomicReference<Throwable?>,
     ) {
         if (closeable != null) {
             try {
@@ -1067,7 +1123,7 @@ object Utils {
     fun closeAllQuietly(
         firstException: AtomicReference<Throwable?>,
         name: String?,
-        vararg closeables: AutoCloseable?
+        vararg closeables: AutoCloseable?,
     ) {
         for (closeable in closeables) closeQuietly(closeable, name, firstException)
     }
@@ -1081,7 +1137,7 @@ object Utils {
     fun closeAllQuietly(
         firstException: AtomicReference<Throwable?>,
         name: String?,
-        closeables: List<AutoCloseable?>
+        closeables: List<AutoCloseable?>,
     ) {
         for (closeable in closeables) closeQuietly(closeable, name, firstException)
     }
@@ -1139,7 +1195,7 @@ object Utils {
     @Throws(IOException::class)
     fun readFullyOrFail(
         channel: FileChannel, destinationBuffer: ByteBuffer, position: Long,
-        description: String?
+        description: String?,
     ) {
         require(position >= 0) { "The file channel position cannot be negative, but it is $position" }
         val expectedReadBytes = destinationBuffer.remaining()
@@ -1188,11 +1244,11 @@ object Utils {
      *
      * @param inputStream Input stream to read from
      * @param destinationBuffer The buffer into which bytes are to be transferred (it must be backed by an array)
-     *
+     * @return number of byte read from the input stream
      * @throws IOException If an I/O error occurs
      */
     @Throws(IOException::class)
-    fun readFully(inputStream: InputStream, destinationBuffer: ByteBuffer) {
+    fun readFully(inputStream: InputStream, destinationBuffer: ByteBuffer): Int {
         require(destinationBuffer.hasArray()) { "destinationBuffer must be backed by an array" }
         val initialOffset = destinationBuffer.arrayOffset() + destinationBuffer.position()
         val array = destinationBuffer.array()
@@ -1205,6 +1261,7 @@ object Utils {
             totalBytesRead += bytesRead
         } while (length > totalBytesRead)
         destinationBuffer.position(destinationBuffer.position() + totalBytesRead)
+        return totalBytesRead
     }
 
     @Throws(IOException::class)
@@ -1229,12 +1286,12 @@ object Utils {
         destChannel: TransferableChannel,
         position: Int,
         length: Int,
-        sourceBuffer: ByteBuffer
-    ): Long {
+        sourceBuffer: ByteBuffer,
+    ): Int {
         val dup = sourceBuffer.duplicate()
         dup.position(position)
         dup.limit(position + length)
-        return destChannel.write(dup).toLong()
+        return destChannel.write(dup)
     }
 
     /**
@@ -1271,18 +1328,6 @@ object Utils {
         return res
     }
 
-    @Deprecated("Use Kotlin operator for list concatenation.")
-    fun <T> concatListsUnmodifiable(left: List<T>, right: List<T>): List<T> {
-        return left + right
-    }
-
-    @Deprecated("Use Kotlin operator for list concatenation.")
-    fun <T> concatLists(
-        left: List<T>,
-        right: List<T>,
-        finisher: (List<T>) -> List<T>
-    ): List<T> = finisher(left + right)
-
     fun to32BitField(bytes: Set<Byte>): Int {
         var value = 0
         for (b in bytes) value = value or (1 shl checkRange(b).toInt())
@@ -1305,20 +1350,6 @@ object Utils {
             itr = itr ushr 1
         }
         return result
-    }
-
-    @Deprecated("Use Kotlin collection functions.")
-    fun <K1, V1, K2, V2> transformMap(
-        map: Map<out K1, V1>,
-        keyMapper: Function<K1, K2>,
-        valueMapper: Function<V1, V2>
-    ): Map<K2, V2> {
-        return map.entries.stream().collect(
-            Collectors.toMap(
-                { (key): Map.Entry<K1, V1> -> keyMapper.apply(key) },
-                { (_, value): Map.Entry<K1, V1> -> valueMapper.apply(value) }
-            )
-        )
     }
 
     /**
@@ -1383,7 +1414,7 @@ object Utils {
     fun <E> intersection(
         constructor: Supplier<MutableSet<E>>,
         first: Set<E>,
-        vararg set: Set<E>
+        vararg set: Set<E>,
     ): Set<E> {
         val result = constructor.get()
         result.addAll(first)
@@ -1490,12 +1521,6 @@ object Utils {
         return str == null || str.trim { it <= ' ' }.isEmpty()
     }
 
-    fun <K, V> initializeMap(keys: Collection<K>, valueSupplier: Supplier<V>): Map<K, V> {
-        val res: MutableMap<K, V> = HashMap(keys.size)
-        keys.forEach(Consumer { key: K -> res[key] = valueSupplier.get() })
-        return res
-    }
-
     /**
      * Get an array containing all of the [string representations][Object.toString] of a given enumerable type.
      * @param enumClass the enum class; may not be null
@@ -1529,5 +1554,48 @@ object Utils {
     @FunctionalInterface
     interface UncheckedCloseable : AutoCloseable {
         override fun close()
+    }
+
+    /**
+     * Replace the given string suffix with the new suffix. If the string doesn't end with the given suffix
+     * throw an exception.
+     */
+    fun replaceSuffix(str: String, oldSuffix: String, newSuffix: String): String {
+        require(str.endsWith(oldSuffix)) { "Expected string to end with $oldSuffix but string is $str" }
+        return str.substring(0, str.length - oldSuffix.length) + newSuffix
+    }
+
+    /**
+     * Find all key/value pairs whose keys begin with the given prefix, and remove that prefix from all
+     * resulting keys.
+     * @param map the map to filter key/value pairs from
+     * @param prefix the prefix to search keys for
+     * @param V the type of values stored in the map
+     * @return a [Map] containing a key/value pair for every key/value pair in the `map` parameter whose key
+     * begins with the given `prefix` and whose corresponding keys have the prefix stripped from them;
+     * may be empty
+     */
+    fun <V> entriesWithPrefix(map: Map<String, V>, prefix: String): Map<String, V> =
+        entriesWithPrefix(map, prefix, true)
+
+    /**
+     * Find all key/value pairs whose keys begin with the given prefix, optionally removing that prefix
+     * from all resulting keys.
+     * @param map the map to filter key/value pairs from
+     * @param prefix the prefix to search keys for
+     * @param strip whether the keys of the returned map should not include the prefix
+     * @param V the type of values stored in the map
+     * @return a [Map] containing a key/value pair for every key/value pair in the `map`
+     * parameter whose key begins with the given `prefix`; may be empty
+     */
+    fun <V> entriesWithPrefix(map: Map<String, V>, prefix: String, strip: Boolean): Map<String, V> {
+        val result = mutableMapOf<String, V>()
+        for ((key, value) in map) {
+            if (key.startsWith(prefix) && key.length > prefix.length) {
+                if (strip) result[key.substring(prefix.length)] = value
+                else result[key] = value
+            }
+        }
+        return result
     }
 }

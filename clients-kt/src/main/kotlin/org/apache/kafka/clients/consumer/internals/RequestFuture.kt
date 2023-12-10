@@ -196,8 +196,8 @@ class RequestFuture<T> : PollCondition {
         val adapted: RequestFuture<S> = RequestFuture()
 
         addListener(object : RequestFutureListener<T> {
-            override fun onSuccess(value: T) = adapter.onSuccess(value, adapted)
-            override fun onFailure(e: RuntimeException) = adapter.onFailure(e, adapted)
+            override fun onSuccess(result: T) = adapter.onSuccess(result, adapted)
+            override fun onFailure(exception: RuntimeException) = adapter.onFailure(exception, adapted)
         })
 
         return adapted
@@ -205,8 +205,8 @@ class RequestFuture<T> : PollCondition {
 
     fun chain(future: RequestFuture<T>) {
         addListener(object : RequestFutureListener<T> {
-            override fun onSuccess(value: T) = future.complete(value)
-            override fun onFailure(e: RuntimeException) = future.raise(e)
+            override fun onSuccess(result: T) = future.complete(result)
+            override fun onFailure(exception: RuntimeException) = future.raise(exception)
         })
     }
 
