@@ -2230,7 +2230,7 @@ class KafkaConsumerTest {
     fun testCloseShouldBeIdempotent() {
         val metadata = createMetadata(subscription)
         val client = spy(MockClient(time, metadata))
-        initMetadata(client, Collections.singletonMap(topic, 1))
+        initMetadata(client, mapOf(topic to 1))
 
         consumer = newConsumer(
             time = time,

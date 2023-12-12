@@ -42,7 +42,7 @@ class ScramLoginModule : LoginModule {
             "true".equals(options[TOKEN_AUTH_CONFIG] as String?, ignoreCase = true)
 
         if (useTokenAuthentication) {
-            val scramExtensions = Collections.singletonMap(TOKEN_AUTH_CONFIG, "true")
+            val scramExtensions = mapOf(TOKEN_AUTH_CONFIG to "true")
             subject.publicCredentials.add(scramExtensions)
         }
     }

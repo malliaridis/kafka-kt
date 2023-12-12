@@ -37,9 +37,7 @@ abstract class AbstractResponse(
      */
     abstract fun errorCounts(): Map<Errors, Int>
 
-    protected fun errorCounts(error: Errors): Map<Errors, Int> {
-        return Collections.singletonMap(error, 1)
-    }
+    protected fun errorCounts(error: Errors): Map<Errors, Int> = mapOf(error to 1)
 
     protected fun errorCounts(errors: Stream<Errors>): Map<Errors, Int> {
         return errors.collect(

@@ -111,7 +111,7 @@ object ConsumerUtils {
 
     fun createMetrics(config: ConsumerConfig, time: Time): Metrics {
         val clientId = config.getString(ConsumerConfig.CLIENT_ID_CONFIG)
-        val metricsTags = Collections.singletonMap(CONSUMER_CLIENT_ID_METRIC_TAG, clientId)
+        val metricsTags = mapOf(CONSUMER_CLIENT_ID_METRIC_TAG to clientId)
         val metricConfig = MetricConfig().apply {
             samples = config.getInt(ConsumerConfig.METRICS_NUM_SAMPLES_CONFIG)!!
             timeWindowMs = config.getLong(ConsumerConfig.METRICS_SAMPLE_WINDOW_MS_CONFIG)!!
@@ -190,4 +190,3 @@ object ConsumerUtils {
         return deserializer
     }
 }
-

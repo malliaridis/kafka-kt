@@ -47,10 +47,10 @@ object AdminClientTestUtils {
      * CreateTopicsResult's constructor is only accessible from within the
      * admin package.
      */
-    fun createTopicsResult(topic: String, t: Throwable?): CreateTopicsResult {
+    fun createTopicsResult(topic: String, t: Throwable): CreateTopicsResult {
         val future = KafkaFutureImpl<TopicMetadataAndConfig>()
-        future.completeExceptionally(t!!)
-        return CreateTopicsResult(Collections.singletonMap(topic, future))
+        future.completeExceptionally(t)
+        return CreateTopicsResult(mapOf(topic to future))
     }
 
     /**
@@ -71,7 +71,7 @@ object AdminClientTestUtils {
      */
     fun listTopicsResult(topic: String): ListTopicsResult {
         val future = KafkaFutureImpl<Map<String, TopicListing>>()
-        future.complete(Collections.singletonMap(topic, TopicListing(topic, Uuid.ZERO_UUID, false)))
+        future.complete(mapOf(topic to TopicListing(topic, Uuid.ZERO_UUID, false)))
         return ListTopicsResult(future)
     }
 
@@ -117,10 +117,10 @@ object AdminClientTestUtils {
      * DescribeTopicsResult's constructor is only accessible from within the
      * admin package.
      */
-    fun describeTopicsResult(topic: String?, description: TopicDescription): DescribeTopicsResult {
+    fun describeTopicsResult(topic: String, description: TopicDescription): DescribeTopicsResult {
         val future = KafkaFutureImpl<TopicDescription>()
         future.complete(description)
-        return DescribeTopicsResult.ofTopicNames(Collections.singletonMap(topic, future))
+        return DescribeTopicsResult.ofTopicNames(mapOf(topic to future))
     }
 
     fun describeTopicsResult(topicDescriptions: Map<String, TopicDescription>): DescribeTopicsResult {

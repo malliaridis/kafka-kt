@@ -355,7 +355,7 @@ open class KafkaProducer<K, V> : Producer<K, V> {
                     config.getString(ProducerConfig.METRICS_RECORDING_LEVEL_CONFIG)!!
                 )
 
-                tags = Collections.singletonMap("client-id", clientId)
+                tags = mapOf("client-id" to clientId)
             }
 
             val reporters = CommonClientConfigs.metricsReporters(clientId, config)

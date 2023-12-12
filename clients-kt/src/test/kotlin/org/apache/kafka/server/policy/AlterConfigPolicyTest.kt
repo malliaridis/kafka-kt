@@ -29,16 +29,17 @@ class AlterConfigPolicyTest {
     @Test
     fun testRequestMetadataEquals() {
         val requestMetadata = AlterConfigPolicy.RequestMetadata(
-            ConfigResource(ConfigResource.Type.BROKER, "0"),
-            Collections.singletonMap("foo", "bar")
+            resource = ConfigResource(ConfigResource.Type.BROKER, "0"),
+            configs = mapOf("foo" to "bar"),
         )
         assertEquals(requestMetadata, requestMetadata)
         assertNotNull(requestMetadata)
         assertNotEquals(requestMetadata, Any())
         assertNotEquals(
-            requestMetadata, AlterConfigPolicy.RequestMetadata(
-                ConfigResource(ConfigResource.Type.BROKER, "1"),
-                Collections.singletonMap("foo", "bar")
+            illegal = requestMetadata,
+            actual = AlterConfigPolicy.RequestMetadata(
+                resource = ConfigResource(ConfigResource.Type.BROKER, "1"),
+                configs = mapOf("foo" to "bar"),
             )
         )
         assertNotEquals(

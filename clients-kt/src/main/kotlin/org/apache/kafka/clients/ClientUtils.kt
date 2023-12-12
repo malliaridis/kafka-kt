@@ -234,7 +234,7 @@ object ClientUtils {
         return config.getConfiguredInstances(
             key = interceptorClassesConfigName,
             t = clazz,
-            configOverrides = Collections.singletonMap(CommonClientConfigs.CLIENT_ID_CONFIG, clientId)
+            configOverrides = mapOf(CommonClientConfigs.CLIENT_ID_CONFIG to clientId),
         )
     }
 
@@ -246,7 +246,7 @@ object ClientUtils {
         return config.getConfiguredInstances(
             key = interceptorClassesConfigName,
             t = T::class.java,
-            configOverrides = Collections.singletonMap(CommonClientConfigs.CLIENT_ID_CONFIG, clientId)
+            configOverrides = mapOf(CommonClientConfigs.CLIENT_ID_CONFIG to clientId),
         )
     }
 }

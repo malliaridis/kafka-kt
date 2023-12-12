@@ -712,7 +712,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         )
         assertFalse(committed.get())
         assertEquals(1, coordinator.inFlightAsyncCommits.get())
-        prepareOffsetCommitRequest(Collections.singletonMap(tp, 123L), Errors.NONE)
+        prepareOffsetCommitRequest(mapOf(tp to 123L), Errors.NONE)
         assertTrue(
             actual = coordinator.commitOffsetsSync(emptyMap(), time.timer(Long.MAX_VALUE)),
             message = "expected sync commit to succeed",

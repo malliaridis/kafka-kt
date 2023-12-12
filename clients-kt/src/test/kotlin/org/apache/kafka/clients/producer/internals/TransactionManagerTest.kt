@@ -1587,7 +1587,7 @@ class TransactionManagerTest {
 
         transactionManager.beginTransaction()
         val sendOffsetsResult = transactionManager.sendOffsetsToTransaction(
-            offsets = Collections.singletonMap(tp, OffsetAndMetadata(39L)),
+            offsets = mapOf(tp to OffsetAndMetadata(39L)),
             groupMetadata = ConsumerGroupMetadata(consumerGroupId),
         )
 
@@ -4161,7 +4161,7 @@ class TransactionManagerTest {
     ) {
         val result = AddPartitionsToTxnResponse.resultForTransaction(
             transactionalId = AddPartitionsToTxnResponse.V3_AND_BELOW_TXN_ID,
-            errors = Collections.singletonMap(topicPartition, error),
+            errors = mapOf(topicPartition to error),
         )
 
         client.prepareResponse(
@@ -4183,7 +4183,7 @@ class TransactionManagerTest {
     ) {
         val result = AddPartitionsToTxnResponse.resultForTransaction(
             transactionalId = AddPartitionsToTxnResponse.V3_AND_BELOW_TXN_ID,
-            errors = Collections.singletonMap(topicPartition, error),
+            errors = mapOf(topicPartition to error),
         )
         client.respond(
             matcher = addPartitionsRequestMatcher(topicPartition, epoch, producerId),

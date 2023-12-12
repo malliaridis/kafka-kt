@@ -137,7 +137,7 @@ class ProduceRequest(
 
     override fun errorCounts(e: Throwable): Map<Errors, Int> {
         val error = Errors.forException(e)
-        return Collections.singletonMap(error, partitionSizes.size)
+        return mapOf(error to partitionSizes.size)
     }
 
     @Deprecated(
