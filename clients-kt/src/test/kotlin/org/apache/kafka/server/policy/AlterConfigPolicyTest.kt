@@ -18,9 +18,11 @@
 package org.apache.kafka.server.policy
 
 import org.apache.kafka.common.config.ConfigResource
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import java.util.*
+import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
 
 class AlterConfigPolicyTest {
 
@@ -30,16 +32,16 @@ class AlterConfigPolicyTest {
             ConfigResource(ConfigResource.Type.BROKER, "0"),
             Collections.singletonMap("foo", "bar")
         )
-        Assertions.assertEquals(requestMetadata, requestMetadata)
-        Assertions.assertNotEquals(requestMetadata, null)
-        Assertions.assertNotEquals(requestMetadata, Any())
-        Assertions.assertNotEquals(
+        assertEquals(requestMetadata, requestMetadata)
+        assertNotNull(requestMetadata)
+        assertNotEquals(requestMetadata, Any())
+        assertNotEquals(
             requestMetadata, AlterConfigPolicy.RequestMetadata(
                 ConfigResource(ConfigResource.Type.BROKER, "1"),
                 Collections.singletonMap("foo", "bar")
             )
         )
-        Assertions.assertNotEquals(
+        assertNotEquals(
             requestMetadata,
             AlterConfigPolicy.RequestMetadata(
                 ConfigResource(ConfigResource.Type.BROKER, "0"), emptyMap()

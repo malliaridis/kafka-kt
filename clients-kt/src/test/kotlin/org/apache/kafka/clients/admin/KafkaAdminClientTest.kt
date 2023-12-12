@@ -242,7 +242,6 @@ import org.apache.kafka.test.TestUtils.assertFutureError
 import org.apache.kafka.test.TestUtils.assertFutureThrows
 import org.apache.kafka.test.TestUtils.assertNotFails
 import org.apache.kafka.test.TestUtils.waitForCondition
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
 import org.junit.jupiter.params.ParameterizedTest
@@ -1392,9 +1391,7 @@ class KafkaAdminClientTest {
     }
 
     private fun callAdminClientApisAndExpectAnAuthenticationError(env: AdminClientUnitTestEnv) {
-        var e = Assertions.assertThrows(
-            ExecutionException::class.java
-        ) {
+        var error = assertFailsWith<ExecutionException> {
             env.adminClient.createTopics(
                 newTopics = setOf(
                     NewTopic(
@@ -1405,64 +1402,65 @@ class KafkaAdminClientTest {
                 options = CreateTopicsOptions().apply { timeoutMs = 10000 },
             ).all().get()
         }
-        assertTrue(
-            actual = e.cause is AuthenticationException,
-            message = "Expected an authentication error, but got " + stackTrace(e),
+        assertIs<AuthenticationException>(
+            value = error.cause,
+            message = "Expected an authentication error, but got " + stackTrace(error),
         )
+
         val counts: MutableMap<String, NewPartitions> = HashMap()
         counts["my_topic"] = NewPartitions.increaseTo(3)
         counts["other_topic"] = NewPartitions.increaseTo(
             totalCount = 3,
             newAssignments = listOf(listOf(2), listOf(3)),
         )
-        e = assertFailsWith<ExecutionException> {
+        error = assertFailsWith<ExecutionException> {
             env.adminClient
                 .createPartitions(counts)
                 .all()
                 .get()
         }
         assertTrue(
-            actual = e.cause is AuthenticationException,
-            message = "Expected an authentication error, but got " + stackTrace(e),
+            actual = error.cause is AuthenticationException,
+            message = "Expected an authentication error, but got " + stackTrace(error),
         )
-        e = assertFailsWith<ExecutionException> {
+        error = assertFailsWith<ExecutionException> {
             env.adminClient
                 .createAcls(listOf(ACL1, ACL2))
                 .all()
                 .get()
         }
         assertTrue(
-            actual = e.cause is AuthenticationException,
-            message = "Expected an authentication error, but got " + stackTrace(e),
+            actual = error.cause is AuthenticationException,
+            message = "Expected an authentication error, but got " + stackTrace(error),
         )
-        e = assertFailsWith<ExecutionException> {
+        error = assertFailsWith<ExecutionException> {
             env.adminClient
                 .describeAcls(FILTER1)
                 .values()
                 .get()
         }
         assertTrue(
-            actual = e.cause is AuthenticationException,
-            message = "Expected an authentication error, but got " + stackTrace(e),
+            actual = error.cause is AuthenticationException,
+            message = "Expected an authentication error, but got " + stackTrace(error),
         )
-        e = assertFailsWith<ExecutionException> {
+        error = assertFailsWith<ExecutionException> {
             env.adminClient
                 .deleteAcls(listOf(FILTER1, FILTER2))
                 .all()
                 .get()
         }
         assertTrue(
-            actual = e.cause is AuthenticationException,
-            message = "Expected an authentication error, but got " + stackTrace(e),
+            actual = error.cause is AuthenticationException,
+            message = "Expected an authentication error, but got " + stackTrace(error),
         )
-        e = assertFailsWith<ExecutionException> {
+        error = assertFailsWith<ExecutionException> {
             env.adminClient.describeConfigs(
                 setOf(ConfigResource(ConfigResource.Type.BROKER, "0"))
             ).all().get()
         }
         assertTrue(
-            actual = e.cause is AuthenticationException,
-            message = "Expected an authentication error, but got " + stackTrace(e),
+            actual = error.cause is AuthenticationException,
+            message = "Expected an authentication error, but got " + stackTrace(error),
         )
     }
 
@@ -2834,7 +2832,7 @@ class KafkaAdminClientTest {
                 val allTopicIds = result.allTopicIds().get()
                 assertEquals(topicName, allTopicIds[topicId]!!.name)
             } catch (e: java.lang.Exception) {
-                Assertions.fail<Any>("describe with valid topicId should not fail", e)
+                fail("describe with valid topicId should not fail", e)
             }
 
             // ID not exist in brokers

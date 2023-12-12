@@ -122,7 +122,6 @@ import org.apache.kafka.test.MockMetricsReporter
 import org.apache.kafka.test.TestUtils
 import org.apache.kafka.test.TestUtils.singletonCluster
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.spy
@@ -2565,11 +2564,8 @@ class KafkaConsumerTest {
                 else client.respondFrom(responses[i], coordinator)
                 if (i < nonCloseRequests) {
                     // the close request should not complete until non-close requests (commit requests) have completed.
-                    try {
+                    assertFailsWith<TimeoutException>("Close completed without waiting for response") {
                         future[100, TimeUnit.MILLISECONDS]
-                        Assertions.fail<Any>("Close completed without waiting for response")
-                    } catch (e: TimeoutException) {
-                        // Expected exception
                     }
                 }
             }
