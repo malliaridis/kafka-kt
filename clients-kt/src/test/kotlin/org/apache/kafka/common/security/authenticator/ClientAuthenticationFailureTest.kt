@@ -105,7 +105,7 @@ class ClientAuthenticationFailureTest {
             keySerializer = serializer,
             valueSerializer = serializer,
         ).use { producer ->
-            val record = ProducerRecord<String, String>(topic = topic, value = "message")
+            val record = ProducerRecord<String?, String?>(topic = topic, value = "message")
             val future = producer.send(record)
             assertFutureThrows(future, SaslAuthenticationException::class.java)
         }

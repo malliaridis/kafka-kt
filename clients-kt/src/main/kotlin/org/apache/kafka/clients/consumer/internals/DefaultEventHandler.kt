@@ -108,7 +108,7 @@ class DefaultEventHandler : EventHandler {
         return applicationEventQueue.add(event)
     }
 
-    fun close() {
+    override fun close() {
         try {
             backgroundThread.close()
         } catch (e: Exception) {

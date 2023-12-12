@@ -32,7 +32,7 @@ import org.apache.kafka.common.utils.Utils
  * value.deserializer.encoding or deserializer.encoding. The first two take precedence over the
  * last.
  */
-class UUIDDeserializer : Deserializer<UUID> {
+class UUIDDeserializer : Deserializer<UUID?> {
 
     private var encoding = StandardCharsets.UTF_8.name()
 

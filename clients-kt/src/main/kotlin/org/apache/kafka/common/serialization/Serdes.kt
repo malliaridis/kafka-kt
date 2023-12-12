@@ -84,57 +84,57 @@ object Serdes {
     /**
      * A serde for nullable `Long` type.
      */
-    fun Long(): Serde<Long> = LongSerde()
+    fun Long(): Serde<Long?> = LongSerde()
 
     /**
      * A serde for nullable `Integer` type.
      */
-    fun Integer(): Serde<Int> = IntegerSerde()
+    fun Integer(): Serde<Int?> = IntegerSerde()
 
     /**
      * A serde for nullable `Short` type.
      */
-    fun Short(): Serde<Short> = ShortSerde()
+    fun Short(): Serde<Short?> = ShortSerde()
 
     /**
      * A serde for nullable `Float` type.
      */
-    fun Float(): Serde<Float> = FloatSerde()
+    fun Float(): Serde<Float?> = FloatSerde()
 
     /**
      * A serde for nullable `Double` type.
      */
-    fun Double(): Serde<Double> = DoubleSerde()
+    fun Double(): Serde<Double?> = DoubleSerde()
 
     /**
      * A serde for nullable `String` type.
      */
-    fun String(): Serde<String> = StringSerde()
+    fun String(): Serde<String?> = StringSerde()
 
     /**
      * A serde for nullable `ByteBuffer` type.
      */
-    fun ByteBuffer(): Serde<ByteBuffer> = ByteBufferSerde()
+    fun ByteBuffer(): Serde<ByteBuffer?> = ByteBufferSerde()
 
     /**
      * A serde for nullable `Bytes` type.
      */
-    fun Bytes(): Serde<Bytes> = BytesSerde()
+    fun Bytes(): Serde<Bytes?> = BytesSerde()
 
     /**
      * A serde for nullable `UUID` type
      */
-    fun UUID(): Serde<UUID> = UUIDSerde()
+    fun UUID(): Serde<UUID?> = UUIDSerde()
 
     /**
      * A serde for nullable `byte[]` type.
      */
-    fun ByteArray(): Serde<ByteArray> = ByteArraySerde()
+    fun ByteArray(): Serde<ByteArray?> = ByteArraySerde()
 
     /**
      * A serde for `Void` type.
      */
-    fun Void(): Serde<Void> = VoidSerde()
+    fun Void(): Serde<Void?> = VoidSerde()
 
     /**
      * A serde for nullable `Boolean` type.
@@ -173,30 +173,30 @@ object Serdes {
         }
     }
 
-    class VoidSerde : WrapperSerde<Void>(VoidSerializer(), VoidDeserializer())
+    class VoidSerde : WrapperSerde<Void?>(VoidSerializer(), VoidDeserializer())
 
-    class LongSerde : WrapperSerde<Long>(LongSerializer(), LongDeserializer())
+    class LongSerde : WrapperSerde<Long?>(LongSerializer(), LongDeserializer())
 
-    class IntegerSerde : WrapperSerde<Int>(IntegerSerializer(), IntegerDeserializer())
+    class IntegerSerde : WrapperSerde<Int?>(IntegerSerializer(), IntegerDeserializer())
 
-    class ShortSerde : WrapperSerde<Short>(ShortSerializer(), ShortDeserializer())
+    class ShortSerde : WrapperSerde<Short?>(ShortSerializer(), ShortDeserializer())
 
-    class FloatSerde : WrapperSerde<Float>(FloatSerializer(), FloatDeserializer())
+    class FloatSerde : WrapperSerde<Float?>(FloatSerializer(), FloatDeserializer())
 
-    class DoubleSerde : WrapperSerde<Double>(DoubleSerializer(), DoubleDeserializer())
+    class DoubleSerde : WrapperSerde<Double?>(DoubleSerializer(), DoubleDeserializer())
 
-    class StringSerde : WrapperSerde<String>(StringSerializer(), StringDeserializer())
+    class StringSerde : WrapperSerde<String?>(StringSerializer(), StringDeserializer())
 
-    class ByteBufferSerde : WrapperSerde<ByteBuffer>(
+    class ByteBufferSerde : WrapperSerde<ByteBuffer?>(
         serializer = ByteBufferSerializer(),
         deserializer = ByteBufferDeserializer(),
     )
 
-    class BytesSerde : WrapperSerde<Bytes>(BytesSerializer(), BytesDeserializer())
+    class BytesSerde : WrapperSerde<Bytes?>(BytesSerializer(), BytesDeserializer())
 
-    class ByteArraySerde : WrapperSerde<ByteArray>(ByteArraySerializer(), ByteArrayDeserializer())
+    class ByteArraySerde : WrapperSerde<ByteArray?>(ByteArraySerializer(), ByteArrayDeserializer())
 
-    class UUIDSerde : WrapperSerde<UUID>(UUIDSerializer(), UUIDDeserializer())
+    class UUIDSerde : WrapperSerde<UUID?>(UUIDSerializer(), UUIDDeserializer())
 
     class BooleanSerde : WrapperSerde<Boolean?>(BooleanSerializer(), BooleanDeserializer())
 

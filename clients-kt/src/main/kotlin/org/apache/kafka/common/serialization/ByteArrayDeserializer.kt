@@ -17,7 +17,7 @@
 
 package org.apache.kafka.common.serialization
 
-open class ByteArrayDeserializer : Deserializer<ByteArray> {
+open class ByteArrayDeserializer : Deserializer<ByteArray?> {
 
     override fun deserialize(topic: String, data: ByteArray?): ByteArray? = data
 }

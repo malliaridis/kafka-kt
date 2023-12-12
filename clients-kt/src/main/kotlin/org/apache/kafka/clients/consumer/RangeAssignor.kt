@@ -17,21 +17,10 @@
 
 package org.apache.kafka.clients.consumer
 
-import java.util.Arrays
-import java.util.Collections
-import java.util.Objects
-import java.util.Optional
-import java.util.function.BinaryOperator
-import java.util.function.Consumer
-import java.util.function.Function
-import java.util.function.Supplier
-import java.util.stream.Collectors
 import org.apache.kafka.clients.consumer.internals.AbstractPartitionAssignor
 import org.apache.kafka.clients.consumer.internals.Utils.TopicPartitionComparator
-import org.apache.kafka.common.Node
 import org.apache.kafka.common.PartitionInfo
 import org.apache.kafka.common.TopicPartition
-import kotlin.math.max
 
 /**
  *
@@ -112,7 +101,7 @@ class RangeAssignor : AbstractPartitionAssignor() {
      * using standard non-rack-aware range assignment logic, which may result in mis-aligned racks.
      */
     override fun assignPartitions(
-        partitionsPerTopic: Map<String, List<PartitionInfo>>,
+        partitionsPerTopic: MutableMap<String, MutableList<PartitionInfo>>,
         subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>,
     ): MutableMap<String, MutableList<TopicPartition>> {
         val consumersPerTopic = consumersPerTopic(subscriptions)
@@ -163,7 +152,7 @@ class RangeAssignor : AbstractPartitionAssignor() {
             if (assignmentState.unassignedPartitions.isEmpty()) break
             val assignablePartitions = assignmentState.unassignedPartitions
                 .filter { mayAssign(consumer, it) }
-                .limit(assignmentState.maxAssignable(consumer).toLong())
+                .subList(fromIndex = 0, toIndex = assignmentState.maxAssignable(consumer))
 
             if (assignablePartitions.isEmpty()) continue
             assign(
@@ -247,7 +236,7 @@ class RangeAssignor : AbstractPartitionAssignor() {
 
     }
 
-    private class TopicAssignmentState(
+    private inner class TopicAssignmentState(
         val topic: String,
         partitionInfos: List<PartitionInfo>,
         membersOrNull: List<MemberInfo>?,
@@ -283,7 +272,7 @@ class RangeAssignor : AbstractPartitionAssignor() {
             numPartitionsPerConsumer = if (consumers.isEmpty()) 0 else partitionInfos.size / consumers.size
             remainingConsumersWithExtraPartition = if (consumers.isEmpty()) 0 else partitionInfos.size % consumers.size
 
-            val allConsumerRacks = members.mapNotNull { member -> consumerRacks[member.memberId] }
+            val allConsumerRacks = members.mapNotNull { member -> consumerRacks[member.memberId] }.toSet()
             val allPartitionRacks = mutableSetOf<String>()
 
             partitionRacks = if (allConsumerRacks.isNotEmpty()) {

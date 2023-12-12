@@ -202,7 +202,8 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
         return isAllSubscriptionsEqual
     }
 
-    fun isSticky(): Boolean = partitionMovements!!.isSticky()
+    val isSticky: Boolean
+        get() = partitionMovements!!.isSticky()
 
     /**
      * This constrainedAssign optimizes the assignment algorithm when all consumers were subscribed
@@ -1215,9 +1216,6 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
         sortedCurrentSubscriptions.add(newConsumer)
         sortedCurrentSubscriptions.add(oldConsumer)
     }
-
-    val isSticky: Boolean
-        get() = partitionMovements!!.isSticky()
 
     private fun deepCopy(
         source: Map<String, MutableList<TopicPartition>>,

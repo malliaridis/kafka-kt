@@ -21,7 +21,7 @@ import java.nio.ByteBuffer
 import org.apache.kafka.common.errors.SerializationException
 import org.apache.kafka.common.header.Headers
 
-class LongDeserializer : Deserializer<Long> {
+class LongDeserializer : Deserializer<Long?> {
 
     override fun deserialize(topic: String, data: ByteArray?): Long? = when {
         data == null -> null

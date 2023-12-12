@@ -68,7 +68,7 @@ abstract class RecordsSend<T : BaseRecords?> protected constructor(
      * @throws IOException For any IO errors
      */
     @Throws(IOException::class)
-    protected abstract fun writeTo(
+    internal abstract fun writeTo(
         channel: TransferableChannel,
         previouslyWritten: Int,
         remaining: Int

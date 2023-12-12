@@ -32,7 +32,7 @@ import org.apache.kafka.common.utils.Utils.mkMap
 import org.apache.kafka.common.utils.Utils.newInstance
 import org.slf4j.LoggerFactory
 
-class ListDeserializer<Inner> : Deserializer<List<Inner?>> {
+class ListDeserializer<Inner> : Deserializer<List<Inner>?> {
 
     private val log = LoggerFactory.getLogger(ListDeserializer::class.java)
 
@@ -128,15 +128,15 @@ class ListDeserializer<Inner> : Deserializer<List<Inner?>> {
         }
     }
 
-    private fun createListInstance(listSize: Int): MutableList<Inner?> {
+    private fun createListInstance(listSize: Int): MutableList<Inner> {
         return try {
-            var listConstructor: Constructor<MutableList<Inner?>>
+            var listConstructor: Constructor<MutableList<Inner>>
             try {
                 listConstructor =
-                    listClass.getConstructor(Integer.TYPE) as Constructor<MutableList<Inner?>>
+                    listClass.getConstructor(Integer.TYPE) as Constructor<MutableList<Inner>>
                 listConstructor.newInstance(listSize)
             } catch (e: NoSuchMethodException) {
-                listConstructor = listClass.getConstructor() as Constructor<MutableList<Inner?>>
+                listConstructor = listClass.getConstructor() as Constructor<MutableList<Inner>>
                 listConstructor.newInstance()
             }
         } catch (e: InstantiationException) {
@@ -196,7 +196,7 @@ class ListDeserializer<Inner> : Deserializer<List<Inner?>> {
         return nullIndexList
     }
 
-    override fun deserialize(topic: String, data: ByteArray?): List<Inner?>? {
+    override fun deserialize(topic: String, data: ByteArray?): List<Inner>? {
         if (data == null) return null
 
         try {
@@ -213,7 +213,7 @@ class ListDeserializer<Inner> : Deserializer<List<Inner?>> {
                 val size = dis.readInt()
                 val deserializedList = createListInstance(size)
 
-                for (i in 0 until size) {
+                for (i in 0..<size) {
                     val entrySize =
                         if (serStrategy == Serdes.ListSerde.SerializationStrategy.CONSTANT_SIZE) primitiveSize!!
                         else dis.readInt()
@@ -223,7 +223,7 @@ class ListDeserializer<Inner> : Deserializer<List<Inner?>> {
                         || nullIndexList != null
                         && nullIndexList.contains(i)
                     ) {
-                        deserializedList.add(null)
+                        deserializedList.add(null as Inner)
                         continue
                     }
 

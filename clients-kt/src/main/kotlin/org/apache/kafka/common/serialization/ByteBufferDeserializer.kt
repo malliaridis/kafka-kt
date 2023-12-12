@@ -20,7 +20,7 @@ package org.apache.kafka.common.serialization
 import java.nio.ByteBuffer
 import org.apache.kafka.common.header.Headers
 
-class ByteBufferDeserializer : Deserializer<ByteBuffer> {
+class ByteBufferDeserializer : Deserializer<ByteBuffer?> {
 
     override fun deserialize(topic: String, data: ByteArray?): ByteBuffer? =
         data?.let { ByteBuffer.wrap(data) }

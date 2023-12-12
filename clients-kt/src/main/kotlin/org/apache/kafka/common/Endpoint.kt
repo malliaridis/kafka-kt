@@ -40,9 +40,7 @@ data class Endpoint(
         message = "Use property instead.",
         replaceWith = ReplaceWith("listenerName")
     )
-    fun listenerName(): Optional<String> {
-        return Optional.ofNullable(listenerName)
-    }
+    fun listenerName(): String? = listenerName
 
     /**
      * Returns the security protocol of this endpoint.

@@ -17,7 +17,7 @@
 
 package org.apache.kafka.common.serialization
 
-class VoidSerializer : Serializer<Void> {
+class VoidSerializer : Serializer<Void?> {
 
     override fun serialize(topic: String, data: Void?): ByteArray? = null
 }

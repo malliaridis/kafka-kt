@@ -75,12 +75,11 @@ class DeleteAclsRequest private constructor(
 
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse {
         val apiError = ApiError.fromThrowable(e)
-        val filterResults = Collections.nCopies(
-            data.filters.size,
+        val filterResults = List(data.filters.size) {
             DeleteAclsFilterResult()
                 .setErrorCode(apiError.error.code)
                 .setErrorMessage(apiError.message)
-        )
+        }
 
         return DeleteAclsResponse(
             DeleteAclsResponseData()

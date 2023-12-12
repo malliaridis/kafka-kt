@@ -1967,8 +1967,8 @@ class RequestResponseTest {
             assertEquals(serializedBytes, serializedBytes2, "Response " + response + "failed equality test")
         } catch (e: Exception) {
             throw RuntimeException(
-                message = "Failed to deserialize version $version response $response with type ${response!!.javaClass}",
-                cause = e,
+                "Failed to deserialize version $version response $response with type ${response!!.javaClass}",
+                e,
             )
         }
     }

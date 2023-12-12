@@ -216,7 +216,7 @@ internal class CompletedFetch<K, V>(
      * @param maxRecords The number of records to return; the number returned may be `0 <= maxRecords`
      * @return [Consumer records][ConsumerRecord]
      */
-    fun fetchRecords(maxRecords: Int): List<ConsumerRecord<K?, V?>> {
+    fun fetchRecords(maxRecords: Int): List<ConsumerRecord<K, V>> {
         // Error when fetching the next record before deserialization.
         if (corruptLastRecord) throw KafkaException(
             "Received exception when fetching the next record from $partition. " +
@@ -226,7 +226,7 @@ internal class CompletedFetch<K, V>(
 
         if (isConsumed) return emptyList()
 
-        val records = mutableListOf<ConsumerRecord<K?, V?>>()
+        val records = mutableListOf<ConsumerRecord<K, V>>()
 
         try {
             for (i in 0..<maxRecords) {
@@ -273,13 +273,13 @@ internal class CompletedFetch<K, V>(
         leaderEpoch: Int?,
         timestampType: TimestampType,
         record: Record,
-    ): ConsumerRecord<K?, V?> {
+    ): ConsumerRecord<K, V> {
         try {
             val offset = record.offset()
             val timestamp = record.timestamp()
             val headers: Headers = RecordHeaders(record.headers())
             val keyBytes = record.key()
-            val key = keyBytes?.let {
+            val key= keyBytes?.let {
                 fetchConfig.keyDeserializer.deserialize(partition.topic, headers, it)
             }
             val valueBytes = record.value()
@@ -294,8 +294,8 @@ internal class CompletedFetch<K, V>(
                 timestampType = timestampType,
                 serializedKeySize = keyBytes?.remaining() ?: ConsumerRecord.NULL_SIZE,
                 serializedValueSize = valueBytes?.remaining() ?: ConsumerRecord.NULL_SIZE,
-                key = key,
-                value = value,
+                key = key as K,
+                value = value as V,
                 headers = headers,
                 leaderEpoch = leaderEpoch,
             )
@@ -346,4 +346,3 @@ internal class CompletedFetch<K, V>(
         return ControlRecordType.ABORT == ControlRecordType.parse((firstRecord.key())!!)
     }
 }
-

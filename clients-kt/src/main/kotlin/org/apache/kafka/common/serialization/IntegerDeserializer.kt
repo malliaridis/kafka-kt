@@ -21,7 +21,7 @@ import java.nio.ByteBuffer
 import org.apache.kafka.common.errors.SerializationException
 import org.apache.kafka.common.header.Headers
 
-class IntegerDeserializer : Deserializer<Int> {
+class IntegerDeserializer : Deserializer<Int?> {
 
     override fun deserialize(topic: String, data: ByteArray?): Int? = when {
         data == null -> null

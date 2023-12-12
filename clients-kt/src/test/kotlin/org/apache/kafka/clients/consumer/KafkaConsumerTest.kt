@@ -287,11 +287,11 @@ class KafkaConsumerTest {
     /**
      * Create a mock deserializer which throws a SerializationException on the Nth record's value deserialization
      */
-    private fun mockErrorDeserializer(recordNumber: Int): Deserializer<String> {
+    private fun mockErrorDeserializer(recordNumber: Int): Deserializer<String?> {
 
         val recordIndex = recordNumber - 1
 
-        return object : Deserializer<String> {
+        return object : Deserializer<String?> {
 
             private val actualDeserializer = StringDeserializer()
 
@@ -318,7 +318,7 @@ class KafkaConsumerTest {
     private fun setUpConsumerWithRecordsToPoll(
         tp: TopicPartition,
         recordCount: Int,
-        deserializer: Deserializer<String> = StringDeserializer(),
+        deserializer: Deserializer<String?> = StringDeserializer(),
     ): KafkaConsumer<*, *> {
         val cluster = singletonCluster(tp.topic, 1)
         val node = cluster.nodes[0]
@@ -643,7 +643,7 @@ class KafkaConsumerTest {
     private fun newConsumer(
         groupId: String?,
         enableAutoCommit: Boolean? = null,
-    ): KafkaConsumer<ByteArray, ByteArray> {
+    ): KafkaConsumer<ByteArray?, ByteArray?> {
         val props = Properties().apply {
             setProperty(ConsumerConfig.CLIENT_ID_CONFIG, "my.consumer")
             setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9999")
@@ -658,7 +658,7 @@ class KafkaConsumerTest {
         return newConsumer(props)
     }
 
-    private fun newConsumer(props: Properties): KafkaConsumer<ByteArray, ByteArray> =
+    private fun newConsumer(props: Properties): KafkaConsumer<ByteArray?, ByteArray?> =
         KafkaConsumer(
             properties = props,
             keyDeserializer = ByteArrayDeserializer(),
@@ -3181,7 +3181,7 @@ class KafkaConsumerTest {
         assertEquals(40L, consumer.currentLag(tp0))
     }
 
-    private fun consumerWithPendingAuthenticationError(time: Time = MockTime()): KafkaConsumer<String, String> {
+    private fun consumerWithPendingAuthenticationError(time: Time = MockTime()): KafkaConsumer<String?, String?> {
         val metadata = createMetadata(subscription)
         val client = MockClient(time, metadata)
         initMetadata(client, mapOf(topic to 1))
@@ -3199,7 +3199,7 @@ class KafkaConsumerTest {
         )
     }
 
-    private fun consumerWithPendingError(time: Time): KafkaConsumer<String, String> =
+    private fun consumerWithPendingError(time: Time): KafkaConsumer<String?, String?> =
         consumerWithPendingAuthenticationError(time)
 
     private fun getConsumerRebalanceListener(consumer: KafkaConsumer<*, *>): ConsumerRebalanceListener {
@@ -3515,7 +3515,7 @@ class KafkaConsumerTest {
         assignor: ConsumerPartitionAssignor,
         autoCommitEnabled: Boolean,
         groupInstanceId: String?,
-    ): KafkaConsumer<String, String> = newConsumer(
+    ): KafkaConsumer<String?, String?> = newConsumer(
         time = time,
         client = client,
         subscription = subscription,
@@ -3532,7 +3532,7 @@ class KafkaConsumerTest {
         client: KafkaClient,
         subscription: SubscriptionState,
         metadata: ConsumerMetadata,
-    ): KafkaConsumer<String, String> = newConsumer(
+    ): KafkaConsumer<String?, String?> = newConsumer(
         time = time,
         client = client,
         subscription = subscription,
@@ -3554,7 +3554,7 @@ class KafkaConsumerTest {
         groupId: String?,
         groupInstanceId: String?,
         throwOnStableOffsetNotSupported: Boolean,
-    ): KafkaConsumer<String, String> = newConsumer(
+    ): KafkaConsumer<String?, String?> = newConsumer(
         time = time,
         client = client,
         subscription = subscription,
@@ -3576,9 +3576,9 @@ class KafkaConsumerTest {
         autoCommitEnabled: Boolean,
         groupId: String?,
         groupInstanceId: String?,
-        valueDeserializer: Deserializer<String>?,
+        valueDeserializer: Deserializer<String?>?,
         throwOnStableOffsetNotSupported: Boolean,
-    ): KafkaConsumer<String, String> {
+    ): KafkaConsumer<String?, String?> {
         val clientId = "mock-consumer"
         val metricGroupPrefix = "consumer"
         val retryBackoffMs: Long = 100
@@ -3592,7 +3592,7 @@ class KafkaConsumerTest {
         val keyDeserializer = StringDeserializer()
         val deserializer = valueDeserializer ?: StringDeserializer()
         val assignors = listOf(assignor)
-        val interceptors = ConsumerInterceptors<String, String>(emptyList())
+        val interceptors = ConsumerInterceptors<String?, String?>(emptyList())
         val metrics = Metrics(time = time)
         val metricsRegistry = ConsumerMetrics(metricGrpPrefix = metricGroupPrefix)
         val loggerFactory = LogContext()
@@ -3683,9 +3683,9 @@ class KafkaConsumerTest {
             topicMetadataFetcher = topicMetadataFetcher,
             interceptors = interceptors,
             time = time,
-            consumerClient,
+            client = consumerClient,
             metrics = metrics,
-            subscription,
+            subscriptions = subscription,
             metadata = metadata,
             retryBackoffMs = retryBackoffMs,
             requestTimeoutMs = requestTimeoutMs.toLong(),
@@ -4102,7 +4102,7 @@ class KafkaConsumerTest {
         )
     }
 
-    private fun consumerForCheckingTimeoutException(): KafkaConsumer<String, String> {
+    private fun consumerForCheckingTimeoutException(): KafkaConsumer<String?, String?> {
         val metadata = createMetadata(subscription)
         val client = MockClient(time, metadata)
         initMetadata(client, mapOf(topic to 1))
@@ -4131,7 +4131,7 @@ class KafkaConsumerTest {
         return consumer
     }
 
-    class DeserializerForClientId : Deserializer<ByteArray> {
+    class DeserializerForClientId : Deserializer<ByteArray?> {
 
         override fun configure(configs: Map<String, *>, isKey: Boolean) {
             CLIENT_IDS.add(configs[ConsumerConfig.CLIENT_ID_CONFIG].toString())
@@ -4158,7 +4158,7 @@ class KafkaConsumerTest {
     companion object {
 
         private fun consumerMetricPresent(
-            consumer: KafkaConsumer<String, String>,
+            consumer: KafkaConsumer<String?, String?>,
             name: String,
         ): Boolean {
             val metricName = MetricName(

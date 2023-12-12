@@ -34,9 +34,9 @@ import kotlin.test.assertFalse
 
 class ConsumerConfigTest {
     
-    private val keyDeserializer: Deserializer<ByteArray> = ByteArrayDeserializer()
+    private val keyDeserializer: Deserializer<ByteArray?> = ByteArrayDeserializer()
     
-    private val valueDeserializer: Deserializer<String> = StringDeserializer()
+    private val valueDeserializer: Deserializer<String?> = StringDeserializer()
     
     private val keyDeserializerClassName = keyDeserializer::class.java.name
     

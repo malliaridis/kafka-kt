@@ -4142,7 +4142,7 @@ class FetcherTest {
             valueDeserializer = ByteArrayDeserializer(),
             isolationLevel = isolationLevel,
         )
-        fetcher = object : Fetcher<ByteArray, ByteArray>(
+        fetcher = object : Fetcher<ByteArray?, ByteArray?>(
             logContext = logContext,
             client = consumerClient,
             metadata = metadata,
@@ -4613,7 +4613,7 @@ class FetcherTest {
         )
         val records = builder.build()
 
-        buildFetcher<ByteArray, ByteArray>(
+        buildFetcher(
             offsetResetStrategy = OffsetResetStrategy.EARLIEST,
             keyDeserializer = ByteArrayDeserializer(),
             valueDeserializer = ByteArrayDeserializer(),

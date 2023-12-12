@@ -30,7 +30,7 @@ import org.apache.kafka.common.utils.Utils
  * serializer.serialize(topic, buffer);   // Serialize buffer
  * ```
  */
-class ByteBufferSerializer : Serializer<ByteBuffer> {
+class ByteBufferSerializer : Serializer<ByteBuffer?> {
 
     override fun serialize(topic: String, data: ByteBuffer?): ByteArray? {
         if (data == null) return null

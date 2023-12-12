@@ -17,7 +17,7 @@
 
 package org.apache.kafka.common.serialization
 
-class ByteArraySerializer : Serializer<ByteArray> {
+class ByteArraySerializer : Serializer<ByteArray?> {
 
     override fun serialize(topic: String, data: ByteArray?): ByteArray? = data
 }

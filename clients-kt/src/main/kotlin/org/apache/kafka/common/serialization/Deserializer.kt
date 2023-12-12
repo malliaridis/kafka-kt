@@ -51,7 +51,7 @@ interface Deserializer<T> : Closeable {
      * returning a value or null rather than throwing an exception.
      * @return deserialized typed data; may be null
      */
-    fun deserialize(topic: String, data: ByteArray?): T?
+    fun deserialize(topic: String, data: ByteArray?): T
 
     /**
      * Deserialize a record value from a byte array into a value or object.
@@ -62,7 +62,7 @@ interface Deserializer<T> : Closeable {
      * returning a value or null rather than throwing an exception.
      * @return deserialized typed data; may be null
      */
-    fun deserialize(topic: String, headers: Headers, data: ByteArray?): T? = deserialize(topic, data)
+    fun deserialize(topic: String, headers: Headers, data: ByteArray?): T = deserialize(topic, data)
 
     /**
      * Deserialize a record value from a ByteBuffer into a value or object.
@@ -72,7 +72,7 @@ interface Deserializer<T> : Closeable {
      * a value or null rather than throwing an exception.
      * @return deserialized typed data; may be null
      */
-    fun deserialize(topic: String, data: ByteBuffer?): T? = deserialize(topic, toNullableArray(data))
+    fun deserialize(topic: String, data: ByteBuffer?): T = deserialize(topic, toNullableArray(data))
 
     /**
      * Deserialize a record value from a ByteBuffer into a value or object.
@@ -83,7 +83,7 @@ interface Deserializer<T> : Closeable {
      * a value or null rather than throwing an exception.
      * @return deserialized typed data; may be null
      */
-    fun deserialize(topic: String, headers: Headers, data: ByteBuffer?): T? =
+    fun deserialize(topic: String, headers: Headers, data: ByteBuffer?): T =
         deserialize(topic, headers, toNullableArray(data))
 
     /**

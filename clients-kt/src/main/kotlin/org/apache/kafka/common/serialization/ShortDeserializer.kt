@@ -21,7 +21,7 @@ import java.nio.ByteBuffer
 import org.apache.kafka.common.errors.SerializationException
 import org.apache.kafka.common.header.Headers
 
-class ShortDeserializer : Deserializer<Short> {
+class ShortDeserializer : Deserializer<Short?> {
 
     override fun deserialize(topic: String, data: ByteArray?): Short? {
         if (data == null) return null

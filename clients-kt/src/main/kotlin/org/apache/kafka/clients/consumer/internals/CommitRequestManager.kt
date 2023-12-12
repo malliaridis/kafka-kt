@@ -111,7 +111,7 @@ class CommitRequestManager(
      */
     fun addOffsetFetchRequest(
         partitions: Set<TopicPartition>,
-    ): CompletableFuture<Map<TopicPartition, OffsetAndMetadata?>> =
+    ): CompletableFuture<Map<TopicPartition, OffsetAndMetadata>> =
         pendingRequests.addOffsetFetchRequest(partitions)
 
     fun updateAutoCommitTimer(currentTimeMs: Long) {
@@ -194,7 +194,7 @@ class CommitRequestManager(
         retryBackoffMs: Long,
     ) : RequestState(retryBackoffMs) {
 
-        var future: CompletableFuture<Map<TopicPartition, OffsetAndMetadata?>> = CompletableFuture()
+        var future: CompletableFuture<Map<TopicPartition, OffsetAndMetadata>> = CompletableFuture()
 
         fun sameRequest(request: OffsetFetchRequestState): Boolean {
             return requestedGeneration == request.requestedGeneration
@@ -202,8 +202,8 @@ class CommitRequestManager(
         }
 
         fun toUnsentRequest(currentTimeMs: Long): UnsentRequest {
-            val builder: OffsetFetchRequest.Builder = OffsetFetchRequest.Builder(
-                groupId = groupState.groupId,
+            val builder = OffsetFetchRequest.Builder(
+                groupId = groupState.groupId!!,
                 requireStable = true,
                 partitions = ArrayList(requestedPartitions),
                 throwOnFetchStableOffsetsUnsupported = throwOnFetchStableOffsetUnsupported,
@@ -222,7 +222,7 @@ class CommitRequestManager(
             currentTimeMs: Long,
             response: OffsetFetchResponse,
         ) {
-            val responseError = response.groupLevelError(groupState.groupId)
+            val responseError = response.groupLevelError(groupState.groupId!!)!!
             if (responseError != Errors.NONE) {
                 onFailure(currentTimeMs, responseError)
                 return
@@ -264,8 +264,8 @@ class CommitRequestManager(
             response: OffsetFetchResponse,
         ) {
             var unauthorizedTopics: MutableSet<String>? = null
-            val responseData = response.partitionDataMap(groupState.groupId)
-            val offsets: MutableMap<TopicPartition, OffsetAndMetadata?> = HashMap(responseData.size)
+            val responseData = response.partitionDataMap(groupState.groupId!!)
+            val offsets: MutableMap<TopicPartition, OffsetAndMetadata> = HashMap(responseData.size)
             val unstableTxnOffsetTopicPartitions: MutableSet<TopicPartition> = HashSet()
             for ((tp, partitionData) in responseData) {
                 if (partitionData.hasError()) {
@@ -299,10 +299,7 @@ class CommitRequestManager(
                         leaderEpoch = partitionData.leaderEpoch,
                         metadata = partitionData.metadata!!,
                     )
-                } else {
-                    log.info("Found no committed offset for partition {}", tp)
-                    offsets[tp] = null
-                }
+                } else log.info("Found no committed offset for partition {}", tp)
             }
             if (unauthorizedTopics != null) future.completeExceptionally(
                 TopicAuthorizationException(unauthorizedTopics)
@@ -320,8 +317,8 @@ class CommitRequestManager(
         }
 
         fun chainFuture(
-            future: CompletableFuture<Map<TopicPartition, OffsetAndMetadata?>>,
-        ): CompletableFuture<Map<TopicPartition, OffsetAndMetadata?>> {
+            future: CompletableFuture<Map<TopicPartition, OffsetAndMetadata>>,
+        ): CompletableFuture<Map<TopicPartition, OffsetAndMetadata>> {
             return this.future.whenComplete { r, t ->
                 if (t != null) future.completeExceptionally(t)
                 else future.complete(r)
@@ -357,8 +354,8 @@ class CommitRequestManager(
             // TODO: Dedupe committing the same offsets to the same partitions
             val request = OffsetCommitRequestState(
                 offsets = offsets,
-                groupId = groupState.groupId,
-                groupInstanceId = groupState.groupInstanceId ?: null,
+                groupId = groupState.groupId!!,
+                groupInstanceId = groupState.groupInstanceId,
                 groupState.generation
             )
             unsentOffsetCommits.add(request)
@@ -376,7 +373,7 @@ class CommitRequestManager(
          */
         fun addOffsetFetchRequest(
             request: OffsetFetchRequestState,
-        ): CompletableFuture<Map<TopicPartition, OffsetAndMetadata?>> {
+        ): CompletableFuture<Map<TopicPartition, OffsetAndMetadata>> {
             val dupe: OffsetFetchRequestState? = unsentOffsetFetches.firstOrNull { it.sameRequest(request) }
             val inflight: OffsetFetchRequestState? = inflightOffsetFetches.firstOrNull { it.sameRequest(request) }
 
@@ -398,7 +395,7 @@ class CommitRequestManager(
 
         fun addOffsetFetchRequest(
             partitions: Set<TopicPartition>,
-        ): CompletableFuture<Map<TopicPartition, OffsetAndMetadata?>> {
+        ): CompletableFuture<Map<TopicPartition, OffsetAndMetadata>> {
             val request = OffsetFetchRequestState(
                 requestedPartitions = partitions,
                 requestedGeneration = groupState.generation,

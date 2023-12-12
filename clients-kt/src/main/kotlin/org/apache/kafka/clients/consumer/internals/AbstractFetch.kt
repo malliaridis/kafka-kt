@@ -240,8 +240,8 @@ abstract class AbstractFetch<K, V>(
      * the defaultResetPolicy is NONE
      * @throws TopicAuthorizationException If there is TopicAuthorization error in fetchResponse.
      */
-    fun collectFetch(): Fetch<K?, V?> {
-        val fetch: Fetch<K?, V?> = Fetch.empty()
+    fun collectFetch(): Fetch<K, V> {
+        val fetch: Fetch<K, V> = Fetch.empty()
         val pausedCompletedFetches: Queue<CompletedFetch<K, V>> = ArrayDeque()
         var recordsRemaining: Int = fetchConfig.maxPollRecords
         try {
@@ -295,7 +295,7 @@ abstract class AbstractFetch<K, V>(
         return fetch
     }
 
-    private fun fetchRecords(maxRecords: Int): Fetch<K?, V?> {
+    private fun fetchRecords(maxRecords: Int): Fetch<K, V> {
         val inLineFetch = nextInLineFetch!!
         if (!subscriptions.isAssigned(inLineFetch.partition)) {
             // this can happen when a rebalance happened before fetched records are returned to the consumer's poll call

@@ -17,7 +17,6 @@
 
 package org.apache.kafka.clients.consumer.internals
 
-import java.util.Optional
 import org.apache.kafka.clients.consumer.ConsumerPartitionAssignor
 import org.apache.kafka.clients.consumer.ConsumerPartitionAssignor.GroupAssignment
 import org.apache.kafka.clients.consumer.ConsumerPartitionAssignor.GroupSubscription

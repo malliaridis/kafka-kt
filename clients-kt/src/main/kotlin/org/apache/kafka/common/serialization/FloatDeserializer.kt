@@ -21,7 +21,7 @@ import java.nio.ByteBuffer
 import org.apache.kafka.common.errors.SerializationException
 import org.apache.kafka.common.header.Headers
 
-class FloatDeserializer : Deserializer<Float> {
+class FloatDeserializer : Deserializer<Float?> {
 
     override fun deserialize(topic: String, data: ByteArray?): Float? {
         if (data == null) return null

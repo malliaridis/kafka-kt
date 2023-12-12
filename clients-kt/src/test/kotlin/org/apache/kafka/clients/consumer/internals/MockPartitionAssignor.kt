@@ -23,7 +23,7 @@ import org.apache.kafka.clients.consumer.ConsumerPartitionAssignor.RebalanceProt
 import org.apache.kafka.common.TopicPartition
 
 open class MockPartitionAssignor internal constructor(
-    private val supportedProtocols: List<RebalanceProtocol?>,
+    private val supportedProtocols: List<RebalanceProtocol>,
 ) : AbstractPartitionAssignor() {
 
     private var numAssignment = 0
@@ -39,7 +39,7 @@ open class MockPartitionAssignor internal constructor(
 
     override fun name(): String = "consumer-mock-assignor"
 
-    override fun supportedProtocols(): List<RebalanceProtocol?>? = supportedProtocols
+    override fun supportedProtocols(): List<RebalanceProtocol> = supportedProtocols
 
     fun clear() {
         result = null

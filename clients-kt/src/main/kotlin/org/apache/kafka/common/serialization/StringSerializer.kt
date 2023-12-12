@@ -26,7 +26,7 @@ import org.apache.kafka.common.errors.SerializationException
  * key.serializer.encoding, value.serializer.encoding or serializer.encoding. The first two take
  * precedence over the last.
  */
-class StringSerializer : Serializer<String> {
+class StringSerializer : Serializer<String?> {
 
     private var encoding = StandardCharsets.UTF_8.name()
 

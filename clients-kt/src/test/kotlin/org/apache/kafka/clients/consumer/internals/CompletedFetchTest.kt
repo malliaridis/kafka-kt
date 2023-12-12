@@ -194,7 +194,7 @@ class CompletedFetchTest {
     private fun newCompletedFetch(
         fetchOffset: Long,
         partitionData: FetchResponseData.PartitionData,
-    ): CompletedFetch<String, String> = newCompletedFetch(
+    ): CompletedFetch<String?, String?> = newCompletedFetch(
         isolationLevel = IsolationLevel.READ_UNCOMMITTED,
         offsetResetStrategy = OffsetResetStrategy.NONE,
         checkCrcs = true,
@@ -208,7 +208,7 @@ class CompletedFetchTest {
         checkCrcs: Boolean,
         fetchOffset: Long,
         partitionData: FetchResponseData.PartitionData,
-    ): CompletedFetch<String, String> = newCompletedFetch(
+    ): CompletedFetch<String?, String?> = newCompletedFetch(
         keyDeserializer = StringDeserializer(),
         valueDeserializer = StringDeserializer(),
         isolationLevel = isolationLevel,

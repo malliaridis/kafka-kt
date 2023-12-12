@@ -30,7 +30,7 @@ import org.apache.kafka.common.utils.Utils
  * key.deserializer.encoding, value.deserializer.encoding or deserializer.encoding. The first two
  * take precedence over the last.
  */
-class StringDeserializer : Deserializer<String> {
+class StringDeserializer : Deserializer<String?> {
 
     private var encoding = StandardCharsets.UTF_8.name()
 

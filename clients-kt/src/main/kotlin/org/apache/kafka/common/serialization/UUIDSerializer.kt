@@ -27,7 +27,7 @@ import org.apache.kafka.common.errors.SerializationException
  * customized by setting the property key.deserializer.encoding, value.deserializer.encoding or
  * deserializer.encoding. The first two take precedence over the last.
  */
-class UUIDSerializer : Serializer<UUID> {
+class UUIDSerializer : Serializer<UUID?> {
 
     private var encoding = StandardCharsets.UTF_8.name()
 

@@ -792,7 +792,7 @@ class KafkaProducerTest {
         whenever(metadata.fetch())
             .thenReturn(emptyCluster, emptyCluster, emptyCluster, emptyCluster, onePartitionCluster)
         val producer = producerWithOverrideNewSender(configs, metadata)
-        val record = ProducerRecord<String, String>(topic = topic, value = "value")
+        val record = ProducerRecord<String?, String?>(topic = topic, value = "value")
         producer.send(record)
 
         // One request update for each empty cluster returned
@@ -826,7 +826,7 @@ class KafkaProducerTest {
         whenever(metadata.fetch())
             .thenReturn(onePartitionCluster, emptyCluster, onePartitionCluster)
         val producer = producerWithOverrideNewSender(configs, metadata)
-        val record = ProducerRecord<String, String>(topic = topic, value = "value")
+        val record = ProducerRecord<String?, String?>(topic = topic, value = "value")
         producer.send(record)
 
         // Verify the topic's metadata isn't requested since it's already present.
@@ -853,7 +853,7 @@ class KafkaProducerTest {
         )
 
         // Create a record for a not-yet-created topic
-        val record = ProducerRecord<String, String>(
+        val record = ProducerRecord<String?, String?>(
             topic = topic,
             partition = 2,
             value = "value",
@@ -897,7 +897,7 @@ class KafkaProducerTest {
         )
 
         // Create a record with a partition higher than the initial (outdated) partition range
-        val record = ProducerRecord<String, String>(
+        val record = ProducerRecord<String?, String?>(
             topic = topic,
             partition = 2,
             value = "value",
@@ -926,7 +926,7 @@ class KafkaProducerTest {
         )
 
         // Create a record with a partition higher than the initial (outdated) partition range
-        val record = ProducerRecord<String, String>(
+        val record = ProducerRecord<String?, String?>(
             topic = topic,
             partition = 2,
             value = "value",
@@ -1278,7 +1278,7 @@ class KafkaProducerTest {
             ProducerConfig.MAX_REQUEST_SIZE_CONFIG to "1",
         )
         val topic = "topic"
-        val record = ProducerRecord<String, String>(topic = topic, value = "value")
+        val record = ProducerRecord<String?, String?>(topic = topic, value = "value")
         val nowMs = Time.SYSTEM.milliseconds()
         val metadata = newMetadata(0, 90000)
         metadata.add(topic, nowMs)
@@ -1292,7 +1292,7 @@ class KafkaProducerTest {
             nowMs = nowMs,
         )
         // it is safe to suppress, since this is a mock class
-        val interceptors = mock<ProducerInterceptors<String, String>>()
+        val interceptors = mock<ProducerInterceptors<String?, String?>>()
         val producer = kafkaProducer(
             configs = configs,
             keySerializer = StringSerializer(),
@@ -1672,7 +1672,7 @@ class KafkaProducerTest {
         )
         whenever(metadata.fetch()).thenReturn(onePartitionCluster)
         val largeString = "*".repeat(1000)
-        val largeRecord = ProducerRecord(
+        val largeRecord = ProducerRecord<String?, String?>(
             topic = topic,
             key = "large string",
             value = largeString,
@@ -1707,7 +1707,7 @@ class KafkaProducerTest {
         )
 
         // Create a record for a not-yet-created topic
-        val record = ProducerRecord<String, String>(topic = topic, value = "value")
+        val record = ProducerRecord<String?, String?>(topic = topic, value = "value")
         val metadata = mock<ProducerMetadata>()
         val mockTime = MockTime()
         val client = MockClient(mockTime, metadata)
@@ -1747,7 +1747,7 @@ class KafkaProducerTest {
         configs[ProducerConfig.MAX_BLOCK_MS_CONFIG] = 60000
 
         // Create a record with a partition higher than the initial (outdated) partition range
-        val record = ProducerRecord<String, String>(
+        val record = ProducerRecord<String?, String?>(
             topic = topic,
             partition = 2,
             key = null,
@@ -1817,7 +1817,7 @@ class KafkaProducerTest {
         )
         client.prepareResponse(initProducerIdResponse(1L, 5.toShort(), Errors.NONE))
         val invalidTopicName = "topic abc" // Invalid topic name due to space
-        val record = ProducerRecord<String, String>(topic = invalidTopicName, value = "HelloKafka")
+        val record = ProducerRecord<String?, String?>(topic = invalidTopicName, value = "HelloKafka")
         val topicMetadata: MutableList<MetadataResponse.TopicMetadata> = ArrayList()
         topicMetadata.add(
             MetadataResponse.TopicMetadata(
@@ -2288,7 +2288,7 @@ class KafkaProducerTest {
             time = time,
         )
         val invalidTopicName = "topic abc" // Invalid topic name due to space
-        val record = ProducerRecord<String, String>(topic = invalidTopicName, value = "HelloKafka")
+        val record = ProducerRecord<String?, String?>(topic = invalidTopicName, value = "HelloKafka")
         val topicMetadata = listOf(
             MetadataResponse.TopicMetadata(
                 error = Errors.INVALID_TOPIC_EXCEPTION,
@@ -2645,25 +2645,23 @@ class KafkaProducerTest {
             interceptors = producerInterceptors,
             time = time,
         ).use { producer ->
-            val record = ProducerRecord<String, String>(topic = invalidTopicName, value = "HelloKafka")
+            val record = ProducerRecord<String?, String?>(topic = invalidTopicName, value = "HelloKafka")
 
             // Here's the important piece of the test. Let's make sure that the RecordMetadata we get
             // is non-null and adheres to the onCompletion contract.
-            val callBack = object : Callback {
-                override fun onCompletion(metadata: RecordMetadata?, exception: Exception?) {
-                    assertNotNull(exception)
-                    assertNotNull(metadata)
-                    assertNotNull(metadata.topic, "Topic name should be valid even on send failure")
-                    assertEquals(invalidTopicName, metadata.topic)
-                    assertNotNull(metadata.partition, "Partition should be valid even on send failure")
-                    assertFalse(metadata.hasOffset())
-                    assertEquals(ProduceResponse.INVALID_OFFSET, metadata.offset)
-                    assertFalse(metadata.hasTimestamp())
-                    assertEquals(RecordBatch.NO_TIMESTAMP, metadata.timestamp)
-                    assertEquals(-1, metadata.serializedKeySize)
-                    assertEquals(-1, metadata.serializedValueSize)
-                    assertEquals(-1, metadata.partition)
-                }
+            val callBack = Callback { metadata, exception ->
+                assertNotNull(exception)
+                assertNotNull(metadata)
+                assertNotNull(metadata.topic, "Topic name should be valid even on send failure")
+                assertEquals(invalidTopicName, metadata.topic)
+                assertNotNull(metadata.partition, "Partition should be valid even on send failure")
+                assertFalse(metadata.hasOffset())
+                assertEquals(ProduceResponse.INVALID_OFFSET, metadata.offset)
+                assertFalse(metadata.hasTimestamp())
+                assertEquals(RecordBatch.NO_TIMESTAMP, metadata.timestamp)
+                assertEquals(-1, metadata.serializedKeySize)
+                assertEquals(-1, metadata.serializedValueSize)
+                assertEquals(-1, metadata.partition)
             }
             producer.send(record, callBack)
             assertEquals(1, MockProducerInterceptor.ON_ACKNOWLEDGEMENT_COUNT.toInt())
@@ -2710,7 +2708,7 @@ class KafkaProducerTest {
         whenever(ctx.sender.isRunning).thenReturn(true)
         whenever(ctx.metadata.fetch()).thenReturn(cluster)
         val timestamp = ctx.time.milliseconds()
-        val record = ProducerRecord(
+        val record = ProducerRecord<String?, String?>(
             topic = topic,
             partition = null,
             timestamp = timestamp,
@@ -2738,7 +2736,7 @@ class KafkaProducerTest {
         whenever(ctx.sender.isRunning).thenReturn(true)
         whenever(ctx.metadata.fetch()).thenReturn(cluster)
         val timestamp = ctx.time.milliseconds()
-        val record = ProducerRecord(
+        val record = ProducerRecord<String?, String?>(
             topic = topic,
             partition = null,
             timestamp = timestamp,
@@ -3094,13 +3092,13 @@ class KafkaProducerTest {
             configs: Map<String, Any?>,
             metadata: ProducerMetadata,
             time: Time = Time.SYSTEM,
-        ): KafkaProducer<String, String> {
+        ): KafkaProducer<String?, String?> {
             // let mockClient#leastLoadedNode return the node directly so that we can isolate Metadata calls from KafkaProducer for idempotent producer
             val mockClient = object : MockClient(Time.SYSTEM, metadata) {
                 override fun leastLoadedNode(now: Long): Node = NODE
             }
 
-            return object : KafkaProducer<String, String>(
+            return object : KafkaProducer<String?, String?>(
                 config = ProducerConfig(
                     ProducerConfig.appendSerializerToConfig(
                         configs = configs,

@@ -196,9 +196,9 @@ class LazyDownConversionRecordsTest {
                     var written = 0
                     while (written < bytesToConvert) written += lazySend.writeTo(
                         channel = channel,
-                        previouslyWritten = written.toLong(),
+                        previouslyWritten = written,
                         remaining = bytesToConvert - written,
-                    ).toInt()
+                    )
 
                     FileRecords.open(
                         file = outputFile,

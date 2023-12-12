@@ -1918,9 +1918,9 @@ class MessageDataGenerator internal constructor(
         )
         else if (field.type.isStruct) {
             if (field.nullableVersions.isEmpty)
-                buffer.printf("+ \"%s%s=\" + %s.toString()%n", prefix, field.camelCaseName(), field.camelCaseName())
+                buffer.printf("\"%s%s=\" + %s.toString() +%n", prefix, field.camelCaseName(), field.camelCaseName())
             else buffer.printf(
-                "+ \"%s%s=\" + %s?.toString() ?: \"null\"%n",
+                "\"%s%s=\" + %s?.toString() ?: \"null\" +%n",
                 prefix,
                 field.camelCaseName(),
                 field.camelCaseName(),

@@ -97,7 +97,7 @@ class ApplicationEventProcessor(
             return false
         }
         (commitRequestManger as CommitRequestManager)
-            .addOffsetFetchRequest(event.partitions())
+            .addOffsetFetchRequest(event.partitions)
             .whenComplete { response, exception ->
                 if (exception != null) {
                     future.completeExceptionally(exception)

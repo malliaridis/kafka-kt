@@ -150,7 +150,7 @@ object ConsumerUtils {
         isolationLevel = createIsolationLevel(config),
     )
 
-    fun <K, V> createConsumerInterceptors(config: ConsumerConfig): List<ConsumerInterceptor<K, V>?> =
+    fun <K, V> createConsumerInterceptors(config: ConsumerConfig): List<ConsumerInterceptor<K, V>> =
         createConfiguredInterceptors<ConsumerInterceptor<K, V>>(
             config = config,
             interceptorClassesConfigName = ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG

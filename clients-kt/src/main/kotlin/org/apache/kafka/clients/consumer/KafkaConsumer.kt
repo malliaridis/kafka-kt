@@ -18,8 +18,6 @@
 package org.apache.kafka.clients.consumer
 
 import java.time.Duration
-import java.util.ConcurrentModificationException
-import java.util.OptionalLong
 import java.util.Properties
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
@@ -34,12 +32,17 @@ import org.apache.kafka.clients.consumer.internals.ConsumerCoordinator
 import org.apache.kafka.clients.consumer.internals.ConsumerInterceptors
 import org.apache.kafka.clients.consumer.internals.ConsumerMetadata
 import org.apache.kafka.clients.consumer.internals.ConsumerNetworkClient
+import org.apache.kafka.clients.consumer.internals.ConsumerUtils
+import org.apache.kafka.clients.consumer.internals.ConsumerUtils.CONSUMER_JMX_PREFIX
+import org.apache.kafka.clients.consumer.internals.ConsumerUtils.CONSUMER_METRIC_GROUP_PREFIX
 import org.apache.kafka.clients.consumer.internals.Fetch
 import org.apache.kafka.clients.consumer.internals.Fetcher
 import org.apache.kafka.clients.consumer.internals.KafkaConsumerMetrics
 import org.apache.kafka.clients.consumer.internals.NoOpConsumerRebalanceListener
+import org.apache.kafka.clients.consumer.internals.OffsetFetcher
 import org.apache.kafka.clients.consumer.internals.SubscriptionState
 import org.apache.kafka.clients.consumer.internals.SubscriptionState.FetchPosition
+import org.apache.kafka.clients.consumer.internals.TopicMetadataFetcher
 import org.apache.kafka.common.Cluster
 import org.apache.kafka.common.IsolationLevel
 import org.apache.kafka.common.KafkaException
@@ -561,7 +564,7 @@ import kotlin.math.min
 class KafkaConsumer<K, V> : Consumer<K, V> {
 
     // Visible for testing
-    val metrics: Metrics
+    internal val metrics: Metrics
 
     val kafkaConsumerMetrics: KafkaConsumerMetrics
 
@@ -710,16 +713,21 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
             metrics = ConsumerUtils.createMetrics(config, time)
             retryBackoffMs = config.getLong(ConsumerConfig.RETRY_BACKOFF_MS_CONFIG)!!
 
-            val interceptorList = ConsumerUtils.createConsumerInterceptors(config)
+            val interceptorList = ConsumerUtils.createConsumerInterceptors<K, V>(config)
             interceptors = ConsumerInterceptors(interceptorList)
 
             this.keyDeserializer = ConsumerUtils.createKeyDeserializer(config, keyDeserializer)
             this.valueDeserializer = ConsumerUtils.createValueDeserializer(config, valueDeserializer)
 
             subscriptions = ConsumerUtils.createSubscriptionState(config, logContext)
+            val clusterResourceListeners = configureClusterResourceListeners(
+                keyDeserializer = this.keyDeserializer,
+                valueDeserializer = this.valueDeserializer,
+                candidateLists = arrayOf(metrics.reporters, interceptorList),
+            )
             metadata = ConsumerMetadata(
                 config = config,
-                subscription = subscriptions,
+                subscriptions = subscriptions,
                 logContext = logContext,
                 clusterResourceListeners = clusterResourceListeners,
             )
@@ -773,13 +781,17 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
                 )
             }
 
-            val fetchConfig = ConsumerUtils.createFetchConfig(config, this.keyDeserializer, this.valueDeserializer)
+            val fetchConfig = ConsumerUtils.createFetchConfig(
+                config = config,
+                keyDeserializer = this.keyDeserializer,
+                valueDeserializer = this.valueDeserializer,
+            )
             fetcher = Fetcher(
                 logContext = logContext,
                 client = client,
                 metadata = metadata,
                 subscriptions = subscriptions,
-                config = fetchConfig,
+                fetchConfig = fetchConfig,
                 metricsManager = fetchMetricsManager,
                 time = time,
             )
@@ -792,7 +804,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
                 retryBackoffMs = retryBackoffMs,
                 requestTimeoutMs = requestTimeoutMs,
                 isolationLevel = isolationLevel,
-                apiVersions = apiversions,
+                apiVersions = apiVersions,
             )
             topicMetadataFetcher = TopicMetadataFetcher(
                 logContext = logContext,
@@ -1231,7 +1243,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
                     )
                 ) log.warn("Still waiting for metadata")
 
-                val fetch: Fetch<K, V> = pollForFetches(timer)
+                val fetch = pollForFetches(timer)
                 if (!fetch.isEmpty) {
                     // before returning the fetched records, we can send off the next round of
                     // fetches and avoid block waiting for their responses to enable pipelining
@@ -1276,7 +1288,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
             ?: timer.remainingMs
 
         // if data is available already, return it immediately
-        val fetch: Fetch<K, V> = fetcher.collectFetch()
+        val fetch = fetcher.collectFetch()
         if (!fetch.isEmpty) return fetch
 
         // send any new fetches (won't resend pending fetches)

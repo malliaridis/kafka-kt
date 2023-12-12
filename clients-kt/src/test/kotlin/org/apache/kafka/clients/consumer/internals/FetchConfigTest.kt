@@ -89,8 +89,8 @@ class FetchConfigTest {
     }
 
     private fun newFetchConfigFromConsumerConfig(
-        keyDeserializer: Deserializer<String>,
-        valueDeserializer: Deserializer<String>,
+        keyDeserializer: Deserializer<String?>,
+        valueDeserializer: Deserializer<String?>,
     ) {
         val properties = Properties()
         properties[ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG] = "localhost:9092"
@@ -106,8 +106,8 @@ class FetchConfigTest {
     }
 
     private fun newFetchConfigFromValues(
-        keyDeserializer: Deserializer<String>,
-        valueDeserializer: Deserializer<String>,
+        keyDeserializer: Deserializer<String?>,
+        valueDeserializer: Deserializer<String?>,
     ) {
         FetchConfig(
             minBytes = ConsumerConfig.DEFAULT_FETCH_MIN_BYTES,
@@ -123,4 +123,3 @@ class FetchConfigTest {
         )
     }
 }
-

@@ -23,7 +23,7 @@ class LegacyRecordTest {
                 for (timestamp in listOf(RecordBatch.NO_TIMESTAMP, 0L, 1L))
                     for (key in listOf(null, "".toByteArray(), "key".toByteArray(), payload))
                         for (value in listOf(null, "".toByteArray(), "value".toByteArray(), payload))
-                            for (compression in CompressionType.values())
+                            for (compression in CompressionType.entries)
                                 arguments.add(Arguments.of(Args(magic, timestamp, key, value, compression))
             )
             return arguments.stream()

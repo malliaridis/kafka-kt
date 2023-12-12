@@ -119,7 +119,7 @@ class MockProducerTest {
             keySerializer = StringSerializer(),
             valueSerializer = StringSerializer(),
         )
-        val record = ProducerRecord(
+        val record = ProducerRecord<String?, String?>(
             topic = topic,
             key = "key",
             value = "value",

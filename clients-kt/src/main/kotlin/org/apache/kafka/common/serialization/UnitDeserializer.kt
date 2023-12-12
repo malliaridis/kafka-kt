@@ -19,8 +19,7 @@ package org.apache.kafka.common.serialization
 
 class UnitDeserializer : Deserializer<Unit> {
 
-    override fun deserialize(topic: String, data: ByteArray?): Unit? {
+    override fun deserialize(topic: String, data: ByteArray?) {
         require(data == null) { "Data should be null for a UnitDeserializer." }
-        return null
     }
 }

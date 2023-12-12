@@ -21,7 +21,7 @@ import java.nio.ByteBuffer
 import org.apache.kafka.common.errors.SerializationException
 import org.apache.kafka.common.header.Headers
 
-class DoubleDeserializer : Deserializer<Double> {
+class DoubleDeserializer : Deserializer<Double?> {
 
     override fun deserialize(topic: String, data: ByteArray?): Double? {
         if (data == null) return null

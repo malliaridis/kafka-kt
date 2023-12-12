@@ -17,7 +17,7 @@
 
 package org.apache.kafka.common.serialization
 
-class ShortSerializer : Serializer<Short> {
+class ShortSerializer : Serializer<Short?> {
 
     override fun serialize(topic: String, data: Short?): ByteArray? =
         data?.let { byteArrayOf((data.toInt() ushr 8).toByte(), data.toByte()) }

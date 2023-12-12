@@ -168,7 +168,7 @@ class SerializationTest {
 
     @Test
     fun listSerdeShouldReturnNull() {
-        val testData: List<Int>? = null
+        val testData: List<Int?>? = null
         val listSerde = ListSerde(ArrayList::class.java, Integer())
         assertEquals(
             expected = testData,
@@ -449,7 +449,7 @@ class SerializationTest {
         }
     }
 
-    private fun getStringSerde(encoder: String): Serde<String> {
+    private fun getStringSerde(encoder: String): Serde<String?> {
         val serializerConfigs: MutableMap<String, Any?> = HashMap()
         serializerConfigs["key.serializer.encoding"] = encoder
         val serializer = String().serializer()

@@ -20,7 +20,7 @@ package org.apache.kafka.common.serialization
 import java.nio.ByteBuffer
 import org.apache.kafka.common.header.Headers
 
-class VoidDeserializer : Deserializer<Void> {
+class VoidDeserializer : Deserializer<Void?> {
 
     override fun deserialize(topic: String, data: ByteArray?): Void? {
         require(data == null) { "Data should be null for a VoidDeserializer." }

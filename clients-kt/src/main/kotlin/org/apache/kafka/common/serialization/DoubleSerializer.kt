@@ -17,7 +17,7 @@
 
 package org.apache.kafka.common.serialization
 
-class DoubleSerializer : Serializer<Double> {
+class DoubleSerializer : Serializer<Double?> {
     override fun serialize(topic: String, data: Double?): ByteArray? = data?.toBits()?.let { bits ->
         byteArrayOf(
             (bits ushr 56).toByte(),

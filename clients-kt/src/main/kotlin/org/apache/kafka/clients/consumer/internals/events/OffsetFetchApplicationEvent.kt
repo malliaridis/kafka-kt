@@ -22,7 +22,7 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 
 class OffsetFetchApplicationEvent(
-    private val partitions: Set<TopicPartition>,
+    val partitions: Set<TopicPartition>,
 ) : ApplicationEvent(Type.FETCH_COMMITTED_OFFSET) {
 
     val future: CompletableFuture<Map<TopicPartition, OffsetAndMetadata>> = CompletableFuture()

@@ -90,7 +90,7 @@ class CooperativeStickyAssignor : AbstractStickyAssignor() {
     }
 
     override fun assignPartitions(
-        partitionsPerTopic: Map<String, List<PartitionInfo>>,
+        partitionsPerTopic: MutableMap<String, MutableList<PartitionInfo>>,
         subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>,
     ): MutableMap<String, MutableList<TopicPartition>> {
         val assignments = super.assignPartitions(partitionsPerTopic, subscriptions)
