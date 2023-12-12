@@ -60,18 +60,8 @@ class Percentiles(
     }
 
     override fun stats(): List<NamedMeasurable> {
-        val ms: MutableList<NamedMeasurable> = ArrayList(percentiles.size)
-        for ((name, pct) in percentiles) {
-            ms.add(NamedMeasurable(
-                name
-            ) { config: MetricConfig?, now: Long ->
-                value(
-                    config,
-                    now,
-                    pct / 100.0
-                )
-            }
-            )
+        val ms = percentiles.map { (name, pct) ->
+            NamedMeasurable(name) { config, now -> value(config, now, pct / 100.0) }
         }
         return ms
     }

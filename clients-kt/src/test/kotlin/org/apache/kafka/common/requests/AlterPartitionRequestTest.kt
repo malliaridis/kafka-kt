@@ -23,6 +23,7 @@ import org.apache.kafka.common.message.AlterPartitionRequestData.BrokerState
 import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.utils.annotation.ApiKeyVersionsSource
 import org.junit.jupiter.params.ParameterizedTest
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -64,7 +65,7 @@ internal class AlterPartitionRequestTest {
 
         val partitionData = alterPartitionRequest.data().topics[0].partitions[0]
         if (version < 3) {
-            assertEquals(intArrayOf(1, 2, 3), partitionData.newIsr)
+            assertContentEquals(intArrayOf(1, 2, 3), partitionData.newIsr)
             assertTrue(partitionData.newIsrWithEpochs.isEmpty())
         } else {
             assertEquals(newIsrWithBrokerEpoch, partitionData.newIsrWithEpochs)

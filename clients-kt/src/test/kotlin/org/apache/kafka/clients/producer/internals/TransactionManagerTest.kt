@@ -3429,7 +3429,7 @@ class TransactionManagerTest {
                 logStartOffset = 0,
             )
         )
-        runUntil { responseFuture2!!.isDone }
+        runUntil { responseFuture2!!.isDone() }
         assertTrue(transactionManager.hasAbortableError)
         val abortResult = transactionManager.beginAbort()
         prepareEndTxnResponse(Errors.NONE, TransactionResult.ABORT, producerId, epoch)

@@ -71,7 +71,7 @@ class TxnOffsetCommitResponse : AbstractResponse {
         }
 
         data = TxnOffsetCommitResponseData()
-            .setTopics(ArrayList(responseTopicDataMap.values))
+            .setTopics(responseTopicDataMap.values.toList())
             .setThrottleTimeMs(requestThrottleMs)
     }
 

@@ -131,7 +131,7 @@ class AbstractPartitionAssignorTest {
 
         fun racks(numRacks: Int): List<String> = List(numRacks) { i -> ALL_RACKS[i % ALL_RACKS.size] }
 
-        fun nullRacks(numRacks: Int): List<String?> = ArrayList(numRacks)
+        fun nullRacks(numRacks: Int): List<String?> = List(numRacks) { null }
 
         fun verifyRackAssignment(
             assignor: AbstractPartitionAssignor,
@@ -287,7 +287,8 @@ class AbstractPartitionAssignorTest {
             brokerRacks: List<String?>,
             nextNodeIndex: Int,
         ): MutableList<PartitionInfo> {
-            val nodes: MutableList<Node> = MutableList(brokerRacks.size) { i ->
+            val numBrokers = brokerRacks.size
+            val nodes: MutableList<Node> = MutableList(numBrokers) { i ->
                 Node(i, "", i, brokerRacks[i])
             }
 

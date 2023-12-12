@@ -1188,6 +1188,12 @@ class TransactionManager(
                         "attempted to produce with an old epoch"
             )
 
+            is IllegalStateException -> throw IllegalStateException(
+                "Producer with transactionalId '$transactionalId' and $producerIdAndEpoch cannot execute " +
+                        "transactional method because of previous invalid state transition attempt",
+                lastError
+            )
+
             else -> throw KafkaException(
                 "Cannot execute transactional method because we are in an error state",
                 lastError,
@@ -1229,10 +1235,10 @@ class TransactionManager(
         pendingPartitionsInTransaction.addAll(newPartitionsInTransaction)
         newPartitionsInTransaction.clear()
         val builder = AddPartitionsToTxnRequest.Builder.forClient(
-            transactionalId!!,
-            producerIdAndEpoch.producerId,
-            producerIdAndEpoch.epoch,
-            ArrayList(pendingPartitionsInTransaction)
+            transactionalId = transactionalId!!,
+            producerId = producerIdAndEpoch.producerId,
+            producerEpoch = producerIdAndEpoch.epoch,
+            partitions = pendingPartitionsInTransaction.toList(),
         )
         return AddPartitionsToTxnHandler(builder)
     }
@@ -1460,8 +1466,7 @@ class TransactionManager(
                 )
                 lastError = error.exception
                 abortableError(error.exception!!)
-            }
-            else if (error === Errors.INVALID_PRODUCER_EPOCH || error === Errors.PRODUCER_FENCED) {
+            } else if (error === Errors.INVALID_PRODUCER_EPOCH || error === Errors.PRODUCER_FENCED) {
                 // We could still receive INVALID_PRODUCER_EPOCH from old versioned transaction
                 // coordinator, just treat it the same as PRODUCE_FENCED.
                 fatalError(Errors.PRODUCER_FENCED.exception)

@@ -138,7 +138,7 @@ class TxnOffsetCommitRequest(
                 mutableMapOf<String, MutableList<TxnOffsetCommitRequestPartition>>()
 
             for ((topicPartition, offset) in pendingTxnOffsetCommits) {
-                val partitions = topicPartitionMap.getOrDefault(topicPartition.topic, ArrayList())
+                val partitions = topicPartitionMap.getOrDefault(topicPartition.topic, mutableListOf())
                 partitions.add(
                     TxnOffsetCommitRequestPartition()
                         .setPartitionIndex(topicPartition.partition)

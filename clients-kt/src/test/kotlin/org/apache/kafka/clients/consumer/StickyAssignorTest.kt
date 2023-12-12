@@ -564,6 +564,8 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
     }
 
     companion object {
+
+        @JvmStatic
         fun rackAndSubscriptionCombinations(): Collection<Arguments> = listOf(
             Arguments.of(RackConfig.NO_BROKER_RACK, true),
             Arguments.of(RackConfig.NO_CONSUMER_RACK, true),

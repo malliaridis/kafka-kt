@@ -450,7 +450,7 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
         val allPartitions: MutableList<TopicPartition> = ArrayList(totalPartitionsCount)
         for (topic: String in sortedAllTopics) {
             val partitionCount = partitionsPerTopic[topic]!!
-            for (i in 0 until partitionCount) allPartitions.add(TopicPartition(topic, i))
+            for (i in 0..<partitionCount) allPartitions.add(TopicPartition(topic, i))
         }
         return allPartitions
     }
@@ -1222,7 +1222,7 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
         dest: MutableMap<String, MutableList<TopicPartition>>,
     ) {
         dest.clear()
-        for ((key, value) in source) dest[key] = ArrayList(value)
+        for ((key, value) in source) dest[key] = value.toMutableList()
     }
 
     private fun deepCopy(
@@ -2404,9 +2404,9 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
                     // check if a better-suited consumer exist for the partition; if so, reassign it
                     // Use consumer within rack if possible
                     val consumerRack = rackInfo.consumerRacks!![consumer!!]
-                    val partitionRacks = rackInfo.partitionRacks!![partition]!!
+                    val partitionRacks = rackInfo.partitionRacks!![partition]
                     var foundRackConsumer = false
-                    if (consumerRack != null && partitionRacks.isNotEmpty() && partitionRacks.contains(consumerRack)) {
+                    if (consumerRack != null && !partitionRacks.isNullOrEmpty() && partitionRacks.contains(consumerRack)) {
                         for (otherConsumer in topic2AllPotentialConsumers[partition.topic]!!) {
                             val otherConsumerRack = rackInfo.consumerRacks!![otherConsumer]
                             if (otherConsumerRack == null || !partitionRacks.contains(otherConsumerRack)) continue
@@ -2472,8 +2472,7 @@ abstract class AbstractStickyAssignor : AbstractPartitionAssignor() {
             dest: MutableMap<String, MutableList<TopicPartition>>,
         ) {
             dest.clear()
-            for ((key, value) in source) dest[key] =
-                java.util.ArrayList(value)
+            for ((key, value) in source) dest[key] = value.toMutableList()
         }
 
         private fun deepCopy(assignment: Map<String, List<TopicPartition>>): Map<String, List<TopicPartition>> {

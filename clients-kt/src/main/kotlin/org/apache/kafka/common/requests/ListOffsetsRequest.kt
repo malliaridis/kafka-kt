@@ -206,7 +206,7 @@ class ListOffsetsRequest private constructor(
                     topics.computeIfAbsent(tp.topic) { ListOffsetsTopic().setName(tp.topic) }
                 topic.partitions += value
             }
-            return ArrayList(topics.values)
+            return topics.values.toList()
         }
 
         fun singletonRequestData(

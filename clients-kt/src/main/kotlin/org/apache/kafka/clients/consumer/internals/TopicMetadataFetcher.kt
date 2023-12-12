@@ -49,13 +49,13 @@ class TopicMetadataFetcher(
      * @return The [list][List] of [partition information][PartitionInfo], or `null` if the topic is
      * unknown
      */
-    fun getTopicMetadata(topic: String, allowAutoTopicCreation: Boolean, timer: Timer): List<PartitionInfo> {
+    fun getTopicMetadata(topic: String, allowAutoTopicCreation: Boolean, timer: Timer): List<PartitionInfo>? {
         val request = MetadataRequest.Builder(
             topics = listOf(topic),
             allowAutoTopicCreation = allowAutoTopicCreation,
         )
         val topicMetadata = getTopicMetadata(request, timer)
-        return topicMetadata[topic]!!
+        return topicMetadata[topic]
     }
 
     /**

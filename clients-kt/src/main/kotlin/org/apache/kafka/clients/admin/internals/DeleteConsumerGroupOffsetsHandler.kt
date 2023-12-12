@@ -99,7 +99,7 @@ class DeleteConsumerGroupOffsetsHandler(
 
             handleGroupError(groupId, error, failed, groupsToUnmap)
 
-            return ApiResult(emptyMap(), failed, ArrayList(groupsToUnmap))
+            return ApiResult(emptyMap(), failed, groupsToUnmap.toList())
         } else {
             val partitionResults: MutableMap<TopicPartition, Errors> = HashMap()
             response.data().topics.forEach { topic ->

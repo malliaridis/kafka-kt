@@ -387,9 +387,7 @@ class SubscriptionState(
      * @return a modifiable copy of the currently assigned partitions as a list
      */
     @Synchronized
-    fun assignedPartitionsList(): List<TopicPartition> {
-        return ArrayList(assignment.partitionSet())
-    }
+    fun assignedPartitionsList(): List<TopicPartition> = assignment.partitionSet().toList()
 
     /**
      * Provides the number of assigned partitions in a thread safe manner.

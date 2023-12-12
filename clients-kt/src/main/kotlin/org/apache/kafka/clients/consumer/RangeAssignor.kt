@@ -152,7 +152,7 @@ class RangeAssignor : AbstractPartitionAssignor() {
             if (assignmentState.unassignedPartitions.isEmpty()) break
             val assignablePartitions = assignmentState.unassignedPartitions
                 .filter { mayAssign(consumer, it) }
-                .subList(fromIndex = 0, toIndex = assignmentState.maxAssignable(consumer))
+                .take(assignmentState.maxAssignable(consumer))
 
             if (assignablePartitions.isEmpty()) continue
             assign(

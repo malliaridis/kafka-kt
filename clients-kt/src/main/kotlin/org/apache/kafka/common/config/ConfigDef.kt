@@ -346,9 +346,7 @@ class ConfigDef {
      * @return List of Config, each Config contains the updated configuration information given
      * the current configuration values.
      */
-    fun validate(props: Map<String, String?>): List<ConfigValue?> {
-        return ArrayList(validateAll(props).values)
-    }
+    fun validate(props: Map<String, String?>): List<ConfigValue?> = validateAll(props).values.toList()
 
     fun validateAll(props: Map<String, String?>): Map<String, ConfigValue?> {
         val configValues: MutableMap<String, ConfigValue?> = HashMap()
@@ -404,7 +402,7 @@ class ConfigDef {
             }
         }
 
-        return ArrayList(undefinedConfigKeys)
+        return undefinedConfigKeys.toList()
     }
 
     // package accessible for testing

@@ -2023,7 +2023,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
             val timer = time.timer(timeout)
             val topicMetadata = topicMetadataFetcher.getTopicMetadata(
                 topic = topic,
-                allowAutoTopicCreation = metadata.allowAutoTopicCreation(),
+                allowAutoTopicCreation = metadata.allowAutoTopicCreation,
                 timer = timer,
             )
             return topicMetadata ?: emptyList()
@@ -2496,9 +2496,6 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
         // Close objects with a timeout. The timeout is required because the coordinator & the fetcher send requests to
         // the server in the process of closing which may not respect the overall timeout defined for closing the
         // consumer.
-        // Close objects with a timeout. The timeout is required because the coordinator & the fetcher send requests to
-        // the server in the process of closing which may not respect the overall timeout defined for closing the
-        // consumer.
         if (coordinator != null) {
             // This is a blocking call bound by the time remaining in closeTimer
             swallow(
@@ -2514,8 +2511,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
             // the timeout for the session close is at-most the requestTimeoutMs
             var remainingDurationInTimeout = (timeout.toMillis() - closeTimer.elapsedMs).coerceAtLeast(0)
             if (remainingDurationInTimeout > 0) {
-                remainingDurationInTimeout =
-                    min(requestTimeoutMs.toDouble(), remainingDurationInTimeout.toDouble()).toLong()
+                remainingDurationInTimeout = requestTimeoutMs.coerceAtMost(remainingDurationInTimeout)
             }
             closeTimer.reset(remainingDurationInTimeout)
 
@@ -2529,7 +2525,6 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
             )
         }
 
-        closeQuietly(fetcher, "fetcher", firstException)
         closeQuietly(interceptors, "consumer interceptors", firstException)
         closeQuietly(kafkaConsumerMetrics, "kafka consumer metrics", firstException)
         closeQuietly(metrics, "consumer metrics", firstException)

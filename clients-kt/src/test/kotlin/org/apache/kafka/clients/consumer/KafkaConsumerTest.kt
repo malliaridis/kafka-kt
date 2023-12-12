@@ -309,7 +309,7 @@ class KafkaConsumerTest {
                 return if (i == recordIndex) throw SerializationException()
                 else {
                     i++
-                    super.deserialize(topic, headers, data)
+                    actualDeserializer.deserialize(topic, headers, data)
                 }
             }
         }
@@ -322,6 +322,7 @@ class KafkaConsumerTest {
     ): KafkaConsumer<*, *> {
         val cluster = singletonCluster(tp.topic, 1)
         val node = cluster.nodes[0]
+
         val metadata = createMetadata(subscription)
         val client = MockClient(time, metadata)
         initMetadata(client, mapOf(topic to 1))

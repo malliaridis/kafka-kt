@@ -211,7 +211,7 @@ class OffsetFetchRequest private constructor(
                         topic.partitionIndexes += topicPartition.partition
                         offsetFetchRequestTopicMap[topicName] = topic
                     }
-                    topics = ArrayList(offsetFetchRequestTopicMap.values)
+                    topics = offsetFetchRequestTopicMap.values.toList()
                 } else topics = ALL_TOPIC_PARTITIONS_BATCH
 
                 groups.add(

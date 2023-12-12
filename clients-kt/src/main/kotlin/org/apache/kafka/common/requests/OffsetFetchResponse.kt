@@ -94,7 +94,7 @@ class OffsetFetchResponse : AbstractResponse {
         }
 
         data = OffsetFetchResponseData()
-            .setTopics(ArrayList(offsetFetchResponseTopicMap.values))
+            .setTopics(offsetFetchResponseTopicMap.values.toList())
             .setErrorCode(error.code)
             .setThrottleTimeMs(throttleTimeMs)
 
@@ -141,7 +141,7 @@ class OffsetFetchResponse : AbstractResponse {
             groupList.add(
                 OffsetFetchResponseGroup()
                     .setGroupId(groupName)
-                    .setTopics(ArrayList(offsetFetchResponseTopicsMap.values))
+                    .setTopics(offsetFetchResponseTopicsMap.values.toList())
                     .setErrorCode(errors[groupName]!!.code)
             )
             groupLevelErrors[groupName] = errors[groupName]

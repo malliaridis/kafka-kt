@@ -177,7 +177,7 @@ class WriteTxnMarkersRequest private constructor(
                         .setProducerEpoch(marker.producerEpoch)
                         .setCoordinatorEpoch(marker.coordinatorEpoch)
                         .setTransactionResult(marker.transactionResult.id)
-                        .setTopics(ArrayList(topicMap.values))
+                        .setTopics(topicMap.values.toList())
                 )
             }
             data = WriteTxnMarkersRequestData().setMarkers(dataMarkers)

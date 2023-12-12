@@ -268,8 +268,7 @@ class DefaultRecordBatch internal constructor(
         if (count() == 0) return emptyList<Record>().iterator()
         if (!isCompressed) return uncompressedIterator()
         compressedIterator(BufferSupplier.NO_CACHING, false).use { iterator ->
-            val records: MutableList<Record> =
-                ArrayList(count())
+            val records: MutableList<Record> = ArrayList(count())
             while (iterator.hasNext()) records.add(iterator.next())
             return records.iterator()
         }
@@ -283,13 +282,10 @@ class DefaultRecordBatch internal constructor(
          * its ByteBufferInputStream's skip() function is less efficient compared with just reading it actually
          * as it will allocate new byte array.
          */
-        return if (!isCompressed) uncompressedIterator() else compressedIterator(
-            bufferSupplier,
-            true
-        )
-
+        return if (!isCompressed) uncompressedIterator()
         // we define this to be a closable iterator so that caller (i.e. the log validator) needs to close it
         // while we can save memory footprint of not decompressing the full record set ahead of time
+        else compressedIterator(bufferSupplier, true)
     }
 
     override fun streamingIterator(

@@ -118,7 +118,7 @@ object ConfigUtils {
 
     fun configMapToRedactedString(map: Map<String, Any?>, configDef: ConfigDef): String {
         val bld = StringBuilder("{")
-        val keys: List<String> = ArrayList(map.keys).sorted()
+        val keys = map.keys.sorted()
 
         var prefix = ""
         keys.forEach { key ->

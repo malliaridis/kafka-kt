@@ -40,7 +40,7 @@ open class ManualMetadataUpdater(
         this.nodes = nodes
     }
 
-    override fun fetchNodes(): List<Node> = ArrayList(nodes)
+    override fun fetchNodes(): List<Node> = nodes.toList()
 
     override fun isUpdateDue(now: Long): Boolean = false
 

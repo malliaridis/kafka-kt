@@ -133,8 +133,8 @@ open class DefaultRecord internal constructor(
     override fun hashCode(): Int {
         var result = sizeInBytes
         result = 31 * result + attributes.toInt()
-        result = 31 * result + java.lang.Long.hashCode(offset)
-        result = 31 * result + java.lang.Long.hashCode(timestamp)
+        result = 31 * result + offset.hashCode()
+        result = 31 * result + timestamp.hashCode()
         result = 31 * result + sequence
         result = 31 * result + (key?.hashCode() ?: 0)
         result = 31 * result + (value?.hashCode() ?: 0)

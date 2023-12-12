@@ -317,7 +317,7 @@ open class Selector private constructor(
      * Close this selector and all associated connections
      */
     override fun close() {
-        val connections: MutableList<String> = ArrayList(channels.keys)
+        val connections = channels.keys.toList()
         val firstException = AtomicReference<Throwable?>()
         Utils.closeAllQuietly(
             firstException = firstException,
@@ -658,7 +658,7 @@ open class Selector private constructor(
         //this may cause starvation of reads when memory is low. to address this we shuffle the keys
         // if memory is low.
         return if (!isOutOfMemory && memoryPool.availableMemory() < lowMemThreshold) {
-            val shuffledKeys: MutableList<SelectionKey?> = ArrayList(selectionKeys)
+            val shuffledKeys = selectionKeys.toMutableList()
             shuffledKeys.shuffle()
             shuffledKeys
         } else selectionKeys

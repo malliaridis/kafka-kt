@@ -271,7 +271,7 @@ class FetchRequest(
                 .setMinBytes(minBytes)
                 .setMaxBytes(maxBytes)
                 .setIsolationLevel(isolationLevel.id())
-                .setForgottenTopicsData(ArrayList())
+                .setForgottenTopicsData(emptyList())
             if (version < 15) fetchRequestData.setReplicaId(replicaId)
             else fetchRequestData.setReplicaState(
                 FetchRequestData.ReplicaState()
@@ -299,7 +299,7 @@ class FetchRequest(
                     fetchTopic = FetchTopic()
                         .setTopic(topicPartition.topic)
                         .setTopicId(partitionData.topicId)
-                        .setPartitions(ArrayList())
+                        .setPartitions(emptyList())
                     fetchRequestData.topics += fetchTopic
                 }
                 val fetchPartition = FetchPartition()

@@ -137,27 +137,22 @@ abstract class AbstractPartitionAssignor : ConsumerPartitionAssignor {
         }
 
         internal fun partitions(topic: String, numPartitions: Int): List<TopicPartition> {
-            val partitions: MutableList<TopicPartition> = ArrayList(numPartitions)
-            for (i in 0..<numPartitions) partitions.add(TopicPartition(topic, i))
-            return partitions
+            return List(numPartitions) { i -> TopicPartition(topic, i) }
         }
 
         internal fun partitionInfosWithoutRacks(
             partitionsPerTopic: Map<String, Int>,
         ): MutableMap<String, MutableList<PartitionInfo>> =
             partitionsPerTopic.mapValues { (topic, numPartitions) ->
-                val partitionInfos: MutableList<PartitionInfo> =
-                    java.util.ArrayList(numPartitions)
-                for (index in 0..<numPartitions) partitionInfos.add(
+                MutableList(numPartitions) { index ->
                     PartitionInfo(
                         topic = topic,
                         partition = index,
                         leader = Node.noNode(),
                         replicas = NO_NODES,
-                        inSyncReplicas = NO_NODES
+                        inSyncReplicas = NO_NODES,
                     )
-                )
-                partitionInfos
+                }
             }.toMutableMap()
     }
 }

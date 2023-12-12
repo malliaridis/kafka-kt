@@ -26,7 +26,7 @@ class ProducerMetrics(private val metrics: Metrics) {
     val senderMetrics: SenderMetricsRegistry = SenderMetricsRegistry(metrics)
 
     private val allTemplates: List<MetricNameTemplate>
-        get() = ArrayList(senderMetrics.allTemplates())
+        get() = senderMetrics.allTemplates().toList()
 
     companion object {
 

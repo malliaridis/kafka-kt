@@ -70,7 +70,7 @@ class OffsetCommitResponse : AbstractResponse {
         }
 
         data = OffsetCommitResponseData()
-            .setTopics(ArrayList(responseTopicDataMap.values))
+            .setTopics(responseTopicDataMap.values.toList())
             .setThrottleTimeMs(requestThrottleMs)
     }
 

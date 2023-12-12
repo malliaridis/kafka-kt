@@ -324,7 +324,7 @@ class ConsumerNetworkClientTest {
         val future = consumerClient.send(node, heartbeat())
         consumerClient.pollNoWakeup() // dequeue and send the request
         client.enableBlockingUntilWakeup(2)
-        val t1 = Thread {consumerClient.pollNoWakeup() }
+        val t1 = Thread { consumerClient.pollNoWakeup() }
         t1.start()
 
         // Sleep a little so that t1 is blocking in poll

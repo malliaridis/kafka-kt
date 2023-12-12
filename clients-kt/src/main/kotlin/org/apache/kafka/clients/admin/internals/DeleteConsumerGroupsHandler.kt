@@ -75,7 +75,7 @@ class DeleteConsumerGroupsHandler(
             }
             completed[groupIdKey] = Unit
         }
-        return ApiResult(completed, failed, ArrayList(groupsToUnmap))
+        return ApiResult(completed, failed, groupsToUnmap.toList())
     }
 
     /**

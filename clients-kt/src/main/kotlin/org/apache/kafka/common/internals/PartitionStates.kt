@@ -94,7 +94,7 @@ class PartitionStates<S> {
     /**
      * Returns the partition state values in order.
      */
-    fun partitionStateValues(): List<S> = ArrayList(map.values)
+    fun partitionStateValues(): List<S> = map.values.toList()
 
     fun stateValue(topicPartition: TopicPartition): S? = map[topicPartition]
 

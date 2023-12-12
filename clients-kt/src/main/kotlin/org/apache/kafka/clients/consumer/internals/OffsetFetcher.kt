@@ -117,15 +117,15 @@ class OffsetFetcher(
         timer: Timer,
         requireTimestamps: Boolean,
     ): ListOffsetResult {
-        val result = ListOffsetResult()
-        if (timestampsToSearch.isEmpty()) return result
+        val actualResult = ListOffsetResult()
+        if (timestampsToSearch.isEmpty()) return actualResult
         val remainingToSearch = HashMap(timestampsToSearch)
         do {
             val future = sendListOffsetsRequests(remainingToSearch, requireTimestamps)
             future.addListener(object : RequestFutureListener<ListOffsetResult> {
                 override fun onSuccess(result: ListOffsetResult) {
                     synchronized(future) {
-                        result.fetchedOffsets.putAll(result.fetchedOffsets)
+                        actualResult.fetchedOffsets.putAll(result.fetchedOffsets)
                         remainingToSearch.keys.retainAll(result.partitionsToRetry)
                         offsetFetcherUtils.updateSubscriptionState(result.fetchedOffsets, isolationLevel)
                     }
@@ -139,10 +139,10 @@ class OffsetFetcher(
             // if timeout is set to zero, do not try to poll the network client at all
             // and return empty immediately; otherwise try to get the results synchronously
             // and throw timeout exception if it cannot complete in time
-            if (timer.timeoutMs == 0L) return result
+            if (timer.timeoutMs == 0L) return actualResult
             client.poll(future, timer)
             if (!future.isDone) break
-            else if (remainingToSearch.isEmpty()) return result
+            else if (remainingToSearch.isEmpty()) return actualResult
             else client.awaitMetadataUpdate(timer)
         } while (timer.isNotExpired)
         throw TimeoutException("Failed to get offsets by times in ${timer.elapsedMs}ms")

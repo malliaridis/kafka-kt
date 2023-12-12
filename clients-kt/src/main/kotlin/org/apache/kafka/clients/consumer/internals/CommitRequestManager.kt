@@ -205,7 +205,7 @@ class CommitRequestManager(
             val builder = OffsetFetchRequest.Builder(
                 groupId = groupState.groupId!!,
                 requireStable = true,
-                partitions = ArrayList(requestedPartitions),
+                partitions = requestedPartitions.toList(),
                 throwOnFetchStableOffsetsUnsupported = throwOnFetchStableOffsetUnsupported,
             )
             val unsentRequest = UnsentRequest(
@@ -423,16 +423,19 @@ class CommitRequestManager(
             )
 
             // Add all sendable offset fetch requests to the unsentRequests list and to the inflightOffsetFetches list
-            for (request in partitionedBySendability[true]!!) {
-                request.onSendAttempt(currentTimeMs)
-                unsentRequests.add(request.toUnsentRequest(currentTimeMs))
-                inflightOffsetFetches.add(request)
+            partitionedBySendability[true]?.let {
+                for (request in it) {
+                    request.onSendAttempt(currentTimeMs)
+                    unsentRequests.add(request.toUnsentRequest(currentTimeMs))
+                    inflightOffsetFetches.add(request)
+                }
             }
 
-            // Clear the unsent offset commit and fetch lists and add all non-sendable offset fetch requests to the unsentOffsetFetches list
+            // Clear the unsent offset commit and fetch lists and add all non-sendable offset fetch requests
+            // to the unsentOffsetFetches list
             unsentOffsetCommits.clear()
             unsentOffsetFetches.clear()
-            unsentOffsetFetches.addAll(partitionedBySendability[false]!!)
+            partitionedBySendability[false]?.let { unsentOffsetFetches.addAll(it) }
             return unsentRequests
         }
     }

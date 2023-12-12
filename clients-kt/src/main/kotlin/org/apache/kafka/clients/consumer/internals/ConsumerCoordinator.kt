@@ -1364,7 +1364,7 @@ class ConsumerCoordinator(
                 .setGenerationIdOrMemberEpoch(generation.generationId)
                 .setMemberId(generation.memberId)
                 .setGroupInstanceId(groupInstanceId)
-                .setTopics(ArrayList(requestTopicDataMap.values))
+                .setTopics(requestTopicDataMap.values.toList())
         )
         log.trace("Sending OffsetCommit request with {} to coordinator {}", offsets, coordinator)
 
@@ -1551,7 +1551,7 @@ class ConsumerCoordinator(
         val requestBuilder = OffsetFetchRequest.Builder(
             groupId = rebalanceConfig.groupId!!,
             requireStable = true,
-            partitions = ArrayList(partitions),
+            partitions = partitions.toList(),
             throwOnFetchStableOffsetsUnsupported = throwOnFetchStableOffsetsUnsupported
         )
 

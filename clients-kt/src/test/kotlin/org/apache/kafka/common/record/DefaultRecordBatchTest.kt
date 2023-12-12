@@ -36,6 +36,7 @@ import org.apache.kafka.test.TestUtils.checkEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.EnumSource
 import org.junit.jupiter.params.provider.MethodSource
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
@@ -477,7 +478,7 @@ class DefaultRecordBatchTest {
     }
 
     @ParameterizedTest
-    @Test
+    @EnumSource(value = CompressionType::class)
     fun testStreamingIteratorConsistency(compressionType: CompressionType) {
         val records = MemoryRecords.withRecords(
             magic = RecordBatch.MAGIC_VALUE_V2,
@@ -500,11 +501,11 @@ class DefaultRecordBatchTest {
     }
 
     @ParameterizedTest
-    @Test
+    @EnumSource(value = CompressionType::class)
     fun testSkipKeyValueIteratorCorrectness(compressionType: CompressionType) {
         val headers = arrayOf<Header>(
             RecordHeader(key = "k1", value = "v1".toByteArray()),
-            RecordHeader(key = "k2", value = "v2".toByteArray()),
+            RecordHeader(key = "k2", value = null),
         )
         val largeRecordValue = ByteArray(200 * 1024) // 200KB
         RANDOM.nextBytes(largeRecordValue)
@@ -550,7 +551,7 @@ class DefaultRecordBatchTest {
                         listOf(
                             PartialDefaultRecord(
                                 sizeInBytes = 9,
-                                attributes = 0.toByte(),
+                                attributes = 0,
                                 offset = 0L,
                                 timestamp = 1L,
                                 sequence = -1,
@@ -559,7 +560,7 @@ class DefaultRecordBatchTest {
                             ),
                             PartialDefaultRecord(
                                 sizeInBytes = 8,
-                                attributes = 0.toByte(),
+                                attributes = 0,
                                 offset = 1L,
                                 timestamp = 2L,
                                 sequence = -1,
@@ -568,7 +569,7 @@ class DefaultRecordBatchTest {
                             ),
                             PartialDefaultRecord(
                                 sizeInBytes = 8,
-                                attributes = 0.toByte(),
+                                attributes = 0,
                                 offset = 2L,
                                 timestamp = 3L,
                                 sequence = -1,
@@ -577,7 +578,7 @@ class DefaultRecordBatchTest {
                             ),
                             PartialDefaultRecord(
                                 sizeInBytes = 7,
-                                attributes = 0.toByte(),
+                                attributes = 0,
                                 offset = 3L,
                                 timestamp = 4L,
                                 sequence = -1,
@@ -586,7 +587,7 @@ class DefaultRecordBatchTest {
                             ),
                             PartialDefaultRecord(
                                 sizeInBytes = 15 + largeRecordValue.size,
-                                attributes = 0.toByte(),
+                                attributes = 0,
                                 offset = 4L,
                                 timestamp = 1000L,
                                 sequence = -1,
@@ -595,7 +596,7 @@ class DefaultRecordBatchTest {
                             ),
                             PartialDefaultRecord(
                                 sizeInBytes = 23,
-                                attributes = 0.toByte(),
+                                attributes = 0,
                                 offset = 5L,
                                 timestamp = 9999L,
                                 sequence = -1,
@@ -603,7 +604,7 @@ class DefaultRecordBatchTest {
                                 valueSize = 1,
                             )
                         ),
-                        skipKeyValueIterator.asSequence().toList()
+                        skipKeyValueIterator.asSequence().toList(),
                     )
                 }
             }

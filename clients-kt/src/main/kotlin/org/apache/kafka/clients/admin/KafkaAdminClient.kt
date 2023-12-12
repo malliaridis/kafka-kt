@@ -1862,17 +1862,15 @@ class KafkaAdminClient internal constructor(
     ): TopicDescription {
         val isInternal = cluster.internalTopics.contains(topicName)
         val partitionInfos = cluster.partitionsForTopic(topicName)
-        val partitions: MutableList<TopicPartitionInfo> = ArrayList(partitionInfos.size)
-        for (partitionInfo: PartitionInfo in partitionInfos) {
-            val topicPartitionInfo = TopicPartitionInfo(
+        val partitions = partitionInfos.map { partitionInfo ->
+            TopicPartitionInfo(
                 partition = partitionInfo.partition,
                 leader = leader(partitionInfo),
                 replicas = partitionInfo.replicas,
                 inSyncReplicas = partitionInfo.inSyncReplicas
             )
-            partitions.add(topicPartitionInfo)
-        }
-        partitions.sortBy { obj: TopicPartitionInfo -> obj.partition }
+        }.sortedBy { it.partition }
+
         return TopicDescription(
             name = topicName,
             internal = isInternal,
@@ -3382,7 +3380,7 @@ class KafkaAdminClient internal constructor(
                     reassignmentTopic.partitionIndexes += tp.partition
                 }
 
-                listData.setTopics(ArrayList(reassignmentTopicByTopicName.values))
+                listData.setTopics(reassignmentTopicByTopicName.values.toList())
                 return ListPartitionReassignmentsRequest.Builder(listData)
             }
 

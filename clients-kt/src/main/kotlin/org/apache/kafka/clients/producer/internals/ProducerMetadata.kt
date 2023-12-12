@@ -52,12 +52,12 @@ class ProducerMetadata(
 
     @Synchronized
     override fun newMetadataRequestBuilder(): MetadataRequest.Builder {
-        return MetadataRequest.Builder(ArrayList(topics.keys), true)
+        return MetadataRequest.Builder(topics.keys.toList(), true)
     }
 
     @Synchronized
     override fun newMetadataRequestBuilderForNewTopics(): MetadataRequest.Builder {
-        return MetadataRequest.Builder(ArrayList(newTopics), true)
+        return MetadataRequest.Builder(newTopics.toList(), true)
     }
 
     @Synchronized

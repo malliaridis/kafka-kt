@@ -95,16 +95,11 @@ class AlterClientQuotasResponse(
             result: Map<ClientQuotaEntity, ApiError>,
             throttleTimeMs: Int
         ): AlterClientQuotasResponse {
-            val entries: MutableList<AlterClientQuotasResponseData.EntryData> =
-                ArrayList(result.size)
-
-            result.forEach { (key, cause) ->
-                entries.add(
-                    AlterClientQuotasResponseData.EntryData()
-                        .setErrorCode(cause.error.code)
-                        .setErrorMessage(cause.message)
-                        .setEntity(toEntityData(key))
-                )
+            val entries = result.map { (key, cause) ->
+                AlterClientQuotasResponseData.EntryData()
+                    .setErrorCode(cause.error.code)
+                    .setErrorMessage(cause.message)
+                    .setEntity(toEntityData(key))
             }
 
             return AlterClientQuotasResponse(

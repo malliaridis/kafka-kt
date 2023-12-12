@@ -344,7 +344,7 @@ class Metrics(
      */
     @Synchronized
     fun addReporter(reporter: MetricsReporter) {
-        reporter.init(ArrayList(metrics.values))
+        reporter.init(metrics.values.toList())
         reporters.add(reporter)
     }
 
