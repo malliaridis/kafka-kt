@@ -17,7 +17,6 @@
 
 package org.apache.kafka.common.security.oauthbearer.internals.unsecured
 
-import java.util.*
 import javax.security.auth.callback.Callback
 import javax.security.auth.callback.UnsupportedCallbackException
 import javax.security.auth.login.AppConfigurationEntry

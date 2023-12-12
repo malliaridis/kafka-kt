@@ -17,7 +17,6 @@
 
 package org.apache.kafka.common
 
-import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.ExecutionException

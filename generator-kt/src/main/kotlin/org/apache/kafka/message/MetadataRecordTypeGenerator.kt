@@ -17,11 +17,11 @@
 
 package org.apache.kafka.message
 
-import org.apache.kafka.message.MessageGenerator.capitalizeFirst
-import org.apache.kafka.message.MessageGenerator.toSnakeCase
 import java.io.BufferedWriter
 import java.io.IOException
-import java.util.*
+import java.util.TreeMap
+import org.apache.kafka.message.MessageGenerator.capitalizeFirst
+import org.apache.kafka.message.MessageGenerator.toSnakeCase
 
 class MetadataRecordTypeGenerator(packageName: String) : TypeClassGenerator {
 

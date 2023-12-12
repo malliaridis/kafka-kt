@@ -17,7 +17,7 @@
 
 package org.apache.kafka.common.protocol
 
-import java.util.*
+import java.util.IdentityHashMap
 
 /**
  * The ObjectSerializationCache stores sizes and values computed during the first serialization

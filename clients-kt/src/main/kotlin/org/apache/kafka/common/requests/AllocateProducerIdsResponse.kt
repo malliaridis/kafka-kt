@@ -22,7 +22,6 @@ import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.protocol.ByteBufferAccessor
 import org.apache.kafka.common.protocol.Errors
 import java.nio.ByteBuffer
-import java.util.*
 
 class AllocateProducerIdsResponse(
     private val data: AllocateProducerIdsResponseData,

@@ -18,7 +18,7 @@
 package org.apache.kafka.clients.producer
 
 import java.time.Duration
-import java.util.*
+import java.util.Properties
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
@@ -27,7 +27,6 @@ import org.apache.kafka.clients.ApiVersions
 import org.apache.kafka.clients.ClientUtils
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.KafkaClient
-import org.apache.kafka.clients.NetworkClient
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.clients.producer.internals.BufferPool
@@ -63,7 +62,6 @@ import org.apache.kafka.common.metrics.MetricConfig
 import org.apache.kafka.common.metrics.Metrics
 import org.apache.kafka.common.metrics.MetricsContext
 import org.apache.kafka.common.metrics.Sensor
-import org.apache.kafka.common.network.Selector
 import org.apache.kafka.common.record.AbstractRecords
 import org.apache.kafka.common.record.CompressionType
 import org.apache.kafka.common.record.RecordBatch

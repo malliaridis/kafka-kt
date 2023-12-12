@@ -32,7 +32,8 @@ import org.apache.kafka.common.record.RecordBatch
 import org.apache.kafka.common.serialization.Serializer
 import org.apache.kafka.common.utils.Time
 import java.time.Duration
-import java.util.*
+import java.util.ArrayDeque
+import java.util.Deque
 import java.util.concurrent.Future
 import org.apache.kafka.clients.producer.internals.DefaultPartitioner
 

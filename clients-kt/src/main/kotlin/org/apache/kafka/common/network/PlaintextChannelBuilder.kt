@@ -20,7 +20,6 @@ package org.apache.kafka.common.network
 import java.io.Closeable
 import java.io.IOException
 import java.nio.channels.SelectionKey
-import java.util.*
 import java.util.function.Supplier
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.memory.MemoryPool

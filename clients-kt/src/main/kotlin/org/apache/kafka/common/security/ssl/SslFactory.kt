@@ -25,7 +25,6 @@ import java.security.GeneralSecurityException
 import java.security.KeyStore
 import java.security.Principal
 import java.security.cert.X509Certificate
-import java.util.*
 import javax.net.ssl.SSLEngine
 import javax.net.ssl.SSLEngineResult
 import javax.net.ssl.SSLException
@@ -242,14 +241,22 @@ class SslFactory(
             subjectAltNames = altNames?.let { altNames.toHashSet() } ?: emptySet()
         }
 
-        override fun hashCode(): Int {
-            return Objects.hash(subjectPrincipal, subjectAltNames)
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (javaClass != other?.javaClass) return false
+
+            other as CertificateEntries
+
+            if (subjectPrincipal != other.subjectPrincipal) return false
+            if (subjectAltNames != other.subjectAltNames) return false
+
+            return true
         }
 
-        override fun equals(other: Any?): Boolean {
-            if (other !is CertificateEntries) return false
-            return subjectPrincipal == other.subjectPrincipal
-                    && subjectAltNames == other.subjectAltNames
+        override fun hashCode(): Int {
+            var result = subjectPrincipal.hashCode()
+            result = 31 * result + subjectAltNames.hashCode()
+            return result
         }
 
         override fun toString(): String {

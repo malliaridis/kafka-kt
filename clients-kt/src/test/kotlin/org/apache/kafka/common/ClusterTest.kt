@@ -18,14 +18,10 @@
 package org.apache.kafka.common
 
 import org.apache.kafka.common.utils.Utils.mkSet
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import java.net.InetSocketAddress
-import java.util.*
-import kotlin.test.Ignore
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 
 class ClusterTest {
 

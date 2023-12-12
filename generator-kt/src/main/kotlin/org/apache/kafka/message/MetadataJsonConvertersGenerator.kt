@@ -17,10 +17,10 @@
 
 package org.apache.kafka.message
 
-import org.apache.kafka.message.MessageGenerator.capitalizeFirst
 import java.io.BufferedWriter
 import java.io.IOException
-import java.util.*
+import java.util.TreeMap
+import org.apache.kafka.message.MessageGenerator.capitalizeFirst
 
 class MetadataJsonConvertersGenerator(packageName: String) : TypeClassGenerator {
 

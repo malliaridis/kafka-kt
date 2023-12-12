@@ -20,7 +20,6 @@ package org.apache.kafka.clients.admin
 import org.apache.kafka.common.security.scram.internals.ScramFormatter
 import java.nio.charset.StandardCharsets
 import java.security.SecureRandom
-import java.util.*
 
 /**
  * A request to update/insert a SASL/SCRAM credential for a user.

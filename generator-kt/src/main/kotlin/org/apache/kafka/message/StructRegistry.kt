@@ -17,10 +17,10 @@
 
 package org.apache.kafka.message
 
+import java.util.TreeMap
+import java.util.TreeSet
 import org.apache.kafka.message.FieldType.StructType
 import org.apache.kafka.message.MessageGenerator.firstIsCapitalized
-import java.util.*
-import kotlin.NoSuchElementException
 
 /**
  * Contains structure data for Kafka MessageData classes.

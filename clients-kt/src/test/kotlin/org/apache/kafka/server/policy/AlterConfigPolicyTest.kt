@@ -19,7 +19,6 @@ package org.apache.kafka.server.policy
 
 import org.apache.kafka.common.config.ConfigResource
 import org.junit.jupiter.api.Test
-import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull

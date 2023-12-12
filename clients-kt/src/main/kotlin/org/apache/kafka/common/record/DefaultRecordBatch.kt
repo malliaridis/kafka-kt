@@ -17,13 +17,10 @@
 
 package org.apache.kafka.common.record
 
-import java.io.DataInputStream
-import java.io.EOFException
 import java.io.IOException
 import java.io.InputStream
 import java.nio.BufferUnderflowException
 import java.nio.ByteBuffer
-import java.util.*
 import org.apache.kafka.common.InvalidRecordException
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.errors.CorruptRecordException
@@ -268,7 +265,7 @@ class DefaultRecordBatch internal constructor(
     }
 
     override fun iterator(): Iterator<Record> {
-        if (count() == 0) return Collections.emptyIterator()
+        if (count() == 0) return emptyList<Record>().iterator()
         if (!isCompressed) return uncompressedIterator()
         compressedIterator(BufferSupplier.NO_CACHING, false).use { iterator ->
             val records: MutableList<Record> =
@@ -279,15 +276,14 @@ class DefaultRecordBatch internal constructor(
     }
 
     override fun skipKeyValueIterator(bufferSupplier: BufferSupplier): CloseableIterator<Record> {
-        if (count() == 0) {
-            return CloseableIterator.wrap(Collections.emptyIterator())
-        }
+        if (count() == 0) return CloseableIterator.wrap(mutableListOf<Record>().iterator())
 
         /*
          * For uncompressed iterator, it is actually not worth skipping key / value / headers at all since
          * its ByteBufferInputStream's skip() function is less efficient compared with just reading it actually
          * as it will allocate new byte array.
-         */return if (!isCompressed) uncompressedIterator() else compressedIterator(
+         */
+        return if (!isCompressed) uncompressedIterator() else compressedIterator(
             bufferSupplier,
             true
         )

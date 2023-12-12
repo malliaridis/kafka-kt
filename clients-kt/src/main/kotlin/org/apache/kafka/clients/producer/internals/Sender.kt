@@ -18,7 +18,6 @@
 package org.apache.kafka.clients.producer.internals
 
 import java.io.IOException
-import java.util.*
 import org.apache.kafka.clients.ApiVersions
 import org.apache.kafka.clients.ClientResponse
 import org.apache.kafka.clients.KafkaClient

@@ -34,7 +34,6 @@ import org.apache.kafka.common.utils.Timer
 import org.slf4j.Logger
 import java.io.Closeable
 import java.io.IOException
-import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.ConcurrentMap
@@ -671,7 +670,7 @@ class ConsumerNetworkClient(
 
         fun requestIterator(node: Node): MutableIterator<ClientRequest> {
             val requests = unsent[node]
-            return requests?.iterator() ?: Collections.emptyIterator()
+            return (requests ?: mutableListOf()).iterator()
         }
 
         fun nodes(): Collection<Node> = unsent.keys

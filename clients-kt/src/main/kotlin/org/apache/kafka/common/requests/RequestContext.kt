@@ -19,7 +19,6 @@ package org.apache.kafka.common.requests
 
 import java.net.InetAddress
 import java.nio.ByteBuffer
-import java.util.*
 import org.apache.kafka.common.errors.InvalidRequestException
 import org.apache.kafka.common.message.ApiVersionsRequestData
 import org.apache.kafka.common.network.ClientInformation

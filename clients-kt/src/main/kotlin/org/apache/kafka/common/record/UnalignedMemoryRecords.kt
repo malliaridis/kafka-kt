@@ -19,7 +19,6 @@ package org.apache.kafka.common.record
 
 import java.io.IOException
 import java.nio.ByteBuffer
-import java.util.*
 import org.apache.kafka.common.network.TransferableChannel
 import org.apache.kafka.common.utils.Utils.tryWriteTo
 

@@ -300,11 +300,7 @@ class OffsetFetchResponse : AbstractResponse {
 
     private fun buildResponseData(groupId: String): Map<TopicPartition, PartitionData> {
         val responseData: MutableMap<TopicPartition, PartitionData> = HashMap()
-        val group = data
-            .groups
-            .stream()
-            .filter { group -> group.groupId == groupId }
-            .collect(Collectors.toList())[0]
+        val group = data.groups.first { group -> group.groupId == groupId }
 
         group.topics.forEach { topic ->
             topic.partitions.forEach { partition ->

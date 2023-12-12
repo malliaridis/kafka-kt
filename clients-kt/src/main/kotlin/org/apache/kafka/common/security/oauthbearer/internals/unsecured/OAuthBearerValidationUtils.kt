@@ -17,7 +17,6 @@
 
 package org.apache.kafka.common.security.oauthbearer.internals.unsecured
 
-import java.util.*
 import org.apache.kafka.common.security.oauthbearer.OAuthBearerToken
 
 object OAuthBearerValidationUtils {

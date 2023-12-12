@@ -18,7 +18,6 @@
 package org.apache.kafka.common.utils
 
 import java.io.Serializable
-import java.util.*
 
 /**
  * Utility class that handles immutable byte arrays.

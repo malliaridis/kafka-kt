@@ -19,7 +19,8 @@ package org.apache.kafka.message
 
 import java.io.BufferedWriter
 import java.io.IOException
-import java.util.*
+import java.util.EnumMap
+import java.util.TreeMap
 import org.apache.kafka.message.MessageGenerator.capitalizeFirst
 import org.apache.kafka.message.MessageGenerator.stripSuffix
 import org.apache.kafka.message.MessageGenerator.toSnakeCase

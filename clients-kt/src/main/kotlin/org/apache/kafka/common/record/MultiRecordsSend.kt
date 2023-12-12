@@ -17,13 +17,13 @@
 
 package org.apache.kafka.common.record
 
+import java.io.IOException
+import java.util.Queue
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.network.Send
 import org.apache.kafka.common.network.TransferableChannel
 import org.slf4j.LoggerFactory
-import java.io.IOException
-import java.util.*
 
 /**
  * A set of composite sends with nested [RecordsSend], sent one after another

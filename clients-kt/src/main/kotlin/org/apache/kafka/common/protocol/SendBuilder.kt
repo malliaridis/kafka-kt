@@ -18,7 +18,8 @@
 package org.apache.kafka.common.protocol
 
 import java.nio.ByteBuffer
-import java.util.*
+import java.util.ArrayDeque
+import java.util.Queue
 import org.apache.kafka.common.network.ByteBufferSend
 import org.apache.kafka.common.network.Send
 import org.apache.kafka.common.record.BaseRecords

@@ -19,11 +19,11 @@ package org.apache.kafka.test
 
 import org.apache.kafka.common.utils.CopyOnWriteMap
 import org.apache.kafka.common.utils.Time
-import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.math.sqrt
+import kotlin.random.Random
 
 object Microbenchmarks {
 
@@ -33,7 +33,7 @@ object Microbenchmarks {
         val iters = args[0].toInt()
         var x = 0.0
         var start = System.nanoTime()
-        for (i in 0 until iters) x += sqrt(x)
+        for (i in 0..<iters) x += sqrt(x)
         println(x)
         println("sqrt: " + (System.nanoTime() - start) / iters.toDouble())
 
@@ -51,17 +51,17 @@ object Microbenchmarks {
 
         // test random
         var n = 0
-        val random = Random()
         start = System.nanoTime()
-        for (i in 0 until iters) n += random.nextInt()
+        for (i in 0..<iters) n += Random.nextInt()
         println(n)
         println("random: " + (System.nanoTime() - start) / iters)
         val floats = FloatArray(1024)
-        for (i in floats.indices) floats[i] = random.nextFloat()
-        Arrays.sort(floats)
+        for (i in floats.indices) floats[i] = Random.nextFloat()
+        floats.sort()
         var loc = 0
         start = System.nanoTime()
-        for (i in 0 until iters) loc += Arrays.binarySearch(floats, floats[i % floats.size])
+
+        for (i in 0..<iters) loc += floats.binarySearch(floats[i % floats.size])
         println(loc)
         println("binary search: " + (System.nanoTime() - start) / iters)
         val time = Time.SYSTEM
@@ -72,7 +72,7 @@ object Microbenchmarks {
                 time.sleep(1)
                 var counter = 0
                 val start = time.nanoseconds()
-                for (i in 0 until iters) synchronized(lock) { counter++ }
+                for (i in 0..<iters) synchronized(lock) { counter++ }
                 println("synchronized: " + (time.nanoseconds() - start) / iters)
                 println(counter)
                 done.set(true)
@@ -100,7 +100,7 @@ object Microbenchmarks {
                 time.sleep(1)
                 var counter = 0
                 val start = time.nanoseconds()
-                for (i in 0 until iters) {
+                for (i in 0..<iters) {
                     lock2.lock()
                     counter++
                     lock2.unlock()
@@ -154,13 +154,13 @@ object Microbenchmarks {
 
     private fun systemMillis(iters: Int): Long {
         var total: Long = 0
-        for (i in 0 until iters) total += System.currentTimeMillis()
+        for (i in 0..<iters) total += System.currentTimeMillis()
         return total
     }
 
     private fun systemNanos(iters: Int): Long {
         var total: Long = 0
-        for (i in 0 until iters) total += System.currentTimeMillis()
+        for (i in 0..<iters) total += System.currentTimeMillis()
         return total
     }
 }

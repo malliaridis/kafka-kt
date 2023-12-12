@@ -21,7 +21,6 @@ import java.nio.charset.StandardCharsets
 import java.security.InvalidKeyException
 import java.security.MessageDigest
 import java.security.NoSuchAlgorithmException
-import java.util.*
 import javax.security.auth.callback.Callback
 import javax.security.auth.callback.CallbackHandler
 import javax.security.auth.callback.NameCallback

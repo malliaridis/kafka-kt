@@ -22,7 +22,6 @@ import org.apache.kafka.common.metrics.stats.CumulativeSum
 import org.apache.kafka.common.utils.Time
 import org.junit.jupiter.api.Test
 import java.lang.management.ManagementFactory
-import java.util.*
 import javax.management.ObjectName
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

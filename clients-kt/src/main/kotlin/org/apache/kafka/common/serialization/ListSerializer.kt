@@ -20,7 +20,6 @@ package org.apache.kafka.common.serialization
 import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
 import java.io.IOException
-import java.util.*
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.config.ConfigException

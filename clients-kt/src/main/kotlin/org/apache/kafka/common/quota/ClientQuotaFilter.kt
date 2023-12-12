@@ -17,8 +17,6 @@
 
 package org.apache.kafka.common.quota
 
-import java.util.*
-
 /**
  * Describes a client quota entity filter.
  *
@@ -47,13 +45,20 @@ class ClientQuotaFilter private constructor(
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (other == null || javaClass != other.javaClass) return false
-        val that = other as ClientQuotaFilter
-        return components == that.components && strict == that.strict
+        if (javaClass != other?.javaClass) return false
+
+        other as ClientQuotaFilter
+
+        if (components != other.components) return false
+        if (strict != other.strict) return false
+
+        return true
     }
 
     override fun hashCode(): Int {
-        return Objects.hash(components, strict)
+        var result = components.hashCode()
+        result = 31 * result + strict.hashCode()
+        return result
     }
 
     override fun toString(): String {

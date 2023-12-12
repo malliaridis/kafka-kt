@@ -17,8 +17,6 @@
 
 package org.apache.kafka.common.security.oauthbearer.internals.secured
 
-import java.util.*
-
 /**
  * Simple utility class to perform basic cleaning and validation on input values so that they're
  * performed consistently throughout the code base.

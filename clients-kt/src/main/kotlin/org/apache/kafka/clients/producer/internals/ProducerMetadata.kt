@@ -17,7 +17,6 @@
 
 package org.apache.kafka.clients.producer.internals
 
-import java.util.*
 import org.apache.kafka.clients.Metadata
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.internals.ClusterResourceListeners

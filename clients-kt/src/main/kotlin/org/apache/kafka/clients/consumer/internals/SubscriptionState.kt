@@ -17,6 +17,7 @@
 
 package org.apache.kafka.clients.consumer.internals
 
+import java.util.TreeSet
 import org.apache.kafka.clients.ApiVersions
 import org.apache.kafka.clients.Metadata.LeaderAndEpoch
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener
@@ -30,7 +31,6 @@ import org.apache.kafka.common.message.OffsetForLeaderEpochResponseData
 import org.apache.kafka.common.requests.OffsetsForLeaderEpochResponse
 import org.apache.kafka.common.utils.LogContext
 import org.slf4j.Logger
-import java.util.*
 import java.util.function.Consumer
 import java.util.function.LongSupplier
 import java.util.function.Predicate

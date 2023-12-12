@@ -24,7 +24,8 @@ import org.apache.kafka.common.metrics.Sensor
 import org.apache.kafka.common.metrics.stats.Meter
 import org.apache.kafka.common.utils.Time
 import java.nio.ByteBuffer
-import java.util.*
+import java.util.Deque
+import java.util.ArrayDeque
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.Condition
 import java.util.concurrent.locks.ReentrantLock

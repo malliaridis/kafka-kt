@@ -20,8 +20,6 @@ package org.apache.kafka.clients
 import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.record.RecordBatch
 import org.apache.kafka.common.requests.ProduceRequest
-import java.util.*
-import kotlin.math.min
 
 /**
  * Maintains node api versions for access outside NetworkClient (which is where the information is
@@ -60,10 +58,8 @@ class ApiVersions {
             }.minOfOrNull { versions ->
                 ProduceRequest.requiredMagicForVersion(versions.latestUsableVersion(ApiKeys.PRODUCE))
             }
-        return min(
-            RecordBatch.CURRENT_MAGIC_VALUE.toInt(),
-            (knownBrokerNodesMinRequiredMagicForProduce ?: RecordBatch.CURRENT_MAGIC_VALUE).toInt()
-        ).toByte()
+        return (knownBrokerNodesMinRequiredMagicForProduce ?: RecordBatch.CURRENT_MAGIC_VALUE)
+            .coerceAtMost(RecordBatch.CURRENT_MAGIC_VALUE)
     }
 
     @Synchronized

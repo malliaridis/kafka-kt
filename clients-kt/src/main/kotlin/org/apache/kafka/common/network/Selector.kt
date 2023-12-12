@@ -6,7 +6,6 @@ import java.nio.channels.CancelledKeyException
 import java.nio.channels.SelectionKey
 import java.nio.channels.SocketChannel
 import java.nio.channels.UnresolvedAddressException
-import java.util.*
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import org.apache.kafka.common.KafkaException

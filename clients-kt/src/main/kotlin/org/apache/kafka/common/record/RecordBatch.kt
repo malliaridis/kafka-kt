@@ -18,7 +18,6 @@
 package org.apache.kafka.common.record
 
 import java.nio.ByteBuffer
-import java.util.*
 import org.apache.kafka.common.utils.BufferSupplier
 import org.apache.kafka.common.utils.CloseableIterator
 

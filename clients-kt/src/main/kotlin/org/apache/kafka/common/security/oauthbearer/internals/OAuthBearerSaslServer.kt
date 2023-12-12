@@ -19,7 +19,6 @@ package org.apache.kafka.common.security.oauthbearer.internals
 
 import java.io.IOException
 import java.nio.charset.StandardCharsets
-import java.util.*
 import javax.security.auth.callback.Callback
 import javax.security.auth.callback.CallbackHandler
 import javax.security.auth.callback.UnsupportedCallbackException

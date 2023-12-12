@@ -43,7 +43,8 @@ import org.apache.kafka.common.utils.ProducerIdAndEpoch
 import org.apache.kafka.common.utils.Time
 import org.slf4j.Logger
 import java.nio.ByteBuffer
-import java.util.*
+import java.util.Deque
+import java.util.ArrayDeque
 import java.util.concurrent.ConcurrentMap
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.min

@@ -17,8 +17,8 @@
 
 package org.apache.kafka.common
 
+import java.util.Objects
 import org.junit.jupiter.api.Test
-import java.util.*
 import org.junit.jupiter.api.Disabled
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals

@@ -17,7 +17,6 @@
 
 package org.apache.kafka.common.internals
 
-import java.util.*
 import java.util.concurrent.CancellationException
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionException

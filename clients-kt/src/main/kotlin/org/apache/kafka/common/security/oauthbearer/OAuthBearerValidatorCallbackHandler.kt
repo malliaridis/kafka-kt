@@ -19,7 +19,6 @@ package org.apache.kafka.common.security.oauthbearer
 
 import java.io.IOException
 import java.security.Key
-import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
 import javax.security.auth.callback.Callback
 import javax.security.auth.callback.UnsupportedCallbackException

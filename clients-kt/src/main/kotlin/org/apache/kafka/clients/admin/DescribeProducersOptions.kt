@@ -17,7 +17,6 @@
 
 package org.apache.kafka.clients.admin
 
-import java.util.*
 import org.apache.kafka.common.annotation.InterfaceStability.Evolving
 
 /**
@@ -40,25 +39,25 @@ class DescribeProducersOptions : AbstractOptions<DescribeProducersOptions>() {
         message = "Use property instead.",
         replaceWith = ReplaceWith("brokerId")
     )
-    fun brokerId(): Int? {
-        return brokerId
-    }
+    fun brokerId(): Int? = brokerId
 
-    override fun equals(o: Any?): Boolean {
-        if (this === o) return true
-        if (o == null || javaClass != o.javaClass) return false
-        val that = o as DescribeProducersOptions
-        return brokerId == that.brokerId && timeoutMs == that.timeoutMs
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as DescribeProducersOptions
+
+        if (brokerId != other.brokerId) return false
+        if (timeoutMs != other.timeoutMs) return false
+
+        return true
     }
 
     override fun hashCode(): Int {
-        return Objects.hash(brokerId, timeoutMs)
+        var result = brokerId ?: 0
+        result = 31 * result + (timeoutMs ?: 0)
+        return result
     }
 
-    override fun toString(): String {
-        return "DescribeProducersOptions(" +
-                "brokerId=" + brokerId +
-                ", timeoutMs=" + timeoutMs +
-                ')'
-    }
+    override fun toString(): String = "DescribeProducersOptions(brokerId=$brokerId, timeoutMs=$timeoutMs)"
 }

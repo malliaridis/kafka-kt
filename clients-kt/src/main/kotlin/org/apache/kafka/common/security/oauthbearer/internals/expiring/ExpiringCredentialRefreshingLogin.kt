@@ -17,7 +17,7 @@
 
 package org.apache.kafka.common.security.oauthbearer.internals.expiring
 
-import java.util.*
+import java.util.Date
 import javax.security.auth.Subject
 import javax.security.auth.login.Configuration
 import javax.security.auth.login.LoginContext
@@ -26,6 +26,7 @@ import org.apache.kafka.common.security.auth.AuthenticateCallbackHandler
 import org.apache.kafka.common.utils.KafkaThread
 import org.apache.kafka.common.utils.Time
 import org.slf4j.LoggerFactory
+import kotlin.random.Random
 
 /**
  * This class is responsible for refreshing logins for both Kafka client and server when the login
@@ -246,7 +247,7 @@ abstract class ExpiringCredentialRefreshingLogin(
             Date(expireTimeMs)
         )
         val pct = expiringCredentialRefreshConfig.loginRefreshWindowFactor +
-                (expiringCredentialRefreshConfig.loginRefreshWindowJitter * RNG.nextDouble())
+                (expiringCredentialRefreshConfig.loginRefreshWindowJitter * Random.nextDouble())
 
         // Ignore buffer times if the credential's remaining lifetime is less than their sum.
         val refreshMinPeriodSeconds =
@@ -522,7 +523,5 @@ abstract class ExpiringCredentialRefreshingLogin(
         private val log = LoggerFactory.getLogger(ExpiringCredentialRefreshingLogin::class.java)
 
         private const val DELAY_SECONDS_BEFORE_NEXT_RETRY_WHEN_RELOGIN_FAILS = 10L
-
-        private val RNG = Random()
     }
 }

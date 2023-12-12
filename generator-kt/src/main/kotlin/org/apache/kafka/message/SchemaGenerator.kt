@@ -17,7 +17,7 @@
 
 package org.apache.kafka.message
 
-import java.util.*
+import java.util.TreeMap
 import org.apache.kafka.message.FieldType.BoolFieldType
 import org.apache.kafka.message.FieldType.BytesFieldType
 import org.apache.kafka.message.FieldType.Float32FieldType

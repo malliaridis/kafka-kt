@@ -17,13 +17,10 @@
 
 package org.apache.kafka.clients.admin.internals
 
-import java.util.*
-import java.util.stream.Collectors
 import org.apache.kafka.common.errors.GroupAuthorizationException
 import org.apache.kafka.common.errors.InvalidGroupIdException
 import org.apache.kafka.common.errors.TransactionalIdAuthorizationException
 import org.apache.kafka.common.message.FindCoordinatorRequestData
-import org.apache.kafka.common.message.FindCoordinatorResponseData
 import org.apache.kafka.common.protocol.Errors
 import org.apache.kafka.common.requests.AbstractResponse
 import org.apache.kafka.common.requests.FindCoordinatorRequest

@@ -17,7 +17,6 @@
 
 package org.apache.kafka.server.policy
 
-import java.util.*
 import org.apache.kafka.common.Configurable
 import org.apache.kafka.common.config.ConfigResource
 import org.apache.kafka.common.errors.PolicyViolationException

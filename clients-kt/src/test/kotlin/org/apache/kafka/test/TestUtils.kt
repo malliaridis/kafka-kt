@@ -23,7 +23,10 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.*
+import java.util.Base64
+import java.util.Optional
+import java.util.Properties
+import java.util.UUID
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Future
 import java.util.function.Consumer
@@ -51,6 +54,7 @@ import org.apache.kafka.common.utils.Exit.addShutdownHook
 import org.apache.kafka.common.utils.Utils.delete
 import org.slf4j.LoggerFactory
 import kotlin.math.min
+import kotlin.random.Random
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
@@ -76,7 +80,7 @@ object TestUtils {
     /* A consistent random number generator to make tests repeatable */
     val SEEDED_RANDOM = Random(192348092834L)
 
-    val RANDOM = Random()
+    val RANDOM = Random
 
     val DEFAULT_POLL_INTERVAL_MS: Long = 100
 

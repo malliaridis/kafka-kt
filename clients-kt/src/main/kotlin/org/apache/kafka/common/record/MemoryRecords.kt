@@ -20,7 +20,6 @@ package org.apache.kafka.common.record
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.channels.GatheringByteChannel
-import java.util.*
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.message.LeaderChangeMessage
 import org.apache.kafka.common.message.SnapshotFooterRecord

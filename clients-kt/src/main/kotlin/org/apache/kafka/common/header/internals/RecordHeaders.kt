@@ -17,7 +17,6 @@
 
 package org.apache.kafka.common.header.internals
 
-import java.util.*
 import org.apache.kafka.common.header.Header
 import org.apache.kafka.common.header.Headers
 import org.apache.kafka.common.record.Record

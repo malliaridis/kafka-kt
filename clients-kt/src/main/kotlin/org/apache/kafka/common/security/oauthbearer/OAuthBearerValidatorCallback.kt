@@ -17,7 +17,6 @@
 
 package org.apache.kafka.common.security.oauthbearer
 
-import java.util.*
 import javax.security.auth.callback.Callback
 import org.apache.kafka.common.annotation.InterfaceStability.Evolving
 

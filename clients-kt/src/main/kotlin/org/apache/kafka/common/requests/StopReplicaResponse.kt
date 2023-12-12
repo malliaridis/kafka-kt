@@ -18,7 +18,6 @@
 package org.apache.kafka.common.requests
 
 import java.nio.ByteBuffer
-import java.util.*
 import org.apache.kafka.common.message.StopReplicaResponseData
 import org.apache.kafka.common.message.StopReplicaResponseData.StopReplicaPartitionError
 import org.apache.kafka.common.protocol.ApiKeys

@@ -18,8 +18,7 @@
 package org.apache.kafka.common.security.oauthbearer.internals.unsecured
 
 import java.io.IOException
-import java.nio.charset.StandardCharsets
-import java.util.*
+import java.util.Base64
 import java.util.regex.Matcher
 import java.util.regex.Pattern
 import javax.security.auth.callback.Callback

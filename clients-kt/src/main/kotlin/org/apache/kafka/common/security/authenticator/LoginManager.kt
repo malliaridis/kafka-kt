@@ -17,7 +17,6 @@
 
 package org.apache.kafka.common.security.authenticator
 
-import java.util.*
 import javax.security.auth.Subject
 import javax.security.auth.login.LoginException
 import org.apache.kafka.common.config.ConfigException
@@ -126,18 +125,26 @@ class LoginManager private constructor(
 
         val saslConfigs: Map<String, Any?> = configs.filter { (key) -> key.startsWith("sasl.") }
 
-        override fun hashCode(): Int {
-            return Objects.hash(configInfo, loginClass, loginCallbackClass, saslConfigs)
-        }
-
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
-            if (other == null || javaClass != other.javaClass) return false
-            val loginMetadata = other as LoginMetadata<*>
-            return configInfo == loginMetadata.configInfo
-                    && loginClass == loginMetadata.loginClass
-                    && loginCallbackClass == loginMetadata.loginCallbackClass
-                    && saslConfigs == loginMetadata.saslConfigs
+            if (javaClass != other?.javaClass) return false
+
+            other as LoginMetadata<*>
+
+            if (configInfo != other.configInfo) return false
+            if (loginClass != other.loginClass) return false
+            if (loginCallbackClass != other.loginCallbackClass) return false
+            if (saslConfigs != other.saslConfigs) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            var result = configInfo?.hashCode() ?: 0
+            result = 31 * result + loginClass.hashCode()
+            result = 31 * result + loginCallbackClass.hashCode()
+            result = 31 * result + saslConfigs.hashCode()
+            return result
         }
     }
 

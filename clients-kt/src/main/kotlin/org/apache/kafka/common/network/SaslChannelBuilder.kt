@@ -20,7 +20,6 @@ package org.apache.kafka.common.network
 import java.io.IOException
 import java.nio.channels.SelectionKey
 import java.nio.channels.SocketChannel
-import java.util.*
 import java.util.function.Supplier
 import javax.security.auth.Subject
 import javax.security.auth.kerberos.KerberosPrincipal

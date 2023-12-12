@@ -1,7 +1,7 @@
 package org.apache.kafka.common.requests
 
 import java.nio.ByteBuffer
-import java.util.*
+import java.util.EnumMap
 import java.util.stream.Collectors
 import java.util.stream.Stream
 import org.apache.kafka.common.network.Send

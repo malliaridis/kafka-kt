@@ -17,7 +17,6 @@
 
 package org.apache.kafka.clients
 
-import java.util.*
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.Node
 import org.apache.kafka.common.errors.AuthenticationException

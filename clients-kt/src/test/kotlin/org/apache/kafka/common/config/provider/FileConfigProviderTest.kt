@@ -21,7 +21,7 @@ import org.junit.jupiter.api.BeforeEach
 import java.io.IOException
 import java.io.Reader
 import java.io.StringReader
-import java.util.*
+import java.util.ServiceLoader
 import java.util.stream.StreamSupport
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals

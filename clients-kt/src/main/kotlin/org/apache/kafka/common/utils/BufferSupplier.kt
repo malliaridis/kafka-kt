@@ -18,7 +18,8 @@
 package org.apache.kafka.common.utils
 
 import java.nio.ByteBuffer
-import java.util.*
+import java.util.ArrayDeque
+import java.util.Deque
 
 /**
  * Simple non-threadsafe interface for caching byte buffers. This is suitable for simple cases like

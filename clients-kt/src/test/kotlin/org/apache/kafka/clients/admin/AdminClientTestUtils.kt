@@ -17,7 +17,6 @@
 
 package org.apache.kafka.clients.admin
 
-import java.util.*
 import org.apache.kafka.clients.HostResolver
 import org.apache.kafka.clients.admin.CreateTopicsResult.TopicMetadataAndConfig
 import org.apache.kafka.clients.admin.internals.CoordinatorKey

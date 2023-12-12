@@ -32,7 +32,8 @@ import org.apache.kafka.common.config.types.Password
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import java.time.Duration
-import java.util.*
+import java.util.LinkedList
+import java.util.Properties
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

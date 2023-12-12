@@ -17,7 +17,7 @@
 
 package org.apache.kafka.common.config
 
-import java.util.*
+import java.util.LinkedList
 import java.util.function.Function
 import java.util.regex.Pattern
 import java.util.stream.Collectors
@@ -1004,8 +1004,7 @@ class ConfigDef {
             if (key.group != null) {
                 if (!lastKeyGroupName.equals(key.group, ignoreCase = true)) {
                     b.append(key.group).append("\n")
-                    val underLine = CharArray(key.group.length)
-                    Arrays.fill(underLine, '^')
+                    val underLine = CharArray(key.group.length) { '^' }
                     b.append(String(underLine)).append("\n\n")
                 }
                 lastKeyGroupName = key.group

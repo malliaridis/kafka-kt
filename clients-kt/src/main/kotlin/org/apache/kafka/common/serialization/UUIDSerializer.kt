@@ -17,10 +17,9 @@
 
 package org.apache.kafka.common.serialization
 
-import java.io.UnsupportedEncodingException
 import java.nio.charset.StandardCharsets
 import java.nio.charset.UnsupportedCharsetException
-import java.util.*
+import java.util.UUID
 import org.apache.kafka.common.errors.SerializationException
 
 /**

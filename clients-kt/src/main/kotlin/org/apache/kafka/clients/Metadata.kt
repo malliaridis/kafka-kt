@@ -19,7 +19,6 @@ package org.apache.kafka.clients
 
 import java.io.Closeable
 import java.net.InetSocketAddress
-import java.util.*
 import org.apache.kafka.common.Cluster
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.Node

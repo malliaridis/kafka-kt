@@ -17,7 +17,7 @@
 
 package org.apache.kafka.common.security.oauthbearer.internals.secured
 
-import java.util.*
+import java.util.StringJoiner
 import org.apache.kafka.common.security.oauthbearer.OAuthBearerToken
 
 /**
@@ -95,16 +95,15 @@ class BasicOAuthBearerToken(
      */
     override fun startTimeMs(): Long? = startTimeMs
 
-    override fun toString(): String {
-        return StringJoiner(
-            ", ",
-            BasicOAuthBearerToken::class.java.simpleName + "[", "]"
-        )
-            .add("token='$token'")
-            .add("scopes=$scopes")
-            .add("lifetimeMs=$lifetimeMs")
-            .add("principalName='$principalName'")
-            .add("startTimeMs=$startTimeMs")
-            .toString()
-    }
+    override fun toString(): String = listOf(
+        "token='$token'",
+        "scopes=$scopes",
+        "lifetimeMs=$lifetimeMs",
+        "principalName='$principalName'",
+        "startTimeMs=$startTimeMs",
+    ).joinToString(
+        separator = ", ",
+        prefix = OAuthBearerToken::class.java.simpleName + "[",
+        postfix = "]",
+    )
 }

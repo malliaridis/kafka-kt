@@ -18,7 +18,7 @@
 package org.apache.kafka.common.utils
 
 import java.lang.management.ManagementFactory
-import java.util.*
+import java.util.Properties
 import javax.management.JMException
 import javax.management.ObjectName
 import org.apache.kafka.common.MetricName

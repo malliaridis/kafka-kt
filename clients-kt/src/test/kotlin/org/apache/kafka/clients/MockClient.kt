@@ -17,7 +17,7 @@
 
 package org.apache.kafka.clients
 
-import java.util.*
+import java.util.Queue
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentLinkedDeque
 import java.util.function.Consumer

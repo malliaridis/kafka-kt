@@ -18,7 +18,6 @@
 package org.apache.kafka.common.requests
 
 import java.nio.ByteBuffer
-import java.util.*
 import org.apache.kafka.common.errors.InvalidRequestException
 import org.apache.kafka.common.errors.UnsupportedVersionException
 import org.apache.kafka.common.message.RequestHeaderData
@@ -143,13 +142,20 @@ class RequestHeader(
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (other == null || javaClass != other.javaClass) return false
-        val that = other as RequestHeader
-        return headerVersion == that.headerVersion && data == that.data
+        if (javaClass != other?.javaClass) return false
+
+        other as RequestHeader
+
+        if (headerVersion != other.headerVersion) return false
+        if (data != other.data) return false
+
+        return true
     }
 
     override fun hashCode(): Int {
-        return Objects.hash(data, headerVersion)
+        var result = data.hashCode()
+        result = 31 * result + headerVersion
+        return result
     }
 
     companion object {

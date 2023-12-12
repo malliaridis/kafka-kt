@@ -17,7 +17,8 @@
 
 package org.apache.kafka.common.config
 
-import java.util.*
+import java.util.Properties
+import java.util.UUID
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.config.ConfigDef.Importance
 import org.apache.kafka.common.config.ConfigDef.NonNullValidator

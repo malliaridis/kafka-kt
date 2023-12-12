@@ -17,6 +17,7 @@
 
 package org.apache.kafka.message
 
+import java.io.BufferedWriter
 import org.apache.kafka.message.FieldType.BoolFieldType
 import org.apache.kafka.message.FieldType.Float32FieldType
 import org.apache.kafka.message.FieldType.Float64FieldType
@@ -31,8 +32,6 @@ import org.apache.kafka.message.FieldType.Uint32FieldType
 import org.apache.kafka.message.FieldType.Uint64FieldType
 import org.apache.kafka.message.FieldType.Uint8FieldType
 import org.apache.kafka.message.MessageGenerator.capitalizeFirst
-import java.io.BufferedWriter
-import java.util.*
 
 /**
  * Generates Kafka MessageData classes.

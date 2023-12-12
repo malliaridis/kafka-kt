@@ -25,7 +25,7 @@ import java.io.File
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
-import java.util.*
+import java.util.ServiceLoader
 import java.util.stream.StreamSupport
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals

@@ -18,7 +18,6 @@
 package org.apache.kafka.common.security.oauthbearer.internals.secured
 
 import java.net.URL
-import java.util.*
 import javax.net.ssl.SSLSocketFactory
 import javax.security.auth.login.AppConfigurationEntry
 import org.apache.kafka.common.config.AbstractConfig

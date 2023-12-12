@@ -18,10 +18,7 @@
 package org.apache.kafka.common.protocol.types
 
 import java.nio.ByteBuffer
-import java.util.*
 import org.apache.kafka.common.Uuid
-import org.apache.kafka.common.protocol.MessageUtil.UNSIGNED_INT_MAX
-import org.apache.kafka.common.protocol.MessageUtil.UNSIGNED_SHORT_MAX
 import org.apache.kafka.common.protocol.types.Field.ComplexArray
 import org.apache.kafka.common.protocol.types.Field.ComplexNullableArray
 import org.apache.kafka.common.protocol.types.Field.Float32
@@ -479,7 +476,7 @@ data class Struct(
      * Empty all the values from this record
      */
     fun clear() {
-        Arrays.fill(values, null)
+        values.fill(null)
     }
 
     /**

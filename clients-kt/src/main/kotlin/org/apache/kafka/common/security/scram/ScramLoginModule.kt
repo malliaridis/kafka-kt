@@ -17,7 +17,6 @@
 
 package org.apache.kafka.common.security.scram
 
-import java.util.*
 import javax.security.auth.Subject
 import javax.security.auth.callback.CallbackHandler
 import javax.security.auth.spi.LoginModule

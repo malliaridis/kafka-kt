@@ -17,6 +17,7 @@
 
 package org.apache.kafka.common.requests
 
+import java.nio.ByteBuffer
 import org.apache.kafka.common.TopicIdPartition
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.Uuid
@@ -28,11 +29,6 @@ import org.apache.kafka.common.protocol.Errors
 import org.apache.kafka.common.protocol.ObjectSerializationCache
 import org.apache.kafka.common.record.MemoryRecords
 import org.apache.kafka.common.record.Records
-import java.nio.ByteBuffer
-import java.util.*
-import java.util.function.Consumer
-import java.util.function.Function
-import java.util.stream.Collectors
 
 /**
  * This wrapper supports all versions of the Fetch API

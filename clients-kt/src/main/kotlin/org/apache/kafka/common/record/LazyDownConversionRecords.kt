@@ -20,7 +20,6 @@ package org.apache.kafka.common.record
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.utils.AbstractIterator
 import org.apache.kafka.common.utils.Time
-import java.util.*
 import kotlin.math.max
 
 /**

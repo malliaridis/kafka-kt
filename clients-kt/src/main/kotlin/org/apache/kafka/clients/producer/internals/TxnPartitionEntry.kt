@@ -17,9 +17,10 @@
 
 package org.apache.kafka.clients.producer.internals
 
+import java.util.SortedSet
+import java.util.TreeSet
 import org.apache.kafka.common.requests.ProduceResponse
 import org.apache.kafka.common.utils.ProducerIdAndEpoch
-import java.util.*
 import java.util.function.Consumer
 
 internal class TxnPartitionEntry {

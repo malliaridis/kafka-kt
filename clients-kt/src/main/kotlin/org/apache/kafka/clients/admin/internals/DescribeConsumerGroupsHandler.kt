@@ -18,8 +18,6 @@
 package org.apache.kafka.clients.admin.internals
 
 import java.nio.ByteBuffer
-import java.util.*
-import java.util.stream.Collectors
 import org.apache.kafka.clients.admin.ConsumerGroupDescription
 import org.apache.kafka.clients.admin.MemberAssignment
 import org.apache.kafka.clients.admin.MemberDescription
