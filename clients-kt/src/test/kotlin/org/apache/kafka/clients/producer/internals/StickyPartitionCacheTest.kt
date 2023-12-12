@@ -87,7 +87,7 @@ class StickyPartitionCacheTest {
         val changedPartA3 = stickyPartitionCache.nextPartition(TOPIC_A, testCluster, partA)
         assertEquals(changedPartA3, changedPartA2)
 
-        // Check that the we can still use the partitioner when there is only one partition
+        // Check that we can still use the partitioner when there is only one partition
         val changedPartB = stickyPartitionCache.nextPartition(TOPIC_B, testCluster, partB)
         assertEquals(changedPartB, stickyPartitionCache.partition(TOPIC_B, testCluster))
     }

@@ -17,6 +17,16 @@
 
 package org.apache.kafka.clients.consumer.internals
 
+import java.nio.ByteBuffer
+import java.util.Collections
+import java.util.Optional
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
+import java.util.regex.Pattern
 import org.apache.kafka.clients.ClientResponse
 import org.apache.kafka.clients.GroupRebalanceConfig
 import org.apache.kafka.clients.MockClient
@@ -40,6 +50,7 @@ import org.apache.kafka.common.Metric
 import org.apache.kafka.common.MetricName
 import org.apache.kafka.common.Node
 import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.Uuid
 import org.apache.kafka.common.errors.ApiException
 import org.apache.kafka.common.errors.AuthenticationException
 import org.apache.kafka.common.errors.DisconnectException
@@ -52,6 +63,7 @@ import org.apache.kafka.common.errors.UnsupportedVersionException
 import org.apache.kafka.common.errors.WakeupException
 import org.apache.kafka.common.internals.ClusterResourceListeners
 import org.apache.kafka.common.internals.Topic
+import org.apache.kafka.common.internals.Topic.isInternal
 import org.apache.kafka.common.message.HeartbeatResponseData
 import org.apache.kafka.common.message.JoinGroupResponseData
 import org.apache.kafka.common.message.JoinGroupResponseData.JoinGroupResponseMember
@@ -94,28 +106,16 @@ import org.apache.kafka.common.utils.Utils.mkSet
 import org.apache.kafka.test.TestUtils
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
-import org.mockito.kotlin.argumentCaptor
-import java.nio.ByteBuffer
-import java.util.*
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.TimeoutException
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicReference
-import java.util.regex.Pattern
-import kotlin.collections.ArrayList
-import kotlin.collections.HashMap
-import kotlin.collections.HashSet
-import kotlin.math.min
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.clearInvocations
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import kotlin.math.min
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -527,7 +527,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
     }
 
     @Test
-    fun testSelectRebalanceProtcol() {
+    fun testSelectRebalanceProtocol() {
         val assignors: MutableList<ConsumerPartitionAssignor> = ArrayList()
         assignors.add(MockPartitionAssignor(listOf(RebalanceProtocol.EAGER)))
         assignors.add(MockPartitionAssignor(listOf(RebalanceProtocol.COOPERATIVE)))
@@ -668,12 +668,15 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         coordinator.poll(time.timer(0))
         assertTrue(coordinator.coordinatorUnknown())
         assertTrue(client.hasInFlightRequests())
+        assertEquals(0, coordinator.inFlightAsyncCommits.get())
+
         client.respond(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.poll(time.timer(0))
         assertFalse(coordinator.coordinatorUnknown())
         // after we've discovered the coordinator we should send
         // out the commit request immediately
         assertTrue(client.hasInFlightRequests())
+        assertEquals(1, coordinator.inFlightAsyncCommits.get())
     }
 
     @Test
@@ -696,13 +699,36 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
     }
 
     @Test
+    fun testEnsureCompletingAsyncCommitsWhenSyncCommitWithoutOffsets() {
+        client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
+        coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
+        val tp = TopicPartition(topic = "foo", partition = 0)
+        val offsets = mapOf(tp to OffsetAndMetadata(123))
+        val committed = AtomicBoolean()
+        coordinator.commitOffsetsAsync(offsets) { _, _ -> committed.set(true) }
+        assertFalse(
+            actual = coordinator.commitOffsetsSync(emptyMap(), time.timer(100L)),
+            message = "expected sync commit to fail",
+        )
+        assertFalse(committed.get())
+        assertEquals(1, coordinator.inFlightAsyncCommits.get())
+        prepareOffsetCommitRequest(Collections.singletonMap(tp, 123L), Errors.NONE)
+        assertTrue(
+            actual = coordinator.commitOffsetsSync(emptyMap(), time.timer(Long.MAX_VALUE)),
+            message = "expected sync commit to succeed",
+        )
+        assertTrue(committed.get(), "expected commit callback to be invoked")
+        assertEquals(0, coordinator.inFlightAsyncCommits.get())
+    }
+
+    @Test
     fun testManyInFlightAsyncCommitsWithCoordinatorDisconnect() {
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
         val numRequests = 1000
         val tp = TopicPartition("foo", 0)
         val responses = AtomicInteger(0)
-        for (i in 0 until numRequests) {
+        for (i in 0..<numRequests) {
             val offsets = mapOf(tp to OffsetAndMetadata(i.toLong()))
             coordinator.commitOffsetsAsync(
                 offsets = offsets,
@@ -716,10 +742,13 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
                 },
             )
         }
+        assertEquals(numRequests, coordinator.inFlightAsyncCommits.get())
+
         coordinator.markCoordinatorUnknown("test cause")
         consumerClient.pollNoWakeup()
         coordinator.invokeCompletedOffsetCommitCallbacks()
         assertEquals(numRequests, responses.get())
+        assertEquals(0, coordinator.inFlightAsyncCommits.get())
     }
 
     @Test
@@ -764,6 +793,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         coordinator.markCoordinatorUnknown("test cause")
         consumerClient.pollNoWakeup()
         assertTrue(asyncCallbackInvoked.get())
+        assertEquals(0, coordinator.inFlightAsyncCommits.get())
     }
 
     @Test
@@ -1655,27 +1685,233 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
      */
     @Test
     fun testRebalanceWithMetadataChange() {
+        val metadataResponse1 = metadataUpdateWith(
+            numNodes = 1,
+            topicPartitionCounts = mapOf(topic1 to 1, topic2 to 1),
+        )
+        val metadataResponse2 = metadataUpdateWith(
+            numNodes = 1,
+            topicPartitionCounts = mapOf(topic1 to 1),
+        )
+        verifyRebalanceWithMetadataChange(
+            null,
+            partitionAssignor,
+            metadataResponse1,
+            metadataResponse2,
+            true,
+        )
+    }
+
+    @Test
+    fun testRackAwareConsumerRebalanceWithDifferentRacks() {
+        verifyRackAwareConsumerRebalance(
+            partitionReplicas1 = listOf(
+                listOf(0, 1),
+                listOf(1, 2),
+                listOf(2, 0),
+            ),
+            partitionReplicas2 = listOf(
+                listOf(0, 2),
+                listOf(1, 2),
+                listOf(2, 0),
+            ),
+            rackAwareConsumer = true,
+            expectRebalance = true,
+        )
+    }
+
+    @Test
+    fun testNonRackAwareConsumerRebalanceWithDifferentRacks() {
+        verifyRackAwareConsumerRebalance(
+            partitionReplicas1 = listOf(
+                listOf(0, 1),
+                listOf(1, 2),
+                listOf(2, 0),
+            ),
+            partitionReplicas2 = listOf(
+                listOf(0, 2),
+                listOf(1, 2),
+                listOf(2, 0),
+            ),
+            rackAwareConsumer = false,
+            expectRebalance = false
+        )
+    }
+
+    @Test
+    fun testRackAwareConsumerRebalanceWithAdditionalRacks() {
+        verifyRackAwareConsumerRebalance(
+            partitionReplicas1 = listOf(
+                listOf(0, 1),
+                listOf(1, 2),
+                listOf(2, 0),
+            ),
+            partitionReplicas2 = listOf(
+                listOf(0, 1, 2),
+                listOf(1, 2),
+                listOf(2, 0),
+            ),
+            rackAwareConsumer = true,
+            expectRebalance = true,
+        )
+    }
+
+    @Test
+    fun testRackAwareConsumerRebalanceWithLessRacks() {
+        verifyRackAwareConsumerRebalance(
+            partitionReplicas1 = listOf(
+                listOf(0, 1),
+                listOf(1, 2),
+                listOf(2, 0),
+            ),
+            partitionReplicas2 = listOf(
+                listOf(0, 1),
+                listOf(1, 2),
+                listOf(2),
+            ),
+            rackAwareConsumer = true,
+            expectRebalance = true,
+        )
+    }
+
+    @Test
+    fun testRackAwareConsumerRebalanceWithNewPartitions() {
+        verifyRackAwareConsumerRebalance(
+            partitionReplicas1 = listOf(
+                listOf(0, 1),
+                listOf(1, 2),
+                listOf(2, 0),
+            ),
+            partitionReplicas2 = listOf(
+                listOf(0, 1),
+                listOf(1, 2),
+                listOf(2, 0),
+                listOf(0, 1),
+            ),
+            rackAwareConsumer = true,
+            expectRebalance = true,
+        )
+    }
+
+    @Test
+    fun testRackAwareConsumerRebalanceWithNoMetadataChange() {
+        verifyRackAwareConsumerRebalance(
+            partitionReplicas1 = listOf(
+                listOf(0, 1),
+                listOf(1, 2),
+                listOf(2, 0),
+            ),
+            partitionReplicas2 = listOf(
+                listOf(0, 1),
+                listOf(1, 2),
+                listOf(2, 0),
+            ),
+            rackAwareConsumer = true,
+            expectRebalance = false,
+        )
+    }
+
+    @Test
+    fun testRackAwareConsumerRebalanceWithNoRackChange() {
+        verifyRackAwareConsumerRebalance(
+            partitionReplicas1 = listOf(
+                listOf(0, 1),
+                listOf(1, 2),
+                listOf(2, 0),
+            ),
+            partitionReplicas2 = listOf(
+                listOf(3, 4),
+                listOf(4, 5),
+                listOf(5, 3),
+            ),
+            rackAwareConsumer = true,
+            expectRebalance = false,
+        )
+    }
+
+    @Test
+    fun testRackAwareConsumerRebalanceWithNewReplicasOnSameRacks() {
+        verifyRackAwareConsumerRebalance(
+            partitionReplicas1 = listOf(
+                listOf(0, 1),
+                listOf(1, 2),
+                listOf(2, 0),
+            ),
+            partitionReplicas2 = listOf(
+                listOf(0, 1, 3),
+                listOf(1, 2, 5),
+                listOf(2, 0, 3),
+            ),
+            rackAwareConsumer = true,
+            expectRebalance = false,
+        )
+    }
+
+    private fun verifyRackAwareConsumerRebalance(
+        partitionReplicas1: List<List<Int>>,
+        partitionReplicas2: List<List<Int>>,
+        rackAwareConsumer: Boolean,
+        expectRebalance: Boolean,
+    ) {
+        val racks = listOf("rack-a", "rack-b", "rack-c")
+        var assignor = partitionAssignor
+        var consumerRackId: String? = null
+        if (rackAwareConsumer) {
+            consumerRackId = racks[0]
+            assignor = RackAwareAssignor(protocol)
+            createRackAwareCoordinator(consumerRackId, assignor)
+        }
+        val metadataResponse1: MetadataResponse = rackAwareMetadata(
+            6,
+            racks,
+            mapOf(topic1 to partitionReplicas1),
+        )
+        val metadataResponse2: MetadataResponse = rackAwareMetadata(
+            6,
+            racks,
+            mapOf(topic1 to partitionReplicas2),
+        )
+        verifyRebalanceWithMetadataChange(
+            rackId = consumerRackId,
+            partitionAssignor = assignor,
+            metadataResponse1 = metadataResponse1,
+            metadataResponse2 = metadataResponse2,
+            expectRebalance = expectRebalance,
+        )
+    }
+
+    private fun verifyRebalanceWithMetadataChange(
+        rackId: String?,
+        partitionAssignor: MockPartitionAssignor,
+        metadataResponse1: MetadataResponse,
+        metadataResponse2: MetadataResponse,
+        expectRebalance: Boolean,
+    ) {
         val consumerId = "leader"
         val topics = listOf(topic1, topic2)
-        val partitions = mutableListOf(t1p, t2p)
+        val partitions = metadataResponse1.topicMetadata()
+            .flatMap { metadata ->
+                metadata.partitionMetadata.map { TopicPartition(metadata.topic, it.partition()) }
+            }
+            .toMutableList()
         subscriptions.subscribe(topics.toSet(), rebalanceListener)
-        client.updateMetadata(
-            metadataUpdateWith(
-                numNodes = 1,
-                topicPartitionCounts = mapOf(topic1 to 1, topic2 to 1)
-            )
-        )
+        client.updateMetadata(metadataResponse1)
         coordinator.maybeUpdateSubscriptionMetadata()
+
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
+
         val initialSubscription = mapOf(consumerId to topics)
         partitionAssignor.prepare(mutableMapOf(consumerId to partitions))
+
         client.prepareResponse(
             joinGroupLeaderResponse(
                 generationId = 1,
                 memberId = consumerId,
                 subscriptions = initialSubscription,
+                skipAssignment = false,
                 error = Errors.NONE,
+                rackId = rackId,
             )
         )
         client.prepareResponse(syncGroupResponse(partitions, Errors.NONE))
@@ -1690,22 +1926,18 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         assertEquals(1, rebalanceListener.assignedCount)
 
         // Change metadata to trigger rebalance.
-        client.updateMetadata(
-            metadataUpdateWith(
-                numNodes = 1,
-                topicPartitionCounts = mapOf(topic1 to 1),
-            )
-        )
+        client.updateMetadata(metadataResponse2)
         coordinator.poll(time.timer(0))
+
+        if (!expectRebalance) {
+            assertEquals(0, client.requests().size)
+            return
+        }
+        assertEquals(1, client.requests().size)
 
         // Revert metadata to original value. Fail pending JoinGroup. Another
         // JoinGroup should be sent, which will be completed successfully.
-        client.updateMetadata(
-            metadataUpdateWith(
-                numNodes = 1,
-                topicPartitionCounts = mapOf(topic1 to 1, topic2 to 1),
-            )
-        )
+        client.updateMetadata(metadataResponse1)
         client.respond(
             joinGroupFollowerResponse(
                 generationId = 1,
@@ -1715,8 +1947,10 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             )
         )
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
-        coordinator.poll(time.timer(0))
+        assertFalse(client.hasInFlightRequests())
+        coordinator.poll(time.timer(1))
         assertTrue(coordinator.rejoinNeededOrPending())
+
         client.respond(
             matcher = { request ->
                 if (request !is JoinGroupRequest) false
@@ -1726,7 +1960,9 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
                 generationId = 2,
                 memberId = consumerId,
                 subscriptions = initialSubscription,
+                skipAssignment = false,
                 error = Errors.NONE,
+                rackId = rackId,
             ),
         )
         client.prepareResponse(syncGroupResponse(partitions, Errors.NONE))
@@ -2671,6 +2907,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
         // Send two async commits and fail the first one with an error.
         // This should cause a coordinator disconnect which will cancel the second request.
+
         val firstCommitCallback = MockCommitCallback()
         val secondCommitCallback = MockCommitCallback()
         coordinator.commitOffsetsAsync(
@@ -2681,13 +2918,17 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             mapOf(t1p to OffsetAndMetadata(100L)),
             secondCommitCallback
         )
+        assertEquals(2, coordinator.inFlightAsyncCommits.get())
+
         respondToOffsetCommitRequest(mapOf(t1p to 100L), error)
         consumerClient.pollNoWakeup()
         consumerClient.pollNoWakeup() // second poll since coordinator disconnect is async
         coordinator.invokeCompletedOffsetCommitCallbacks()
+
         assertTrue(coordinator.coordinatorUnknown())
         assertIs<RetriableCommitFailedException>(firstCommitCallback.exception)
         assertIs<RetriableCommitFailedException>(secondCommitCallback.exception)
+        assertEquals(0, coordinator.inFlightAsyncCommits.get())
     }
 
     @Test
@@ -2905,16 +3146,38 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
     }
 
     @Test
-    fun testCommitOffsetMetadata() {
+    fun testCommitOffsetMetadataAsync() {
         subscriptions.assignFromUser(setOf(t1p))
+
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
+
         prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.NONE)
+
         val success = AtomicBoolean(false)
-        val offsets = mapOf(t1p to OffsetAndMetadata(offset = 100L, metadata = "hello"))
+
+        val offsetAndMetadata = OffsetAndMetadata(offset = 100L, metadata = "hello")
+        val offsets = mapOf(t1p to offsetAndMetadata)
         coordinator.commitOffsetsAsync(offsets, callback(offsets, success))
         coordinator.invokeCompletedOffsetCommitCallbacks()
         assertTrue(success.get())
+        assertEquals(0, coordinator.inFlightAsyncCommits.get())
+    }
+
+    @Test
+    fun testCommitOffsetMetadataSync() {
+        subscriptions.assignFromUser(setOf(t1p))
+
+        client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
+        coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
+
+        prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.NONE)
+
+        val offsetAndMetadata = OffsetAndMetadata(offset = 100L, metadata = "hello")
+
+        val offsets = mapOf(t1p to offsetAndMetadata)
+        val success = coordinator.commitOffsetsSync(offsets, time.timer(Long.MAX_VALUE))
+        assertTrue(success)
     }
 
     @Test
@@ -2927,6 +3190,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             offsets = mapOf(t1p to OffsetAndMetadata(100L)),
             callback = mockOffsetCommitCallback,
         )
+        assertEquals(0, coordinator.inFlightAsyncCommits.get())
         coordinator.invokeCompletedOffsetCommitCallbacks()
         assertEquals(invokedBeforeTest + 1, mockOffsetCommitCallback.invoked)
         assertNull(mockOffsetCommitCallback.exception)
@@ -2951,7 +3215,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             matcher = { body ->
                 val commitRequest = body as OffsetCommitRequest
                 commitRequest.data().memberId == OffsetCommitRequest.DEFAULT_MEMBER_ID
-                        && commitRequest.data().generationId == OffsetCommitRequest.DEFAULT_GENERATION_ID
+                        && commitRequest.data().generationIdOrMemberEpoch == OffsetCommitRequest.DEFAULT_GENERATION_ID
             },
             response = offsetCommitResponse(mapOf(t1p to Errors.NONE)),
         )
@@ -2962,6 +3226,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         )
         coordinator.invokeCompletedOffsetCommitCallbacks()
         assertTrue(success.get())
+        assertEquals(0, coordinator.inFlightAsyncCommits.get())
     }
 
     @Test
@@ -2977,6 +3242,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             offsets = mapOf(t1p to OffsetAndMetadata(100L)),
             callback = mockOffsetCommitCallback,
         )
+        assertEquals(0, coordinator.inFlightAsyncCommits.get())
         coordinator.invokeCompletedOffsetCommitCallbacks()
         assertEquals(invokedBeforeTest + 1, mockOffsetCommitCallback.invoked)
         assertIs<RetriableCommitFailedException>(mockOffsetCommitCallback.exception)
@@ -2994,7 +3260,9 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             Errors.COORDINATOR_NOT_AVAILABLE
         )
         coordinator.commitOffsetsAsync(mapOf(t1p to OffsetAndMetadata(100L)), cb)
+        assertEquals(0, coordinator.inFlightAsyncCommits.get())
         coordinator.invokeCompletedOffsetCommitCallbacks()
+
         assertTrue(coordinator.coordinatorUnknown())
         assertEquals(1, cb.invoked)
         assertIs<RetriableCommitFailedException>(cb.exception)
@@ -3009,7 +3277,9 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         val cb = MockCommitCallback()
         prepareOffsetCommitRequest(mapOf(t1p to 100L), Errors.NOT_COORDINATOR)
         coordinator.commitOffsetsAsync(mapOf(t1p to OffsetAndMetadata(100L)), cb)
+        assertEquals(0, coordinator.inFlightAsyncCommits.get())
         coordinator.invokeCompletedOffsetCommitCallbacks()
+
         assertTrue(coordinator.coordinatorUnknown())
         assertEquals(1, cb.invoked)
         assertIs<RetriableCommitFailedException>(cb.exception)
@@ -3024,7 +3294,9 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         val cb = MockCommitCallback()
         prepareOffsetCommitRequestDisconnect(mapOf(t1p to 100L))
         coordinator.commitOffsetsAsync(mapOf(t1p to OffsetAndMetadata(100L)), cb)
+        assertEquals(0, coordinator.inFlightAsyncCommits.get())
         coordinator.invokeCompletedOffsetCommitCallbacks()
+
         assertTrue(coordinator.coordinatorUnknown())
         assertEquals(1, cb.invoked)
         assertIs<RetriableCommitFailedException>(cb.exception)
@@ -3099,11 +3371,16 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
                 committedOffsets.add(secondOffset)
             }
         }
+        assertEquals(1, coordinator.inFlightAsyncCommits.get())
         thread.start()
+
         client.waitForRequests(2, 5000)
         respondToOffsetCommitRequest(mapOf(t1p to firstOffset.offset), Errors.NONE)
         respondToOffsetCommitRequest(mapOf(t1p to secondOffset.offset), Errors.NONE)
+
         thread.join()
+        assertEquals(0, coordinator.inFlightAsyncCommits.get())
+
         assertEquals(listOf(firstOffset, secondOffset), committedOffsets)
     }
 
@@ -4076,6 +4353,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
                 callback = MockCommitCallback(),
             )
         }
+        assertEquals(0, coordinator.inFlightAsyncCommits.get())
         assertFailsWith<FencedInstanceIdException> {
             coordinator.commitOffsetsSync(
                 offsets = mapOf(t1p to OffsetAndMetadata(100L)),
@@ -4340,33 +4618,19 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
 
     @Test
     fun testSubscriptionRackId() {
-        metrics.close()
-        coordinator.close(time.timer(0))
         val rackId = "rack-a"
-        metrics = Metrics(time = time)
-        val assignor = RackAwareAssignor()
-        coordinator = ConsumerCoordinator(
-            rebalanceConfig = rebalanceConfig!!,
-            logContext = LogContext(),
-            client = consumerClient,
-            assignors = listOf(assignor),
-            metadata = metadata,
-            subscriptions = subscriptions,
-            metrics = metrics,
-            metricGrpPrefix = consumerId + groupId,
-            time = time,
-            autoCommitEnabled = false,
-            autoCommitIntervalMs = autoCommitIntervalMs,
-            interceptors = null,
-            throwOnFetchStableOffsetsUnsupported = false,
-            rackId = rackId,
-        )
+        val assignor = RackAwareAssignor(protocol)
+        createRackAwareCoordinator(rackId, assignor)
+
         subscriptions.subscribe(setOf(topic1), rebalanceListener)
         client.updateMetadata(metadataResponse)
+
         client.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
         coordinator.ensureCoordinatorReady(time.timer(Long.MAX_VALUE))
+
         val memberSubscriptions = mapOf(consumerId to listOf(topic1))
         assignor.prepare(mutableMapOf(consumerId to mutableListOf(t1p)))
+
         client.prepareResponse(
             joinGroupLeaderResponse(
                 generationId = 1,
@@ -4378,6 +4642,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             )
         )
         client.prepareResponse(syncGroupResponse(listOf(t1p), Errors.NONE))
+
         coordinator.poll(time.timer(Long.MAX_VALUE))
         assertEquals(setOf(t1p), coordinator.subscriptionState().assignedPartitions())
         assertEquals(setOf(rackId), assignor.rackIds)
@@ -4457,6 +4722,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             offsets = mapOf(t1p to OffsetAndMetadata(100L)),
             callback = MockCommitCallback(),
         )
+        assertEquals(0, coordinator.inFlightAsyncCommits.get())
         coordinator.invokeCompletedOffsetCommitCallbacks()
     }
 
@@ -4770,6 +5036,28 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         }
     }
 
+    private fun createRackAwareCoordinator(rackId: String, assignor: MockPartitionAssignor) {
+        metrics.close()
+        coordinator.close(time.timer(0))
+        metrics = Metrics(time = time)
+        coordinator = ConsumerCoordinator(
+            rebalanceConfig = rebalanceConfig!!,
+            logContext = LogContext(),
+            client = consumerClient,
+            assignors = listOf(assignor),
+            metadata = metadata,
+            subscriptions = subscriptions,
+            metrics = metrics,
+            metricGrpPrefix = consumerId + groupId,
+            time = time,
+            autoCommitEnabled = false,
+            autoCommitIntervalMs = autoCommitIntervalMs,
+            interceptors = null,
+            throwOnFetchStableOffsetsUnsupported = false,
+            rackId = rackId,
+        )
+    }
+
     private fun joinAsFollowerAndReceiveAssignment(
         coordinator: ConsumerCoordinator,
         assignment: List<TopicPartition>,
@@ -4886,8 +5174,12 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         }
     }
 
-    private class RackAwareAssignor : MockPartitionAssignor(listOf(RebalanceProtocol.EAGER)) {
+    private class RackAwareAssignor(
+        rebalanceProtocol: RebalanceProtocol,
+    ) : MockPartitionAssignor(listOf(rebalanceProtocol)) {
+
         val rackIds: MutableSet<String> = HashSet()
+
         override fun assign(
             partitionsPerTopic: Map<String, Int>,
             subscriptions: Map<String, ConsumerPartitionAssignor.Subscription>,
@@ -4899,6 +5191,54 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
                 rackIds.add(subscription.rackId!!)
             }
             return super.assign(partitionsPerTopic, subscriptions)
+        }
+    }
+
+    companion object {
+
+        private fun rackAwareMetadata(
+            numNodes: Int,
+            racks: List<String>,
+            partitionReplicas: Map<String, List<List<Int>>>,
+        ): MetadataResponse {
+            val nodes: MutableList<Node> = java.util.ArrayList(numNodes)
+            for (i in 0..<numNodes) nodes.add(Node(i, "localhost", 1969 + i, racks[i % racks.size]))
+
+            val topicMetadata = mutableListOf<MetadataResponse.TopicMetadata>()
+            for ((topic, value) in partitionReplicas) {
+                val numPartitions = value.size
+                val partitionMetadata = List(numPartitions) { i ->
+                    val tp = TopicPartition(topic, i)
+                    val replicaIds = value[i]
+                    PartitionMetadata(
+                        error = Errors.NONE,
+                        topicPartition = tp,
+                        leaderId = replicaIds[0],
+                        leaderEpoch = null,
+                        replicaIds = replicaIds,
+                        inSyncReplicaIds = replicaIds,
+                        offlineReplicaIds = emptyList(),
+                    )
+                }
+                topicMetadata.add(
+                    MetadataResponse.TopicMetadata(
+                        error = Errors.NONE,
+                        topic = topic,
+                        topicId = Uuid.ZERO_UUID,
+                        isInternal = isInternal(topic),
+                        partitionMetadata = partitionMetadata,
+                        authorizedOperations = MetadataResponse.AUTHORIZED_OPERATIONS_OMITTED,
+                    )
+                )
+            }
+
+            return metadataResponse(
+                brokers = nodes,
+                clusterId = "kafka-cluster",
+                controllerId = 0,
+                topicMetadataList = topicMetadata,
+                responseVersion = ApiKeys.METADATA.latestVersion(),
+            )
         }
     }
 }

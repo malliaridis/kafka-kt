@@ -25,7 +25,7 @@ class OffsetFetchApplicationEvent(
     private val partitions: Set<TopicPartition>,
 ) : ApplicationEvent(Type.FETCH_COMMITTED_OFFSET) {
 
-    private val future: CompletableFuture<Map<TopicPartition, OffsetAndMetadata>> = CompletableFuture()
+    val future: CompletableFuture<Map<TopicPartition, OffsetAndMetadata>> = CompletableFuture()
 
     @Deprecated(
         message = "Use property instead",

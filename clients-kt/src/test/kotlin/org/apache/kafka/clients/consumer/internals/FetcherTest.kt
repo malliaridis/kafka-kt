@@ -30,8 +30,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import org.apache.kafka.clients.ApiVersions
-import org.apache.kafka.clients.ClientDnsLookup
-import org.apache.kafka.clients.ClientUtils.parseAndValidateAddresses
+import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.FetchSessionHandler
 import org.apache.kafka.clients.Metadata.LeaderAndEpoch
 import org.apache.kafka.clients.MockClient
@@ -40,12 +39,8 @@ import org.apache.kafka.clients.NetworkClient
 import org.apache.kafka.clients.NodeApiVersions
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener
 import org.apache.kafka.clients.consumer.ConsumerRecord
-import org.apache.kafka.clients.consumer.LogTruncationException
-import org.apache.kafka.clients.consumer.OffsetAndMetadata
-import org.apache.kafka.clients.consumer.OffsetAndTimestamp
 import org.apache.kafka.clients.consumer.OffsetOutOfRangeException
 import org.apache.kafka.clients.consumer.OffsetResetStrategy
-import org.apache.kafka.clients.consumer.internals.Fetcher.ListOffsetData
 import org.apache.kafka.clients.consumer.internals.SubscriptionState.FetchPosition
 import org.apache.kafka.common.IsolationLevel
 import org.apache.kafka.common.KafkaException
@@ -54,10 +49,8 @@ import org.apache.kafka.common.Node
 import org.apache.kafka.common.TopicIdPartition
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.Uuid
-import org.apache.kafka.common.errors.InvalidTopicException
 import org.apache.kafka.common.errors.RecordTooLargeException
 import org.apache.kafka.common.errors.SerializationException
-import org.apache.kafka.common.errors.TimeoutException
 import org.apache.kafka.common.errors.TopicAuthorizationException
 import org.apache.kafka.common.header.Header
 import org.apache.kafka.common.header.internals.RecordHeader
@@ -65,13 +58,6 @@ import org.apache.kafka.common.internals.ClusterResourceListeners
 import org.apache.kafka.common.message.ApiMessageType
 import org.apache.kafka.common.message.FetchResponseData
 import org.apache.kafka.common.message.FetchResponseData.AbortedTransaction
-import org.apache.kafka.common.message.ListOffsetsRequestData.ListOffsetsPartition
-import org.apache.kafka.common.message.ListOffsetsRequestData.ListOffsetsTopic
-import org.apache.kafka.common.message.ListOffsetsResponseData
-import org.apache.kafka.common.message.ListOffsetsResponseData.ListOffsetsPartitionResponse
-import org.apache.kafka.common.message.ListOffsetsResponseData.ListOffsetsTopicResponse
-import org.apache.kafka.common.message.OffsetForLeaderEpochRequestData
-import org.apache.kafka.common.message.OffsetForLeaderEpochRequestData.OffsetForLeaderPartition
 import org.apache.kafka.common.message.OffsetForLeaderEpochResponseData
 import org.apache.kafka.common.message.OffsetForLeaderEpochResponseData.OffsetForLeaderTopicResult
 import org.apache.kafka.common.metrics.MetricConfig
@@ -92,19 +78,10 @@ import org.apache.kafka.common.record.RecordBatch
 import org.apache.kafka.common.record.Records
 import org.apache.kafka.common.record.SimpleRecord
 import org.apache.kafka.common.record.TimestampType
-import org.apache.kafka.common.requests.AbstractRequest
-import org.apache.kafka.common.requests.ApiVersionsResponse
 import org.apache.kafka.common.requests.FetchMetadata
 import org.apache.kafka.common.requests.FetchRequest
 import org.apache.kafka.common.requests.FetchResponse
-import org.apache.kafka.common.requests.ListOffsetsRequest
-import org.apache.kafka.common.requests.ListOffsetsResponse
-import org.apache.kafka.common.requests.MetadataRequest
-import org.apache.kafka.common.requests.MetadataResponse
-import org.apache.kafka.common.requests.MetadataResponse.PartitionMetadata
-import org.apache.kafka.common.requests.OffsetsForLeaderEpochRequest
 import org.apache.kafka.common.requests.OffsetsForLeaderEpochResponse
-import org.apache.kafka.common.requests.RequestTestUtils.metadataResponse
 import org.apache.kafka.common.requests.RequestTestUtils.metadataUpdateWith
 import org.apache.kafka.common.requests.RequestTestUtils.metadataUpdateWithIds
 import org.apache.kafka.common.requests.RequestTestUtils.serializeResponseWithHeader
@@ -116,15 +93,23 @@ import org.apache.kafka.common.utils.BufferSupplier
 import org.apache.kafka.common.utils.ByteBufferOutputStream
 import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.MockTime
+import org.apache.kafka.common.utils.Timer
 import org.apache.kafka.common.utils.Utils.utf8
 import org.apache.kafka.test.DelayedReceive
 import org.apache.kafka.test.MockSelector
+import org.apache.kafka.test.TestUtils
 import org.apache.kafka.test.TestUtils.assertNullable
 import org.apache.kafka.test.TestUtils.checkEquals
 import org.apache.kafka.test.TestUtils.singletonCluster
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentCaptor
+import org.mockito.Mockito
+import org.mockito.kotlin.any
+import org.mockito.kotlin.spy
+import org.mockito.kotlin.times
+import org.mockito.kotlin.verify
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -194,7 +179,9 @@ class FetcherTest {
 
     private lateinit var metadata: ConsumerMetadata
 
-    private var metricsRegistry: FetchMetricsRegistry? = null
+    private lateinit var metricsRegistry: FetchMetricsRegistry
+
+    private lateinit var metricsManager: FetchMetricsManager
 
     private lateinit var client: MockClient
 
@@ -205,6 +192,8 @@ class FetcherTest {
     private lateinit var consumerClient: ConsumerNetworkClient
 
     private lateinit var fetcher: Fetcher<*, *>
+
+    private lateinit var offsetFetcher: OffsetFetcher
 
     private lateinit var records: MemoryRecords
 
@@ -281,6 +270,11 @@ class FetcherTest {
         }
     }
 
+    private fun sendFetches(): Int {
+        offsetFetcher.validatePositionsOnMetadataChange()
+        return fetcher.sendFetches()
+    }
+
     @Test
     fun testFetchNormal() {
         buildFetcher()
@@ -288,7 +282,7 @@ class FetcherTest {
         subscriptions.seek(tp0, 0)
 
         // normal fetch
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
         client.prepareResponse(
             fullFetchResponse(
@@ -318,7 +312,7 @@ class FetcherTest {
         buildFetcher()
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         subscriptions.markPendingRevocation(setOf(tp0))
         client.prepareResponse(
             fullFetchResponse(
@@ -334,13 +328,61 @@ class FetcherTest {
     }
 
     @Test
+    fun testCloseShouldBeIdempotent() {
+        buildFetcher()
+        fetcher.close()
+        fetcher.close()
+        fetcher.close()
+        verify(fetcher, times(1)).maybeCloseFetchSessions(any<Timer>())
+    }
+
+    @Test
+    fun testFetcherCloseClosesFetchSessionsInBroker() {
+        buildFetcher()
+        
+        assignFromUser(setOf(tp0))
+        subscriptions.seek(tp0, 0)
+
+        // normal fetch
+        assertEquals(1, sendFetches())
+        assertFalse(fetcher.hasCompletedFetches())
+        
+        val fetchResponse: FetchResponse = fullFetchResponse(
+            tp = tidp0,
+            records = records,
+            error = Errors.NONE,
+            hw = 100L,
+            throttleTime = 0,
+        )
+        client.prepareResponse(fetchResponse)
+        consumerClient.poll(time.timer(0))
+        assertTrue(fetcher.hasCompletedFetches())
+        assertEquals(0, consumerClient.pendingRequestCount())
+        
+        val argument = ArgumentCaptor.forClass(FetchRequest.Builder::class.java)
+
+        // send request to close the fetcher
+        fetcher.close(time.timer(Duration.ofSeconds(10)))
+
+        // validate that Fetcher.close() has sent a request with final epoch. 2 requests are sent, one for the normal
+        // fetch earlier and another for the finish fetch here.
+        verify(consumerClient, times(2)).send(any<Node>(), argument.capture())
+        val builder = argument.value
+        // session Id is the same
+        assertEquals(fetchResponse.sessionId(), builder.metadata().sessionId)
+        // contains final epoch
+        assertEquals(FetchMetadata.FINAL_EPOCH, builder.metadata().epoch) // final epoch indicates we want to close the session
+        assertTrue(builder.fetchData().isEmpty()) // partition data should be empty
+    }
+
+    @Test
     fun testFetchingPendingPartitions() {
         buildFetcher()
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
 
         // normal fetch
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         client.prepareResponse(
             response = fullFetchResponse(
@@ -359,7 +401,7 @@ class FetcherTest {
 
         // mark partition unfetchable
         subscriptions.markPendingRevocation(setOf(tp0))
-        assertEquals(0, fetcher.sendFetches())
+        assertEquals(0, sendFetches())
 
         consumerClient.poll(time.timer(0))
         assertFalse(fetcher.hasCompletedFetches())
@@ -377,7 +419,7 @@ class FetcherTest {
         subscriptions.seek(noId.topicPartition, 0)
 
         // Fetch should use request version 12
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
         client.prepareResponse(
             matcher = fetchRequestMatcher(
@@ -416,7 +458,7 @@ class FetcherTest {
         subscriptions.seek(tp.topicPartition, 0)
 
         // Fetch should use latest version
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
         client.prepareResponse(
             matcher = fetchRequestMatcher(
@@ -471,7 +513,7 @@ class FetcherTest {
         subscriptions.seek(foo.topicPartition, 0)
 
         // Fetch should use latest version.
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         client.prepareResponse(
             matcher = fetchRequestMatcher(
                 expectedVersion = ApiKeys.FETCH.latestVersion(),
@@ -511,7 +553,7 @@ class FetcherTest {
         subscriptions.seek(bar.topicPartition, 0)
 
         // Fetch should use latest version.
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
         client.prepareResponse(
             matcher = fetchRequestMatcher(
@@ -559,7 +601,7 @@ class FetcherTest {
         subscriptions.seek(fooWithOldTopicId.topicPartition, 0)
 
         // Fetch should use latest version.
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         client.prepareResponse(
             matcher = fetchRequestMatcher(
                 expectedVersion = ApiKeys.FETCH.latestVersion(),
@@ -599,7 +641,7 @@ class FetcherTest {
         subscriptions.seek(fooWithNewTopicId.topicPartition, 0)
 
         // Fetch should use latest version.
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
 
         // foo with old topic id should be removed from the session.
@@ -649,7 +691,7 @@ class FetcherTest {
         subscriptions.seek(fooWithoutId.topicPartition, 0)
 
         // Fetch should use version 12.
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         client.prepareResponse(
             matcher = fetchRequestMatcher(
@@ -690,7 +732,7 @@ class FetcherTest {
         subscriptions.seek(fooWithId.topicPartition, 0)
 
         // Fetch should use latest version.
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
 
         // foo with old topic id should be removed from the session.
@@ -733,7 +775,7 @@ class FetcherTest {
         subscriptions.seek(fooWithoutId.topicPartition, 0)
 
         // Fetch should use version 12.
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
 
         // foo with old topic id should be removed from the session.
@@ -826,7 +868,7 @@ class FetcherTest {
         builder.append(timestamp = 0L, key = "key".toByteArray(), value = "1".toByteArray())
         builder.append(timestamp = 0L, key = "key".toByteArray(), value = "2".toByteArray())
         val records = builder.build()
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
         client.prepareResponse(
             fullFetchResponse(
@@ -916,7 +958,7 @@ class FetcherTest {
         builder.close()
         buffer.flip()
         val records = MemoryRecords.readableRecords(buffer)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
         client.prepareResponse(
             fullFetchResponse(
@@ -933,7 +975,7 @@ class FetcherTest {
         assertTrue(partitionRecords.containsKey(tp0))
         assertEquals(6, partitionRecords[tp0]!!.size)
         for (record in partitionRecords[tp0]!!) {
-            val expectedLeaderEpoch = utf8(record.value).toInt()
+            val expectedLeaderEpoch = utf8(record.value!!).toInt()
             assertEquals(expectedLeaderEpoch, record.leaderEpoch)
         }
     }
@@ -945,7 +987,7 @@ class FetcherTest {
         subscriptions.seek(tp0, 0)
 
         // normal fetch
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
         client.prepareResponse(
             response = fullFetchResponse(
@@ -972,11 +1014,11 @@ class FetcherTest {
         val node = initialUpdateResponse.brokers().first()
         client.backoff(node, 500)
 
-        assertEquals(0, fetcher.sendFetches())
+        assertEquals(0, sendFetches())
 
         time.sleep(500)
 
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
     }
 
     @Test
@@ -986,7 +1028,7 @@ class FetcherTest {
         subscriptions.seek(tp0, 0)
 
         // normal fetch
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
 
         val producerId: Long = 1
@@ -1038,7 +1080,7 @@ class FetcherTest {
         buildFetcher()
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
         client.prepareResponse(
             fullFetchResponse(
@@ -1094,7 +1136,7 @@ class FetcherTest {
                 throttleTime = 0,
             )
         )
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         consumerClient.poll(time.timer(0))
         // The fetcher should block on Deserialization error
         for (i in 0..1) {
@@ -1206,7 +1248,7 @@ class FetcherTest {
         )
 
         // normal fetch
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         client.prepareResponse(
             fullFetchResponse(
                 tp = tidp0,
@@ -1256,7 +1298,7 @@ class FetcherTest {
         )
         // Should not throw exception after the seek.
         fetcher.collectFetch()
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         client.prepareResponse(
             fullFetchResponse(
                 tp = tidp0,
@@ -1310,7 +1352,7 @@ class FetcherTest {
         subscriptions.seek(tp0, 0)
 
         // normal fetch
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         client.prepareResponse(
             fullFetchResponse(
                 tp = tidp0,
@@ -1355,7 +1397,7 @@ class FetcherTest {
         subscriptions.seek(tp0, 0)
 
         // normal fetch
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         client.prepareResponse(
             fullFetchResponse(
                 tp = tidp0,
@@ -1403,7 +1445,7 @@ class FetcherTest {
             headers = headersArray2,
         )
         val memoryRecords = builder.build()
-        val records: List<ConsumerRecord<ByteArray, ByteArray>>
+        val records: List<ConsumerRecord<ByteArray?, ByteArray?>>
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 1)
         client.prepareResponse(
@@ -1416,7 +1458,7 @@ class FetcherTest {
                 throttleTime = 0,
             ),
         )
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         consumerClient.poll(time.timer(0))
         val recordsByPartition = fetchedRecords<ByteArray, ByteArray>()
         records = recordsByPartition[tp0]!!
@@ -1464,7 +1506,7 @@ class FetcherTest {
                 throttleTime = 0,
             )
         )
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         consumerClient.poll(time.timer(0))
         var recordsByPartition = fetchedRecords<ByteArray?, ByteArray?>()
         records = recordsByPartition[tp0]!!
@@ -1472,14 +1514,14 @@ class FetcherTest {
         assertEquals(3L, subscriptions.position(tp0)!!.offset)
         assertEquals(1, records[0].offset)
         assertEquals(2, records[1].offset)
-        assertEquals(0, fetcher.sendFetches())
+        assertEquals(0, sendFetches())
         consumerClient.poll(time.timer(0))
         recordsByPartition = fetchedRecords()
         records = recordsByPartition[tp0]!!
         assertEquals(1, records.size)
         assertEquals(4L, subscriptions.position(tp0)!!.offset)
         assertEquals(3, records[0].offset)
-        assertTrue(fetcher.sendFetches() > 0)
+        assertTrue(sendFetches() > 0)
         consumerClient.poll(time.timer(0))
         recordsByPartition = fetchedRecords()
         records = recordsByPartition[tp0]!!
@@ -1497,7 +1539,7 @@ class FetcherTest {
     @Test
     fun testFetchAfterPartitionWithFetchedRecordsIsUnassigned() {
         buildFetcher(maxPollRecords = 2)
-        var records: List<ConsumerRecord<ByteArray, ByteArray>>
+        var records: List<ConsumerRecord<ByteArray?, ByteArray?>>
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 1)
 
@@ -1512,9 +1554,9 @@ class FetcherTest {
                 throttleTime = 0,
             ),
         )
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         consumerClient.poll(time.timer(0))
-        val recordsByPartition = fetchedRecords<ByteArray, ByteArray>()
+        val recordsByPartition = fetchedRecords<ByteArray?, ByteArray?>()
         records = recordsByPartition[tp0]!!
         assertEquals(2, records.size)
         assertEquals(3L, subscriptions.position(tp0)!!.offset)
@@ -1532,9 +1574,9 @@ class FetcherTest {
             ),
         )
         subscriptions.seek(tp1, 4)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         consumerClient.poll(time.timer(0))
-        val fetchedRecords = fetchedRecords<ByteArray, ByteArray>()
+        val fetchedRecords = fetchedRecords<ByteArray?, ByteArray?>()
         assertNull(fetchedRecords[tp0])
         records = fetchedRecords[tp1]!!
         assertEquals(2, records.size)
@@ -1558,12 +1600,12 @@ class FetcherTest {
         builder.appendWithOffset(20L, 0L, "key".toByteArray(), "value-2".toByteArray())
         builder.appendWithOffset(30L, 0L, "key".toByteArray(), "value-3".toByteArray())
         val records = builder.build()
-        val consumerRecords: List<ConsumerRecord<ByteArray, ByteArray>>
+        val consumerRecords: List<ConsumerRecord<ByteArray?, ByteArray?>>
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
 
         // normal fetch
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         client.prepareResponse(
             response = fullFetchResponse(
                 tp = tidp0,
@@ -1574,7 +1616,7 @@ class FetcherTest {
             ),
         )
         consumerClient.poll(time.timer(0))
-        val recordsByPartition = fetchedRecords<ByteArray, ByteArray>()
+        val recordsByPartition = fetchedRecords<ByteArray?, ByteArray?>()
         consumerRecords = recordsByPartition[tp0]!!
         assertEquals(3, consumerRecords.size)
         assertEquals(31L, subscriptions.position(tp0)!!.offset) // this is the next fetching position
@@ -1629,7 +1671,7 @@ class FetcherTest {
     private fun makeFetchRequestWithIncompleteRecord() {
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
         val partialRecord = MemoryRecords.readableRecords(
             ByteBuffer.wrap(ByteArray(8) { 0 })
@@ -1654,7 +1696,7 @@ class FetcherTest {
         subscriptions.seek(tp0, 0)
 
         // resize the limit of the buffer to pretend it is only fetch-size large
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         client.prepareResponse(
             fullFetchResponse(
                 tp = tidp0,
@@ -1687,7 +1729,7 @@ class FetcherTest {
                 topicIds = topicIds,
             )
         )
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         // Now the eager rebalance happens and fetch positions are cleared
         subscriptions.assignFromSubscribed(emptyList())
@@ -1721,7 +1763,7 @@ class FetcherTest {
                 topicIds = topicIds,
             )
         )
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         // Now the cooperative rebalance happens and fetch positions are NOT cleared for unrevoked partitions
         subscriptions.assignFromSubscribed(setOf(tp0))
@@ -1747,7 +1789,7 @@ class FetcherTest {
         buildFetcher()
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         subscriptions.pause(tp0)
         client.prepareResponse(
             fullFetchResponse(
@@ -1768,7 +1810,7 @@ class FetcherTest {
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
         subscriptions.pause(tp0)
-        assertFalse(fetcher.sendFetches() > 0)
+        assertFalse(sendFetches() > 0)
         assertTrue(client.requests().isEmpty())
     }
 
@@ -1777,7 +1819,7 @@ class FetcherTest {
         buildFetcher()
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         subscriptions.pause(tp0)
         client.prepareResponse(
             fullFetchResponse(
@@ -1796,7 +1838,7 @@ class FetcherTest {
             fetcher.hasAvailableFetches(),
             "Should not have any available (non-paused) completed fetches"
         )
-        assertEquals(0, fetcher.sendFetches())
+        assertEquals(0, sendFetches())
 
         subscriptions.resume(tp0)
 
@@ -1824,7 +1866,7 @@ class FetcherTest {
 
         // #1 seek, request, poll, response
         subscriptions.seekUnvalidated(tp0, FetchPosition(1, null, metadata.currentLeader(tp0)))
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         client.prepareResponse(
             response = fullFetchResponse(
                 tp = tidp0,
@@ -1846,7 +1888,7 @@ class FetcherTest {
             ),
         )
 
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         client.prepareResponse(
             fullFetchResponse(
@@ -1872,14 +1914,13 @@ class FetcherTest {
     @Test
     fun testFetchOnCompletedFetchesForAllPausedPartitions() {
         buildFetcher()
-        var fetchedRecords: Map<TopicPartition?, List<ConsumerRecord<ByteArray?, ByteArray?>?>?>
         assignFromUser(setOf(tp0, tp1))
 
         // seek to tp0 and tp1 in two polls to generate 2 complete requests and responses
 
         // #1 seek, request, poll, response
         subscriptions.seekUnvalidated(tp0, FetchPosition(1, null, metadata.currentLeader(tp0)))
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         client.prepareResponse(
             response = fullFetchResponse(
                 tp = tidp0,
@@ -1893,7 +1934,7 @@ class FetcherTest {
 
         // #2 seek, request, poll, response
         subscriptions.seekUnvalidated(tp1, FetchPosition(1, null, metadata.currentLeader(tp1)))
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         client.prepareResponse(
             fullFetchResponse(
                 tp = tidp1,
@@ -1922,7 +1963,7 @@ class FetcherTest {
         buildFetcher(maxPollRecords = 2)
         assignFromUser(setOf(tp0, tp1))
         subscriptions.seek(tp0, 1)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         client.prepareResponse(
             response = fullFetchResponse(
                 tp = tidp0,
@@ -1958,12 +1999,12 @@ class FetcherTest {
     }
 
     @Test
-    fun testFetchDiscardedAfterPausedPartitionResumedAndSeekedToNewOffset() {
+    fun testFetchDiscardedAfterPausedPartitionResumedAndSoughtToNewOffset() {
         buildFetcher()
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
 
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         subscriptions.pause(tp0)
         client.prepareResponse(
@@ -1986,7 +2027,7 @@ class FetcherTest {
         assertEquals(
             expected = emptyMap(),
             actual = fetch.records(),
-            message = "Should not return any records because we seeked to a new offset",
+            message = "Should not return any records because we sought to a new offset",
         )
         assertFalse(fetch.positionAdvanced())
         assertFalse(fetcher.hasCompletedFetches(), "Should have no completed fetches")
@@ -1998,7 +2039,7 @@ class FetcherTest {
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
 
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         client.prepareResponse(
             fullFetchResponse(
@@ -2019,7 +2060,7 @@ class FetcherTest {
         buildFetcher()
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         client.prepareResponse(
             fullFetchResponse(
                 tp = tidp0,
@@ -2040,7 +2081,7 @@ class FetcherTest {
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
 
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         client.prepareResponse(
             fullFetchResponse(
@@ -2062,7 +2103,7 @@ class FetcherTest {
         buildFetcher()
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         client.prepareResponse(
             fetchResponseWithTopLevelError(
                 tp = tidp0,
@@ -2081,7 +2122,7 @@ class FetcherTest {
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
 
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         client.prepareResponse(
             fullFetchResponse(
@@ -2104,7 +2145,7 @@ class FetcherTest {
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
 
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         client.prepareResponse(
             fullFetchResponse(
@@ -2131,7 +2172,7 @@ class FetcherTest {
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
 
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         client.prepareResponse(
             fullFetchResponse(
@@ -2166,7 +2207,7 @@ class FetcherTest {
         )
         client.updateMetadata(metadataResponse)
         subscriptions.seek(tp0, 10)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         // Check for epoch in outgoing request
         val matcher = RequestMatcher { body ->
@@ -2201,7 +2242,7 @@ class FetcherTest {
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
 
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         client.prepareResponse(
             response = fullFetchResponse(
@@ -2228,7 +2269,7 @@ class FetcherTest {
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
 
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         client.prepareResponse(
             response = fullFetchResponse(
@@ -2259,7 +2300,7 @@ class FetcherTest {
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
 
-        assertTrue(fetcher.sendFetches() > 0)
+        assertTrue(sendFetches() > 0)
 
         client.prepareResponse(
             response = fullFetchResponse(
@@ -2290,7 +2331,7 @@ class FetcherTest {
         )
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
-        fetcher.sendFetches()
+        sendFetches()
         client.prepareResponse(
             response = fullFetchResponse(
                 tp = tidp0,
@@ -2325,7 +2366,7 @@ class FetcherTest {
         subscriptions.seek(tp0, 1)
         subscriptions.seek(tp1, 1)
 
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         val partitions = mapOf(
             tidp1 to FetchResponseData.PartitionData()
@@ -2346,7 +2387,7 @@ class FetcherTest {
             )
         )
         consumerClient.poll(time.timer(0))
-        val allFetchedRecords = mutableListOf<ConsumerRecord<ByteArray, ByteArray>>()
+        val allFetchedRecords = mutableListOf<ConsumerRecord<ByteArray?, ByteArray?>>()
         fetchRecordsInto(allFetchedRecords)
 
         assertEquals(1, subscriptions.position(tp0)!!.offset)
@@ -2360,8 +2401,8 @@ class FetcherTest {
         assertEquals(3, allFetchedRecords.size)
     }
 
-    private fun fetchRecordsInto(allFetchedRecords: MutableList<ConsumerRecord<ByteArray, ByteArray>>) {
-        val fetchedRecords = fetchedRecords<ByteArray, ByteArray>()
+    private fun fetchRecordsInto(allFetchedRecords: MutableList<ConsumerRecord<ByteArray?, ByteArray?>>) {
+        val fetchedRecords = fetchedRecords<ByteArray?, ByteArray?>()
         fetchedRecords.values.forEach { allFetchedRecords.addAll(it) }
     }
 
@@ -2380,7 +2421,7 @@ class FetcherTest {
         subscriptions.seek(tp1, 1)
         subscriptions.seek(tp2, 1)
         subscriptions.seek(tp3, 1)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         val partitions = mapOf(
             tidp1 to FetchResponseData.PartitionData()
                 .setPartitionIndex(tp1.partition)
@@ -2413,8 +2454,8 @@ class FetcherTest {
             )
         )
         consumerClient.poll(time.timer(0))
-        val fetchedRecords = mutableListOf<ConsumerRecord<ByteArray, ByteArray>>()
-        var recordsByPartition = fetchedRecords<ByteArray, ByteArray>()
+        val fetchedRecords = mutableListOf<ConsumerRecord<ByteArray?, ByteArray?>>()
+        var recordsByPartition = fetchedRecords<ByteArray?, ByteArray?>()
         for (records in recordsByPartition.values) fetchedRecords.addAll(records)
 
         assertEquals(fetchedRecords.size.toLong(), subscriptions.position(tp1)!!.offset - 1)
@@ -2470,7 +2511,7 @@ class FetcherTest {
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 1)
 
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         var partitions = mapOf(
             tidp0 to FetchResponseData.PartitionData()
@@ -2494,7 +2535,7 @@ class FetcherTest {
         subscriptions.assignFromUser(setOf(tp0, tp1))
         subscriptions.seekUnvalidated(tp1, FetchPosition(1, null, metadata.currentLeader(tp1)))
 
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         partitions = mapOf(
             tidp1 to FetchResponseData.PartitionData()
@@ -2526,7 +2567,7 @@ class FetcherTest {
         buildFetcher()
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         client.prepareResponse(
             response = fullFetchResponse(
                 tp = tidp0,
@@ -2546,808 +2587,6 @@ class FetcherTest {
         assertEquals(0, subscriptions.position(tp0)!!.offset)
     }
 
-    @Test
-    fun testUpdateFetchPositionNoOpWithPositionSet() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        subscriptions.seek(tp0, 5L)
-        fetcher.resetOffsetsIfNeeded()
-
-        assertFalse(client.hasInFlightRequests())
-        assertTrue(subscriptions.isFetchable(tp0))
-        assertEquals(5, subscriptions.position(tp0)!!.offset)
-    }
-
-    @Test
-    fun testUpdateFetchPositionResetToDefaultOffset() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        subscriptions.requestOffsetReset(tp0)
-        client.prepareResponse(
-            matcher = listOffsetRequestMatcher(
-                timestamp = ListOffsetsRequest.EARLIEST_TIMESTAMP,
-                leaderEpoch = validLeaderEpoch,
-            ),
-            response = listOffsetResponse(
-                error = Errors.NONE,
-                timestamp = 1L,
-                offset = 5L,
-            ),
-        )
-        fetcher.resetOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-
-        assertFalse(subscriptions.isOffsetResetNeeded(tp0))
-        assertTrue(subscriptions.isFetchable(tp0))
-        assertEquals(5, subscriptions.position(tp0)!!.offset)
-    }
-
-    @Test
-    fun testUpdateFetchPositionResetToLatestOffset() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        subscriptions.requestOffsetReset(tp0, OffsetResetStrategy.LATEST)
-        client.updateMetadata(initialUpdateResponse)
-        client.prepareResponse(
-            matcher = listOffsetRequestMatcher(ListOffsetsRequest.LATEST_TIMESTAMP),
-            response = listOffsetResponse(
-                error = Errors.NONE,
-                timestamp = 1L,
-                offset = 5L,
-            ),
-        )
-        fetcher.resetOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-
-        assertFalse(subscriptions.isOffsetResetNeeded(tp0))
-        assertTrue(subscriptions.isFetchable(tp0))
-        assertEquals(5, subscriptions.position(tp0)!!.offset)
-    }
-
-    /**
-     * Make sure the client behaves appropriately when receiving an exception for unavailable offsets
-     */
-    @Test
-    fun testFetchOffsetErrors() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        subscriptions.requestOffsetReset(tp0, OffsetResetStrategy.LATEST)
-
-        // Fail with OFFSET_NOT_AVAILABLE
-        client.prepareResponse(
-            matcher = listOffsetRequestMatcher(
-                timestamp = ListOffsetsRequest.LATEST_TIMESTAMP,
-                leaderEpoch = validLeaderEpoch,
-            ),
-            response = listOffsetResponse(
-                error = Errors.OFFSET_NOT_AVAILABLE,
-                timestamp = 1L,
-                offset = 5L
-            ),
-            disconnected = false,
-        )
-        fetcher.resetOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-        assertFalse(subscriptions.hasValidPosition(tp0))
-        assertTrue(subscriptions.isOffsetResetNeeded(tp0))
-        assertFalse(subscriptions.isFetchable(tp0))
-
-        // Fail with LEADER_NOT_AVAILABLE
-        time.sleep(retryBackoffMs)
-        client.prepareResponse(
-            matcher = listOffsetRequestMatcher(
-                timestamp = ListOffsetsRequest.LATEST_TIMESTAMP,
-                leaderEpoch = validLeaderEpoch,
-            ),
-            response = listOffsetResponse(
-                error = Errors.LEADER_NOT_AVAILABLE,
-                timestamp = 1L,
-                offset = 5L
-            ),
-            disconnected = false,
-        )
-        fetcher.resetOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-
-        assertFalse(subscriptions.hasValidPosition(tp0))
-        assertTrue(subscriptions.isOffsetResetNeeded(tp0))
-        assertFalse(subscriptions.isFetchable(tp0))
-
-        // Back to normal
-        time.sleep(retryBackoffMs)
-        client.prepareResponse(
-            matcher = listOffsetRequestMatcher(ListOffsetsRequest.LATEST_TIMESTAMP),
-            response = listOffsetResponse(error = Errors.NONE, timestamp = 1L, offset = 5L),
-            disconnected = false,
-        )
-        fetcher.resetOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-        assertTrue(subscriptions.hasValidPosition(tp0))
-        assertFalse(subscriptions.isOffsetResetNeeded(tp0))
-        assertTrue(subscriptions.isFetchable(tp0))
-        assertEquals(subscriptions.position(tp0)!!.offset, 5L)
-    }
-
-    @Test
-    fun testListOffsetSendsReadUncommitted() = testListOffsetsSendsIsolationLevel(IsolationLevel.READ_UNCOMMITTED)
-
-    @Test
-    fun testListOffsetSendsReadCommitted() = testListOffsetsSendsIsolationLevel(IsolationLevel.READ_COMMITTED)
-
-    private fun testListOffsetsSendsIsolationLevel(isolationLevel: IsolationLevel) {
-        buildFetcher(
-            offsetResetStrategy = OffsetResetStrategy.EARLIEST,
-            keyDeserializer = ByteArrayDeserializer(),
-            valueDeserializer = ByteArrayDeserializer(),
-            maxPollRecords = Int.MAX_VALUE,
-            isolationLevel = isolationLevel,
-        )
-        assignFromUser(setOf(tp0))
-        subscriptions.requestOffsetReset(tp0, OffsetResetStrategy.LATEST)
-        client.prepareResponse(
-            matcher = { body ->
-                val request = body as? ListOffsetsRequest
-                request?.isolationLevel == isolationLevel
-            },
-            response = listOffsetResponse(error = Errors.NONE, timestamp = 1L, offset = 5L),
-        )
-        fetcher.resetOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-
-        assertFalse(subscriptions.isOffsetResetNeeded(tp0))
-        assertTrue(subscriptions.isFetchable(tp0))
-        assertEquals(5, subscriptions.position(tp0)!!.offset)
-    }
-
-    @Test
-    fun testResetOffsetsSkipsBlackedOutConnections() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        subscriptions.requestOffsetReset(tp0, OffsetResetStrategy.EARLIEST)
-
-        // Check that we skip sending the ListOffset request when the node is blacked out
-        client.updateMetadata(initialUpdateResponse)
-        val node = initialUpdateResponse.brokers().first()
-        client.backoff(node, 500)
-        fetcher.resetOffsetsIfNeeded()
-
-        assertEquals(0, consumerClient.pendingRequestCount())
-
-        consumerClient.pollNoWakeup()
-
-        assertTrue(subscriptions.isOffsetResetNeeded(tp0))
-        assertEquals(OffsetResetStrategy.EARLIEST, subscriptions.resetStrategy(tp0))
-
-        time.sleep(500)
-        client.prepareResponse(
-            matcher = listOffsetRequestMatcher(ListOffsetsRequest.EARLIEST_TIMESTAMP),
-            response = listOffsetResponse(error = Errors.NONE, timestamp = 1L, offset = 5L),
-        )
-        fetcher.resetOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-
-        assertFalse(subscriptions.isOffsetResetNeeded(tp0))
-        assertTrue(subscriptions.isFetchable(tp0))
-        assertEquals(5, subscriptions.position(tp0)!!.offset)
-    }
-
-    @Test
-    fun testUpdateFetchPositionResetToEarliestOffset() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        subscriptions.requestOffsetReset(tp0, OffsetResetStrategy.EARLIEST)
-        client.prepareResponse(
-            matcher = listOffsetRequestMatcher(
-                timestamp = ListOffsetsRequest.EARLIEST_TIMESTAMP,
-                leaderEpoch = validLeaderEpoch,
-            ),
-            response = listOffsetResponse(error = Errors.NONE, timestamp = 1L, offset = 5L),
-        )
-        fetcher.resetOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-
-        assertFalse(subscriptions.isOffsetResetNeeded(tp0))
-        assertTrue(subscriptions.isFetchable(tp0))
-        assertEquals(5, subscriptions.position(tp0)!!.offset)
-    }
-
-    @Test
-    fun testResetOffsetsMetadataRefresh() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        subscriptions.requestOffsetReset(tp0, OffsetResetStrategy.LATEST)
-
-        // First fetch fails with stale metadata
-        client.prepareResponse(
-            matcher = listOffsetRequestMatcher(
-                timestamp = ListOffsetsRequest.LATEST_TIMESTAMP,
-                leaderEpoch = validLeaderEpoch,
-            ),
-            response = listOffsetResponse(
-                error = Errors.NOT_LEADER_OR_FOLLOWER,
-                timestamp = 1L,
-                offset = 5L,
-            ),
-            disconnected = false,
-        )
-        fetcher.resetOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-        assertFalse(subscriptions.hasValidPosition(tp0))
-
-        // Expect a metadata refresh
-        client.prepareMetadataUpdate(initialUpdateResponse)
-        consumerClient.pollNoWakeup()
-        assertFalse(client.hasPendingMetadataUpdates())
-
-        // Next fetch succeeds
-        time.sleep(retryBackoffMs)
-        client.prepareResponse(
-            matcher = listOffsetRequestMatcher(ListOffsetsRequest.LATEST_TIMESTAMP),
-            response = listOffsetResponse(error = Errors.NONE, timestamp = 1L, offset = 5L),
-        )
-        fetcher.resetOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-
-        assertFalse(subscriptions.isOffsetResetNeeded(tp0))
-        assertTrue(subscriptions.isFetchable(tp0))
-        assertEquals(5, subscriptions.position(tp0)!!.offset)
-    }
-
-    @Test
-    fun testListOffsetNoUpdateMissingEpoch() {
-        buildFetcher()
-
-        // Set up metadata with no leader epoch
-        subscriptions.assignFromUser(setOf(tp0))
-        val metadataWithNoLeaderEpochs = metadataUpdateWith(
-            clusterId = "kafka-cluster",
-            numNodes = 1,
-            topicErrors = emptyMap(),
-            topicPartitionCounts = mapOf(topicName to 4),
-            epochSupplier = { null },
-            topicIds = topicIds,
-        )
-        client.updateMetadata(metadataWithNoLeaderEpochs)
-
-        // Return a ListOffsets response with leaderEpoch=1, we should ignore it
-        subscriptions.requestOffsetReset(tp0, OffsetResetStrategy.LATEST)
-        client.prepareResponse(
-            matcher = listOffsetRequestMatcher(ListOffsetsRequest.LATEST_TIMESTAMP),
-            response = listOffsetResponse(
-                tp = tp0,
-                error = Errors.NONE,
-                timestamp = 1L,
-                offset = 5L,
-                leaderEpoch = 1,
-            ),
-        )
-        fetcher.resetOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-
-        // Reset should be satisfied and no metadata update requested
-        assertFalse(subscriptions.isOffsetResetNeeded(tp0))
-        assertFalse(metadata.updateRequested())
-        assertNull(metadata.lastSeenLeaderEpoch(tp0))
-    }
-
-    @Test
-    fun testListOffsetUpdateEpoch() {
-        buildFetcher()
-
-        // Set up metadata with leaderEpoch=1
-        subscriptions.assignFromUser(setOf(tp0))
-        val metadataWithLeaderEpochs = metadataUpdateWith(
-            clusterId = "kafka-cluster",
-            numNodes = 1,
-            topicErrors = emptyMap(),
-            topicPartitionCounts = mapOf(topicName to 4),
-            epochSupplier = { 1 },
-            topicIds = topicIds,
-        )
-        client.updateMetadata(metadataWithLeaderEpochs)
-
-        // Reset offsets to trigger ListOffsets call
-        subscriptions.requestOffsetReset(tp0, OffsetResetStrategy.LATEST)
-
-        // Now we see a ListOffsets with leaderEpoch=2 epoch, we trigger a metadata update
-        client.prepareResponse(
-            matcher = listOffsetRequestMatcher(ListOffsetsRequest.LATEST_TIMESTAMP, 1),
-            response = listOffsetResponse(
-                tp = tp0,
-                error = Errors.NONE,
-                timestamp = 1L,
-                offset = 5L,
-                leaderEpoch = 2,
-            ),
-        )
-        fetcher.resetOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-        assertFalse(subscriptions.isOffsetResetNeeded(tp0))
-        assertTrue(metadata.updateRequested())
-        assertNullable(metadata.lastSeenLeaderEpochs[tp0]) { epoch ->
-            assertEquals(epoch, 2)
-        }
-    }
-
-    @Test
-    fun testUpdateFetchPositionDisconnect() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        subscriptions.requestOffsetReset(tp0, OffsetResetStrategy.LATEST)
-
-        // First request gets a disconnect
-        client.prepareResponse(
-            matcher = listOffsetRequestMatcher(
-                timestamp = ListOffsetsRequest.LATEST_TIMESTAMP,
-                leaderEpoch = validLeaderEpoch,
-            ),
-            response = listOffsetResponse(
-                error = Errors.NONE,
-                timestamp = 1L,
-                offset = 5L,
-            ),
-            disconnected = true,
-        )
-        fetcher.resetOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-        assertFalse(subscriptions.hasValidPosition(tp0))
-
-        // Expect a metadata refresh
-        client.prepareMetadataUpdate(initialUpdateResponse)
-        consumerClient.pollNoWakeup()
-        assertFalse(client.hasPendingMetadataUpdates())
-
-        // No retry until the backoff passes
-        fetcher.resetOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-        assertFalse(client.hasInFlightRequests())
-        assertFalse(subscriptions.hasValidPosition(tp0))
-
-        // Next one succeeds
-        time.sleep(retryBackoffMs)
-        client.prepareResponse(
-            matcher = listOffsetRequestMatcher(ListOffsetsRequest.LATEST_TIMESTAMP),
-            response = listOffsetResponse(error = Errors.NONE, timestamp = 1L, offset = 5L),
-        )
-        fetcher.resetOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-
-        assertFalse(subscriptions.isOffsetResetNeeded(tp0))
-        assertTrue(subscriptions.isFetchable(tp0))
-        assertEquals(5, subscriptions.position(tp0)!!.offset)
-    }
-
-    @Test
-    fun testAssignmentChangeWithInFlightReset() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        subscriptions.requestOffsetReset(tp0, OffsetResetStrategy.LATEST)
-
-        // Send the ListOffsets request to reset the position
-        fetcher.resetOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-        assertFalse(subscriptions.hasValidPosition(tp0))
-        assertTrue(client.hasInFlightRequests())
-
-        // Now we have an assignment change
-        assignFromUser(setOf(tp1))
-
-        // The response returns and is discarded
-        client.respond(listOffsetResponse(Errors.NONE, 1L, 5L))
-        consumerClient.pollNoWakeup()
-        assertFalse(client.hasPendingResponses())
-        assertFalse(client.hasInFlightRequests())
-        assertFalse(subscriptions.isAssigned(tp0))
-    }
-
-    @Test
-    fun testSeekWithInFlightReset() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        subscriptions.requestOffsetReset(tp0, OffsetResetStrategy.LATEST)
-
-        // Send the ListOffsets request to reset the position
-        fetcher.resetOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-        assertFalse(subscriptions.hasValidPosition(tp0))
-        assertTrue(client.hasInFlightRequests())
-
-        // Now we get a seek from the user
-        subscriptions.seek(tp0, 237)
-
-        // The response returns and is discarded
-        client.respond(listOffsetResponse(Errors.NONE, 1L, 5L))
-        consumerClient.pollNoWakeup()
-        assertFalse(client.hasPendingResponses())
-        assertFalse(client.hasInFlightRequests())
-        assertEquals(237L, subscriptions.position(tp0)!!.offset)
-    }
-
-    private fun listOffsetMatchesExpectedReset(
-        tp: TopicPartition,
-        strategy: OffsetResetStrategy,
-        request: AbstractRequest,
-    ): Boolean {
-        assertIs<ListOffsetsRequest>(request)
-        assertEquals(
-            expected = setOf(tp.topic),
-            actual = request.data().topics.map(ListOffsetsTopic::name).toSet(),
-        )
-        val listTopic = request.data().topics[0]
-        assertEquals(
-            expected = setOf(tp.partition),
-            actual = listTopic.partitions.map(ListOffsetsPartition::partitionIndex).toSet(),
-        )
-        val listPartition = listTopic.partitions[0]
-        if (strategy === OffsetResetStrategy.EARLIEST)
-            assertEquals(ListOffsetsRequest.EARLIEST_TIMESTAMP, listPartition.timestamp)
-        else if (strategy === OffsetResetStrategy.LATEST)
-            assertEquals(ListOffsetsRequest.LATEST_TIMESTAMP, listPartition.timestamp)
-
-        return true
-    }
-
-    @Test
-    fun testEarlierOffsetResetArrivesLate() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        subscriptions.requestOffsetReset(tp0, OffsetResetStrategy.EARLIEST)
-        fetcher.resetOffsetsIfNeeded()
-        client.prepareResponse(
-            matcher = { req ->
-                assertNotNull(req)
-                if (listOffsetMatchesExpectedReset(tp0, OffsetResetStrategy.EARLIEST, req)) {
-                    // Before the response is handled, we get a request to reset to the latest offset
-                    subscriptions.requestOffsetReset(tp0, OffsetResetStrategy.LATEST)
-                    true
-                } else false
-            },
-            response = listOffsetResponse(
-                error = Errors.NONE,
-                timestamp = 1L,
-                offset = 0L,
-            ),
-        )
-        consumerClient.pollNoWakeup()
-
-        // The list offset result should be ignored
-        assertTrue(subscriptions.isOffsetResetNeeded(tp0))
-        assertEquals(OffsetResetStrategy.LATEST, subscriptions.resetStrategy(tp0))
-        fetcher.resetOffsetsIfNeeded()
-        client.prepareResponse(
-            matcher = { req ->
-                listOffsetMatchesExpectedReset(
-                    tp = tp0,
-                    strategy = OffsetResetStrategy.LATEST,
-                    request = req!!,
-                )
-            },
-            response = listOffsetResponse(
-                error = Errors.NONE,
-                timestamp = 1L,
-                offset = 10L,
-            ),
-        )
-        consumerClient.pollNoWakeup()
-        assertFalse(subscriptions.isOffsetResetNeeded(tp0))
-        assertEquals(10, subscriptions.position(tp0)!!.offset)
-    }
-
-    @Test
-    fun testChangeResetWithInFlightReset() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        subscriptions.requestOffsetReset(tp0, OffsetResetStrategy.LATEST)
-
-        // Send the ListOffsets request to reset the position
-        fetcher.resetOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-        assertFalse(subscriptions.hasValidPosition(tp0))
-        assertTrue(client.hasInFlightRequests())
-
-        // Now we get a seek from the user
-        subscriptions.requestOffsetReset(tp0, OffsetResetStrategy.EARLIEST)
-
-        // The response returns and is discarded
-        client.respond(listOffsetResponse(Errors.NONE, 1L, 5L))
-        consumerClient.pollNoWakeup()
-        assertFalse(client.hasPendingResponses())
-        assertFalse(client.hasInFlightRequests())
-        assertTrue(subscriptions.isOffsetResetNeeded(tp0))
-        assertEquals(OffsetResetStrategy.EARLIEST, subscriptions.resetStrategy(tp0))
-    }
-
-    @Test
-    fun testIdempotentResetWithInFlightReset() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        subscriptions.requestOffsetReset(tp0, OffsetResetStrategy.LATEST)
-
-        // Send the ListOffsets request to reset the position
-        fetcher.resetOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-        assertFalse(subscriptions.hasValidPosition(tp0))
-        assertTrue(client.hasInFlightRequests())
-
-        // Now we get a seek from the user
-        subscriptions.requestOffsetReset(tp0, OffsetResetStrategy.LATEST)
-        client.respond(listOffsetResponse(Errors.NONE, 1L, 5L))
-        consumerClient.pollNoWakeup()
-        assertFalse(client.hasInFlightRequests())
-        assertFalse(subscriptions.isOffsetResetNeeded(tp0))
-        assertEquals(5L, subscriptions.position(tp0)!!.offset)
-    }
-
-    @Test
-    fun testRestOffsetsAuthorizationFailure() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        subscriptions.requestOffsetReset(tp0, OffsetResetStrategy.LATEST)
-
-        // First request gets a disconnect
-        client.prepareResponse(
-            matcher = listOffsetRequestMatcher(
-                timestamp = ListOffsetsRequest.LATEST_TIMESTAMP,
-                leaderEpoch = validLeaderEpoch,
-            ),
-            response = listOffsetResponse(
-                error = Errors.TOPIC_AUTHORIZATION_FAILED,
-                timestamp = -1,
-                offset = -1,
-            ),
-            disconnected = false,
-        )
-        fetcher.resetOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-        assertFalse(subscriptions.hasValidPosition(tp0))
-
-        val error = assertFailsWith<TopicAuthorizationException>(
-            message = "Expected authorization error to be raised",
-        ) { fetcher.resetOffsetsIfNeeded() }
-        assertEquals(setOf(tp0.topic), error.unauthorizedTopics)
-
-        // The exception should clear after being raised, but no retry until the backoff
-        fetcher.resetOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-        assertFalse(client.hasInFlightRequests())
-        assertFalse(subscriptions.hasValidPosition(tp0))
-
-        // Next one succeeds
-        time.sleep(retryBackoffMs)
-        client.prepareResponse(
-            matcher = listOffsetRequestMatcher(ListOffsetsRequest.LATEST_TIMESTAMP),
-            response = listOffsetResponse(error = Errors.NONE, timestamp = 1L, offset = 5L),
-        )
-        fetcher.resetOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-
-        assertFalse(subscriptions.isOffsetResetNeeded(tp0))
-        assertTrue(subscriptions.isFetchable(tp0))
-        assertEquals(5, subscriptions.position(tp0)!!.offset)
-    }
-
-    @Test
-    fun testFetchingPendingPartitionsBeforeAndAfterSubscriptionReset() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        subscriptions.seek(tp0, 100)
-
-        assertEquals(100, subscriptions.position(tp0)!!.offset)
-        assertTrue(subscriptions.isFetchable(tp0))
-
-        subscriptions.markPendingRevocation(setOf(tp0))
-        fetcher.resetOffsetsIfNeeded()
-
-        // once a partition is marked pending, it should not be fetchable
-        assertFalse(subscriptions.isOffsetResetNeeded(tp0))
-        assertFalse(subscriptions.isFetchable(tp0))
-        assertTrue(subscriptions.hasValidPosition(tp0))
-        assertEquals(100, subscriptions.position(tp0)!!.offset)
-        subscriptions.seek(tp0, 100)
-        assertEquals(100, subscriptions.position(tp0)!!.offset)
-
-        // reassignment should enable fetching of the same partition
-        subscriptions.unsubscribe()
-        assignFromUser(setOf(tp0))
-        subscriptions.seek(tp0, 100)
-        assertEquals(100, subscriptions.position(tp0)!!.offset)
-        assertTrue(subscriptions.isFetchable(tp0))
-    }
-
-    @Test
-    fun testUpdateFetchPositionOfPausedPartitionsRequiringOffsetReset() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        subscriptions.pause(tp0) // paused partition does not have a valid position
-        subscriptions.requestOffsetReset(tp0, OffsetResetStrategy.LATEST)
-        client.prepareResponse(
-            matcher = listOffsetRequestMatcher(
-                timestamp = ListOffsetsRequest.LATEST_TIMESTAMP,
-                leaderEpoch = validLeaderEpoch,
-            ),
-            response = listOffsetResponse(error = Errors.NONE, timestamp = 1L, offset = 10L),
-        )
-        fetcher.resetOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-        assertFalse(subscriptions.isOffsetResetNeeded(tp0))
-        assertFalse(subscriptions.isFetchable(tp0)) // because tp is paused
-        assertTrue(subscriptions.hasValidPosition(tp0))
-        assertEquals(10, subscriptions.position(tp0)!!.offset)
-    }
-
-    @Test
-    fun testUpdateFetchPositionOfPausedPartitionsWithoutAValidPosition() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        subscriptions.requestOffsetReset(tp0)
-        subscriptions.pause(tp0) // paused partition does not have a valid position
-        fetcher.resetOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-
-        assertTrue(subscriptions.isOffsetResetNeeded(tp0))
-        assertFalse(subscriptions.isFetchable(tp0)) // because tp is paused
-        assertFalse(subscriptions.hasValidPosition(tp0))
-    }
-
-    @Test
-    fun testUpdateFetchPositionOfPausedPartitionsWithAValidPosition() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        subscriptions.seek(tp0, 10)
-        subscriptions.pause(tp0) // paused partition already has a valid position
-        fetcher.resetOffsetsIfNeeded()
-
-        assertFalse(subscriptions.isOffsetResetNeeded(tp0))
-        assertFalse(subscriptions.isFetchable(tp0)) // because tp is paused
-        assertTrue(subscriptions.hasValidPosition(tp0))
-        assertEquals(10, subscriptions.position(tp0)!!.offset)
-    }
-
-    @Test
-    fun testGetAllTopics() {
-        // sending response before request, as getTopicMetadata is a blocking call
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        client.prepareResponse(newMetadataResponse(topicName, Errors.NONE))
-        val allTopics = fetcher.getAllTopicMetadata(time.timer(5000L))
-
-        assertEquals(initialUpdateResponse.topicMetadata().size, allTopics.size)
-    }
-
-    @Test
-    fun testGetAllTopicsDisconnect() {
-        // first try gets a disconnect, next succeeds
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        client.prepareResponse(response = null, disconnected = true)
-        client.prepareResponse(newMetadataResponse(topicName, Errors.NONE))
-        val allTopics = fetcher.getAllTopicMetadata(time.timer(5000L))
-
-        assertEquals(initialUpdateResponse.topicMetadata().size, allTopics.size)
-    }
-
-    @Test
-    fun testGetAllTopicsTimeout() {
-        // since no response is prepared, the request should timeout
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        assertFailsWith<TimeoutException> { fetcher.getAllTopicMetadata(time.timer(50L)) }
-    }
-
-    @Test
-    fun testGetAllTopicsUnauthorized() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        client.prepareResponse(newMetadataResponse(topicName, Errors.TOPIC_AUTHORIZATION_FAILED))
-        val error = assertFailsWith<TopicAuthorizationException> {
-            fetcher.getAllTopicMetadata(time.timer(10L))
-        }
-        assertEquals(setOf(topicName), error.unauthorizedTopics)
-    }
-
-    @Test
-    fun testGetTopicMetadataInvalidTopic() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        client.prepareResponse(newMetadataResponse(topicName, Errors.INVALID_TOPIC_EXCEPTION))
-        assertFailsWith<InvalidTopicException> {
-            fetcher.getTopicMetadata(
-                request = MetadataRequest.Builder(
-                    topics = listOf(topicName),
-                    allowAutoTopicCreation = true,
-                ),
-                timer = time.timer(5000L),
-            )
-        }
-    }
-
-    @Test
-    fun testGetTopicMetadataUnknownTopic() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        client.prepareResponse(
-            response = newMetadataResponse(topic = topicName, error = Errors.UNKNOWN_TOPIC_OR_PARTITION),
-        )
-        val topicMetadata = fetcher.getTopicMetadata(
-            request = MetadataRequest.Builder(
-                topics = listOf(topicName),
-                allowAutoTopicCreation = true,
-            ),
-            timer = time.timer(5000L)
-        )
-
-        assertNull(topicMetadata[topicName])
-    }
-
-    @Test
-    fun testGetTopicMetadataLeaderNotAvailable() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        client.prepareResponse(newMetadataResponse(topicName, Errors.LEADER_NOT_AVAILABLE))
-        client.prepareResponse(newMetadataResponse(topicName, Errors.NONE))
-        val topicMetadata = fetcher.getTopicMetadata(
-            request = MetadataRequest.Builder(
-                topics = listOf(topicName),
-                allowAutoTopicCreation = true,
-            ),
-            timer = time.timer(5000L),
-        )
-
-        assertTrue(topicMetadata.containsKey(topicName))
-    }
-
-    @Test
-    fun testGetTopicMetadataOfflinePartitions() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        val originalResponse = newMetadataResponse(topicName, Errors.NONE) //baseline ok response
-
-        //create a response based on the above one with all partitions being leaderless
-        val altTopics = mutableListOf<MetadataResponse.TopicMetadata>()
-
-        for ((error, topic, _, isInternal, partitions) in originalResponse.topicMetadata()) {
-            val altPartitions = partitions.map {
-                PartitionMetadata(
-                    error = it.error,
-                    topicPartition = it.topicPartition,
-                    leaderId = null,  //no leader
-                    leaderEpoch = null,
-                    replicaIds = it.replicaIds,
-                    inSyncReplicaIds = it.inSyncReplicaIds,
-                    offlineReplicaIds = it.offlineReplicaIds,
-                )
-            }
-            val alteredTopic = MetadataResponse.TopicMetadata(
-                error = error,
-                topic = topic,
-                isInternal = isInternal,
-                partitionMetadata = altPartitions,
-            )
-            altTopics.add(alteredTopic)
-        }
-        val controller = originalResponse.controller
-        val altered = metadataResponse(
-            brokers = originalResponse.brokers(),
-            clusterId = originalResponse.clusterId,
-            controllerId = controller?.id ?: MetadataResponse.NO_CONTROLLER_ID,
-            topicMetadataList = altTopics
-        )
-        client.prepareResponse(altered)
-        val topicMetadata = fetcher.getTopicMetadata(
-            request = MetadataRequest.Builder(
-                topics = listOf(topicName),
-                allowAutoTopicCreation = false,
-            ),
-            timer = time.timer(5000L),
-        )
-        assertNotNull(topicMetadata)
-        assertNotNull(topicMetadata[topicName])
-        assertEquals(
-            expected = metadata.fetch().partitionCountForTopic(topicName)!!.toLong(),
-            actual = topicMetadata[topicName]!!.size.toLong(),
-        )
-    }
-
     /*
      * Send multiple requests. Verify that the client side quota metrics have the right values
      */
@@ -3355,7 +2594,6 @@ class FetcherTest {
     fun testQuotaMetrics() {
         buildFetcher()
         val selector = MockSelector(time)
-        val throttleTimeSensor = Fetcher.throttleTimeSensor(metrics, metricsRegistry!!)
         val cluster = singletonCluster(topic = "test", partitions = 1)
         val node = cluster.nodes[0]
         val client = NetworkClient(
@@ -3373,10 +2611,10 @@ class FetcherTest {
             time = time,
             discoverBrokerVersions = true,
             apiVersions = ApiVersions(),
-            throttleTimeSensor = throttleTimeSensor,
+            throttleTimeSensor = metricsManager.throttleTimeSensor(),
             logContext = LogContext(),
         )
-        val apiVersionsResponse = ApiVersionsResponse.defaultApiVersionsResponse(
+        val apiVersionsResponse = TestUtils.defaultApiVersionsResponse(
             throttleTimeMs = 400,
             listenerType = ApiMessageType.ListenerType.ZK_BROKER,
         )
@@ -3526,7 +2764,7 @@ class FetcherTest {
 
         // verify de-registration of partition lag
         subscriptions.unsubscribe()
-        fetcher.sendFetches()
+        sendFetches()
         assertFalse(allMetrics.containsKey(partitionLagMetric))
     }
 
@@ -3615,7 +2853,7 @@ class FetcherTest {
 
         // verify de-registration of partition lag
         subscriptions.unsubscribe()
-        fetcher.sendFetches()
+        sendFetches()
         assertFalse(allMetrics.containsKey(partitionLeadMetric))
     }
 
@@ -3700,7 +2938,7 @@ class FetcherTest {
 
         // verify de-registration of partition lag
         subscriptions.unsubscribe()
-        fetcher.sendFetches()
+        sendFetches()
         assertFalse(allMetrics.containsKey(partitionLagMetric))
     }
 
@@ -3752,7 +2990,7 @@ class FetcherTest {
                 .setLogStartOffset(0)
                 .setRecords(records)
         }
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         client.prepareResponse(
             response = FetchResponse.of(
                 error = Errors.NONE,
@@ -3859,7 +3097,7 @@ class FetcherTest {
                 .setLogStartOffset(0),
         )
 
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         client.prepareResponse(
             response = FetchResponse.of(
@@ -3896,7 +3134,7 @@ class FetcherTest {
         val recordsCountAverage = allMetrics[metrics.metricInstance(metricsRegistry!!.recordsPerRequestAvg)]
 
         // send the fetch and then seek to a new offset
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         subscriptions.seek(tp1, 5)
         val builder: MemoryRecordsBuilder = MemoryRecords.builder(
@@ -3971,7 +3209,7 @@ class FetcherTest {
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
 
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         client.prepareResponse(
             response = fullFetchResponse(
@@ -3986,9 +3224,6 @@ class FetcherTest {
         assertTrue(fetcher.hasCompletedFetches())
         val partitionRecords = fetchedRecords<ByteArray, ByteArray>()
         assertTrue(partitionRecords.containsKey(tp0))
-
-        // Create throttle metrics
-        Fetcher.throttleTimeSensor(metrics, metricsRegistry!!)
 
         // Verify that all metrics except metrics-count have registered templates
         val allMetrics = mutableSetOf<MetricNameTemplate>()
@@ -4017,7 +3252,7 @@ class FetcherTest {
         error: Errors,
         hw: Long,
         throttleTime: Int,
-    ): Map<TopicPartition, List<ConsumerRecord<ByteArray, ByteArray>>> = fetchRecords(
+    ): Map<TopicPartition, List<ConsumerRecord<ByteArray?, ByteArray?>>> = fetchRecords(
         tp = tp,
         records = records,
         error = error,
@@ -4033,8 +3268,8 @@ class FetcherTest {
         hw: Long,
         lastStableOffset: Long,
         throttleTime: Int,
-    ): Map<TopicPartition, List<ConsumerRecord<ByteArray, ByteArray>>> {
-        assertEquals(1, fetcher.sendFetches())
+    ): Map<TopicPartition, List<ConsumerRecord<ByteArray?, ByteArray?>>> {
+        assertEquals(1, sendFetches())
 
         client.prepareResponse(
             response = fullFetchResponse(
@@ -4058,8 +3293,8 @@ class FetcherTest {
         lastStableOffset: Long,
         logStartOffset: Long,
         throttleTime: Int,
-    ): Map<TopicPartition, List<ConsumerRecord<ByteArray, ByteArray>>> {
-        assertEquals(1, fetcher.sendFetches())
+    ): Map<TopicPartition, List<ConsumerRecord<ByteArray?, ByteArray?>>> {
+        assertEquals(1, sendFetches())
 
         client.prepareResponse(
             response = fullFetchResponse(
@@ -4075,521 +3310,6 @@ class FetcherTest {
         consumerClient.poll(time.timer(0))
 
         return fetchedRecords()
-    }
-
-    @Test
-    fun testGetOffsetsForTimesTimeout() {
-        buildFetcher()
-        assertFailsWith<TimeoutException> {
-            fetcher.offsetsForTimes(
-                timestampsToSearch = mapOf(TopicPartition(topicName, 2) to 1000L),
-                timer = time.timer(100L),
-            )
-        }
-    }
-
-    @Test
-    fun testGetOffsetsForTimes() {
-        buildFetcher()
-
-        // Empty map
-        assertTrue(fetcher.offsetsForTimes(HashMap(), time.timer(100L)).isEmpty())
-        // Unknown Offset
-        testGetOffsetsForTimesWithUnknownOffset()
-        // Error code none with unknown offset
-        testGetOffsetsForTimesWithError(
-            errorForP0 = Errors.NONE,
-            errorForP1 = Errors.NONE,
-            offsetForP0 = -1L,
-            offsetForP1 = 100L,
-            expectedOffsetForP0 = null,
-            expectedOffsetForP1 = 100L,
-        )
-        // Error code none with known offset
-        testGetOffsetsForTimesWithError(
-            errorForP0 = Errors.NONE,
-            errorForP1 = Errors.NONE,
-            offsetForP0 = 10L,
-            offsetForP1 = 100L,
-            expectedOffsetForP0 = 10L,
-            expectedOffsetForP1 = 100L,
-        )
-        // Test both of partition has error.
-        testGetOffsetsForTimesWithError(
-            errorForP0 = Errors.NOT_LEADER_OR_FOLLOWER,
-            errorForP1 = Errors.INVALID_REQUEST,
-            offsetForP0 = 10L,
-            offsetForP1 = 100L,
-            expectedOffsetForP0 = 10L,
-            expectedOffsetForP1 = 100L,
-        )
-        // Test the second partition has error.
-        testGetOffsetsForTimesWithError(
-            errorForP0 = Errors.NONE,
-            errorForP1 = Errors.NOT_LEADER_OR_FOLLOWER,
-            offsetForP0 = 10L,
-            offsetForP1 = 100L,
-            expectedOffsetForP0 = 10L,
-            expectedOffsetForP1 = 100L,
-        )
-        // Test different errors.
-        testGetOffsetsForTimesWithError(
-            errorForP0 = Errors.NOT_LEADER_OR_FOLLOWER,
-            errorForP1 = Errors.NONE,
-            offsetForP0 = 10L,
-            offsetForP1 = 100L,
-            expectedOffsetForP0 = 10L,
-            expectedOffsetForP1 = 100L,
-        )
-        testGetOffsetsForTimesWithError(
-            errorForP0 = Errors.UNKNOWN_TOPIC_OR_PARTITION,
-            errorForP1 = Errors.NONE,
-            offsetForP0 = 10L,
-            offsetForP1 = 100L,
-            expectedOffsetForP0 = 10L,
-            expectedOffsetForP1 = 100L,
-        )
-        testGetOffsetsForTimesWithError(
-            errorForP0 = Errors.UNSUPPORTED_FOR_MESSAGE_FORMAT,
-            errorForP1 = Errors.NONE,
-            offsetForP0 = 10L,
-            offsetForP1 = 100L,
-            expectedOffsetForP0 = null,
-            expectedOffsetForP1 = 100L,
-        )
-        testGetOffsetsForTimesWithError(
-            errorForP0 = Errors.BROKER_NOT_AVAILABLE,
-            errorForP1 = Errors.NONE,
-            offsetForP0 = 10L,
-            offsetForP1 = 100L,
-            expectedOffsetForP0 = 10L,
-            expectedOffsetForP1 = 100L,
-        )
-    }
-
-    @Test
-    fun testGetOffsetsFencedLeaderEpoch() {
-        buildFetcher()
-        subscriptions.assignFromUser(setOf(tp0))
-        client.updateMetadata(initialUpdateResponse)
-        subscriptions.requestOffsetReset(tp0, OffsetResetStrategy.LATEST)
-        client.prepareResponse(
-            response = listOffsetResponse(
-                error = Errors.FENCED_LEADER_EPOCH,
-                timestamp = 1L,
-                offset = 5L,
-            ),
-        )
-        fetcher.resetOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-
-        assertTrue(subscriptions.isOffsetResetNeeded(tp0))
-        assertFalse(subscriptions.isFetchable(tp0))
-        assertFalse(subscriptions.hasValidPosition(tp0))
-        assertEquals(0L, metadata.timeToNextUpdate(time.milliseconds()))
-    }
-
-    @Test
-    fun testGetOffsetByTimeWithPartitionsRetryCouldTriggerMetadataUpdate() {
-        val retriableErrors = listOf(
-            Errors.NOT_LEADER_OR_FOLLOWER,
-            Errors.REPLICA_NOT_AVAILABLE,
-            Errors.KAFKA_STORAGE_ERROR,
-            Errors.OFFSET_NOT_AVAILABLE,
-            Errors.LEADER_NOT_AVAILABLE,
-            Errors.FENCED_LEADER_EPOCH,
-            Errors.UNKNOWN_LEADER_EPOCH,
-        )
-        val newLeaderEpoch = 3
-        val updatedMetadata = metadataUpdateWith(
-            clusterId = "dummy",
-            numNodes = 3,
-            topicErrors = mapOf(topicName to Errors.NONE),
-            topicPartitionCounts = mapOf(topicName to 4),
-            epochSupplier = { newLeaderEpoch },
-            topicIds = topicIds,
-        )
-        val originalLeader = initialUpdateResponse.buildCluster().leaderFor(tp1)
-        val newLeader = updatedMetadata.buildCluster().leaderFor(tp1)
-        assertNotEquals(originalLeader, newLeader)
-        for (retriableError in retriableErrors) {
-            buildFetcher()
-            subscriptions.assignFromUser(setOf(tp0, tp1))
-            client.updateMetadata(initialUpdateResponse)
-            val fetchTimestamp = 10L
-            val tp0NoError = ListOffsetsPartitionResponse()
-                .setPartitionIndex(tp0.partition)
-                .setErrorCode(Errors.NONE.code)
-                .setTimestamp(fetchTimestamp)
-                .setOffset(4L)
-            val topics = listOf(
-                ListOffsetsTopicResponse()
-                    .setName(tp0.topic)
-                    .setPartitions(
-                        listOf(
-                            tp0NoError,
-                            ListOffsetsPartitionResponse()
-                                .setPartitionIndex(tp1.partition)
-                                .setErrorCode(retriableError.code)
-                                .setTimestamp(ListOffsetsRequest.LATEST_TIMESTAMP)
-                                .setOffset(-1L),
-                        )
-                    )
-            )
-            val data = ListOffsetsResponseData()
-                .setThrottleTimeMs(0)
-                .setTopics(topics)
-            client.prepareResponseFrom(
-                matcher = { body ->
-                    val isListOffsetRequest = body is ListOffsetsRequest
-                    if (isListOffsetRequest) {
-                        val request = body as ListOffsetsRequest
-                        val expectedTopics = listOf(
-                            ListOffsetsTopic()
-                                .setName(tp0.topic)
-                                .setPartitions(
-                                    listOf(
-                                        ListOffsetsPartition()
-                                            .setPartitionIndex(tp0.partition)
-                                            .setTimestamp(fetchTimestamp)
-                                            .setCurrentLeaderEpoch(ListOffsetsResponse.UNKNOWN_EPOCH),
-                                        ListOffsetsPartition()
-                                            .setPartitionIndex(tp1.partition)
-                                            .setTimestamp(fetchTimestamp)
-                                            .setCurrentLeaderEpoch(ListOffsetsResponse.UNKNOWN_EPOCH),
-                                    )
-                                )
-                        )
-                        request.topics == expectedTopics
-                    } else false
-                },
-                response = ListOffsetsResponse(data),
-                node = originalLeader,
-            )
-            client.prepareMetadataUpdate(updatedMetadata)
-
-            // If the metadata wasn't updated before retrying, the fetcher would consult the original leader and
-            // hit a NOT_LEADER exception.
-            // We will count the answered future response in the end to verify if this is the case.
-            val topicsWithFatalError = listOf(
-                ListOffsetsTopicResponse()
-                    .setName(tp0.topic)
-                    .setPartitions(
-                        listOf(
-                            tp0NoError,
-                            ListOffsetsPartitionResponse()
-                                .setPartitionIndex(tp1.partition)
-                                .setErrorCode(Errors.NOT_LEADER_OR_FOLLOWER.code)
-                                .setTimestamp(ListOffsetsRequest.LATEST_TIMESTAMP)
-                                .setOffset(-1L),
-                        )
-                    )
-            )
-            val dataWithFatalError = ListOffsetsResponseData()
-                .setThrottleTimeMs(0)
-                .setTopics(topicsWithFatalError)
-            client.prepareResponseFrom(
-                response = ListOffsetsResponse(dataWithFatalError),
-                node = originalLeader,
-            )
-
-            // The request to new leader must only contain one partition tp1 with error.
-            client.prepareResponseFrom(
-                matcher = { body ->
-                    val isListOffsetRequest = body is ListOffsetsRequest
-                    if (isListOffsetRequest) {
-                        val request = body as ListOffsetsRequest
-                        val requestTopic = request.topics[0]
-                        val expectedPartition = ListOffsetsPartition()
-                            .setPartitionIndex(tp1.partition)
-                            .setTimestamp(fetchTimestamp)
-                            .setCurrentLeaderEpoch(newLeaderEpoch)
-                        expectedPartition == requestTopic.partitions[0]
-                    } else false
-                },
-                response = listOffsetResponse(tp1, Errors.NONE, fetchTimestamp, 5L),
-                node = newLeader,
-            )
-            val offsetAndTimestampMap = fetcher.offsetsForTimes(
-                timestampsToSearch = mapOf(
-                    tp0 to fetchTimestamp,
-                    tp1 to fetchTimestamp,
-                ),
-                timer = time.timer(timeoutMs = Int.MAX_VALUE.toLong()),
-            )
-            assertEquals(
-                expected = mapOf(
-                    tp0 to OffsetAndTimestamp(offset = 4L, timestamp = fetchTimestamp),
-                    tp1 to OffsetAndTimestamp(offset = 5L, timestamp = fetchTimestamp),
-                ),
-                actual = offsetAndTimestampMap,
-            )
-
-            // The NOT_LEADER exception future should not be cleared as we already refreshed the metadata before
-            // first retry, thus never hitting.
-            assertEquals(1, client.numAwaitingResponses())
-            fetcher.close()
-        }
-    }
-
-    @Test
-    fun testGetOffsetsUnknownLeaderEpoch() {
-        buildFetcher()
-        subscriptions.assignFromUser(setOf(tp0))
-        subscriptions.requestOffsetReset(tp0, OffsetResetStrategy.LATEST)
-        client.prepareResponse(
-            response = listOffsetResponse(
-                error = Errors.UNKNOWN_LEADER_EPOCH,
-                timestamp = 1L,
-                offset = 5L,
-            ),
-        )
-        fetcher.resetOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-        assertTrue(subscriptions.isOffsetResetNeeded(tp0))
-        assertFalse(subscriptions.isFetchable(tp0))
-        assertFalse(subscriptions.hasValidPosition(tp0))
-        assertEquals(0L, metadata.timeToNextUpdate(time.milliseconds()))
-    }
-
-    @Test
-    fun testGetOffsetsIncludesLeaderEpoch() {
-        buildFetcher()
-        subscriptions.assignFromUser(setOf(tp0))
-        client.updateMetadata(initialUpdateResponse)
-
-        // Metadata update with leader epochs
-        val metadataResponse = metadataUpdateWith(
-            clusterId = "dummy",
-            numNodes = 1,
-            topicErrors = emptyMap(),
-            topicPartitionCounts = mapOf(topicName to 4),
-            epochSupplier = { 99 },
-            topicIds = topicIds,
-        )
-        client.updateMetadata(metadataResponse)
-
-        // Request latest offset
-        subscriptions.requestOffsetReset(tp0)
-        fetcher.resetOffsetsIfNeeded()
-
-        // Check for epoch in outgoing request
-        val matcher = RequestMatcher { body ->
-            assertIs<ListOffsetsRequest>(
-                value = body,
-                message = "Should have seen ListOffsetRequest",
-            )
-            val epoch = body.topics[0].partitions[0].currentLeaderEpoch
-            assertNotEquals(
-                illegal = ListOffsetsResponse.UNKNOWN_EPOCH,
-                actual = epoch,
-                message = "Expected Fetcher to set leader epoch in request",
-            )
-            assertEquals(
-                expected = 99,
-                actual = epoch,
-                message = "Expected leader epoch to match epoch from metadata update",
-            )
-            true
-        }
-        client.prepareResponse(
-            matcher = matcher,
-            response = listOffsetResponse(
-                error = Errors.NONE,
-                timestamp = 1L,
-                offset = 5L,
-            ),
-        )
-        consumerClient.pollNoWakeup()
-    }
-
-    @Test
-    fun testGetOffsetsForTimesWhenSomeTopicPartitionLeadersNotKnownInitially() {
-        buildFetcher()
-        subscriptions.assignFromUser(setOf(tp0, tp1))
-        val anotherTopic = "another-topic"
-        val t2p0 = TopicPartition(anotherTopic, 0)
-        client.reset()
-
-        // Metadata initially has one topic
-        val initialMetadata = metadataUpdateWithIds(
-            numNodes = 3,
-            topicPartitionCounts = mapOf(topicName to 2),
-            topicIds = topicIds,
-        )
-        client.updateMetadata(initialMetadata)
-
-        // The first metadata refresh should contain one topic
-        client.prepareMetadataUpdate(initialMetadata)
-        client.prepareResponseFrom(
-            response = listOffsetResponse(
-                tp = tp0,
-                error = Errors.NONE,
-                timestamp = 1000L,
-                offset = 11L,
-            ),
-            node = metadata.fetch().leaderFor(tp0),
-        )
-        client.prepareResponseFrom(
-            response = listOffsetResponse(
-                tp = tp1,
-                error = Errors.NONE,
-                timestamp = 1000L,
-                offset = 32L,
-            ),
-            node = metadata.fetch().leaderFor(tp1),
-        )
-
-        // Second metadata refresh should contain two topics
-        val partitionNumByTopic = mapOf(
-            topicName to 2,
-            anotherTopic to 1,
-        )
-        topicIds["another-topic"] = Uuid.randomUuid()
-        val updatedMetadata = metadataUpdateWithIds(
-            numNodes = 3,
-            topicPartitionCounts = partitionNumByTopic,
-            topicIds = topicIds,
-        )
-        client.prepareMetadataUpdate(updatedMetadata)
-        client.prepareResponseFrom(
-            response = listOffsetResponse(
-                tp = t2p0,
-                error = Errors.NONE,
-                timestamp = 1000L,
-                offset = 54L,
-            ),
-            node = metadata.fetch().leaderFor(t2p0),
-        )
-        val timestampToSearch = mapOf(
-            tp0 to ListOffsetsRequest.LATEST_TIMESTAMP,
-            tp1 to ListOffsetsRequest.LATEST_TIMESTAMP,
-            t2p0 to ListOffsetsRequest.LATEST_TIMESTAMP,
-        )
-        val offsetAndTimestampMap = fetcher.offsetsForTimes(timestampToSearch, time.timer(Long.MAX_VALUE))
-        assertNotNull(
-            actual = offsetAndTimestampMap[tp0],
-            message = "Expect Fetcher.offsetsForTimes() to return non-null result for $tp0",
-        )
-        assertNotNull(
-            actual = offsetAndTimestampMap[tp1],
-            message = "Expect Fetcher.offsetsForTimes() to return non-null result for $tp1",
-        )
-        assertNotNull(
-            actual = offsetAndTimestampMap[t2p0],
-            message = "Expect Fetcher.offsetsForTimes() to return non-null result for $t2p0",
-        )
-        assertEquals(11L, offsetAndTimestampMap[tp0]!!.offset)
-        assertEquals(32L, offsetAndTimestampMap[tp1]!!.offset)
-        assertEquals(54L, offsetAndTimestampMap[t2p0]!!.offset)
-    }
-
-    @Test
-    fun testGetOffsetsForTimesWhenSomeTopicPartitionLeadersDisconnectException() {
-        buildFetcher()
-        val anotherTopic = "another-topic"
-        val t2p0 = TopicPartition(anotherTopic, 0)
-        subscriptions.assignFromUser(setOf(tp0, t2p0))
-        client.reset()
-        val initialMetadata = metadataUpdateWithIds(
-            numNodes = 1,
-            topicPartitionCounts = mapOf(topicName to 1),
-            topicIds = topicIds,
-        )
-        client.updateMetadata(initialMetadata)
-        val partitionNumByTopic: MutableMap<String, Int> = HashMap()
-        partitionNumByTopic[topicName] = 1
-        partitionNumByTopic[anotherTopic] = 1
-        topicIds["another-topic"] = Uuid.randomUuid()
-        val updatedMetadata = metadataUpdateWithIds(
-            numNodes = 1,
-            topicPartitionCounts = partitionNumByTopic,
-            topicIds = topicIds,
-        )
-        client.prepareMetadataUpdate(updatedMetadata)
-        client.prepareResponse(
-            matcher = listOffsetRequestMatcher(timestamp = ListOffsetsRequest.LATEST_TIMESTAMP),
-            response = listOffsetResponse(
-                tp = tp0,
-                error = Errors.NONE,
-                timestamp = 1000L,
-                offset = 11L,
-            ),
-            disconnected = true,
-        )
-        client.prepareResponseFrom(
-            response = listOffsetResponse(
-                tp = tp0,
-                error = Errors.NONE,
-                timestamp = 1000L,
-                offset = 11L,
-            ),
-            node = metadata.fetch().leaderFor(tp0),
-        )
-        val timestampToSearch = mapOf(tp0 to ListOffsetsRequest.LATEST_TIMESTAMP)
-        val offsetAndTimestampMap = fetcher.offsetsForTimes(timestampToSearch, time.timer(Long.MAX_VALUE))
-        assertNotNull(
-            actual = offsetAndTimestampMap[tp0],
-            message = "Expect Fetcher.offsetsForTimes() to return non-null result for $tp0",
-        )
-        assertEquals(11L, offsetAndTimestampMap[tp0]!!.offset)
-        assertNotNull(metadata.fetch().partitionCountForTopic(anotherTopic))
-    }
-
-    @Test
-    fun testListOffsetsWithZeroTimeout() {
-        buildFetcher()
-        val offsetsToSearch = mapOf(
-            tp0 to ListOffsetsRequest.EARLIEST_TIMESTAMP,
-            tp1 to ListOffsetsRequest.EARLIEST_TIMESTAMP,
-        )
-        val offsetsToExpect = mapOf<TopicPartition, OffsetAndTimestamp?>(
-            tp0 to null,
-            tp1 to null,
-        )
-        assertEquals(
-            expected = offsetsToExpect,
-            actual = fetcher.offsetsForTimes(
-                timestampsToSearch = offsetsToSearch,
-                timer = time.timer(0),
-            ),
-        )
-    }
-
-    @Test
-    fun testBatchedListOffsetsMetadataErrors() {
-        buildFetcher()
-        val data = ListOffsetsResponseData()
-            .setThrottleTimeMs(0)
-            .setTopics(
-                listOf(
-                    ListOffsetsTopicResponse()
-                        .setName(tp0.topic)
-                        .setPartitions(
-                            listOf(
-                                ListOffsetsPartitionResponse()
-                                    .setPartitionIndex(tp0.partition)
-                                    .setErrorCode(Errors.NOT_LEADER_OR_FOLLOWER.code)
-                                    .setTimestamp(ListOffsetsResponse.UNKNOWN_TIMESTAMP)
-                                    .setOffset(ListOffsetsResponse.UNKNOWN_OFFSET),
-                                ListOffsetsPartitionResponse()
-                                    .setPartitionIndex(tp1.partition)
-                                    .setErrorCode(Errors.UNKNOWN_TOPIC_OR_PARTITION.code)
-                                    .setTimestamp(ListOffsetsResponse.UNKNOWN_TIMESTAMP)
-                                    .setOffset(ListOffsetsResponse.UNKNOWN_OFFSET)
-                            )
-                        )
-                )
-            )
-        client.prepareResponse(ListOffsetsResponse(data))
-        val offsetsToSearch = mapOf(
-            tp0 to ListOffsetsRequest.EARLIEST_TIMESTAMP,
-            tp1 to ListOffsetsRequest.EARLIEST_TIMESTAMP,
-        )
-
-        assertFailsWith<TimeoutException> {
-            fetcher.offsetsForTimes(timestampsToSearch = offsetsToSearch, timer = time.timer(1))
-        }
     }
 
     @Test
@@ -4620,7 +3340,7 @@ class FetcherTest {
         subscriptions.seek(tp0, 0)
 
         // normal fetch
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
 
         client.prepareResponse(
@@ -4670,7 +3390,7 @@ class FetcherTest {
         subscriptions.seek(tp0, 0)
 
         // normal fetch
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
 
         client.prepareResponse(
@@ -4779,7 +3499,7 @@ class FetcherTest {
         subscriptions.seek(tp0, 0)
 
         // normal fetch
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
         client.prepareResponse(
             response = fullFetchResponseWithAbortedTransactions(
@@ -4797,7 +3517,7 @@ class FetcherTest {
         assertTrue(fetchedRecords.containsKey(tp0))
         // There are only 3 committed records
         val fetchedConsumerRecords = fetchedRecords[tp0]!!
-        val fetchedKeys = fetchedConsumerRecords.map { record -> String(record.key) }.toSet()
+        val fetchedKeys = fetchedConsumerRecords.map { record -> String(record.key!!) }.toSet()
         assertEquals(setOf("commit1-1", "commit1-2", "commit2-1"), fetchedKeys)
     }
 
@@ -4858,7 +3578,7 @@ class FetcherTest {
         subscriptions.seek(tp0, 0)
 
         // normal fetch
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
         client.prepareResponse(
             response = fullFetchResponseWithAbortedTransactions(
@@ -4881,7 +3601,7 @@ class FetcherTest {
 
         val fetchedConsumerRecords = fetchedRecords[tp0]!!
         val committedKeys = setOf("commit1-1", "commit1-2")
-        val actuallyCommittedKeys = fetchedConsumerRecords.map { record -> String(record.key) }.toSet()
+        val actuallyCommittedKeys = fetchedConsumerRecords.map { record -> String(record.key!!) }.toSet()
 
         assertEquals(actuallyCommittedKeys, committedKeys)
     }
@@ -4914,7 +3634,7 @@ class FetcherTest {
         // send the fetch
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         // prepare the response. the aborted transactions begin at offsets which are no longer in the log
         val abortedTransactions = listOf(AbortedTransaction().setProducerId(producerId).setFirstOffset(0L))
@@ -4979,7 +3699,7 @@ class FetcherTest {
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
 
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         client.prepareResponse(
             response = fullFetchResponse(
@@ -5001,7 +3721,7 @@ class FetcherTest {
         val fetchedRecords = allFetchedRecords[tp0]!!
 
         assertEquals(3, fetchedRecords.size)
-        for (i in 0..2) assertEquals(i.toString(), String(fetchedRecords[i].key))
+        for (i in 0..2) assertEquals(i.toString(), String(fetchedRecords[i].key!!))
 
         // The next offset should point to the next batch
         assertEquals(4L, subscriptions.position(tp0)!!.offset)
@@ -5036,7 +3756,7 @@ class FetcherTest {
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
 
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         client.prepareResponse(
             response = fullFetchResponse(
@@ -5129,7 +3849,7 @@ class FetcherTest {
         // send the fetch
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         // prepare the response. the aborted transactions begin at offsets which are no longer in the log
         val abortedTransactions = listOf(
@@ -5194,7 +3914,7 @@ class FetcherTest {
         subscriptions.seek(tp0, 0)
 
         // normal fetch
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
         client.prepareResponse(
             response = fullFetchResponseWithAbortedTransactions(
@@ -5249,7 +3969,7 @@ class FetcherTest {
         subscriptions.seek(tp0, 0)
 
         // normal fetch
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
         client.prepareResponse(
             response = fullFetchResponseWithAbortedTransactions(
@@ -5312,7 +4032,7 @@ class FetcherTest {
             responseData = partitions1,
         )
         client.prepareResponse(resp1)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
 
         consumerClient.poll(time.timer(0))
@@ -5329,7 +4049,7 @@ class FetcherTest {
         assertEquals(2, records[1].offset)
 
         // There is still a buffered record.
-        assertEquals(0, fetcher.sendFetches())
+        assertEquals(0, sendFetches())
         fetchedRecords = fetchedRecords()
         assertFalse(fetchedRecords.containsKey(tp1))
         records = fetchedRecords[tp0]!!
@@ -5346,7 +4066,7 @@ class FetcherTest {
             responseData = partitions2,
         )
         client.prepareResponse(resp2)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         consumerClient.poll(time.timer(0))
         fetchedRecords = fetchedRecords()
         assertTrue(fetchedRecords.isEmpty())
@@ -5368,7 +4088,7 @@ class FetcherTest {
             responseData = partitions3,
         )
         client.prepareResponse(resp3)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         consumerClient.poll(time.timer(0))
         fetchedRecords = fetchedRecords()
         assertFalse(fetchedRecords.containsKey(tp1))
@@ -5386,7 +4106,8 @@ class FetcherTest {
     fun testFetcherConcurrency() {
         val numPartitions = 20
         val topicPartitions = mutableSetOf<TopicPartition>()
-        for (i in 0 until numPartitions) topicPartitions.add(TopicPartition(topicName, i))
+        for (i in 0..<numPartitions) topicPartitions.add(TopicPartition(topicName, i))
+
         val logContext = LogContext()
         buildDependencies(
             metricConfig = MetricConfig(),
@@ -5394,27 +4115,41 @@ class FetcherTest {
             subscriptionState = SubscriptionState(logContext, OffsetResetStrategy.EARLIEST),
             logContext = logContext
         )
-        fetcher = object : Fetcher<ByteArray, ByteArray>(
-            logContext = LogContext(),
+
+        val isolationLevel = IsolationLevel.READ_UNCOMMITTED
+
+        offsetFetcher = OffsetFetcher(
+            logContext = logContext,
             client = consumerClient,
+            metadata = metadata,
+            subscriptions = subscriptions,
+            time = time,
+            retryBackoffMs = retryBackoffMs,
+            requestTimeoutMs = requestTimeoutMs,
+            isolationLevel = isolationLevel,
+            apiVersions = apiVersions,
+        )
+
+        val fetchConfig = FetchConfig(
             minBytes = minBytes,
             maxBytes = maxBytes,
             maxWaitMs = maxWaitMs,
             fetchSize = fetchSize,
             maxPollRecords = 2 * numPartitions,
-            checkCrcs = true,
-            clientRackId = "",
+            checkCrcs = true,  // check crcs
+            clientRackId = CommonClientConfigs.DEFAULT_CLIENT_RACK,
             keyDeserializer = ByteArrayDeserializer(),
             valueDeserializer = ByteArrayDeserializer(),
+            isolationLevel = isolationLevel,
+        )
+        fetcher = object : Fetcher<ByteArray, ByteArray>(
+            logContext = logContext,
+            client = consumerClient,
             metadata = metadata,
             subscriptions = subscriptions,
-            metrics = metrics,
-            metricsRegistry = metricsRegistry!!,
+            fetchConfig = fetchConfig,
+            metricsManager = metricsManager,
             time = time,
-            retryBackoffMs = retryBackoffMs,
-            requestTimeoutMs = requestTimeoutMs,
-            isolationLevel = IsolationLevel.READ_UNCOMMITTED,
-            apiVersions = apiVersions,
         ) {
             override fun sessionHandler(node: Int): FetchSessionHandler? {
                 val handler = super.sessionHandler(node)
@@ -5578,7 +4313,7 @@ class FetcherTest {
         })
         var nextFetchOffset = 0L
         while (fetchesRemaining.get() > 0 && !future.isDone) {
-            if (fetcher.sendFetches() == 1) {
+            if (sendFetches() == 1) {
                 synchronized(consumerClient) { consumerClient.poll(time.timer(0)) }
             }
             if (fetcher.hasCompletedFetches()) {
@@ -5650,7 +4385,7 @@ class FetcherTest {
         subscriptions.seek(tp0, 0)
 
         // normal fetch
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
         client.prepareResponse(
             matcher = { body ->
@@ -5764,175 +4499,6 @@ class FetcherTest {
         return 1
     }
 
-    private fun testGetOffsetsForTimesWithError(
-        errorForP0: Errors,
-        errorForP1: Errors,
-        offsetForP0: Long,
-        offsetForP1: Long,
-        expectedOffsetForP0: Long?,
-        expectedOffsetForP1: Long?,
-    ) {
-        client.reset()
-        val topicName2 = "topic2"
-        val t2p0 = TopicPartition(topicName2, 0)
-        // Expect a metadata refresh.
-        metadata.bootstrap(
-            parseAndValidateAddresses(
-                urls = listOf("1.1.1.1:1111"),
-                clientDnsLookup = ClientDnsLookup.USE_ALL_DNS_IPS,
-            )
-        )
-        val partitionNumByTopic = mapOf(topicName to 2, topicName2 to 1)
-        val updateMetadataResponse = metadataUpdateWithIds(
-            numNodes = 2,
-            topicPartitionCounts = partitionNumByTopic,
-            topicIds = topicIds,
-        )
-        val updatedCluster = updateMetadataResponse.buildCluster()
-
-        // The metadata refresh should contain all the topics.
-        client.prepareMetadataUpdate(
-            updateResponse = updateMetadataResponse,
-            expectMatchMetadataTopics = true,
-        )
-
-        // First try should fail due to metadata error.
-        client.prepareResponseFrom(
-            response = listOffsetResponse(
-                tp = t2p0,
-                error = errorForP0,
-                timestamp = offsetForP0,
-                offset = offsetForP0,
-            ),
-            node = updatedCluster.leaderFor(t2p0),
-        )
-        client.prepareResponseFrom(
-            response = listOffsetResponse(
-                tp = tp1,
-                error = errorForP1,
-                timestamp = offsetForP1,
-                offset = offsetForP1,
-            ),
-            node = updatedCluster.leaderFor(tp1),
-        )
-        // Second try should succeed.
-        client.prepareResponseFrom(
-            response = listOffsetResponse(
-                tp = t2p0,
-                error = Errors.NONE,
-                timestamp = offsetForP0,
-                offset = offsetForP0,
-            ),
-            node = updatedCluster.leaderFor(t2p0),
-        )
-        client.prepareResponseFrom(
-            response = listOffsetResponse(
-                tp = tp1,
-                error = Errors.NONE,
-                timestamp = offsetForP1,
-                offset = offsetForP1
-            ),
-            node = updatedCluster.leaderFor(tp1),
-        )
-        val timestampToSearch = mapOf(t2p0 to 0L, tp1 to 0L)
-        val offsetAndTimestampMap = fetcher.offsetsForTimes(timestampToSearch, time.timer(Long.MAX_VALUE))
-        if (expectedOffsetForP0 == null) assertNull(offsetAndTimestampMap[t2p0]) else {
-            assertEquals(expectedOffsetForP0, offsetAndTimestampMap[t2p0]!!.timestamp)
-            assertEquals(expectedOffsetForP0, offsetAndTimestampMap[t2p0]!!.offset)
-        }
-        if (expectedOffsetForP1 == null) assertNull(offsetAndTimestampMap[tp1]) else {
-            assertEquals(expectedOffsetForP1, offsetAndTimestampMap[tp1]!!.timestamp)
-            assertEquals(expectedOffsetForP1, offsetAndTimestampMap[tp1]!!.offset)
-        }
-    }
-
-    private fun testGetOffsetsForTimesWithUnknownOffset() {
-        client.reset()
-        // Ensure metadata has both partitions.
-        val initialMetadataUpdate = metadataUpdateWithIds(
-            numNodes = 1,
-            topicPartitionCounts = mapOf(topicName to 1),
-            topicIds = topicIds,
-        )
-        client.updateMetadata(initialMetadataUpdate)
-        val data = ListOffsetsResponseData()
-            .setThrottleTimeMs(0)
-            .setTopics(
-                listOf(
-                    ListOffsetsTopicResponse()
-                        .setName(tp0.topic)
-                        .setPartitions(
-                            listOf(
-                                ListOffsetsPartitionResponse()
-                                    .setPartitionIndex(tp0.partition)
-                                    .setErrorCode(Errors.NONE.code)
-                                    .setTimestamp(ListOffsetsResponse.UNKNOWN_TIMESTAMP)
-                                    .setOffset(ListOffsetsResponse.UNKNOWN_OFFSET)
-                            )
-                        )
-                )
-            )
-        client.prepareResponseFrom(
-            response = ListOffsetsResponse(data),
-            node = metadata.fetch().leaderFor(tp0),
-        )
-        val timestampToSearch = mapOf(tp0 to 0L)
-        val offsetAndTimestampMap = fetcher.offsetsForTimes(timestampToSearch, time.timer(Long.MAX_VALUE))
-        assertTrue(offsetAndTimestampMap.containsKey(tp0))
-        assertNull(offsetAndTimestampMap[tp0])
-    }
-
-    @Test
-    fun testGetOffsetsForTimesWithUnknownOffsetV0() {
-        buildFetcher()
-        // Empty map
-        assertTrue(fetcher.offsetsForTimes(HashMap(), time.timer(100L)).isEmpty())
-        // Unknown Offset
-        client.reset()
-        // Ensure metadata has both partition.
-        val initialMetadataUpdate = metadataUpdateWithIds(
-            numNodes = 1,
-            topicPartitionCounts = mapOf(topicName to 1),
-            topicIds = topicIds,
-        )
-        client.updateMetadata(initialMetadataUpdate)
-        // Force LIST_OFFSETS version 0
-        val node = metadata.fetch().nodes[0]
-        apiVersions.update(
-            nodeId = node.idString(),
-            nodeApiVersions = NodeApiVersions.create(
-                apiKey = ApiKeys.LIST_OFFSETS.id,
-                minVersion = 0,
-                maxVersion = 0,
-            )
-        )
-        val data = ListOffsetsResponseData()
-            .setThrottleTimeMs(0)
-            .setTopics(
-                listOf(
-                    ListOffsetsTopicResponse()
-                        .setName(tp0.topic)
-                        .setPartitions(
-                            listOf(
-                                ListOffsetsPartitionResponse()
-                                    .setPartitionIndex(tp0.partition)
-                                    .setErrorCode(Errors.NONE.code)
-                                    .setTimestamp(ListOffsetsResponse.UNKNOWN_TIMESTAMP)
-                                    .setOldStyleOffsets(longArrayOf())
-                            )
-                        )
-                )
-            )
-        client.prepareResponseFrom(
-            response = ListOffsetsResponse(data),
-            node = metadata.fetch().leaderFor(tp0),
-        )
-        val timestampToSearch = mapOf(tp0 to 0L)
-        val offsetAndTimestampMap = fetcher.offsetsForTimes(timestampToSearch, time.timer(Long.MAX_VALUE))
-        assertTrue(offsetAndTimestampMap.containsKey(tp0))
-        assertNull(offsetAndTimestampMap[tp0])
-    }
-
     @Test
     fun testSubscriptionPositionUpdatedWithEpoch() {
         // Create some records that include a leader epoch (1)
@@ -5992,7 +4558,7 @@ class FetcherTest {
         subscriptions.seek(tp0, 0)
 
         // Do a normal fetch
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
         client.prepareResponse(
             response = fullFetchResponse(
@@ -6009,658 +4575,6 @@ class FetcherTest {
         assertTrue(partitionRecords.containsKey(tp0))
         assertEquals(subscriptions.position(tp0)!!.offset, 3L)
         assertNullable(subscriptions.position(tp0)!!.offsetEpoch) { value -> assertEquals(1, value) }
-    }
-
-    @Test
-    fun testOffsetValidationRequestGrouping() {
-        buildFetcher()
-        assignFromUser(setOf(tp0, tp1, tp2, tp3))
-        metadata.updateWithCurrentRequestVersion(
-            response = metadataUpdateWith(
-                clusterId = "dummy",
-                numNodes = 3,
-                topicErrors = emptyMap(),
-                topicPartitionCounts = mapOf(topicName to 4),
-                epochSupplier = { 5 },
-                topicIds = topicIds,
-            ),
-            isPartialUpdate = false,
-            nowMs = 0L,
-        )
-        for (tp in subscriptions.assignedPartitions()) {
-            val leaderAndEpoch = LeaderAndEpoch(
-                leader = metadata.currentLeader(tp).leader,
-                epoch = 4,
-            )
-            subscriptions.seekUnvalidated(
-                tp = tp,
-                position = FetchPosition(
-                    offset = 0,
-                    offsetEpoch = 4,
-                    currentLeader = leaderAndEpoch,
-                ),
-            )
-        }
-        val allRequestedPartitions = mutableSetOf<TopicPartition>()
-        for (node in metadata.fetch().nodes) {
-            apiVersions.update(node.idString(), NodeApiVersions.create())
-            val expectedPartitions = subscriptions.assignedPartitions()
-                .filter { tp -> metadata.currentLeader(tp).leader == node }
-                .toSet()
-            assertTrue(expectedPartitions.none { o -> allRequestedPartitions.contains(o) })
-            assertTrue(expectedPartitions.isNotEmpty())
-            allRequestedPartitions.addAll(expectedPartitions)
-            val data = OffsetForLeaderEpochResponseData()
-            expectedPartitions.forEach { (topic1, partition) ->
-                var topic = data.topics.find(topic1)
-                if (topic == null) {
-                    topic = OffsetForLeaderTopicResult().setTopic(topic1)
-                    data.topics.add(topic)
-                }
-                topic.partitions += OffsetForLeaderEpochResponseData.EpochEndOffset()
-                    .setPartition(partition)
-                    .setErrorCode(Errors.NONE.code)
-                    .setLeaderEpoch(4)
-                    .setEndOffset(0)
-            }
-            val response = OffsetsForLeaderEpochResponse(data)
-            client.prepareResponseFrom(
-                matcher = { body ->
-                    val request = assertIs<OffsetsForLeaderEpochRequest>(body)
-                    expectedPartitions == offsetForLeaderPartitionMap(request.data()).keys
-                },
-                response = response,
-                node = node,
-            )
-        }
-        assertEquals(subscriptions.assignedPartitions(), allRequestedPartitions)
-        fetcher.validateOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-        assertTrue(
-            subscriptions.assignedPartitions().none { tp -> subscriptions.awaitingValidation(tp) }
-        )
-    }
-
-    @Test
-    fun testOffsetValidationAwaitsNodeApiVersion() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        val partitionCounts: MutableMap<String, Int> = HashMap()
-        partitionCounts[tp0.topic] = 4
-        val epochOne = 1
-        metadata.updateWithCurrentRequestVersion(
-            response = metadataUpdateWith(
-                clusterId = "dummy",
-                numNodes = 1,
-                topicErrors = emptyMap(),
-                topicPartitionCounts = partitionCounts,
-                epochSupplier = { epochOne },
-                topicIds = topicIds
-            ),
-            isPartialUpdate = false,
-            nowMs = 0L,
-        )
-        val node = metadata.fetch().nodes[0]
-        assertFalse(client.isConnected(node.idString()))
-
-        // Seek with a position and leader+epoch
-        val leaderAndEpoch = LeaderAndEpoch(
-            leader = metadata.currentLeader(tp0).leader,
-            epoch = epochOne,
-        )
-        subscriptions.seekUnvalidated(
-            tp = tp0,
-            position = FetchPosition(
-                offset = 20L,
-                offsetEpoch = epochOne,
-                currentLeader = leaderAndEpoch,
-            ),
-        )
-        assertFalse(client.isConnected(node.idString()))
-        assertTrue(subscriptions.awaitingValidation(tp0))
-
-        // No version information is initially available, but the node is now connected
-        fetcher.validateOffsetsIfNeeded()
-        assertTrue(subscriptions.awaitingValidation(tp0))
-        assertTrue(client.isConnected(node.idString()))
-        apiVersions.update(node.idString(), NodeApiVersions.create())
-
-        // On the next call, the OffsetForLeaderEpoch request is sent and validation completes
-        client.prepareResponseFrom(
-            response = prepareOffsetsForLeaderEpochResponse(
-                topicPartition = tp0,
-                error = Errors.NONE,
-                leaderEpoch = epochOne,
-                endOffset = 30L,
-            ),
-            node = node,
-        )
-        fetcher.validateOffsetsIfNeeded()
-        consumerClient.pollNoWakeup()
-        assertFalse(subscriptions.awaitingValidation(tp0))
-        assertEquals(20L, subscriptions.position(tp0)!!.offset)
-    }
-
-    @Test
-    fun testOffsetValidationSkippedForOldBroker() {
-        // Old brokers may require CLUSTER permission to use the OffsetForLeaderEpoch API,
-        // so we should skip offset validation and not send the request.
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        val partitionCounts = mapOf(tp0.topic to 4)
-        val epochOne = 1
-        val epochTwo = 2
-
-        // Start with metadata, epoch=1
-        metadata.updateWithCurrentRequestVersion(
-            response = metadataUpdateWith(
-                clusterId = "dummy",
-                numNodes = 1,
-                topicErrors = emptyMap(),
-                topicPartitionCounts = partitionCounts,
-                epochSupplier = { epochOne },
-                topicIds = topicIds,
-            ),
-            isPartialUpdate = false,
-            nowMs = 0L,
-        )
-
-        // Offset validation requires OffsetForLeaderEpoch request v3 or higher
-        val node = metadata.fetch().nodes[0]
-        apiVersions.update(
-            nodeId = node.idString(),
-            nodeApiVersions = NodeApiVersions.create(
-                apiKey = ApiKeys.OFFSET_FOR_LEADER_EPOCH.id,
-                minVersion = 0,
-                maxVersion = 2,
-            )
-        )
-        run {
-
-            // Seek with a position and leader+epoch
-            val leaderAndEpoch = LeaderAndEpoch(
-                leader = metadata.currentLeader(tp0).leader,
-                epoch = epochOne,
-            )
-            subscriptions.seekUnvalidated(
-                tp = tp0,
-                position = FetchPosition(
-                    offset = 0,
-                    offsetEpoch = epochOne,
-                    currentLeader = leaderAndEpoch,
-                ),
-            )
-
-            // Update metadata to epoch=2, enter validation
-            metadata.updateWithCurrentRequestVersion(
-                response = metadataUpdateWith(
-                    clusterId = "dummy",
-                    numNodes = 1,
-                    topicErrors = emptyMap(),
-                    topicPartitionCounts = partitionCounts,
-                    epochSupplier = { epochTwo },
-                    topicIds = topicIds,
-                ),
-                isPartialUpdate = false,
-                nowMs = 0L,
-            )
-            fetcher.validateOffsetsIfNeeded()
-
-            // Offset validation is skipped
-            assertFalse(subscriptions.awaitingValidation(tp0))
-        }
-        run {
-
-            // Seek with a position and leader+epoch
-            val leaderAndEpoch = LeaderAndEpoch(
-                leader = metadata.currentLeader(tp0).leader,
-                epoch = epochOne,
-            )
-            subscriptions.seekUnvalidated(
-                tp = tp0,
-                position = FetchPosition(
-                    offset = 0,
-                    offsetEpoch = epochOne,
-                    currentLeader = leaderAndEpoch,
-                ),
-            )
-
-            // Update metadata to epoch=2, enter validation
-            metadata.updateWithCurrentRequestVersion(
-                response = metadataUpdateWith(
-                    clusterId = "dummy",
-                    numNodes = 1,
-                    topicErrors = emptyMap(),
-                    topicPartitionCounts = partitionCounts,
-                    epochSupplier = { epochTwo },
-                    topicIds = topicIds,
-                ),
-                isPartialUpdate = false,
-                nowMs = 0L,
-            )
-
-            // Subscription should not stay in AWAITING_VALIDATION in prepareFetchRequest
-            assertEquals(1, fetcher.sendFetches())
-            assertFalse(subscriptions.awaitingValidation(tp0))
-        }
-    }
-
-    @Test
-    fun testOffsetValidationSkippedForOldResponse() {
-        // Old responses may provide unreliable leader epoch,
-        // so we should skip offset validation and not send the request.
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        val partitionCounts = mapOf(tp0.topic to 4)
-        val epochOne = 1
-        metadata.updateWithCurrentRequestVersion(
-            response = metadataUpdateWith(
-                clusterId = "dummy",
-                numNodes = 1,
-                topicErrors = emptyMap(),
-                topicPartitionCounts = partitionCounts,
-                epochSupplier = { epochOne },
-                topicIds = topicIds,
-            ),
-            isPartialUpdate = false,
-            nowMs = 0L,
-        )
-        val node = metadata.fetch().nodes[0]
-        assertFalse(client.isConnected(node.idString()))
-
-        // Seek with a position and leader+epoch
-        val leaderAndEpoch = LeaderAndEpoch(
-            leader = metadata.currentLeader(tp0).leader,
-            epoch = epochOne,
-        )
-        subscriptions.seekUnvalidated(
-            tp = tp0,
-            position = FetchPosition(
-                offset = 20L,
-                offsetEpoch = epochOne,
-                currentLeader = leaderAndEpoch,
-            ),
-        )
-        assertFalse(client.isConnected(node.idString()))
-        assertTrue(subscriptions.awaitingValidation(tp0))
-
-        // Inject an older version of the metadata response
-        val responseVersion: Short = 8
-        metadata.updateWithCurrentRequestVersion(
-            response = metadataUpdateWith(
-                clusterId = "dummy",
-                numNodes = 1,
-                topicErrors = emptyMap(),
-                topicPartitionCounts = partitionCounts,
-                epochSupplier = { null },
-                partitionSupplier = { error, topicPartition, leaderId, leaderEpoch, replicaIds, inSyncReplicaIds, offlineReplicaIds ->
-                    PartitionMetadata(
-                        error = error,
-                        topicPartition = topicPartition,
-                        leaderId = leaderId,
-                        leaderEpoch = leaderEpoch,
-                        replicaIds = replicaIds,
-                        inSyncReplicaIds = inSyncReplicaIds,
-                        offlineReplicaIds = offlineReplicaIds,
-                    )
-                },
-                responseVersion = responseVersion,
-                topicIds = topicIds,
-            ),
-            isPartialUpdate = false,
-            nowMs = 0L,
-        )
-        fetcher.validateOffsetsIfNeeded()
-        // Offset validation is skipped
-        assertFalse(subscriptions.awaitingValidation(tp0))
-    }
-
-    @Test
-    fun testOffsetValidationResetOffsetForUndefinedEpochWithDefinedResetPolicy() =
-        testOffsetValidationWithGivenEpochOffset(
-            leaderEpoch = OffsetsForLeaderEpochResponse.UNDEFINED_EPOCH,
-            endOffset = 0L,
-            offsetResetStrategy = OffsetResetStrategy.EARLIEST,
-        )
-
-    @Test
-    fun testOffsetValidationResetOffsetForUndefinedOffsetWithDefinedResetPolicy() =
-        testOffsetValidationWithGivenEpochOffset(
-            leaderEpoch = 2,
-            endOffset = OffsetsForLeaderEpochResponse.UNDEFINED_EPOCH_OFFSET,
-            offsetResetStrategy = OffsetResetStrategy.EARLIEST,
-        )
-
-    @Test
-    fun testOffsetValidationResetOffsetForUndefinedEpochWithUndefinedResetPolicy() =
-        testOffsetValidationWithGivenEpochOffset(
-            leaderEpoch = OffsetsForLeaderEpochResponse.UNDEFINED_EPOCH,
-            endOffset = 0L,
-            offsetResetStrategy = OffsetResetStrategy.NONE,
-        )
-
-    @Test
-    fun testOffsetValidationResetOffsetForUndefinedOffsetWithUndefinedResetPolicy() =
-        testOffsetValidationWithGivenEpochOffset(
-            leaderEpoch = 2,
-            endOffset = OffsetsForLeaderEpochResponse.UNDEFINED_EPOCH_OFFSET,
-            offsetResetStrategy = OffsetResetStrategy.NONE,
-        )
-
-    @Test
-    fun testOffsetValidationTriggerLogTruncationForBadOffsetWithUndefinedResetPolicy() =
-        testOffsetValidationWithGivenEpochOffset(
-            leaderEpoch = 1,
-            endOffset = 1L,
-            offsetResetStrategy = OffsetResetStrategy.NONE,
-        )
-
-    private fun testOffsetValidationWithGivenEpochOffset(
-        leaderEpoch: Int,
-        endOffset: Long,
-        offsetResetStrategy: OffsetResetStrategy,
-    ) {
-        buildFetcher(offsetResetStrategy = offsetResetStrategy)
-        assignFromUser(setOf(tp0))
-        val partitionCounts = mapOf(tp0.topic to 4)
-        val epochOne = 1
-        val initialOffset = 5L
-        metadata.updateWithCurrentRequestVersion(
-            response = metadataUpdateWith(
-                clusterId = "dummy",
-                numNodes = 1,
-                topicErrors = emptyMap(),
-                topicPartitionCounts = partitionCounts,
-                epochSupplier = { epochOne },
-                topicIds = topicIds,
-            ),
-            isPartialUpdate = false,
-            nowMs = 0L,
-        )
-
-        // Offset validation requires OffsetForLeaderEpoch request v3 or higher
-        val node = metadata.fetch().nodes[0]
-        apiVersions.update(node.idString(), NodeApiVersions.create())
-        val leaderAndEpoch = LeaderAndEpoch(
-            leader = metadata.currentLeader(tp0).leader,
-            epoch = epochOne,
-        )
-        subscriptions.seekUnvalidated(
-            tp = tp0,
-            position = FetchPosition(
-                offset = initialOffset,
-                offsetEpoch = epochOne,
-                currentLeader = leaderAndEpoch,
-            ),
-        )
-        fetcher.validateOffsetsIfNeeded()
-        consumerClient.poll(time.timer(Duration.ZERO))
-        assertTrue(subscriptions.awaitingValidation(tp0))
-        assertTrue(client.hasInFlightRequests())
-        client.respond(
-            matcher = offsetsForLeaderEpochRequestMatcher(
-                topicPartition = tp0,
-                currentLeaderEpoch = epochOne,
-                leaderEpoch = epochOne,
-            ),
-            response = prepareOffsetsForLeaderEpochResponse(
-                topicPartition = tp0,
-                error = Errors.NONE,
-                leaderEpoch = leaderEpoch,
-                endOffset = endOffset,
-            )
-        )
-        consumerClient.poll(time.timer(Duration.ZERO))
-        if (offsetResetStrategy === OffsetResetStrategy.NONE) {
-            val thrown = assertFailsWith<LogTruncationException> { fetcher.validateOffsetsIfNeeded() }
-            assertEquals(mapOf(tp0 to initialOffset), thrown.offsetOutOfRangePartitions)
-            if (
-                endOffset == OffsetsForLeaderEpochResponse.UNDEFINED_EPOCH_OFFSET
-                || leaderEpoch == OffsetsForLeaderEpochResponse.UNDEFINED_EPOCH
-            ) assertEquals(emptyMap(), thrown.divergentOffsets)
-            else {
-                val expectedDivergentOffset = OffsetAndMetadata(
-                    offset = endOffset,
-                    leaderEpoch = leaderEpoch,
-                    metadata = "",
-                )
-                assertEquals(mapOf(tp0 to expectedDivergentOffset), thrown.divergentOffsets)
-            }
-            assertTrue(subscriptions.awaitingValidation(tp0))
-        } else {
-            fetcher.validateOffsetsIfNeeded()
-            assertFalse(subscriptions.awaitingValidation(tp0))
-        }
-    }
-
-    @Test
-    fun testOffsetValidationHandlesSeekWithInflightOffsetForLeaderRequest() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        val partitionCounts = mapOf(tp0.topic to 4)
-        val epochOne = 1
-        metadata.updateWithCurrentRequestVersion(
-            response = metadataUpdateWith(
-                clusterId = "dummy",
-                numNodes = 1,
-                topicErrors = emptyMap(),
-                topicPartitionCounts = partitionCounts,
-                epochSupplier = { epochOne },
-                topicIds = topicIds,
-            ),
-            isPartialUpdate = false,
-            nowMs = 0L,
-        )
-
-        // Offset validation requires OffsetForLeaderEpoch request v3 or higher
-        val node = metadata.fetch().nodes[0]
-        apiVersions.update(node.idString(), NodeApiVersions.create())
-        val leaderAndEpoch = LeaderAndEpoch(
-            leader = metadata.currentLeader(tp0).leader,
-            epoch = epochOne,
-        )
-        subscriptions.seekUnvalidated(
-            tp = tp0,
-            position = FetchPosition(
-                offset = 0,
-                offsetEpoch = epochOne,
-                currentLeader = leaderAndEpoch,
-            ),
-        )
-        fetcher.validateOffsetsIfNeeded()
-        consumerClient.poll(time.timer(Duration.ZERO))
-        assertTrue(subscriptions.awaitingValidation(tp0))
-        assertTrue(client.hasInFlightRequests())
-
-        // While the OffsetForLeaderEpoch request is in-flight, we seek to a different offset.
-        subscriptions.seekUnvalidated(
-            tp = tp0,
-            position = FetchPosition(
-                offset = 5,
-                offsetEpoch = epochOne,
-                currentLeader = leaderAndEpoch,
-            ),
-        )
-        assertTrue(subscriptions.awaitingValidation(tp0))
-        client.respond(
-            matcher = offsetsForLeaderEpochRequestMatcher(
-                topicPartition = tp0,
-                currentLeaderEpoch = epochOne,
-                leaderEpoch = epochOne,
-            ),
-            response = prepareOffsetsForLeaderEpochResponse(
-                topicPartition = tp0,
-                error = Errors.NONE,
-                leaderEpoch = 0,
-                endOffset = 0L,
-            ),
-        )
-        consumerClient.poll(time.timer(Duration.ZERO))
-
-        // The response should be ignored since we were validating a different position.
-        assertTrue(subscriptions.awaitingValidation(tp0))
-    }
-
-    @Test
-    fun testOffsetValidationFencing() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        val partitionCounts = mapOf(tp0.topic to 4)
-        val epochOne = 1
-        val epochTwo = 2
-        val epochThree = 3
-
-        // Start with metadata, epoch=1
-        metadata.updateWithCurrentRequestVersion(
-            response = metadataUpdateWith(
-                clusterId = "dummy",
-                numNodes = 1,
-                topicErrors = emptyMap(),
-                topicPartitionCounts = partitionCounts,
-                epochSupplier = { epochOne },
-                topicIds = topicIds,
-            ),
-            isPartialUpdate = false,
-            nowMs = 0L,
-        )
-
-        // Offset validation requires OffsetForLeaderEpoch request v3 or higher
-        val node = metadata.fetch().nodes[0]
-        apiVersions.update(node.idString(), NodeApiVersions.create())
-
-        // Seek with a position and leader+epoch
-        val leaderAndEpoch = LeaderAndEpoch(
-            leader = metadata.currentLeader(tp0).leader,
-            epoch = epochOne,
-        )
-        subscriptions.seekValidated(
-            tp = tp0,
-            position = FetchPosition(
-                offset = 0,
-                offsetEpoch = epochOne,
-                currentLeader = leaderAndEpoch,
-            ),
-        )
-
-        // Update metadata to epoch=2, enter validation
-        metadata.updateWithCurrentRequestVersion(
-            response = metadataUpdateWith(
-                clusterId = "dummy",
-                numNodes = 1,
-                topicErrors = emptyMap(),
-                topicPartitionCounts = partitionCounts,
-                epochSupplier = { epochTwo },
-                topicIds = topicIds,
-            ),
-            isPartialUpdate = false,
-            nowMs = 0L,
-        )
-        fetcher.validateOffsetsIfNeeded()
-        assertTrue(subscriptions.awaitingValidation(tp0))
-
-        // Update the position to epoch=3, as we would from a fetch
-        subscriptions.completeValidation(tp0)
-        val nextPosition = FetchPosition(
-            offset = 10,
-            offsetEpoch = epochTwo,
-            currentLeader = LeaderAndEpoch(
-                leader = leaderAndEpoch.leader,
-                epoch = epochTwo,
-            ),
-        )
-        subscriptions.position(tp0, nextPosition)
-        subscriptions.maybeValidatePositionForCurrentLeader(
-            apiVersions = apiVersions,
-            topicPartition = tp0,
-            leaderAndEpoch = LeaderAndEpoch(
-                leader = leaderAndEpoch.leader,
-                epoch = epochThree,
-            ),
-        )
-
-        // Prepare offset list response from async validation with epoch=2
-        client.prepareResponse(
-            response = prepareOffsetsForLeaderEpochResponse(
-                topicPartition = tp0,
-                error = Errors.NONE,
-                leaderEpoch = epochTwo,
-                endOffset = 10L,
-            ),
-        )
-        consumerClient.pollNoWakeup()
-        assertTrue(
-            actual = subscriptions.awaitingValidation(tp0),
-            message = "Expected validation to fail since leader epoch changed",
-        )
-
-        // Next round of validation, should succeed in validating the position
-        fetcher.validateOffsetsIfNeeded()
-        client.prepareResponse(
-            response = prepareOffsetsForLeaderEpochResponse(
-                topicPartition = tp0,
-                error = Errors.NONE,
-                leaderEpoch = epochThree,
-                endOffset = 10L,
-            ),
-        )
-        consumerClient.pollNoWakeup()
-        assertFalse(
-            actual = subscriptions.awaitingValidation(tp0),
-            message = "Expected validation to succeed with latest epoch",
-        )
-    }
-
-    @Test
-    fun testSkipValidationForOlderApiVersion() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        val partitionCounts = mapOf(tp0.topic to 4)
-        apiVersions.update(
-            nodeId = "0",
-            nodeApiVersions = NodeApiVersions.create(
-                apiKey = ApiKeys.OFFSET_FOR_LEADER_EPOCH.id,
-                minVersion = 0,
-                maxVersion = 2,
-            ),
-        )
-
-        // Start with metadata, epoch=1
-        metadata.updateWithCurrentRequestVersion(
-            response = metadataUpdateWith(
-                clusterId = "dummy",
-                numNodes = 1,
-                topicErrors = emptyMap(),
-                topicPartitionCounts = partitionCounts,
-                epochSupplier = { 1 },
-                topicIds = topicIds,
-            ),
-            isPartialUpdate = false,
-            nowMs = 0L,
-        )
-
-        // Request offset reset
-        subscriptions.requestOffsetReset(
-            partition = tp0,
-            offsetResetStrategy = OffsetResetStrategy.LATEST,
-        )
-
-        // Since we have no position due to reset, no fetch is sent
-        assertEquals(0, fetcher.sendFetches())
-
-        // Still no position, ensure offset validation logic did not transition us to FETCHING state
-        assertEquals(0, fetcher.sendFetches())
-
-        // Complete reset and now we can fetch
-        fetcher.resetOffsetIfNeeded(
-            partition = tp0,
-            requestedResetStrategy = OffsetResetStrategy.LATEST,
-            offsetData = ListOffsetData(
-                offset = 100,
-                timestamp = 1L,
-                leaderEpoch = null,
-            ),
-        )
-        assertEquals(1, fetcher.sendFetches())
     }
 
     @Test
@@ -6698,7 +4612,14 @@ class FetcherTest {
             value = "value-3".toByteArray(),
         )
         val records = builder.build()
-        buildFetcher()
+
+        buildFetcher<ByteArray, ByteArray>(
+            offsetResetStrategy = OffsetResetStrategy.EARLIEST,
+            keyDeserializer = ByteArrayDeserializer(),
+            valueDeserializer = ByteArrayDeserializer(),
+            maxPollRecords = Int.MAX_VALUE,
+            isolationLevel = IsolationLevel.READ_UNCOMMITTED,
+        )
         assignFromUser(setOf(tp0))
 
         // Initialize the epoch=2
@@ -6736,10 +4657,23 @@ class FetcherTest {
         )
 
         // Check for truncation, this should cause tp0 to go into validation
-        fetcher.validateOffsetsIfNeeded()
+
+        // Check for truncation, this should cause tp0 to go into validation
+        val offsetFetcher = OffsetFetcher(
+            logContext = LogContext(),
+            client = consumerClient,
+            metadata = metadata,
+            subscriptions = subscriptions,
+            time = time,
+            retryBackoffMs = retryBackoffMs,
+            requestTimeoutMs = requestTimeoutMs,
+            isolationLevel = IsolationLevel.READ_UNCOMMITTED,
+            apiVersions = apiVersions,
+        )
+        offsetFetcher.validatePositionsIfNeeded()
 
         // No fetches sent since we entered validation
-        assertEquals(0, fetcher.sendFetches())
+        assertEquals(0, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
         assertTrue(subscriptions.awaitingValidation(tp0))
 
@@ -6756,7 +4690,7 @@ class FetcherTest {
         assertFalse(subscriptions.awaitingValidation(tp0))
 
         // Fetch again, now it works
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
         client.prepareResponse(
             response = fullFetchResponse(
@@ -6801,7 +4735,7 @@ class FetcherTest {
         // Node preferred replica before first fetch response
         var selected = fetcher.selectReadReplica(tp0, Node.noNode(), time.milliseconds())
         assertEquals(-1, selected.id)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
 
         // Set preferred read replica to node=1
@@ -6824,7 +4758,7 @@ class FetcherTest {
         // Verify
         selected = fetcher.selectReadReplica(tp0, Node.noNode(), time.milliseconds())
         assertEquals(1, selected.id)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
 
         // Set preferred read replica to node=2, which isn't in our metadata, should revert to leader
@@ -6873,7 +4807,7 @@ class FetcherTest {
             ),
         )
         subscriptions.seek(tp0, 0)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         // Set preferred read replica to node=1
         client.prepareResponse(
@@ -6898,7 +4832,7 @@ class FetcherTest {
             currentTimeMs = time.milliseconds(),
         )
         assertEquals(1, selected.id)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
 
         // Disconnect - preferred read replica should be cleared.
@@ -6945,7 +4879,7 @@ class FetcherTest {
             ),
         )
         subscriptions.seek(tp0, 0)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         // Set preferred read replica to node=1
         client.prepareResponse(
@@ -6970,7 +4904,7 @@ class FetcherTest {
             currentTimeMs = time.milliseconds(),
         )
         assertEquals(1, selected.id)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
 
         // Disconnect and remove tp0 from assignment
@@ -7016,7 +4950,7 @@ class FetcherTest {
             ),
         )
         subscriptions.seek(tp0, 0)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
 
         // Set preferred read replica to node=1
         client.prepareResponse(
@@ -7041,7 +4975,7 @@ class FetcherTest {
             currentTimeMs = time.milliseconds(),
         )
         assertEquals(1, selected.id)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
 
         // Error - preferred read replica should be cleared. An actual error response will contain -1 as the
@@ -7090,7 +5024,7 @@ class FetcherTest {
             ),
         )
         subscriptions.seek(tp0, 0)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
         client.prepareResponse(
             response = fullFetchResponse(
@@ -7114,7 +5048,7 @@ class FetcherTest {
         assertEquals(selected.id, 1)
 
         // Return an error, should unset the preferred read replica
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
         client.prepareResponse(
             response = fullFetchResponse(
@@ -7143,7 +5077,7 @@ class FetcherTest {
         buildFetcher()
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
-        fetcher.sendFetches()
+        sendFetches()
         client.prepareResponse(
             response = fullFetchResponse(
                 tp = tidp0,
@@ -7169,10 +5103,10 @@ class FetcherTest {
                 consumerClient.poll(time.timer(0))
             }
         }
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         consumerClient.disconnectAsync(readReplica)
         consumerClient.poll(time.timer(0))
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
     }
 
     @Test
@@ -7180,7 +5114,7 @@ class FetcherTest {
         buildFetcher()
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
-        assertEquals(1, fetcher.sendFetches())
+        assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
 
         // Prepare a response with the CORRUPT_MESSAGE error.
@@ -7197,146 +5131,6 @@ class FetcherTest {
 
         // Trigger the exception.
         assertFailsWith<KafkaException> { fetchedRecords<Any?, Any?>() }
-    }
-
-    @Test
-    fun testBeginningOffsets() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        client.prepareResponse(
-            response = listOffsetResponse(
-                tp = tp0,
-                error = Errors.NONE,
-                timestamp = ListOffsetsRequest.EARLIEST_TIMESTAMP,
-                offset = 2L,
-            ),
-        )
-        assertEquals(
-            mapOf(tp0 to 2L), fetcher.beginningOffsets(setOf(tp0), time.timer(5000L))
-        )
-    }
-
-    @Test
-    fun testBeginningOffsetsDuplicateTopicPartition() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        client.prepareResponse(
-            response = listOffsetResponse(
-                tp = tp0,
-                error = Errors.NONE,
-                timestamp = ListOffsetsRequest.EARLIEST_TIMESTAMP,
-                offset = 2L,
-            ),
-        )
-        assertEquals(
-            expected = mapOf(tp0 to 2L),
-            actual = fetcher.beginningOffsets(listOf(tp0, tp0), time.timer(5000L))
-        )
-    }
-
-    @Test
-    fun testBeginningOffsetsMultipleTopicPartitions() {
-        buildFetcher()
-        val expectedOffsets = mapOf(
-            tp0 to 2L,
-            tp1 to 4L,
-            tp2 to 6L,
-        )
-        assignFromUser(expectedOffsets.keys)
-        client.prepareResponse(
-            response = listOffsetResponse(
-                offsets = expectedOffsets,
-                error = Errors.NONE,
-                timestamp = ListOffsetsRequest.EARLIEST_TIMESTAMP,
-                leaderEpoch = ListOffsetsResponse.UNKNOWN_EPOCH,
-            ),
-        )
-        assertEquals(
-            expected = expectedOffsets,
-            actual = fetcher.beginningOffsets(listOf(tp0, tp1, tp2), time.timer(5000L))
-        )
-    }
-
-    @Test
-    fun testBeginningOffsetsEmpty() {
-        buildFetcher()
-        assertEquals(emptyMap(), fetcher.beginningOffsets(emptyList(), time.timer(5000L)))
-    }
-
-    @Test
-    fun testEndOffsets() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        client.prepareResponse(
-            response = listOffsetResponse(
-                tp = tp0,
-                error = Errors.NONE,
-                timestamp = ListOffsetsRequest.LATEST_TIMESTAMP,
-                offset = 5L,
-            ),
-        )
-        assertEquals(
-            expected = mapOf(tp0 to 5L),
-            actual = fetcher.endOffsets(setOf(tp0), time.timer(5000L)),
-        )
-    }
-
-    @Test
-    fun testEndOffsetsDuplicateTopicPartition() {
-        buildFetcher()
-        assignFromUser(setOf(tp0))
-        client.prepareResponse(
-            response = listOffsetResponse(
-                tp = tp0,
-                error = Errors.NONE,
-                timestamp = ListOffsetsRequest.LATEST_TIMESTAMP,
-                offset = 5L,
-            ),
-        )
-        assertEquals(
-            expected = mapOf(tp0 to 5L),
-            actual = fetcher.endOffsets(listOf(tp0, tp0), time.timer(5000L)),
-        )
-    }
-
-    @Test
-    fun testEndOffsetsMultipleTopicPartitions() {
-        buildFetcher()
-        val expectedOffsets = mapOf(
-            tp0 to 5L,
-            tp1 to 7L,
-            tp2 to 9L,
-        )
-        assignFromUser(expectedOffsets.keys)
-        client.prepareResponse(
-            response = listOffsetResponse(
-                offsets = expectedOffsets,
-                error = Errors.NONE,
-                timestamp = ListOffsetsRequest.LATEST_TIMESTAMP,
-                leaderEpoch = ListOffsetsResponse.UNKNOWN_EPOCH,
-            ),
-        )
-        assertEquals(expectedOffsets, fetcher.endOffsets(listOf(tp0, tp1, tp2), time.timer(5000L)))
-    }
-
-    @Test
-    fun testEndOffsetsEmpty() {
-        buildFetcher()
-        assertEquals(emptyMap(), fetcher.endOffsets(emptyList(), time.timer(5000L)))
-    }
-
-    private fun offsetsForLeaderEpochRequestMatcher(
-        topicPartition: TopicPartition,
-        currentLeaderEpoch: Int,
-        leaderEpoch: Int,
-    ): RequestMatcher {
-        return RequestMatcher { request ->
-            val epochRequest = assertIs<OffsetsForLeaderEpochRequest>(request)
-            val partition = offsetForLeaderPartitionMap(epochRequest.data())[topicPartition]
-            partition != null
-                    && partition.currentLeaderEpoch == currentLeaderEpoch
-                    && partition.leaderEpoch == leaderEpoch
-        }
     }
 
     private fun prepareOffsetsForLeaderEpochResponse(
@@ -7360,80 +5154,6 @@ class FetcherTest {
                 )
         )
         return OffsetsForLeaderEpochResponse(data)
-    }
-
-    private fun offsetForLeaderPartitionMap(
-        data: OffsetForLeaderEpochRequestData,
-    ): Map<TopicPartition, OffsetForLeaderPartition> {
-        val result: MutableMap<TopicPartition, OffsetForLeaderPartition> = HashMap()
-        data.topics.forEach { topic ->
-            topic.partitions.forEach { partition ->
-                result[TopicPartition(
-                    topic = topic.topic,
-                    partition = partition.partition,
-                )] = partition
-            }
-        }
-        return result
-    }
-
-    private fun listOffsetRequestMatcher(
-        timestamp: Long,
-        leaderEpoch: Int = ListOffsetsResponse.UNKNOWN_EPOCH,
-    ): RequestMatcher {
-        // matches any list offset request with the provided timestamp
-        return RequestMatcher { body ->
-            val req = assertIs<ListOffsetsRequest>(body)
-            val topic = req.topics[0]
-            val partition = topic.partitions[0]
-            tp0.topic == topic.name
-                    && tp0.partition == partition.partitionIndex
-                    && timestamp == partition.timestamp
-                    && leaderEpoch == partition.currentLeaderEpoch
-        }
-    }
-
-    private fun listOffsetResponse(error: Errors, timestamp: Long, offset: Long): ListOffsetsResponse =
-        listOffsetResponse(tp = tp0, error = error, timestamp = timestamp, offset = offset)
-
-    private fun listOffsetResponse(
-        tp: TopicPartition,
-        error: Errors,
-        timestamp: Long,
-        offset: Long,
-        leaderEpoch: Int = ListOffsetsResponse.UNKNOWN_EPOCH,
-    ): ListOffsetsResponse = listOffsetResponse(
-        offsets = mapOf(tp to offset),
-        error = error,
-        timestamp = timestamp,
-        leaderEpoch = leaderEpoch
-    )
-
-    private fun listOffsetResponse(
-        offsets: Map<TopicPartition, Long>,
-        error: Errors,
-        timestamp: Long,
-        leaderEpoch: Int,
-    ): ListOffsetsResponse {
-        val responses = mutableMapOf<String, MutableList<ListOffsetsPartitionResponse>>()
-        for ((tp, value) in offsets) {
-            responses.putIfAbsent(tp.topic, ArrayList())
-            responses[tp.topic]!!.add(
-                ListOffsetsPartitionResponse()
-                    .setPartitionIndex(tp.partition)
-                    .setErrorCode(error.code)
-                    .setOffset(value)
-                    .setTimestamp(timestamp)
-                    .setLeaderEpoch(leaderEpoch)
-            )
-        }
-        val topics = responses.map { (key, value) ->
-            ListOffsetsTopicResponse()
-                .setName(key)
-                .setPartitions(value)
-        }
-        val data = ListOffsetsResponseData().setTopics(topics)
-        return ListOffsetsResponse(data)
     }
 
     private fun fetchResponseWithTopLevelError(
@@ -7535,30 +5255,6 @@ class FetcherTest {
         )
     }
 
-    private fun newMetadataResponse(topic: String, error: Errors): MetadataResponse {
-        val partitionsMetadata = mutableListOf<PartitionMetadata>()
-        if (error === Errors.NONE) {
-            val foundMetadata = initialUpdateResponse.topicMetadata()
-                .firstOrNull { (_, topic1) -> topic1 == topic }
-            foundMetadata?.let { metadata ->
-                partitionsMetadata.addAll(metadata.partitionMetadata)
-            }
-        }
-        val topicMetadata = MetadataResponse.TopicMetadata(
-            error = error,
-            topic = topic,
-            isInternal = false,
-            partitionMetadata = partitionsMetadata,
-        )
-        val brokers = initialUpdateResponse.brokers().toList()
-        return metadataResponse(
-            brokers = brokers,
-            clusterId = initialUpdateResponse.clusterId,
-            controllerId = initialUpdateResponse.controller!!.id,
-            topicMetadataList = listOf(topicMetadata),
-        )
-    }
-
     /**
      * Assert that the [latest fetch][Fetcher.collectFetch] does not contain any
      * [user-visible records][Fetch.records], did not
@@ -7573,13 +5269,13 @@ class FetcherTest {
         assertTrue(fetch.isEmpty, reason)
     }
 
-    private fun <K, V> fetchedRecords(): Map<TopicPartition, List<ConsumerRecord<K, V>>> {
+    private fun <K, V> fetchedRecords(): Map<TopicPartition, List<ConsumerRecord<K?, V?>>> {
         val fetch = collectFetch<K, V>()
         return fetch.records()
     }
 
-    private fun <K, V> collectFetch(): Fetch<K, V> {
-        return (fetcher as Fetcher<K, V>).collectFetch()
+    private fun <K, V> collectFetch(): Fetch<K?, V?> {
+        return (fetcher as Fetcher<K?, V?>).collectFetch()
     }
 
     private fun buildFetcher(
@@ -7612,22 +5308,36 @@ class FetcherTest {
             subscriptionState = subscriptionState,
             logContext = logContext,
         )
-        fetcher = Fetcher(
-            logContext = LogContext(),
-            client = consumerClient,
+        val fetchConfig = FetchConfig(
             minBytes = minBytes,
             maxBytes = maxBytes,
             maxWaitMs = maxWaitMs,
             fetchSize = fetchSize,
             maxPollRecords = maxPollRecords,
             checkCrcs = true,  // check crc
-            clientRackId = "",
+            clientRackId = CommonClientConfigs.DEFAULT_CLIENT_RACK,
             keyDeserializer = keyDeserializer,
             valueDeserializer = valueDeserializer,
+            isolationLevel = isolationLevel,
+        )
+
+        fetcher = spy(
+            Fetcher(
+                logContext = logContext,
+                client = consumerClient,
+                metadata = metadata,
+                subscriptions = subscriptionState,
+                fetchConfig = fetchConfig,
+                metricsManager = metricsManager,
+                time = time,
+            )
+        )
+
+        offsetFetcher = OffsetFetcher(
+            logContext = logContext,
+            client = consumerClient,
             metadata = metadata,
             subscriptions = subscriptions,
-            metrics = metrics,
-            metricsRegistry = metricsRegistry!!,
             time = time,
             retryBackoffMs = retryBackoffMs,
             requestTimeoutMs = requestTimeoutMs,
@@ -7655,18 +5365,24 @@ class FetcherTest {
         )
         client = MockClient(time, metadata)
         metrics = Metrics(config = metricConfig, time = time)
-        consumerClient = ConsumerNetworkClient(
-            logContext = logContext,
-            client = client,
-            metadata = metadata,
-            time = time,
-            retryBackoffMs = 100,
-            requestTimeoutMs = 1000,
-            maxPollTimeoutMs = Int.MAX_VALUE,
+        consumerClient = spy(
+            ConsumerNetworkClient(
+                logContext = logContext,
+                client = client,
+                metadata = metadata,
+                time = time,
+                retryBackoffMs = 100,
+                requestTimeoutMs = 1000,
+                maxPollTimeoutMs = Int.MAX_VALUE,
+            )
         )
         metricsRegistry = FetchMetricsRegistry(
             tags = metricConfig.tags.keys,
             metricGrpPrefix = "consumer$groupId",
+        )
+        metricsManager = FetchMetricsManager(
+            metrics = metrics,
+            metricsRegistry = metricsRegistry,
         )
     }
 

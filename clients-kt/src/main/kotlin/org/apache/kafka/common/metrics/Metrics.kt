@@ -301,14 +301,14 @@ class Metrics(
      */
     fun addMetricIfAbsent(
         metricName: MetricName,
-        config: MetricConfig = this.config,
+        config: MetricConfig? = null,
         metricValueProvider: MetricValueProvider<*>
     ): KafkaMetric {
         val metric = KafkaMetric(
             lock = ReentrantLock(),
             metricName = metricName,
             metricValueProvider = metricValueProvider,
-            config = config,
+            config = config ?: this.config,
             time = time
         )
 

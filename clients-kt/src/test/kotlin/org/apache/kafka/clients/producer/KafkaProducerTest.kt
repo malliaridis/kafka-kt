@@ -17,6 +17,20 @@
 
 package org.apache.kafka.clients.producer
 
+import java.lang.management.ManagementFactory
+import java.time.Duration
+import java.util.Properties
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Exchanger
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
+import javax.management.ObjectName
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.KafkaClient
 import org.apache.kafka.clients.MockClient
@@ -39,6 +53,7 @@ import org.apache.kafka.common.PartitionInfo
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.common.config.SslConfigs
+import org.apache.kafka.common.errors.ClusterAuthorizationException
 import org.apache.kafka.common.errors.InterruptException
 import org.apache.kafka.common.errors.InvalidTopicException
 import org.apache.kafka.common.errors.RecordTooLargeException
@@ -81,6 +96,7 @@ import org.apache.kafka.test.MockSerializer
 import org.apache.kafka.test.TestUtils
 import org.apache.kafka.test.TestUtils.assertFutureError
 import org.apache.kafka.test.TestUtils.assertFutureThrows
+import org.apache.kafka.test.TestUtils.retryOnExceptionWithTimeout
 import org.apache.kafka.test.TestUtils.singletonCluster
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
@@ -88,20 +104,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInfo
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
-import java.lang.management.ManagementFactory
-import java.time.Duration
-import java.util.Properties
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Exchanger
-import java.util.concurrent.ExecutionException
-import java.util.concurrent.Executors
-import java.util.concurrent.Future
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.TimeoutException
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicReference
-import javax.management.ObjectName
 import org.mockito.kotlin.any
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
@@ -110,8 +112,6 @@ import org.mockito.kotlin.notNull
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import kotlin.collections.ArrayList
-import kotlin.collections.HashMap
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -293,7 +293,8 @@ class KafkaProducerTest {
 
         assertFalse(
             actual = config.getBoolean(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG)!!,
-            message = "idempotence should be disabled when acks not set to all and `enable.idempotence` config is unset."
+            message =
+            "idempotence should be disabled when acks not set to all and `enable.idempotence` config is unset."
         )
         assertEquals(
             expected = "1",
@@ -627,9 +628,11 @@ class KafkaProducerTest {
             val props = Properties()
             props.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9999")
             props.setProperty(
-                ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, MockProducerInterceptor::class.java.getName() + ", "
-                        + MockProducerInterceptor::class.java.getName() + ", "
-                        + MockProducerInterceptor::class.java.getName()
+                ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG, listOf(
+                    MockProducerInterceptor::class.java.name,
+                    MockProducerInterceptor::class.java.name,
+                    MockProducerInterceptor::class.java.name,
+                ).joinToString()
             )
             props.setProperty(MockProducerInterceptor.APPEND_STRING_PROP, "something")
             MockProducerInterceptor.setThrowOnConfigExceptionThreshold(targetInterceptor)
@@ -867,7 +870,8 @@ class KafkaProducerTest {
 
         // Four request updates where the topic isn't present, at which point the timeout expires and a
         // TimeoutException is thrown
-        // For idempotence enabled case, the first metadata.fetch will be called in Sender#maybeSendAndPollTransactionalRequest
+        // For idempotence enabled case, the first metadata.fetch will be called in
+        // Sender#maybeSendAndPollTransactionalRequest
         val future = producer.send(record)
         verify(metadata, times(4)).requestUpdateForTopic(topic)
         verify(metadata, times(4)).awaitUpdate(any(), any())
@@ -939,7 +943,8 @@ class KafkaProducerTest {
 
         // Four request updates where the requested partition is out of range, at which point the timeout expires
         // and a TimeoutException is thrown
-        // For idempotence enabled case, the first and last metadata.fetch will be called in Sender#maybeSendAndPollTransactionalRequest,
+        // For idempotence enabled case, the first and last metadata.fetch will be called in
+        // Sender#maybeSendAndPollTransactionalRequest,
         // before the producer#send and after it finished
         val future = producer.send(record)
         verify(metadata, times(4)).requestUpdateForTopic(topic)
@@ -1483,6 +1488,59 @@ class KafkaProducerTest {
             interceptors = null,
             time = time,
         ).use { producer -> producer.initTransactions() }
+    }
+
+    @Test
+    @Throws(Exception::class)
+    fun testClusterAuthorizationFailure() {
+        val maxBlockMs = 500
+        
+        val configs = mapOf(
+            ProducerConfig.MAX_BLOCK_MS_CONFIG to maxBlockMs,
+            ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to "localhost:9000",
+            ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG to true,
+            ProducerConfig.TRANSACTIONAL_ID_CONFIG to "some-txn",
+        )
+        
+        val time = MockTime(1)
+        val initialUpdateResponse = metadataUpdateWith(
+            numNodes = 1,
+            topicPartitionCounts = mapOf("topic" to 1),
+        )
+        val metadata = newMetadata(refreshBackoffMs = 500, expirationMs = Long.MAX_VALUE)
+        
+        val client = MockClient(time, metadata)
+        client.updateMetadata(initialUpdateResponse)
+        
+        client.prepareResponse(FindCoordinatorResponse.prepareResponse(Errors.NONE, "some-txn", NODE))
+        client.prepareResponse(
+            initProducerIdResponse(
+                producerId = 1L,
+                producerEpoch = 5,
+                error = Errors.CLUSTER_AUTHORIZATION_FAILED,
+            )
+        )
+        val producer = kafkaProducer(
+            configs = configs,
+            keySerializer = StringSerializer(),
+            valueSerializer = StringSerializer(),
+            metadata = metadata,
+            kafkaClient = client,
+            interceptors = null,
+            time = time,
+        )
+        assertFailsWith<ClusterAuthorizationException> { producer.initTransactions() }
+
+        // retry initTransactions after the ClusterAuthorizationException not being thrown
+        client.prepareResponse(
+            initProducerIdResponse(
+                producerId = 1L,
+                producerEpoch = 5,
+                error = Errors.NONE
+            )
+        )
+        retryOnExceptionWithTimeout(timeoutMs = 1000, pollIntervalMs = 100) { producer.initTransactions() }
+        producer.close()
     }
 
     @Test
@@ -2266,9 +2324,9 @@ class KafkaProducerTest {
             ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to "localhost:9000",
         )
 
-        // Simulate a case where metadata for a particular topic is not available. This will cause KafkaProducer#send to
-        // block in Metadata#awaitUpdate for the configured max.block.ms. When close() is invoked, KafkaProducer#send should
-        // return with a KafkaException.
+        // Simulate a case where metadata for a particular topic is not available. This will cause
+        // KafkaProducer#send to block in Metadata#awaitUpdate for the configured max.block.ms.
+        // When close() is invoked, KafkaProducer#send should return with a KafkaException.
         val topicName = "test"
         val time = Time.SYSTEM
         val initialUpdateResponse = metadataUpdateWith(

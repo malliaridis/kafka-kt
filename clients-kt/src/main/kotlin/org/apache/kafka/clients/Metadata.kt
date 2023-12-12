@@ -210,7 +210,10 @@ open class Metadata(
         return updated
     }
 
-    @Deprecated("User property directly")
+    @Deprecated(
+        message = "User property directly",
+        replaceWith = ReplaceWith("lastSeenLeaderEpochs[topicPartition]")
+    )
     fun lastSeenLeaderEpoch(topicPartition: TopicPartition): Int? =
         lastSeenLeaderEpochs[topicPartition]
 

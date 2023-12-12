@@ -305,7 +305,7 @@ class PrototypeAsyncConsumer<K, V> : Consumer<K, V> {
         eventHandler.add(event)
 
         return try {
-            event.future().get(timeout.toMillis(), TimeUnit.MILLISECONDS)
+            event.future.get(timeout.toMillis(), TimeUnit.MILLISECONDS)
         } catch (exception: InterruptedException) {
             throw InterruptException(exception)
         } catch (exception: TimeoutException) {

@@ -23,6 +23,7 @@ import org.apache.kafka.common.message.ApiVersionsResponseData
 import org.apache.kafka.common.message.ApiVersionsResponseData.ApiVersionCollection
 import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.requests.ApiVersionsResponse
+import org.apache.kafka.test.TestUtils
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
 import org.junit.jupiter.api.Test
@@ -34,10 +35,14 @@ class NodeApiVersionsTest {
 
     @Test
     fun testUnsupportedVersionsToString() {
-        val versions = NodeApiVersions(ApiVersionCollection(), emptyList())
+        val versions = NodeApiVersions(
+            nodeApiVersions = ApiVersionCollection(),
+            nodeSupportedFeatures = emptyList(),
+            zkMigrationEnabled = false,
+        )
         val bld = StringBuilder()
         var prefix = "("
-        for (apiKey in ApiKeys.zkBrokerApis()) {
+        for (apiKey in ApiKeys.clientApis()) {
             bld.append(prefix)
                 .append(apiKey.name)
                 .append("(")
@@ -61,17 +66,21 @@ class NodeApiVersionsTest {
 
     @Test
     fun testVersionsToString() {
-        val versionList = ApiKeys.values().map { apiKey ->
+        val versionList = ApiKeys.entries.map { apiKey ->
             if (apiKey === ApiKeys.DELETE_TOPICS) ApiVersionsResponseData.ApiVersion()
                     .setApiKey(apiKey.id)
                     .setMinVersion(10000)
                     .setMaxVersion(10001)
             else ApiVersionsResponse.toApiVersion(apiKey)
         }
-        val versions = NodeApiVersions(versionList, emptyList())
+        val versions = NodeApiVersions(
+            nodeApiVersions = versionList,
+            nodeSupportedFeatures = emptyList(),
+            zkMigrationEnabled = false,
+        )
         val bld = StringBuilder()
         var prefix = "("
-        for (apiKey in ApiKeys.values()) {
+        for (apiKey in ApiKeys.entries) {
             bld.append(prefix)
             if (apiKey === ApiKeys.DELETE_TOPICS)
                 bld.append("DELETE_TOPICS(20): 10000 to 10001 [unusable: node too new]")
@@ -207,6 +216,7 @@ class NodeApiVersionsTest {
         val versions = NodeApiVersions(
             nodeApiVersions = ApiVersionCollection(),
             nodeSupportedFeatures = emptyList(),
+            zkMigrationEnabled = false,
         )
         assertFailsWith<UnsupportedVersionException> { versions.latestUsableVersion(ApiKeys.FETCH) }
     }
@@ -226,7 +236,7 @@ class NodeApiVersionsTest {
     @ParameterizedTest
     @EnumSource(ListenerType::class)
     fun testUsableVersionLatestVersions(scope: ListenerType) {
-        val defaultResponse = ApiVersionsResponse.defaultApiVersionsResponse(listenerType = scope)
+        val defaultResponse = TestUtils.defaultApiVersionsResponse(listenerType = scope)
         val versionList = defaultResponse.data().apiKeys.toMutableList()
         // Add an API key that we don't know about.
         versionList.add(
@@ -235,7 +245,11 @@ class NodeApiVersionsTest {
                 .setMinVersion(0.toShort())
                 .setMaxVersion(1.toShort())
         )
-        val versions = NodeApiVersions(versionList, emptyList())
+        val versions = NodeApiVersions(
+            nodeApiVersions = versionList,
+            nodeSupportedFeatures = emptyList(),
+            zkMigrationEnabled = false
+        )
         for (apiKey in ApiKeys.apisForListener(scope)) {
             assertEquals(apiKey.latestVersion(), versions.latestUsableVersion(apiKey))
         }
@@ -244,9 +258,12 @@ class NodeApiVersionsTest {
     @ParameterizedTest
     @EnumSource(ListenerType::class)
     fun testConstructionFromApiVersionsResponse(scope: ListenerType) {
-        val apiVersionsResponse =
-            ApiVersionsResponse.defaultApiVersionsResponse(listenerType = scope)
-        val versions = NodeApiVersions(apiVersionsResponse.data().apiKeys, emptyList())
+        val apiVersionsResponse = TestUtils.defaultApiVersionsResponse(listenerType = scope)
+        val versions = NodeApiVersions(
+            nodeApiVersions = apiVersionsResponse.data().apiKeys,
+            nodeSupportedFeatures = emptyList(),
+            zkMigrationEnabled = false,
+        )
 
         for (apiVersionKey in apiVersionsResponse.data().apiKeys) {
             val apiVersion = versions.apiVersion(ApiKeys.forId(apiVersionKey.apiKey.toInt()))!!

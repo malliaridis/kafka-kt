@@ -17,6 +17,12 @@
 
 package org.apache.kafka.clients.producer.internals
 
+import java.nio.ByteBuffer
+import java.util.Collections
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.Future
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import org.apache.kafka.clients.ApiVersions
 import org.apache.kafka.clients.MockClient
 import org.apache.kafka.clients.MockClient.RequestMatcher
@@ -32,6 +38,7 @@ import org.apache.kafka.common.PartitionInfo
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.FencedInstanceIdException
 import org.apache.kafka.common.errors.GroupAuthorizationException
+import org.apache.kafka.common.errors.InvalidTxnStateException
 import org.apache.kafka.common.errors.OutOfOrderSequenceException
 import org.apache.kafka.common.errors.ProducerFencedException
 import org.apache.kafka.common.errors.TimeoutException
@@ -41,6 +48,7 @@ import org.apache.kafka.common.errors.UnsupportedForMessageFormatException
 import org.apache.kafka.common.errors.UnsupportedVersionException
 import org.apache.kafka.common.internals.ClusterResourceListeners
 import org.apache.kafka.common.message.AddOffsetsToTxnResponseData
+import org.apache.kafka.common.message.AddPartitionsToTxnResponseData
 import org.apache.kafka.common.message.ApiVersionsResponseData
 import org.apache.kafka.common.message.EndTxnResponseData
 import org.apache.kafka.common.message.InitProducerIdResponseData
@@ -76,20 +84,15 @@ import org.apache.kafka.common.utils.MockTime
 import org.apache.kafka.common.utils.ProducerIdAndEpoch
 import org.apache.kafka.test.TestUtils.assertFutureThrows
 import org.apache.kafka.test.TestUtils.singletonCluster
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
-import java.nio.ByteBuffer
-import java.util.concurrent.ExecutionException
-import java.util.concurrent.Future
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
-import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertSame
@@ -1063,7 +1066,7 @@ class TransactionManagerTest {
 
         runUntil { transactionManager.hasFatalError }
         assertTrue(transactionManager.hasFatalError)
-        assertTrue(transactionManager.lastError() is UnsupportedVersionException)
+        assertIs<UnsupportedVersionException>(transactionManager.lastError())
     }
 
     @Test
@@ -1475,7 +1478,7 @@ class TransactionManagerTest {
         assertTrue(initPidResult.isCompleted)
         assertFalse(initPidResult.isSuccessful)
         assertFailsWith<TransactionalIdAuthorizationException> { initPidResult.await() }
-        assertFatalError(TransactionalIdAuthorizationException::class.java)
+        assertAbortableError(TransactionalIdAuthorizationException::class.java)
     }
 
     @Test
@@ -1500,14 +1503,13 @@ class TransactionManagerTest {
             coordinatorKey = consumerGroupId,
         )
         runUntil { transactionManager.hasError }
-        assertTrue(transactionManager.lastError() is GroupAuthorizationException)
+        assertIs<GroupAuthorizationException>(transactionManager.lastError())
 
         runUntil(sendOffsetsResult::isCompleted)
         assertFalse(sendOffsetsResult.isSuccessful)
-        assertTrue(sendOffsetsResult.error() is GroupAuthorizationException)
 
-        val exception = sendOffsetsResult.error() as GroupAuthorizationException?
-        assertEquals(consumerGroupId, exception!!.groupId)
+        val exception = assertIs<GroupAuthorizationException>(sendOffsetsResult.error())
+        assertEquals(consumerGroupId, exception.groupId)
 
         assertAbortableError(GroupAuthorizationException::class.java)
     }
@@ -1575,6 +1577,28 @@ class TransactionManagerTest {
         assertFalse(sendOffsetsResult.isSuccessful)
         assertIs<TransactionalIdAuthorizationException>(sendOffsetsResult.error())
         assertFatalError(TransactionalIdAuthorizationException::class.java)
+    }
+
+    @Test
+    fun testInvalidTxnStateFailureInAddOffsetsToTxn() {
+        val tp = TopicPartition("foo", 0)
+
+        doInitTransactions()
+
+        transactionManager.beginTransaction()
+        val sendOffsetsResult = transactionManager.sendOffsetsToTransaction(
+            offsets = Collections.singletonMap(tp, OffsetAndMetadata(39L)),
+            groupMetadata = ConsumerGroupMetadata(consumerGroupId),
+        )
+
+        prepareAddOffsetsToTxnResponse(Errors.INVALID_TXN_STATE, consumerGroupId, producerId, epoch)
+        runUntil { transactionManager.hasError }
+        assertIs<InvalidTxnStateException>(transactionManager.lastError())
+        assertTrue(sendOffsetsResult.isCompleted)
+        assertFalse(sendOffsetsResult.isSuccessful)
+        assertIs<InvalidTxnStateException>(sendOffsetsResult.error())
+
+        assertFatalError(InvalidTxnStateException::class.java)
     }
 
     @Test
@@ -1676,13 +1700,20 @@ class TransactionManagerTest {
             tp0 to Errors.TOPIC_AUTHORIZATION_FAILED,
             tp1 to Errors.OPERATION_NOT_ATTEMPTED,
         )
+        val result = AddPartitionsToTxnResponse.resultForTransaction(
+            transactionalId = AddPartitionsToTxnResponse.V3_AND_BELOW_TXN_ID,
+            errors = errors,
+        )
+        val data = AddPartitionsToTxnResponseData()
+            .setResultsByTopicV3AndBelow(result.topicResults)
+            .setThrottleTimeMs(0)
         client.respond(
             matcher = { body ->
                 val request = body as AddPartitionsToTxnRequest
-                assertEquals(errors.keys.toSet(), request.partitions().toSet())
+                assertEquals(errors.keys.toSet(), getPartitionsFromV3Request(request).toSet())
                 true
             },
-            response = AddPartitionsToTxnResponse(0, errors),
+            response = AddPartitionsToTxnResponse(data),
         )
         sender.runOnce()
 
@@ -1793,7 +1824,7 @@ class TransactionManagerTest {
         assertFailsWith<IllegalStateException> { transactionManager.beginTransaction() }
         assertFailsWith<IllegalStateException> { transactionManager.beginAbort() }
         assertFailsWith<IllegalStateException> { transactionManager.maybeAddPartition(tp0) }
-        Assertions.assertSame(result, transactionManager.beginCommit())
+        assertSame(result, transactionManager.beginCommit())
         result.await()
         transactionManager.beginTransaction()
         assertTrue(transactionManager.hasOngoingTransaction)
@@ -1826,7 +1857,7 @@ class TransactionManagerTest {
         assertFailsWith<IllegalStateException> { transactionManager.beginAbort() }
         assertFailsWith<IllegalStateException> { transactionManager.beginCommit() }
         assertFailsWith<IllegalStateException> { transactionManager.maybeAddPartition(tp0) }
-        Assertions.assertSame(result, transactionManager.initializeTransactions())
+        assertSame(result, transactionManager.initializeTransactions())
         result.await()
         assertTrue(result.isAcked)
         assertFailsWith<IllegalStateException> { transactionManager.initializeTransactions() }
@@ -1943,8 +1974,24 @@ class TransactionManagerTest {
         transactionManager.maybeAddPartition(tp)
         prepareAddPartitionsToTxn(tp, Errors.TRANSACTIONAL_ID_AUTHORIZATION_FAILED)
         runUntil { transactionManager.hasError }
-        assertTrue(transactionManager.lastError() is TransactionalIdAuthorizationException)
+        assertIs<TransactionalIdAuthorizationException>(transactionManager.lastError())
         assertFatalError(TransactionalIdAuthorizationException::class.java)
+    }
+
+    @Test
+    fun testInvalidTxnStateInAddPartitions() {
+        val tp = TopicPartition("foo", 0)
+        
+        doInitTransactions()
+        
+        transactionManager.beginTransaction()
+        transactionManager.maybeAddPartition(tp)
+        
+        prepareAddPartitionsToTxn(tp, Errors.INVALID_TXN_STATE)
+        runUntil { transactionManager.hasError }
+        assertIs<InvalidTxnStateException>(transactionManager.lastError())
+
+        assertFatalError(InvalidTxnStateException::class.java)
     }
 
     @Test
@@ -2261,12 +2308,12 @@ class TransactionManagerTest {
 
         // First we will get an EndTxn for abort.
         assertNotNull(handler)
-        assertTrue(handler.requestBuilder() is EndTxnRequest.Builder)
+        assertIs<EndTxnRequest.Builder>(handler.requestBuilder())
         handler = transactionManager.nextRequest(false)
 
         // Second we will see an InitPid for handling InvalidProducerEpoch.
         assertNotNull(handler)
-        assertTrue(handler.requestBuilder() is InitProducerIdRequest.Builder)
+        assertIs<InitProducerIdRequest.Builder>(handler.requestBuilder())
     }
 
     @Test
@@ -2579,7 +2626,7 @@ class TransactionManagerTest {
 
     @Test
     fun testHandlingOfInvalidProducerEpochErrorOnTxnOffsetCommit() {
-        testFatalErrorInTxnOffsetCommit(Errors.INVALID_PRODUCER_EPOCH)
+        testFatalErrorInTxnOffsetCommit(Errors.INVALID_PRODUCER_EPOCH, Errors.PRODUCER_FENCED)
     }
 
     @Test
@@ -2587,7 +2634,7 @@ class TransactionManagerTest {
         testFatalErrorInTxnOffsetCommit(Errors.UNSUPPORTED_FOR_MESSAGE_FORMAT)
     }
 
-    private fun testFatalErrorInTxnOffsetCommit(error: Errors) {
+    private fun testFatalErrorInTxnOffsetCommit(triggeredError: Errors, resultingError: Errors = triggeredError) {
         doInitTransactions()
         transactionManager.beginTransaction()
         val offsets: MutableMap<TopicPartition, OffsetAndMetadata> = HashMap()
@@ -2601,7 +2648,7 @@ class TransactionManagerTest {
         assertFalse(addOffsetsResult.isCompleted) // The request should complete only after the TxnOffsetCommit completes.
         val txnOffsetCommitResponse: MutableMap<TopicPartition, Errors> = HashMap()
         txnOffsetCommitResponse[tp0] = Errors.NONE
-        txnOffsetCommitResponse[tp1] = error
+        txnOffsetCommitResponse[tp1] = triggeredError
         prepareFindCoordinatorResponse(
             error = Errors.NONE,
             shouldDisconnect = false,
@@ -2611,7 +2658,7 @@ class TransactionManagerTest {
         prepareTxnOffsetCommitResponse(consumerGroupId, producerId, epoch, txnOffsetCommitResponse)
         runUntil(addOffsetsResult::isCompleted)
         assertFalse(addOffsetsResult.isSuccessful)
-        assertEquals(error.exception!!::class.java, addOffsetsResult.error()!!::class.java)
+        assertEquals(resultingError.exception!!::class.java, addOffsetsResult.error()!!::class.java)
     }
 
     @Test
@@ -2953,13 +3000,13 @@ class TransactionManagerTest {
         client.disconnect(clusterNode.idString())
         client.backoff(clusterNode, 100)
         runUntil { responseFuture.isDone }
-        try {
+        val error = assertFailsWith<ExecutionException>(
+            message = "Expected to get a TimeoutException since the queued ProducerBatch should have been expired",
+        ){
             // make sure the produce was expired.
             responseFuture.get()
-            fail("Expected to get a TimeoutException since the queued ProducerBatch should have been expired")
-        } catch (e: ExecutionException) {
-            assertTrue(e.cause is TimeoutException)
         }
+        assertIs<TimeoutException>(error.cause)
         assertTrue(transactionManager.hasAbortableError)
     }
 
@@ -3041,13 +3088,13 @@ class TransactionManagerTest {
         client.disconnect(clusterNode.idString())
         runUntil { responseFuture.isDone } // We should try to flush the produce, but expire it
         // instead without sending anything.
-        try {
+        val error = assertFailsWith<ExecutionException>(
+            message = "Expected to get a TimeoutException since the queued ProducerBatch should have been expired",
+        ) {
             // make sure the produce was expired.
             responseFuture.get()
-            fail("Expected to get a TimeoutException since the queued ProducerBatch should have been expired")
-        } catch (e: ExecutionException) {
-            assertTrue(e.cause is TimeoutException)
         }
+        assertIs<TimeoutException>(error.cause)
         runUntil(commitResult::isCompleted) // the commit shouldn't be completed without being sent since the produce request failed.
         assertFalse(commitResult.isSuccessful) // the commit shouldn't succeed since the produce request failed.
         assertFailsWith<TimeoutException> { commitResult.await() }
@@ -3107,13 +3154,15 @@ class TransactionManagerTest {
         client.disconnect(clusterNode.idString())
         client.backoff(clusterNode, 100)
         runUntil { responseFuture.isDone } // We should try to flush the produce, but expire it instead without sending anything.
-        try {
+
+        val error = assertFailsWith<ExecutionException>(
+            message = "Expected to get a TimeoutException since the queued ProducerBatch should have been expired",
+        ) {
             // make sure the produce was expired.
             responseFuture.get()
-            fail("Expected to get a TimeoutException since the queued ProducerBatch should have been expired")
-        } catch (e: ExecutionException) {
-            assertTrue(e.cause is TimeoutException)
         }
+        assertIs<TimeoutException>(error.cause)
+
         runUntil(commitResult::isCompleted)
         assertFalse(commitResult.isSuccessful) // the commit should have been dropped.
         assertTrue(transactionManager.hasFatalError)
@@ -3672,7 +3721,7 @@ class TransactionManagerTest {
         // The batch with the old epoch should be successfully drained, leaving the new one in the queue
         sender.runOnce()
         assertEquals(1, accumulator.getDeque(tp1)!!.size)
-        Assertions.assertNotEquals(tp1b2, accumulator.getDeque(tp1)!!.peek())
+        assertNotEquals(tp1b2, accumulator.getDeque(tp1)!!.peek())
         assertEquals(epoch, tp1b2.producerEpoch)
 
         // After successfully retrying, there should be no in-flight batches for tp1 and the
@@ -3837,7 +3886,7 @@ class TransactionManagerTest {
         // The batch with the old epoch should be successfully drained, leaving the new one in the queue
         sender.runOnce()
         assertEquals(1, accumulator.getDeque(tp1)!!.size)
-        Assertions.assertNotEquals(tp1b2, accumulator.getDeque(tp1)!!.peek())
+        assertNotEquals(tp1b2, accumulator.getDeque(tp1)!!.peek())
         assertEquals(epoch, tp1b2.producerEpoch)
 
         // After successfully retrying, there should be no in-flight batches for tp1 and the sequence should be 0
@@ -3870,6 +3919,63 @@ class TransactionManagerTest {
         assertEquals(1, transactionManager.sequenceNumber(tp1))
     }
 
+    @Test
+    fun testBackgroundInvalidStateTransitionIsFatal() {
+        doInitTransactions()
+        assertTrue(transactionManager.isTransactional)
+
+        transactionManager.setPoisonStateOnInvalidTransition(true)
+
+        // Intentionally perform an operation that will cause an invalid state transition. The detection of this
+        // will result in a poisoning of the transaction manager for all subsequent transactional operations since
+        // it was performed in the background.
+        assertFailsWith<IllegalStateException> {
+            transactionManager.handleFailedBatch(batchWithValue(tp0, "test"), KafkaException(), false)
+        }
+        assertTrue(transactionManager.hasFatalError)
+
+        // Validate that all of these operations will fail after the invalid state transition attempt above.
+        assertFailsWith<IllegalStateException> { transactionManager.beginTransaction() }
+        assertFailsWith<IllegalStateException> { transactionManager.beginAbort() }
+        assertFailsWith<IllegalStateException> { transactionManager.beginCommit() }
+        assertFailsWith<IllegalStateException> { transactionManager.maybeAddPartition(tp0) }
+        assertFailsWith<IllegalStateException> { transactionManager.initializeTransactions() }
+        assertFailsWith<IllegalStateException> {
+            transactionManager.sendOffsetsToTransaction(emptyMap(), ConsumerGroupMetadata("fake-group-id"))
+        }
+    }
+
+    @Test
+    fun testForegroundInvalidStateTransitionIsRecoverable() {
+        // Intentionally perform an operation that will cause an invalid state transition. The detection of this
+        // will not poison the transaction manager since it was performed in the foreground.
+        assertFailsWith<IllegalStateException> { transactionManager.beginAbort() }
+        assertFalse(transactionManager.hasFatalError)
+
+        // Validate that the transactions can still run after the invalid state transition attempt above.
+        doInitTransactions()
+        assertTrue(transactionManager.isTransactional)
+
+        transactionManager.beginTransaction()
+        assertFalse(transactionManager.hasFatalError)
+
+        transactionManager.maybeAddPartition(tp1)
+        assertTrue(transactionManager.hasOngoingTransaction)
+
+        prepareAddPartitionsToTxn(tp1, Errors.NONE)
+        runUntil { transactionManager.isPartitionAdded(tp1) }
+
+        val retryResult = transactionManager.beginCommit()
+        assertTrue(transactionManager.hasOngoingTransaction)
+
+        prepareEndTxnResponse(Errors.NONE, TransactionResult.COMMIT, producerId, epoch)
+        runUntil { !transactionManager.hasOngoingTransaction }
+        runUntil(retryResult::isCompleted)
+        retryResult.await()
+        runUntil(retryResult::isAcked)
+        assertFalse(transactionManager.hasOngoingTransaction)
+    }
+
     @Throws(InterruptedException::class)
     private fun appendToAccumulator(tp: TopicPartition): FutureRecordMetadata? {
         val nowMs = time.milliseconds()
@@ -3891,7 +3997,7 @@ class TransactionManagerTest {
     @Throws(InterruptedException::class)
     private fun verifyCommitOrAbortTransactionRetriable(
         firstTransactionResult: TransactionResult,
-        retryTransactionResult: TransactionResult
+        retryTransactionResult: TransactionResult,
     ) {
         doInitTransactions()
         transactionManager.beginTransaction()
@@ -3926,13 +4032,21 @@ class TransactionManagerTest {
     }
 
     private fun prepareAddPartitionsToTxn(errors: Map<TopicPartition, Errors>) {
+        val result = AddPartitionsToTxnResponse.resultForTransaction(
+            transactionalId = AddPartitionsToTxnResponse.V3_AND_BELOW_TXN_ID,
+            errors = errors,
+        )
+        val data = AddPartitionsToTxnResponseData()
+            .setResultsByTopicV3AndBelow(result.topicResults)
+            .setThrottleTimeMs(0)
+
         client.prepareResponse(
             matcher = { body ->
                 val request = body as AddPartitionsToTxnRequest
-                assertEquals(errors.keys.toSet(), request.partitions().toSet())
+                assertEquals(errors.keys.toSet(), getPartitionsFromV3Request(request).toSet())
                 true
             },
-            response = AddPartitionsToTxnResponse(0, errors),
+            response = AddPartitionsToTxnResponse(data),
         )
     }
 
@@ -4005,7 +4119,7 @@ class TransactionManagerTest {
         error: Errors,
         producerId: Long,
         producerEpoch: Short,
-        tp: TopicPartition = tp0
+        tp: TopicPartition = tp0,
     ) {
         client.prepareResponse(
             matcher = produceRequestMatcher(producerId, producerEpoch, tp),
@@ -4045,11 +4159,17 @@ class TransactionManagerTest {
         epoch: Short,
         producerId: Long,
     ) {
+        val result = AddPartitionsToTxnResponse.resultForTransaction(
+            transactionalId = AddPartitionsToTxnResponse.V3_AND_BELOW_TXN_ID,
+            errors = Collections.singletonMap(topicPartition, error),
+        )
+
         client.prepareResponse(
             matcher = addPartitionsRequestMatcher(topicPartition, epoch, producerId),
             response = AddPartitionsToTxnResponse(
-                throttleTimeMs = 0,
-                errors = mapOf(topicPartition to error),
+                AddPartitionsToTxnResponseData()
+                    .setThrottleTimeMs(0)
+                    .setResultsByTopicV3AndBelow(result.topicResults),
             )
         )
     }
@@ -4061,9 +4181,17 @@ class TransactionManagerTest {
         epoch: Short,
         producerId: Long,
     ) {
+        val result = AddPartitionsToTxnResponse.resultForTransaction(
+            transactionalId = AddPartitionsToTxnResponse.V3_AND_BELOW_TXN_ID,
+            errors = Collections.singletonMap(topicPartition, error),
+        )
         client.respond(
             matcher = addPartitionsRequestMatcher(topicPartition, epoch, producerId),
-            response = AddPartitionsToTxnResponse(0, mapOf(topicPartition to error)),
+            response = AddPartitionsToTxnResponse(
+                AddPartitionsToTxnResponseData()
+                    .setThrottleTimeMs(0)
+                    .setResultsByTopicV3AndBelow(result.topicResults)
+            ),
         )
     }
 
@@ -4074,12 +4202,16 @@ class TransactionManagerTest {
     ): RequestMatcher {
         return RequestMatcher { body ->
             val addPartitionsToTxnRequest = body as AddPartitionsToTxnRequest
-            assertEquals(producerId, addPartitionsToTxnRequest.data().producerId)
-            assertEquals(epoch, addPartitionsToTxnRequest.data().producerEpoch)
-            assertEquals(listOf(topicPartition), addPartitionsToTxnRequest.partitions())
-            assertEquals(transactionalId, addPartitionsToTxnRequest.data().transactionalId)
+            assertEquals(producerId, addPartitionsToTxnRequest.data().v3AndBelowProducerId)
+            assertEquals(epoch, addPartitionsToTxnRequest.data().v3AndBelowProducerEpoch)
+            assertEquals(listOf(topicPartition), getPartitionsFromV3Request(addPartitionsToTxnRequest))
+            assertEquals(transactionalId, addPartitionsToTxnRequest.data().v3AndBelowTransactionalId)
             true
         }
+    }
+
+    private fun getPartitionsFromV3Request(request: AddPartitionsToTxnRequest): List<TopicPartition> {
+        return AddPartitionsToTxnRequest.getPartitions(request.data().v3AndBelowTopics)
     }
 
     private fun prepareEndTxnResponse(
@@ -4119,7 +4251,7 @@ class TransactionManagerTest {
     private fun endTxnMatcher(
         result: TransactionResult,
         producerId: Long,
-        epoch: Short
+        epoch: Short,
     ): RequestMatcher {
         return RequestMatcher { body ->
             val endTxnRequest = body as EndTxnRequest
@@ -4158,7 +4290,7 @@ class TransactionManagerTest {
         consumerGroupId: String,
         producerId: Long,
         producerEpoch: Short,
-        txnOffsetCommitResponse: Map<TopicPartition, Errors>
+        txnOffsetCommitResponse: Map<TopicPartition, Errors>,
     ) {
         client.prepareResponse(
             matcher = { request ->
@@ -4217,7 +4349,7 @@ class TransactionManagerTest {
         offset: Long,
         error: Errors,
         throttleTimeMs: Int,
-        logStartOffset: Int
+        logStartOffset: Int,
     ): ProduceResponse {
         val resp = ProduceResponse.PartitionResponse(
             error, offset, RecordBatch.NO_TIMESTAMP,

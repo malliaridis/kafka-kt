@@ -26,7 +26,7 @@ import org.apache.kafka.common.requests.DescribeLogDirsResponse
  */
 class LogDirDescription(
     private val error: ApiException?,
-    private val replicaInfos: Map<TopicPartition, ReplicaInfo>,
+    private val replicaInfos: MutableMap<TopicPartition, ReplicaInfo>,
     totalBytes: Long = DescribeLogDirsResponse.UNKNOWN_VOLUME_BYTES,
     usableBytes: Long = DescribeLogDirsResponse.UNKNOWN_VOLUME_BYTES,
 ) {
@@ -56,7 +56,7 @@ class LogDirDescription(
     /**
      * A map from topic partition to replica information for that partition in this log directory.
      */
-    fun replicaInfos(): Map<TopicPartition, ReplicaInfo> = replicaInfos
+    fun replicaInfos(): MutableMap<TopicPartition, ReplicaInfo> = replicaInfos
 
     /**
      * The total size of the volume this log directory is on or empty if the broker did not return a

@@ -311,8 +311,9 @@ abstract class AbstractFetch<K, V>(
                 inLineFetch.partition
             )
         } else {
-            val position = subscriptions.position(inLineFetch.partition)
-                ?: throw IllegalStateException("Missing position for fetchable partition " + inLineFetch.partition)
+            val position = checkNotNull(subscriptions.position(inLineFetch.partition)) {
+                "Missing position for fetchable partition " + inLineFetch.partition
+            }
             if (inLineFetch.nextFetchOffset == position.offset) {
                 val partRecords = inLineFetch.fetchRecords(maxRecords)
                 log.trace(
@@ -692,7 +693,7 @@ abstract class AbstractFetch<K, V>(
         clearBufferedDataForUnassignedPartitions(currentTopicPartitions)
     }
 
-    protected fun sessionHandler(node: Int): FetchSessionHandler? = sessionHandlers[node]
+    protected open fun sessionHandler(node: Int): FetchSessionHandler? = sessionHandlers[node]
 
     // Visible for testing
     internal fun maybeCloseFetchSessions(timer: Timer) {

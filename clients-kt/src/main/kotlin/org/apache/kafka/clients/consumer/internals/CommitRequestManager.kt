@@ -17,20 +17,15 @@
 
 package org.apache.kafka.clients.consumer.internals
 
-import java.util.Collections
 import java.util.LinkedList
-import java.util.Objects
-import java.util.Optional
 import java.util.Queue
 import java.util.concurrent.CompletableFuture
-import java.util.function.Consumer
-import java.util.function.Function
-import java.util.function.Predicate
-import java.util.stream.Collectors
 import org.apache.kafka.clients.ClientResponse
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.clients.consumer.RetriableCommitFailedException
+import org.apache.kafka.clients.consumer.internals.NetworkClientDelegate.PollResult
+import org.apache.kafka.clients.consumer.internals.NetworkClientDelegate.UnsentRequest
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.GroupAuthorizationException
@@ -81,19 +76,16 @@ class CommitRequestManager(
      * Poll for the [OffsetFetchRequest] and [OffsetCommitRequest] request if there's any. The function will
      * also try to autocommit the offsets, if feature is enabled.
      */
-    fun poll(currentTimeMs: Long): NetworkClientDelegate.PollResult {
+    override fun poll(currentTimeMs: Long): PollResult {
         // poll only when the coordinator node is known.
-        if (!coordinatorRequestManager.coordinator().isPresent()) {
+        if (coordinatorRequestManager.coordinator == null) {
             return PollResult(Long.MAX_VALUE, emptyList())
         }
         maybeAutoCommit(subscriptionState.allConsumed())
         if (!pendingRequests.hasUnsentRequests()) {
             return PollResult(Long.MAX_VALUE, emptyList())
         }
-        return PollResult(
-            Long.MAX_VALUE,
-            Collections.unmodifiableList(pendingRequests.drain(currentTimeMs))
-        )
+        return PollResult(Long.MAX_VALUE, pendingRequests.drain(currentTimeMs))
     }
 
     fun maybeAutoCommit(offsets: Map<TopicPartition, OffsetAndMetadata>) {
@@ -119,7 +111,7 @@ class CommitRequestManager(
      */
     fun addOffsetFetchRequest(
         partitions: Set<TopicPartition>,
-    ): CompletableFuture<Map<TopicPartition, OffsetAndMetadata>> =
+    ): CompletableFuture<Map<TopicPartition, OffsetAndMetadata?>> =
         pendingRequests.addOffsetFetchRequest(partitions)
 
     fun updateAutoCommitTimer(currentTimeMs: Long) {
@@ -165,7 +157,7 @@ class CommitRequestManager(
 
         fun future(): CompletableFuture<ClientResponse> = future.future()
 
-        fun toUnsentRequest(): NetworkClientDelegate.UnsentRequest {
+        fun toUnsentRequest(): UnsentRequest {
             val requestTopicDataMap = mutableMapOf<String, OffsetCommitRequestTopic>()
             for ((topicPartition, offsetAndMetadata) in offsets) {
                 val topic = requestTopicDataMap.getOrDefault(
@@ -188,10 +180,10 @@ class CommitRequestManager(
                     .setGroupInstanceId(groupInstanceId)
                     .setTopics(requestTopicDataMap.values.toList())
             )
-            return NetworkClientDelegate.UnsentRequest(
-                builder = builder,
-                coordinator = coordinatorRequestManager.coordinator(),
-                future = future
+            return UnsentRequest(
+                requestBuilder = builder,
+                node = coordinatorRequestManager.coordinator,
+                handler = future,
             )
         }
     }
@@ -209,19 +201,19 @@ class CommitRequestManager(
                     && requestedPartitions == request.requestedPartitions
         }
 
-        fun toUnsentRequest(currentTimeMs: Long): NetworkClientDelegate.UnsentRequest {
+        fun toUnsentRequest(currentTimeMs: Long): UnsentRequest {
             val builder: OffsetFetchRequest.Builder = OffsetFetchRequest.Builder(
                 groupId = groupState.groupId,
                 requireStable = true,
                 partitions = ArrayList(requestedPartitions),
                 throwOnFetchStableOffsetsUnsupported = throwOnFetchStableOffsetUnsupported,
             )
-            val unsentRequest: NetworkClientDelegate.UnsentRequest = UnsentRequest(
-                builder = builder,
-                coordinator = coordinatorRequestManager.coordinator(),
+            val unsentRequest = UnsentRequest(
+                requestBuilder = builder,
+                node = coordinatorRequestManager.coordinator,
             )
-            unsentRequest.future().whenComplete { r, t ->
-                onResponse(currentTimeMs, r.responseBody() as OffsetFetchResponse)
+            unsentRequest.future.whenComplete { request, _ ->
+                onResponse(currentTimeMs, request.responseBody as OffsetFetchResponse)
             }
             return unsentRequest
         }
@@ -253,7 +245,7 @@ class CommitRequestManager(
                     retry(currentTimeMs)
                 }
                 Errors.GROUP_AUTHORIZATION_FAILED -> future.completeExceptionally(
-                    GroupAuthorizationException.forGroupId(groupState.groupId)
+                    GroupAuthorizationException(groupId = groupState.groupId)
                 )
                 else -> future.completeExceptionally(
                     KafkaException("Unexpected error in fetch offset response: " + responseError.message)
@@ -356,7 +348,7 @@ class CommitRequestManager(
         var inflightOffsetFetches = mutableListOf<OffsetFetchRequestState>()
 
         fun hasUnsentRequests(): Boolean {
-            return !unsentOffsetCommits.isEmpty() || !unsentOffsetFetches.isEmpty()
+            return !unsentOffsetCommits.isEmpty() || unsentOffsetFetches.isNotEmpty()
         }
 
         fun addOffsetCommitRequest(
@@ -382,7 +374,7 @@ class CommitRequestManager(
          * If the request is new, it invokes a callback to remove itself from the `inflightOffsetFetches`
          * upon completion.>
          */
-        private fun addOffsetFetchRequest(
+        fun addOffsetFetchRequest(
             request: OffsetFetchRequestState,
         ): CompletableFuture<Map<TopicPartition, OffsetAndMetadata?>> {
             val dupe: OffsetFetchRequestState? = unsentOffsetFetches.firstOrNull { it.sameRequest(request) }
@@ -404,7 +396,7 @@ class CommitRequestManager(
             return request.future
         }
 
-        private fun addOffsetFetchRequest(
+        fun addOffsetFetchRequest(
             partitions: Set<TopicPartition>,
         ): CompletableFuture<Map<TopicPartition, OffsetAndMetadata?>> {
             val request = OffsetFetchRequestState(
@@ -422,8 +414,8 @@ class CommitRequestManager(
          * Note: Sendable requests are determined by their timer as we are expecting backoff on failed attempt. See
          * [RequestState].
          */
-        fun drain(currentTimeMs: Long): List<NetworkClientDelegate.UnsentRequest> {
-            val unsentRequests = mutableListOf<NetworkClientDelegate.UnsentRequest>()
+        fun drain(currentTimeMs: Long): List<UnsentRequest> {
+            val unsentRequests = mutableListOf<UnsentRequest>()
 
             // Add all unsent offset commit requests to the unsentRequests list
             unsentRequests.addAll(unsentOffsetCommits.map { it.toUnsentRequest() })
@@ -476,4 +468,3 @@ class CommitRequestManager(
         private const val THROW_ON_FETCH_STABLE_OFFSET_UNSUPPORTED = "internal.throw.on.fetch.stable.offset.unsupported"
     }
 }
-

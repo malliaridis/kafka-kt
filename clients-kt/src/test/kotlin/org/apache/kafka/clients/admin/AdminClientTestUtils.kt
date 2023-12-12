@@ -17,18 +17,17 @@
 
 package org.apache.kafka.clients.admin
 
+import java.util.*
 import org.apache.kafka.clients.HostResolver
 import org.apache.kafka.clients.admin.CreateTopicsResult.TopicMetadataAndConfig
-import org.apache.kafka.clients.admin.ListOffsetsResult.ListOffsetsResultInfo
 import org.apache.kafka.clients.admin.internals.CoordinatorKey
-import org.apache.kafka.clients.admin.internals.MetadataOperationContext
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.KafkaFuture
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.Uuid
+import org.apache.kafka.common.config.ConfigResource
 import org.apache.kafka.common.internals.KafkaFutureImpl
-import java.util.*
 
 object AdminClientTestUtils {
 
@@ -77,13 +76,39 @@ object AdminClientTestUtils {
     }
 
     /**
+     * Helper to create a AlterConfigsResult instance for a given Throwable.
+     * AlterConfigsResult's constructor is only accessible from within the
+     * admin package.
+     */
+    fun alterConfigsResult(cr: ConfigResource, t: Throwable): AlterConfigsResult {
+        val future = KafkaFutureImpl<Unit>()
+        val futures = mapOf(cr to future)
+        future.completeExceptionally(t)
+
+        return AlterConfigsResult(futures)
+    }
+
+    /**
+     * Helper to create a AlterConfigsResult instance for a given ConfigResource.
+     * AlterConfigsResult's constructor is only accessible from within the
+     * admin package.
+     */
+    fun alterConfigsResult(cr: ConfigResource): AlterConfigsResult {
+        val future = KafkaFutureImpl<Unit>()
+        val futures = mapOf(cr to future)
+        future.complete(Unit)
+
+        return AlterConfigsResult(futures)
+    }
+
+    /**
      * Helper to create a CreatePartitionsResult instance for a given Throwable.
      * CreatePartitionsResult's constructor is only accessible from within the
      * admin package.
      */
-    fun createPartitionsResult(topic: String, t: Throwable?): CreatePartitionsResult {
+    fun createPartitionsResult(topic: String, t: Throwable): CreatePartitionsResult {
         val future = KafkaFutureImpl<Unit>()
-        future.completeExceptionally(t!!)
+        future.completeExceptionally(t)
         return CreatePartitionsResult(mapOf(topic to future))
     }
 
@@ -122,19 +147,6 @@ object AdminClientTestUtils {
         return ListConsumerGroupOffsetsResult(
             mapOf(CoordinatorKey.byGroupId(group) to future)
         )
-    }
-
-    /**
-     * Used for benchmark. KafkaAdminClient.getListOffsetsCalls is only accessible
-     * from within the admin package.
-     */
-    internal fun getListOffsetsCalls(
-        adminClient: KafkaAdminClient,
-        context: MetadataOperationContext<ListOffsetsResultInfo, ListOffsetsOptions>,
-        topicPartitionOffsets: Map<TopicPartition, OffsetSpec>,
-        futures: Map<TopicPartition, KafkaFutureImpl<ListOffsetsResultInfo>>,
-    ): List<KafkaAdminClient.Call> {
-        return adminClient.getListOffsetsCalls(context, topicPartitionOffsets, futures)
     }
 
     /**

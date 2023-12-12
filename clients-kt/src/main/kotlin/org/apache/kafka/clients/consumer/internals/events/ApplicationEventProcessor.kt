@@ -86,7 +86,7 @@ class ApplicationEventProcessor(
 
     private fun process(event: OffsetFetchApplicationEvent): Boolean {
         val commitRequestManger = registry[RequestManager.Type.COMMIT]
-        val future = event.future()
+        val future = event.future
         if (commitRequestManger == null) {
             future.completeExceptionally(
                 KafkaException(

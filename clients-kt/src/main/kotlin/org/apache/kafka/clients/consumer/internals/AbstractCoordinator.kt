@@ -346,7 +346,7 @@ abstract class AbstractCoordinator(
     }
 
     @Synchronized
-    protected fun timeToNextHeartbeat(now: Long): Long {
+    fun timeToNextHeartbeat(now: Long): Long {
         // if we have not joined the group or we are preparing rebalance, we don't need to send
         // heartbeats
         return if (state.hasNotJoinedGroup()) Long.MAX_VALUE

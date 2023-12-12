@@ -391,8 +391,8 @@ class KafkaFutureTest {
             expectedException = CompletionException::class.java,
             expectedMessage = "java.lang.RuntimeException: We require more vespene gas",
         )
-        assertTrue(cause!!.cause is RuntimeException)
-        assertEquals(cause.cause!!.message, "We require more vespene gas")
+        val cause2 = assertIs<RuntimeException>(cause?.cause)
+        assertEquals(cause2.message, "We require more vespene gas")
     }
 
     @Test
@@ -523,7 +523,7 @@ class KafkaFutureTest {
         assertFalse(dependantFuture.isDone())
         assertTrue(future.cancel(true))
         assertTrue(ran[0])
-        assertTrue(err[0] is CancellationException)
+        assertIs<CancellationException>(err[0])
     }
 
     private class CompleterThread<T> : Thread {

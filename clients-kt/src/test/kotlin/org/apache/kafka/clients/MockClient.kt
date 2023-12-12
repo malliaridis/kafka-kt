@@ -82,6 +82,8 @@ open class MockClient(
 
     constructor(time: Time, metadata: Metadata) : this(time, DefaultMockMetadataUpdater(metadata))
 
+    constructor(time: Time, staticNodes: List<Node>) : this(time, StaticMetadataUpdater(staticNodes))
+
     fun isConnected(idString: String): Boolean {
         return connectionState(idString).state == ConnectionState.State.CONNECTED
     }
@@ -152,7 +154,9 @@ open class MockClient(
         this.disconnectFuture = disconnectFuture
     }
 
-    override fun disconnect(nodeId: String) {
+    override fun disconnect(nodeId: String) = disconnect(nodeId, false)
+
+    fun disconnect(nodeId: String, allowLateResponses: Boolean) {
         val now = time.milliseconds()
         val iter = requests.iterator()
         while (iter.hasNext()) {
@@ -169,7 +173,7 @@ open class MockClient(
                         disconnected = true,
                     )
                 )
-                iter.remove()
+                if (!allowLateResponses) iter.remove()
             }
         }
         val curDisconnectFuture = disconnectFuture
@@ -611,7 +615,7 @@ open class MockClient(
         fun close() = Unit
     }
 
-    private class NoOpMetadataUpdater : MockMetadataUpdater {
+    private open class NoOpMetadataUpdater : MockMetadataUpdater {
 
         override fun fetchNodes(): List<Node> = emptyList()
 
@@ -619,6 +623,10 @@ open class MockClient(
 
         override fun update(time: Time, update: MetadataUpdate) =
             throw UnsupportedOperationException()
+    }
+
+    private class StaticMetadataUpdater(private val nodes: List<Node>) : NoOpMetadataUpdater() {
+        override fun fetchNodes(): List<Node> = nodes
     }
 
     private class DefaultMockMetadataUpdater(private val metadata: Metadata) : MockMetadataUpdater {

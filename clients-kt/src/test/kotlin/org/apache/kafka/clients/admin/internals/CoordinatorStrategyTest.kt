@@ -206,9 +206,8 @@ class CoordinatorStrategyTest {
         assertFatalOldLookup(group, Errors.TRANSACTIONAL_ID_AUTHORIZATION_FAILED)
         assertFatalOldLookup(group, Errors.UNKNOWN_SERVER_ERROR)
         val throwable = assertFatalOldLookup(group, Errors.GROUP_AUTHORIZATION_FAILED)
-        assertTrue(throwable is GroupAuthorizationException)
-        val exception = throwable as GroupAuthorizationException?
-        assertEquals("foo", exception!!.groupId)
+        val exception = assertIs<GroupAuthorizationException>(throwable)
+        assertEquals("foo", exception.groupId)
     }
 
     fun assertFatalOldLookup(

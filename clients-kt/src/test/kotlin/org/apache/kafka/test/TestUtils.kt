@@ -423,6 +423,23 @@ object TestUtils {
         return exceptionCauseClass.cast(exception.cause)
     }
 
+    /**
+     * Assert that a future raises an expected exception cause type. Return the exception cause
+     * if the assertion succeeds; otherwise raise AssertionError.
+     *
+     * @param future The future to await
+     * @param T Exception cause type parameter
+     * @return The caught exception cause
+     */
+    inline fun <reified T : Throwable> assertFutureThrows(future: Future<*>): T {
+        val exception = assertFailsWith<ExecutionException> { future.get() }
+        assertTrue(
+            actual = T::class.java.isInstance(exception.cause),
+            message = "Unexpected exception cause " + exception.cause,
+        )
+        return exception.cause as T
+    }
+
     fun <T : Throwable?> assertFutureThrows(
         future: Future<*>,
         expectedCauseClassApiException: Class<T>,

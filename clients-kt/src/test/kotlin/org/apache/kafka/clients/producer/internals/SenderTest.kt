@@ -17,6 +17,13 @@
 
 package org.apache.kafka.clients.producer.internals
 
+import java.nio.ByteBuffer
+import java.util.IdentityHashMap
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.Future
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 import org.apache.kafka.clients.ApiVersions
 import org.apache.kafka.clients.ClientRequest
 import org.apache.kafka.clients.ClientResponse
@@ -36,6 +43,7 @@ import org.apache.kafka.common.Node
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.ClusterAuthorizationException
 import org.apache.kafka.common.errors.InvalidRequestException
+import org.apache.kafka.common.errors.InvalidTxnStateException
 import org.apache.kafka.common.errors.NetworkException
 import org.apache.kafka.common.errors.RecordTooLargeException
 import org.apache.kafka.common.errors.TimeoutException
@@ -44,6 +52,7 @@ import org.apache.kafka.common.errors.TransactionAbortedException
 import org.apache.kafka.common.errors.UnsupportedForMessageFormatException
 import org.apache.kafka.common.errors.UnsupportedVersionException
 import org.apache.kafka.common.internals.ClusterResourceListeners
+import org.apache.kafka.common.message.AddPartitionsToTxnResponseData
 import org.apache.kafka.common.message.ApiMessageType
 import org.apache.kafka.common.message.EndTxnResponseData
 import org.apache.kafka.common.message.InitProducerIdResponseData
@@ -68,7 +77,6 @@ import org.apache.kafka.common.record.Record
 import org.apache.kafka.common.record.RecordBatch
 import org.apache.kafka.common.requests.AbstractRequest
 import org.apache.kafka.common.requests.AddPartitionsToTxnResponse
-import org.apache.kafka.common.requests.ApiVersionsResponse
 import org.apache.kafka.common.requests.EndTxnRequest
 import org.apache.kafka.common.requests.EndTxnResponse
 import org.apache.kafka.common.requests.FindCoordinatorRequest.CoordinatorType
@@ -88,23 +96,15 @@ import org.apache.kafka.common.utils.ProducerIdAndEpoch
 import org.apache.kafka.common.utils.Time
 import org.apache.kafka.test.DelayedReceive
 import org.apache.kafka.test.MockSelector
+import org.apache.kafka.test.TestUtils
 import org.apache.kafka.test.TestUtils.assertFutureThrows
 import org.apache.kafka.test.TestUtils.checkEquals
 import org.apache.kafka.test.TestUtils.singletonCluster
 import org.apache.kafka.test.TestUtils.waitForCondition
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
-import kotlin.test.assertTrue
-import java.nio.ByteBuffer
-import java.util.IdentityHashMap
-import java.util.concurrent.ExecutionException
-import java.util.concurrent.Future
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicReference
 import org.mockito.AdditionalMatchers.geq
 import org.mockito.kotlin.any
 import org.mockito.kotlin.atLeastOnce
@@ -113,12 +113,15 @@ import org.mockito.kotlin.inOrder
 import org.mockito.kotlin.spy
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
-import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertSame
+import kotlin.test.assertTrue
+import kotlin.test.fail
 
 class SenderTest {
 
@@ -333,7 +336,7 @@ class SenderTest {
             throttleTimeSensor = throttleTimeSensor,
             logContext = logContext,
         )
-        val apiVersionsResponse = ApiVersionsResponse.defaultApiVersionsResponse(
+        val apiVersionsResponse = TestUtils.defaultApiVersionsResponse(
             throttleTimeMs = 400,
             listenerType = ApiMessageType.ListenerType.ZK_BROKER,
         )
@@ -692,7 +695,7 @@ class SenderTest {
             actual = expiryCallbackCount.get(),
             message = "Callbacks not invoked for expiry"
         )
-        Assertions.assertNull(unexpectedException.get(), "Unexpected exception")
+        assertNull(unexpectedException.get(), "Unexpected exception")
         // Make sure that the reconds were appended back to the batch.
         assertNotNull(accumulator.getDeque(tp1))
         assertEquals(expected = 1, actual = accumulator.getDeque(tp1)!!.size)
@@ -934,7 +937,6 @@ class SenderTest {
      * polls are necessary to send requests.
      */
     @Test
-    @Throws(Exception::class)
     fun testInitProducerIdWithMaxInFlightOne() {
         val producerId = 123456L
         createMockClientWithMaxFlightOneMetadataPending()
@@ -980,7 +982,6 @@ class SenderTest {
      * polls are necessary to send requests.
      */
     @Test
-    @Throws(Exception::class)
     fun testIdempotentInitProducerIdWithMaxInFlightOne() {
         val producerId = 123456L
         createMockClientWithMaxFlightOneMetadataPending()
@@ -1065,13 +1066,21 @@ class SenderTest {
         val producerId = 343434L
         val transactionManager = createTransactionManager()
         setupWithTransactionState(transactionManager)
+        // cluster authorization failed on initProducerId is retriable
         prepareAndReceiveInitProducerId(producerId, Errors.CLUSTER_AUTHORIZATION_FAILED)
         assertFalse(transactionManager.hasProducerId)
         assertTrue(transactionManager.hasError)
-        assertTrue(transactionManager.lastError() is ClusterAuthorizationException)
-
-        // cluster authorization is a fatal error for the producer
+        assertIs<ClusterAuthorizationException>(transactionManager.lastError())
+        
         assertSendFailure(ClusterAuthorizationException::class.java)
+        prepareAndReceiveInitProducerId(producerId, Errors.NONE)
+        // sender retry initProducerId and succeed
+        sender.runOnce()
+        assertFalse(transactionManager.hasFatalError)
+        assertTrue(transactionManager.hasProducerId)
+        assertEquals(0, transactionManager.producerIdAndEpoch.epoch)
+        // subsequent send should be successful
+        assertSuccessfulSend()
     }
 
     @Test
@@ -1113,7 +1122,7 @@ class SenderTest {
         try {
             future.get()
         } catch (e: Exception) {
-            assertTrue(e.cause is TopicAuthorizationException)
+            assertIs<TopicAuthorizationException>(e.cause)
         }
     }
 
@@ -2302,8 +2311,8 @@ class SenderTest {
         txnManager.beginTransaction()
         txnManager.maybeAddPartition(tp0)
         client.prepareResponse(
-            response = AddPartitionsToTxnResponse(
-                throttleTimeMs = 0,
+            response = buildAddPartitionsToTxnResponseData(
+                throttleMs = 0,
                 errors = mapOf(tp0 to Errors.NONE),
             )
         )
@@ -2671,8 +2680,8 @@ class SenderTest {
         transactionManager.beginTransaction()
         transactionManager.maybeAddPartition(tp0)
         client.prepareResponse(
-            response = AddPartitionsToTxnResponse(
-                throttleTimeMs = 0,
+            response = buildAddPartitionsToTxnResponseData(
+                throttleMs = 0,
                 errors = mapOf(tp0 to Errors.NONE),
             )
         )
@@ -3369,8 +3378,8 @@ class SenderTest {
         txnManager.beginTransaction()
         txnManager.maybeAddPartition(tp)
         client.prepareResponse(
-            response = AddPartitionsToTxnResponse(
-                throttleTimeMs = 0,
+            response = buildAddPartitionsToTxnResponseData(
+                throttleMs = 0,
                 errors = mapOf(tp to Errors.NONE),
             )
         )
@@ -3383,7 +3392,7 @@ class SenderTest {
     private fun testSplitBatchAndSend(
         txnManager: TransactionManager,
         producerIdAndEpoch: ProducerIdAndEpoch,
-        tp: TopicPartition
+        tp: TopicPartition,
     ) {
         val maxRetries = 1
         val topic = tp.topic
@@ -3677,12 +3686,10 @@ class SenderTest {
             actual = sender.inFlightBatches(tp0).size,
             message = "Expect zero in-flight batch in accumulator",
         )
-        try {
-            request!!.get()
-            Assertions.fail<Any>("The expired batch should throw a TimeoutException")
-        } catch (e: ExecutionException) {
-            assertTrue(e.cause is TimeoutException)
-        }
+        val error = assertFailsWith<ExecutionException>(
+            message = "The expired batch should throw a TimeoutException",
+        ) { request!!.get() }
+        assertIs<TimeoutException>(error.cause)
     }
 
     @Test
@@ -3713,12 +3720,12 @@ class SenderTest {
             val exception = assertFutureThrows(future, KafkaException::class.java)
             when (index) {
                 0, 2 -> {
-                    assertTrue(exception is InvalidRecordException)
+                    assertIs<InvalidRecordException>(exception)
                     assertEquals(index.toString(), exception.message)
                 }
 
                 3 -> {
-                    assertTrue(exception is InvalidRecordException)
+                    assertIs<InvalidRecordException>(exception)
                     assertEquals(Errors.INVALID_RECORD.message, exception.message)
                 }
 
@@ -3909,10 +3916,10 @@ class SenderTest {
             actual = sender.inFlightBatches(tp0).size,
             message = "Expect zero in-flight batch in accumulator",
         )
-        var e = Assertions.assertThrows(ExecutionException::class.java) { request1!!.get() }
-        assertTrue(e.cause is TimeoutException)
-        e = Assertions.assertThrows(ExecutionException::class.java) { request2!!.get() }
-        assertTrue(e.cause is TimeoutException)
+        var e = assertFailsWith<ExecutionException> { request1!!.get() }
+        assertIs<TimeoutException>(e.cause)
+        e = assertFailsWith<ExecutionException> { request2!!.get() }
+        assertIs<TimeoutException>(e.cause)
     }
 
     @Test
@@ -3951,9 +3958,7 @@ class SenderTest {
             doInitTransactions(txnManager, producerIdAndEpoch)
             txnManager.beginTransaction()
             txnManager.maybeAddPartition(tp)
-            client.prepareResponse(
-                response = AddPartitionsToTxnResponse(0, mapOf(tp to Errors.NONE))
-            )
+            client.prepareResponse(buildAddPartitionsToTxnResponseData(0, mapOf(tp to Errors.NONE)))
             sender.runOnce()
             sender.initiateClose()
             txnManager.beginCommit()
@@ -4129,12 +4134,10 @@ class SenderTest {
     private fun addPartitionToTxn(
         sender: Sender,
         txnManager: TransactionManager,
-        tp: TopicPartition
+        tp: TopicPartition,
     ) {
         txnManager.maybeAddPartition(tp)
-        client.prepareResponse(
-            response = AddPartitionsToTxnResponse(0, mapOf(tp to Errors.NONE)),
-        )
+        client.prepareResponse(buildAddPartitionsToTxnResponseData(0, mapOf(tp to Errors.NONE)))
         ProducerTestUtils.runUntil(
             sender = sender,
             condition = { txnManager.isPartitionAdded(tp) },
@@ -4199,12 +4202,7 @@ class SenderTest {
             doInitTransactions(txnManager, producerIdAndEpoch)
             txnManager.beginTransaction()
             txnManager.maybeAddPartition(tp)
-            client.prepareResponse(
-                response = AddPartitionsToTxnResponse(
-                    throttleTimeMs = 0,
-                    errors = mapOf(tp to Errors.NONE),
-                ),
-            )
+            client.prepareResponse(buildAddPartitionsToTxnResponseData(0, mapOf(tp to Errors.NONE)))
             sender.runOnce()
             sender.initiateClose()
             val endTxnMatcher = AssertEndTxnRequestMatcher(TransactionResult.ABORT)
@@ -4261,12 +4259,7 @@ class SenderTest {
             doInitTransactions(txnManager, producerIdAndEpoch)
             txnManager.beginTransaction()
             txnManager.maybeAddPartition(tp)
-            client.prepareResponse(
-                response = AddPartitionsToTxnResponse(
-                    throttleTimeMs = 0,
-                    errors = mapOf(tp to Errors.NONE),
-                ),
-            )
+            client.prepareResponse(buildAddPartitionsToTxnResponseData(0, mapOf(tp to Errors.NONE)))
             sender.runOnce()
 
             // Try to commit the transaction but it won't happen as we'll forcefully close the sender
@@ -4299,12 +4292,7 @@ class SenderTest {
         // Begin the transaction
         txnManager.beginTransaction()
         txnManager.maybeAddPartition(tp0)
-        client.prepareResponse(
-            response = AddPartitionsToTxnResponse(
-                throttleTimeMs = 0,
-                errors = mapOf(tp0 to Errors.NONE),
-            ),
-        )
+        client.prepareResponse(buildAddPartitionsToTxnResponseData(0, mapOf(tp0 to Errors.NONE)))
         // Run it once so that the partition is added to the transaction.
         sender.runOnce()
         // Append a record to the accumulator.
@@ -4360,12 +4348,7 @@ class SenderTest {
         doInitTransactions(txnManager, producerIdAndEpoch)
         txnManager.beginTransaction()
         txnManager.maybeAddPartition(tp0)
-        client.prepareResponse(
-            response = AddPartitionsToTxnResponse(
-                throttleTimeMs = 0,
-                errors = mapOf(tp0 to Errors.NONE),
-            ),
-        )
+        client.prepareResponse(buildAddPartitionsToTxnResponseData(0, errors = mapOf(tp0 to Errors.NONE)))
         sender.runOnce()
 
         // create a producer batch with more than one record so it is eligible for splitting
@@ -4445,6 +4428,154 @@ class SenderTest {
         )
     }
 
+    @Test
+    fun testSenderShouldRetryWithBackoffOnRetriableError() {
+        val producerId = 343434L
+        val transactionManager = createTransactionManager()
+        setupWithTransactionState(transactionManager)
+        val start = time.milliseconds()
+
+        // first request is sent immediately
+        prepareAndReceiveInitProducerId(
+            producerId = producerId,
+            producerEpoch = -1,
+            error = Errors.COORDINATOR_LOAD_IN_PROGRESS,
+        )
+        val request1 = time.milliseconds()
+        assertEquals(start, request1)
+
+        // backoff before sending second request
+        prepareAndReceiveInitProducerId(
+            producerId = producerId,
+            producerEpoch = -1,
+            error = Errors.COORDINATOR_LOAD_IN_PROGRESS,
+        )
+        val request2 = time.milliseconds()
+        assertEquals(RETRY_BACKOFF_MS, request2 - request1)
+
+        // third request should also backoff
+        prepareAndReceiveInitProducerId(producerId, Errors.NONE)
+        assertEquals(RETRY_BACKOFF_MS, time.milliseconds() - request2)
+    }
+
+    @Test
+    @Throws(java.lang.Exception::class)
+    fun testReceiveFailedBatchTwiceWithTransactions() {
+        val producerIdAndEpoch = ProducerIdAndEpoch(producerId = 123456L, epoch = 0)
+        apiVersions.update(
+            nodeId = "0",
+            nodeApiVersions = NodeApiVersions.create(
+                apiKey = ApiKeys.INIT_PRODUCER_ID.id,
+                minVersion = 0,
+                maxVersion = 3,
+            )
+        )
+        val txnManager = TransactionManager(
+            logContext = logContext,
+            transactionalId = "testFailTwice",
+            transactionTimeoutMs = 60000,
+            retryBackoffMs = 100,
+            apiVersions = apiVersions,
+        )
+        setupWithTransactionState(txnManager)
+        doInitTransactions(txnManager, producerIdAndEpoch)
+        
+        txnManager.beginTransaction()
+        txnManager.maybeAddPartition(tp0)
+        client.prepareResponse(buildAddPartitionsToTxnResponseData(0, mapOf(tp0 to Errors.NONE)))
+        sender.runOnce()
+
+        // Send first ProduceRequest
+        val request1 = appendToAccumulator(tp0)
+        sender.runOnce() // send request
+        
+        val node = metadata.fetch().nodes[0]
+        time.sleep(2000L)
+        client.disconnect(node.idString(), true)
+        client.backoff(node, 10)
+        sender.runOnce() // now expire the batch.
+        assertFutureFailure(request1, TimeoutException::class.java)
+        time.sleep(20)
+        sendIdempotentProducerResponse(
+            expectedSequence = 0,
+            tp = tp0,
+            responseError = Errors.INVALID_TXN_STATE,
+            responseOffset = -1,
+        )
+        sender.runOnce() // receive late response
+
+        // Loop once and confirm that the transaction manager does not enter a fatal error state
+        sender.runOnce()
+        assertTrue(txnManager.hasAbortableError)
+        val result = txnManager.beginAbort()
+        sender.runOnce()
+        
+        respondToEndTxn(Errors.NONE)
+        sender.runOnce()
+        assertTrue(txnManager.isInitializing)
+        prepareInitProducerResponse(
+            error = Errors.NONE,
+            producerId = producerIdAndEpoch.producerId,
+            producerEpoch = producerIdAndEpoch.epoch,
+        )
+        sender.runOnce()
+        assertTrue(txnManager.isReady)
+        
+        assertTrue(result.isSuccessful)
+        result.await()
+        
+        txnManager.beginTransaction()
+    }
+
+    @Test
+    @Throws(java.lang.Exception::class)
+    fun testInvalidTxnStateIsAnAbortableError() {
+        val producerIdAndEpoch = ProducerIdAndEpoch(123456L, 0.toShort())
+        apiVersions.update("0", NodeApiVersions.create(ApiKeys.INIT_PRODUCER_ID.id, 0.toShort(), 3.toShort()))
+        val txnManager = TransactionManager(logContext, "testInvalidTxnState", 60000, 100, apiVersions)
+        
+        setupWithTransactionState(txnManager)
+        doInitTransactions(txnManager, producerIdAndEpoch)
+        
+        txnManager.beginTransaction()
+        txnManager.maybeAddPartition(tp0)
+        client.prepareResponse(buildAddPartitionsToTxnResponseData(0, mapOf(tp0 to Errors.NONE)))
+        sender.runOnce()
+        
+        val request: Future<RecordMetadata>? = appendToAccumulator(tp0)
+        sender.runOnce() // send request
+        sendIdempotentProducerResponse(
+            expectedSequence = 0,
+            tp = tp0,
+            responseError = Errors.INVALID_TXN_STATE,
+            responseOffset = -1,
+        )
+        
+        // Return InvalidTxnState error. It should be abortable.
+        sender.runOnce()
+        assertFutureFailure(request, InvalidTxnStateException::class.java)
+        assertTrue(txnManager.hasAbortableError)
+        val result = txnManager.beginAbort()
+        sender.runOnce()
+
+        // Once the transaction is aborted, we should be able to begin a new one.
+        respondToEndTxn(Errors.NONE)
+        sender.runOnce()
+        assertTrue(txnManager.isInitializing)
+        prepareInitProducerResponse(
+            error = Errors.NONE,
+            producerId = producerIdAndEpoch.producerId,
+            producerEpoch = producerIdAndEpoch.epoch
+        )
+        sender.runOnce()
+        assertTrue(txnManager.isReady)
+        
+        assertTrue(result.isSuccessful)
+        result.await()
+        
+        txnManager.beginTransaction()
+    }
+
     @Throws(Exception::class)
     private fun verifyErrorMessage(response: ProduceResponse, expectedMessage: String) {
         val future: Future<RecordMetadata>? = appendToAccumulator(
@@ -4458,8 +4589,8 @@ class SenderTest {
         client.respond(response)
         sender.runOnce()
         sender.runOnce()
-        val cause = assertFailsWith<ExecutionException> { future!!.get(5, TimeUnit.SECONDS) }.cause
-        assertTrue(cause is InvalidRequestException)
+        val error = assertFailsWith<ExecutionException> { future!!.get(5, TimeUnit.SECONDS) }
+        val cause = assertIs<InvalidRequestException>(error.cause)
         assertEquals(expected = expectedMessage, actual = cause.message)
     }
 
@@ -4515,7 +4646,7 @@ class SenderTest {
         tp: TopicPartition,
         producerIdAndEpoch: ProducerIdAndEpoch,
         sequence: Int,
-        isTransactional: Boolean
+        isTransactional: Boolean,
     ): RequestMatcher {
         return RequestMatcher { body: AbstractRequest? ->
             if (body !is ProduceRequest) return@RequestMatcher false
@@ -4544,7 +4675,7 @@ class SenderTest {
         tp: TopicPartition,
         timestamp: Long = time.milliseconds(),
         key: String = "key",
-        value: String = "value"
+        value: String = "value",
     ): FutureRecordMetadata? = accumulator.append(
         topic = tp.topic,
         partition = tp.partition,
@@ -4566,7 +4697,7 @@ class SenderTest {
         error: Errors,
         throttleTimeMs: Int,
         logStartOffset: Long = -1L,
-        errorMessage: String? = null
+        errorMessage: String? = null,
     ): ProduceResponse {
         val resp = PartitionResponse(
             error = error,
@@ -4602,7 +4733,7 @@ class SenderTest {
         logContext = LogContext(),
         transactionalId = null,
         transactionTimeoutMs = 0,
-        retryBackoffMs = 100L,
+        retryBackoffMs = RETRY_BACKOFF_MS,
         apiVersions = ApiVersions()
     )
 
@@ -4612,7 +4743,7 @@ class SenderTest {
         customPool: BufferPool? = null,
         updateMetadata: Boolean = true,
         retries: Int = Int.MAX_VALUE,
-        lingerMs: Int = 0
+        lingerMs: Int = 0,
     ) {
         val totalSize = (1024 * 1024).toLong()
         val metricGrpName = "producer-metrics"
@@ -4667,6 +4798,30 @@ class SenderTest {
         )
     }
 
+    @Throws(InterruptedException::class)
+    private fun assertSuccessfulSend() {
+        val future: Future<RecordMetadata>? = appendToAccumulator(tp0)
+        sender.runOnce() // send request
+        assertEquals(1, client.inFlightRequestCount(), "We should have a single produce request in flight.")
+        assertEquals(1, sender.inFlightBatches(tp0).size)
+        assertTrue(client.hasInFlightRequests())
+        client.respond(
+            produceResponse(
+                tp = tp0,
+                offset = 0,
+                error = Errors.NONE,
+                throttleTimeMs = 0,
+            )
+        )
+        sender.runOnce()
+        assertTrue(future!!.isDone)
+        try {
+            future.get()
+        } catch (e: ExecutionException) {
+            fail("Future should not have raised an exception: " + e.cause)
+        }
+    }
+
     @Throws(Exception::class)
     private fun assertSendFailure(expectedError: Class<out RuntimeException?>) {
         val future: Future<RecordMetadata>? = appendToAccumulator(tp0)
@@ -4674,7 +4829,7 @@ class SenderTest {
         assertTrue(future!!.isDone)
         try {
             future.get()
-            Assertions.fail<Any>("Future should have raised " + expectedError.getSimpleName())
+            fail("Future should have raised " + expectedError.getSimpleName())
         } catch (e: ExecutionException) {
             assertTrue(expectedError.isAssignableFrom(e.cause!!.javaClass))
         }
@@ -4687,7 +4842,7 @@ class SenderTest {
     private fun prepareAndReceiveInitProducerId(
         producerId: Long,
         producerEpoch: Short,
-        error: Errors
+        error: Errors,
     ) {
         var producerEpoch = producerEpoch
         if (error !== Errors.NONE) producerEpoch = RecordBatch.NO_PRODUCER_EPOCH
@@ -4713,7 +4868,7 @@ class SenderTest {
 
     private fun doInitTransactions(
         transactionManager: TransactionManager,
-        producerIdAndEpoch: ProducerIdAndEpoch
+        producerIdAndEpoch: ProducerIdAndEpoch,
     ) {
         val result = transactionManager.initializeTransactions()
         prepareFindCoordinatorResponse(Errors.NONE, transactionManager.transactionalId)
@@ -4745,19 +4900,17 @@ class SenderTest {
     @Throws(InterruptedException::class)
     private fun assertFutureFailure(
         future: Future<*>?,
-        expectedExceptionType: Class<out Exception>
+        expectedExceptionType: Class<out Exception>,
     ) {
         assertTrue(future!!.isDone)
-        try {
-            future.get()
-            Assertions.fail<Any>("Future should have raised " + expectedExceptionType.getName())
-        } catch (e: ExecutionException) {
-            val causeType: Class<out Throwable?> = e.cause!!.javaClass
-            assertTrue(
-                actual = expectedExceptionType.isAssignableFrom(causeType),
-                message = "Unexpected cause " + causeType.getName(),
-            )
-        }
+        val error = assertFailsWith<ExecutionException>(
+            message = "Future should have raised " + expectedExceptionType.getName(),
+        ) { future.get() }
+        val causeType: Class<out Throwable?> = error.cause!!.javaClass
+        assertTrue(
+            actual = expectedExceptionType.isAssignableFrom(causeType),
+            message = "Unexpected cause " + causeType.getName(),
+        )
     }
 
     private fun createMockClientWithMaxFlightOneMetadataPending() {
@@ -4807,6 +4960,21 @@ class SenderTest {
         }
         assertTrue(transactionManager.hasProducerId)
         assertEquals(producerIdAndEpoch, transactionManager.producerIdAndEpoch)
+    }
+
+    private fun buildAddPartitionsToTxnResponseData(
+        throttleMs: Int,
+        errors: Map<TopicPartition, Errors>,
+    ): AddPartitionsToTxnResponse {
+        val result = AddPartitionsToTxnResponse.resultForTransaction(
+            transactionalId = AddPartitionsToTxnResponse.V3_AND_BELOW_TXN_ID,
+            errors = errors,
+        )
+        val data = AddPartitionsToTxnResponseData()
+            .setResultsByTopicV3AndBelow(result.topicResults)
+            .setThrottleTimeMs(throttleMs)
+
+        return AddPartitionsToTxnResponse(data)
     }
 
     companion object {

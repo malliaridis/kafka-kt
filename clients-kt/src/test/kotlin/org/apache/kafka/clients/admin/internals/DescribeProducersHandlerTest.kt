@@ -35,6 +35,7 @@ import org.apache.kafka.common.utils.CollectionUtils.groupPartitionDataByTopic
 import org.apache.kafka.common.utils.LogContext
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -107,30 +108,26 @@ class DescribeProducersHandlerTest {
     fun testAuthorizationFailure() {
         val topicPartition = TopicPartition("foo", 5)
         val exception = assertFatalError(topicPartition, Errors.TOPIC_AUTHORIZATION_FAILED)
+
+        val authException = assertIs<TopicAuthorizationException>(exception)
         
-        assertTrue(exception is TopicAuthorizationException)
-        
-        val authException = exception as TopicAuthorizationException?
-        
-        assertEquals(setOf("foo"), authException!!.unauthorizedTopics)
+        assertEquals(setOf("foo"), authException.unauthorizedTopics)
     }
 
     @Test
     fun testInvalidTopic() {
         val topicPartition = TopicPartition("foo", 5)
         val exception = assertFatalError(topicPartition, Errors.INVALID_TOPIC_EXCEPTION)
-        
-        assertTrue(exception is InvalidTopicException)
-        
-        val invalidTopicException = exception as InvalidTopicException?
-        assertEquals(setOf("foo"), invalidTopicException!!.invalidTopics)
+
+        val invalidTopicException = assertIs<InvalidTopicException>(exception)
+        assertEquals(setOf("foo"), invalidTopicException.invalidTopics)
     }
 
     @Test
     fun testUnexpectedError() {
         val topicPartition = TopicPartition("foo", 5)
         val exception = assertFatalError(topicPartition, Errors.UNKNOWN_SERVER_ERROR)
-        assertTrue(exception is UnknownServerException)
+        assertIs<UnknownServerException>(exception)
     }
 
     @Test
@@ -158,7 +155,7 @@ class DescribeProducersHandlerTest {
         assertEquals(emptyList(), result.unmappedKeys)
         assertEquals(setOf(topicPartition), result.failedKeys.keys)
         val exception = result.failedKeys[topicPartition]
-        assertTrue(exception is NotLeaderOrFollowerException)
+        assertIs<NotLeaderOrFollowerException>(exception)
     }
 
     @Test

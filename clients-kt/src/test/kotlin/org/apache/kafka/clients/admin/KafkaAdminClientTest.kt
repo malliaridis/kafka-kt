@@ -17,6 +17,16 @@
 
 package org.apache.kafka.clients.admin
 
+import java.net.InetSocketAddress
+import java.util.LinkedList
+import java.util.Properties
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.ExecutionException
+import java.util.concurrent.Semaphore
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
+import java.util.stream.Stream
 import org.apache.kafka.clients.ClientDnsLookup
 import org.apache.kafka.clients.ClientUtils.parseAndValidateAddresses
 import org.apache.kafka.clients.MockClient
@@ -55,9 +65,7 @@ import org.apache.kafka.common.errors.GroupAuthorizationException
 import org.apache.kafka.common.errors.GroupSubscribedToTopicException
 import org.apache.kafka.common.errors.InvalidRequestException
 import org.apache.kafka.common.errors.InvalidTopicException
-import org.apache.kafka.common.errors.LeaderNotAvailableException
 import org.apache.kafka.common.errors.LogDirNotFoundException
-import org.apache.kafka.common.errors.NotLeaderOrFollowerException
 import org.apache.kafka.common.errors.OffsetOutOfRangeException
 import org.apache.kafka.common.errors.SaslAuthenticationException
 import org.apache.kafka.common.errors.SecurityDisabledException
@@ -214,6 +222,7 @@ import org.apache.kafka.common.requests.OffsetDeleteResponse
 import org.apache.kafka.common.requests.OffsetFetchRequest
 import org.apache.kafka.common.requests.OffsetFetchResponse
 import org.apache.kafka.common.requests.RequestTestUtils
+import org.apache.kafka.common.requests.RequestTestUtils.metadataResponse
 import org.apache.kafka.common.requests.UnregisterBrokerResponse
 import org.apache.kafka.common.requests.UpdateFeaturesRequest
 import org.apache.kafka.common.requests.UpdateFeaturesResponse
@@ -231,24 +240,16 @@ import org.apache.kafka.test.MockMetricsReporter
 import org.apache.kafka.test.TestUtils
 import org.apache.kafka.test.TestUtils.assertFutureError
 import org.apache.kafka.test.TestUtils.assertFutureThrows
+import org.apache.kafka.test.TestUtils.assertNotFails
 import org.apache.kafka.test.TestUtils.waitForCondition
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
 import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
 import org.junit.jupiter.params.provider.ValueSource
 import org.slf4j.LoggerFactory
-import java.net.InetSocketAddress
-import java.util.LinkedList
-import java.util.Properties
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.ExecutionException
-import java.util.concurrent.Semaphore
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicLong
-import org.apache.kafka.clients.ClientRequest
-import org.apache.kafka.test.TestUtils.assertNotFails
 import kotlin.test.assertContains
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -274,7 +275,7 @@ class KafkaAdminClientTest {
     fun testDefaultApiTimeoutAndRequestTimeoutConflicts() {
         val config = newConfMap(AdminClientConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, "500")
         val exception = assertFailsWith<KafkaException> { KafkaAdminClient.createInternal(config) }
-        assertTrue(exception.cause is ConfigException)
+        assertIs<ConfigException>(exception.cause)
     }
 
     @Test
@@ -2683,7 +2684,7 @@ class KafkaAdminClientTest {
             PartitionInfo(
                 topic = "my_topic",
                 partition = 2,
-                leader = null,
+                leader = node,
                 replicas = listOf(node),
                 inSyncReplicas = listOf(node),
             ),
@@ -2712,9 +2713,14 @@ class KafkaAdminClientTest {
         val myTopicPartition1 = TopicPartition(topic = "my_topic", partition = 1)
         val myTopicPartition2 = TopicPartition(topic = "my_topic", partition = 2)
         val myTopicPartition3 = TopicPartition(topic = "my_topic", partition = 3)
-        val myTopicPartition4 = TopicPartition(topic = "my_topic", partition = 4)
+
         AdminClientUnitTestEnv(cluster).use { env ->
             env.mockClient.setNodeApiVersions(NodeApiVersions.create())
+
+            env.mockClient.prepareResponse(prepareMetadataResponse(cluster, Errors.LEADER_NOT_AVAILABLE))
+            env.mockClient.prepareResponse(prepareMetadataResponse(cluster, Errors.UNKNOWN_TOPIC_OR_PARTITION))
+            env.mockClient.prepareResponse(prepareMetadataResponse(cluster, Errors.NONE))
+
             val m = DeleteRecordsResponseData()
             m.topics.add(
                 DeleteRecordsTopicResult()
@@ -2735,101 +2741,28 @@ class KafkaAdminClientTest {
                                     .setLowWatermark(DeleteRecordsResponse.INVALID_LOW_WATERMARK)
                                     .setErrorCode(Errors.NOT_LEADER_OR_FOLLOWER.code),
                                 DeleteRecordsPartitionResult()
-                                    .setPartitionIndex(myTopicPartition4.partition)
+                                    .setPartitionIndex(myTopicPartition2.partition)
                                     .setLowWatermark(DeleteRecordsResponse.INVALID_LOW_WATERMARK)
-                                    .setErrorCode(Errors.UNKNOWN_TOPIC_OR_PARTITION.code)
+                                    .setErrorCode(Errors.TOPIC_AUTHORIZATION_FAILED.code)
                             ).iterator()
                         )
                     )
             )
-            val t: MutableList<MetadataResponse.TopicMetadata> = ArrayList()
-            val p: MutableList<PartitionMetadata> = ArrayList()
-            p.add(
-                PartitionMetadata(
-                    error = Errors.NONE,
-                    topicPartition = myTopicPartition0,
-                    leaderId = nodes[0]!!.id,
-                    leaderEpoch = 5,
-                    replicaIds = listOf(nodes[0]!!.id),
-                    inSyncReplicaIds = listOf(nodes[0]!!.id),
-                    offlineReplicaIds = emptyList(),
-                )
-            )
-            p.add(
-                PartitionMetadata(
-                    error = Errors.NONE,
-                    topicPartition = myTopicPartition1,
-                    leaderId = nodes[0]!!.id,
-                    leaderEpoch = 5,
-                    replicaIds = listOf(nodes[0]!!.id),
-                    inSyncReplicaIds = listOf(nodes[0]!!.id),
-                    offlineReplicaIds = emptyList(),
-                )
-            )
-            p.add(
-                PartitionMetadata(
-                    error = Errors.LEADER_NOT_AVAILABLE,
-                    topicPartition = myTopicPartition2,
-                    leaderId = null,
-                    leaderEpoch = null,
-                    replicaIds = listOf(nodes.get(0)!!.id),
-                    inSyncReplicaIds = listOf(nodes.get(0)!!.id),
-                    offlineReplicaIds = emptyList(),
-                )
-            )
-            p.add(
-                PartitionMetadata(
-                    error = Errors.NONE,
-                    topicPartition = myTopicPartition3,
-                    leaderId = nodes[0]!!.id,
-                    leaderEpoch = 5,
-                    replicaIds = listOf(nodes[0]!!.id),
-                    inSyncReplicaIds = listOf(nodes[0]!!.id),
-                    offlineReplicaIds = emptyList(),
-                )
-            )
-            p.add(
-                PartitionMetadata(
-                    error = Errors.NONE,
-                    topicPartition = myTopicPartition4,
-                    leaderId = nodes[0]!!.id,
-                    leaderEpoch = 5,
-                    replicaIds = listOf(nodes[0]!!.id),
-                    inSyncReplicaIds = listOf(nodes[0]!!.id),
-                    offlineReplicaIds = emptyList()
-                )
-            )
-            t.add(
-                MetadataResponse.TopicMetadata(
-                    error = Errors.NONE,
-                    topic = "my_topic",
-                    isInternal = false,
-                    partitionMetadata = p,
-                )
-            )
-            env.mockClient.prepareResponse(
-                response = RequestTestUtils.metadataResponse(
-                    brokers = cluster.nodes,
-                    clusterId = cluster.clusterResource.clusterId,
-                    controllerId = cluster.controller!!.id,
-                    topicMetadataList = t,
-                )
-            )
+
             env.mockClient.prepareResponse(response = DeleteRecordsResponse(m))
             val recordsToDelete = mapOf(
                 myTopicPartition0 to RecordsToDelete(beforeOffset = 3L),
                 myTopicPartition1 to RecordsToDelete(beforeOffset = 10L),
                 myTopicPartition2 to RecordsToDelete(beforeOffset = 10L),
                 myTopicPartition3 to RecordsToDelete(beforeOffset = 10L),
-                myTopicPartition4 to RecordsToDelete(beforeOffset = 10L),
             )
             val results = env.adminClient.deleteRecords(recordsToDelete)
 
             // success on records deletion for partition 0
             val values = results.lowWatermarks()
-            val myTopicPartition0Result = values.get(myTopicPartition0)!!
-            val lowWatermark = myTopicPartition0Result.get().lowWatermark()
-            assertEquals(expected = lowWatermark, actual = 3)
+            val myTopicPartition0Result = values[myTopicPartition0]!!
+            val myTopicPartition0lowWatermark = myTopicPartition0Result.get().lowWatermark()
+            assertEquals(expected = 3, actual = myTopicPartition0lowWatermark)
 
             // "offset out of range" failure on records deletion for partition 1
             val myTopicPartition1Result = values[myTopicPartition1]!!
@@ -2840,33 +2773,108 @@ class KafkaAdminClientTest {
                 assertIs<OffsetOutOfRangeException>(e0.cause)
             }
 
-            // "leader not available" failure on metadata request for partition 2
+            // not authorized to delete records for partition 2
             val myTopicPartition2Result = values[myTopicPartition2]!!
             try {
                 myTopicPartition2Result.get()
                 fail("get() should throw ExecutionException")
             } catch (e1: ExecutionException) {
-                assertIs<LeaderNotAvailableException>(e1.cause)
+                assertIs<TopicAuthorizationException>(e1.cause)
             }
 
-            // "not leader for partition" failure on records deletion for partition 3
+            // the response does not contain a result for partition 3
             val myTopicPartition3Result = values[myTopicPartition3]!!
             try {
                 myTopicPartition3Result.get()
                 fail("get() should throw ExecutionException")
             } catch (e1: ExecutionException) {
-                assertTrue(e1.cause is NotLeaderOrFollowerException)
+                assertIs<ApiException>(e1.cause)
+            }
+        }
+    }
+
+    @Test
+    fun testDescribeTopicsByIds() {
+        mockClientEnv().use { env ->
+            env.mockClient.setNodeApiVersions(NodeApiVersions.create())
+
+            // Valid ID
+            val topicId = Uuid.randomUuid()
+            val topicName = "test-topic"
+            val (id) = env.cluster.nodes[0]
+            val partitionMetadata = PartitionMetadata(
+                error = Errors.NONE,
+                topicPartition = TopicPartition(topicName, 0),
+                leaderId = id,
+                leaderEpoch = 10,
+                replicaIds = listOf(id),
+                inSyncReplicaIds = listOf(id),
+                offlineReplicaIds = listOf(id),
+            )
+            env.mockClient.prepareResponse(
+                metadataResponse(
+                    brokers = env.cluster.nodes,
+                    clusterId = env.cluster.clusterResource.clusterId,
+                    controllerId = env.cluster.controller!!.id,
+                    topicMetadataList = listOf(
+                        MetadataResponse.TopicMetadata(
+                            error = Errors.NONE,
+                            topic = topicName,
+                            topicId = topicId,
+                            isInternal = false,
+                            partitionMetadata = listOf(partitionMetadata),
+                            authorizedOperations = MetadataResponse.AUTHORIZED_OPERATIONS_OMITTED,
+                        ),
+                    ),
+                )
+            )
+            val topicIds = TopicCollection.ofTopicIds(listOf(topicId))
+            try {
+                val result = env.adminClient.describeTopics(topicIds)
+                val allTopicIds = result.allTopicIds().get()
+                assertEquals(topicName, allTopicIds[topicId]!!.name)
+            } catch (e: java.lang.Exception) {
+                Assertions.fail<Any>("describe with valid topicId should not fail", e)
             }
 
-            // "unknown topic or partition" failure on records deletion for partition 4
-            val myTopicPartition4Result: KafkaFuture<DeletedRecords> =
-                (values.get(myTopicPartition4))!!
-            try {
-                myTopicPartition4Result.get()
-                fail("get() should throw ExecutionException")
-            } catch (e1: ExecutionException) {
-                assertTrue(e1.cause is UnknownTopicOrPartitionException)
+            // ID not exist in brokers
+            val nonExistID = Uuid.randomUuid()
+            env.mockClient.prepareResponse(
+                metadataResponse(
+                    brokers = env.cluster.nodes,
+                    clusterId = env.cluster.clusterResource.clusterId,
+                    controllerId = env.cluster.controller!!.id,
+                    topicMetadataList = emptyList(),
+                )
+            )
+
+            val error = assertFailsWith<Exception> {
+                val result = env.adminClient.describeTopics(
+                    topics = TopicCollection.ofTopicIds(listOf(nonExistID)),
+                )
+                assertFutureError(result.allTopicIds(), InvalidTopicException::class.java)
+                result.allTopicIds().get()
+                // describe with non-exist topic ID should throw exception
             }
+
+            assertEquals(
+                expected = "org.apache.kafka.common.errors.InvalidTopicException: TopicId $nonExistID not found.",
+                actual = error.message
+            )
+
+            // Invalid ID
+            val error2 = assertFailsWith<Exception> {
+                val result = env.adminClient.describeTopics(
+                    topics = TopicCollection.ofTopicIds(listOf(Uuid.ZERO_UUID))
+                )
+                assertFutureError(result.allTopicIds(), InvalidTopicException::class.java)
+                result.allTopicIds().get()
+                // describe with Uuid.ZERO_UUID should throw exception
+            }
+            assertEquals(
+                "The given topic id 'AAAAAAAAAAAAAAAAAAAAAA' cannot be represented in a request.",
+                error2.cause!!.message
+            )
         }
     }
 
@@ -6270,6 +6278,136 @@ class KafkaAdminClientTest {
     }
 
     @Test
+    @Throws(Exception::class)
+    fun testListOffsetsHandlesFulfillmentTimeouts() {
+        val node = Node(0, "localhost", 8120)
+        val nodes = listOf(node)
+        val pInfos = listOf(
+            PartitionInfo(
+                topic = "foo",
+                partition = 0,
+                leader = node,
+                replicas = listOf(node),
+                inSyncReplicas = listOf(node),
+            ),
+            PartitionInfo(
+                topic = "foo",
+                partition = 1,
+                leader = node,
+                replicas = listOf(node),
+                inSyncReplicas = listOf(node),
+            ),
+        )
+
+        val cluster = Cluster(
+            clusterId = "mockClusterId",
+            nodes = nodes,
+            partitions = pInfos,
+            controller = node,
+        )
+        val tp0 = TopicPartition("foo", 0)
+        val tp1 = TopicPartition("foo", 1)
+        val numRetries = 2
+        AdminClientUnitTestEnv(
+            cluster = cluster,
+            vals = arrayOf(AdminClientConfig.RETRIES_CONFIG, numRetries.toString()),
+        ).use { env ->
+            val tp0ErrorResponse = ListOffsetsResponse.singletonListOffsetsTopicResponse(
+                tp = tp0,
+                error = Errors.REQUEST_TIMED_OUT,
+                timestamp = -1L,
+                offset = -1L,
+                epoch = -1,
+            )
+            val tp1Response = ListOffsetsResponse.singletonListOffsetsTopicResponse(
+                tp = tp1,
+                error = Errors.NONE,
+                timestamp = -1L,
+                offset = 345L,
+                epoch = 543,
+            )
+            val responseDataWithError = ListOffsetsResponseData()
+                .setThrottleTimeMs(0)
+                .setTopics(listOf(tp0ErrorResponse, tp1Response))
+            val tp0Response = ListOffsetsResponse.singletonListOffsetsTopicResponse(
+                tp = tp0,
+                error = Errors.NONE,
+                timestamp = -1L,
+                offset = 789L,
+                epoch = 987,
+            )
+            val responseData = ListOffsetsResponseData()
+                .setThrottleTimeMs(0)
+                .setTopics(listOf(tp0Response, tp1Response))
+
+            // Test that one-too-many timeouts for partition 0 result in partial success overall -
+            // timeout for partition 0 and success for partition 1.
+
+            // It might be desirable to have the AdminApiDriver mechanism also handle all retriable
+            // exceptions like TimeoutException during the lookup stage (it currently doesn't).
+            env.mockClient.prepareResponse(
+                prepareMetadataResponse(
+                    cluster,
+                    Errors.NONE
+                )
+            )
+            for (i in 0..<numRetries + 1) {
+                env.mockClient.prepareResponseFrom(
+                    matcher = { request -> request is ListOffsetsRequest },
+                    response = ListOffsetsResponse(responseDataWithError),
+                    node = node,
+                )
+            }
+            var result = env.adminClient.listOffsets(
+                mapOf(
+                    tp0 to OffsetSpec.latest(),
+                    tp1 to OffsetSpec.latest(),
+                )
+            )
+            assertFutureThrows(
+                future = result.partitionResult(tp0),
+                exceptionCauseClass = TimeoutException::class.java,
+            )
+            var tp1Result = result.partitionResult(tp1).get()
+            assertEquals(345L, tp1Result.offset)
+            assertEquals(543, tp1Result.leaderEpoch)
+            assertEquals(-1L, tp1Result.timestamp)
+
+            // Now test that only numRetries timeouts for partition 0 result in success for both
+            // partition 0 and partition 1.
+            env.mockClient.prepareResponse(
+                prepareMetadataResponse(cluster, Errors.NONE)
+            )
+            for (i in 0..<numRetries) {
+                env.mockClient.prepareResponseFrom(
+                    matcher = { request -> request is ListOffsetsRequest },
+                    response = ListOffsetsResponse(responseDataWithError),
+                    node = node,
+                )
+            }
+            env.mockClient.prepareResponseFrom(
+                matcher = { request -> request is ListOffsetsRequest },
+                response = ListOffsetsResponse(responseData),
+                node = node,
+            )
+            result = env.adminClient.listOffsets(
+                mapOf(
+                    tp0 to OffsetSpec.latest(),
+                    tp1 to OffsetSpec.latest(),
+                )
+            )
+            val tp0Result = result.partitionResult(tp0).get()
+            assertEquals(789L, tp0Result.offset)
+            assertEquals(987, tp0Result.leaderEpoch)
+            assertEquals(-1L, tp0Result.timestamp)
+            tp1Result = result.partitionResult(tp1).get()
+            assertEquals(345L, tp1Result.offset)
+            assertEquals(543, tp1Result.leaderEpoch)
+            assertEquals(-1L, tp1Result.timestamp)
+        }
+    }
+
+    @Test
     fun testListOffsetsUnsupportedNonMaxTimestamp() {
         val node = Node(0, "localhost", 8120)
         val nodes = listOf(node)
@@ -6904,8 +7042,9 @@ class KafkaAdminClientTest {
             env.mockClient.prepareResponse(
                 prepareMetadataResponse(cluster, Errors.LEADER_NOT_AVAILABLE)
             )
+            // We retry when a partition of a topic (but not the topic itself) is unknown
             env.mockClient.prepareResponse(
-                prepareMetadataResponse(cluster, Errors.UNKNOWN_TOPIC_OR_PARTITION)
+                prepareMetadataResponse(cluster, Errors.NONE, Errors.UNKNOWN_TOPIC_OR_PARTITION)
             )
             env.mockClient.prepareResponse(prepareMetadataResponse(cluster, Errors.NONE))
 
@@ -7153,9 +7292,14 @@ class KafkaAdminClientTest {
         }
     }
 
-    @Test
+    @ParameterizedTest
+    @MethodSource("listOffsetsMetadataNonRetriableErrors")
     @Throws(Exception::class)
-    fun testListOffsetsMetadataNonRetriableErrors() {
+    fun testListOffsetsMetadataNonRetriableErrors(
+        topicMetadataError: Errors,
+        partitionMetadataError: Errors,
+        expectedFailure: Class<out Throwable>,
+    ) {
         val node0 = Node(id = 0, host = "localhost", port = 8120)
         val node1 = Node(id = 1, host = "localhost", port = 8121)
         val nodes = listOf(node0, node1)
@@ -7175,16 +7319,19 @@ class KafkaAdminClientTest {
             controller = node0,
         )
         val tp1 = TopicPartition(topic = "foo", partition = 0)
+        val preparedResponse = prepareMetadataResponse(
+            cluster = cluster,
+            topicError = topicMetadataError,
+            partitionError = partitionMetadataError,
+        )
         AdminClientUnitTestEnv(cluster).use { env ->
             env.mockClient.setNodeApiVersions(NodeApiVersions.create())
-            env.mockClient.prepareResponse(
-                prepareMetadataResponse(cluster, Errors.TOPIC_AUTHORIZATION_FAILED)
-            )
+            env.mockClient.prepareResponse(preparedResponse)
             val partitions = mapOf(tp1 to OffsetSpec.latest())
             val result = env.adminClient.listOffsets(partitions)
             assertFutureError(
                 future = result.all(),
-                exceptionClass = TopicAuthorizationException::class.java,
+                exceptionClass = expectedFailure,
             )
         }
     }
@@ -7508,7 +7655,7 @@ class KafkaAdminClientTest {
     }
 
     private fun newClientQuotaEntity(vararg args: String): ClientQuotaEntity {
-        assertTrue(args.size % 2 == 0)
+        assertEquals(0, args.size % 2)
         val entityMap: MutableMap<String, String?> = HashMap(args.size / 2)
         var index = 0
         while (index < args.size) {
@@ -9193,13 +9340,17 @@ class KafkaAdminClientTest {
             return FindCoordinatorResponse(data)
         }
 
-        private fun prepareMetadataResponse(cluster: Cluster, error: Errors): MetadataResponse {
+        private fun prepareMetadataResponse(
+            cluster: Cluster,
+            topicError: Errors,
+            partitionError: Errors = topicError,
+        ): MetadataResponse {
             val metadata: MutableList<MetadataResponseTopic> = ArrayList()
             for (topic in cluster.topics) {
                 val pms: MutableList<MetadataResponsePartition> = ArrayList()
                 for (p in cluster.availablePartitionsForTopic(topic)) with(p) {
                     val pm = MetadataResponsePartition()
-                        .setErrorCode(error.code)
+                        .setErrorCode(partitionError.code)
                         .setPartitionIndex(partition)
                         .setLeaderId(leader!!.id)
                         .setLeaderEpoch(234)
@@ -9209,7 +9360,7 @@ class KafkaAdminClientTest {
                     pms.add(pm)
                 }
                 val tm = MetadataResponseTopic()
-                    .setErrorCode(error.code)
+                    .setErrorCode(topicError.code)
                     .setName(topic)
                     .setIsInternal(false)
                     .setPartitions(pms)
@@ -9302,6 +9453,7 @@ class KafkaAdminClientTest {
                     ),
                     finalizedFeatures = mapOf("test_feature_1" to 2.toShort()),
                     finalizedFeaturesEpoch = defaultFeatureMetadata().finalizedFeaturesEpoch!!,
+                    zkMigrationEnabled = false,
                 )
             } else ApiVersionsResponse(
                 ApiVersionsResponseData()
@@ -9690,6 +9842,35 @@ class KafkaAdminClientTest {
             timeoutProcessorFactory: TimeoutProcessorFactory,
         ): KafkaAdminClient {
             return KafkaAdminClient.createInternal(config, timeoutProcessorFactory)
+        }
+
+        @JvmStatic
+        private fun listOffsetsMetadataNonRetriableErrors(): Stream<Arguments> {
+            return Stream.of(
+                Arguments.of(
+                    Errors.TOPIC_AUTHORIZATION_FAILED,
+                    Errors.TOPIC_AUTHORIZATION_FAILED,
+                    TopicAuthorizationException::class.java,
+                ),
+                Arguments.of(
+                    // We fail fast when the entire topic is unknown...
+                    Errors.UNKNOWN_TOPIC_OR_PARTITION,
+                    Errors.NONE,
+                    UnknownTopicOrPartitionException::class.java,
+                ),
+                Arguments.of(
+                    // ... even if a partition in the topic is also somehow reported as unknown...
+                    Errors.UNKNOWN_TOPIC_OR_PARTITION,
+                    Errors.UNKNOWN_TOPIC_OR_PARTITION,
+                    UnknownTopicOrPartitionException::class.java,
+                ),
+                Arguments.of(
+                    // ... or a partition in the topic has a different, otherwise-retriable error
+                    Errors.UNKNOWN_TOPIC_OR_PARTITION,
+                    Errors.LEADER_NOT_AVAILABLE,
+                    UnknownTopicOrPartitionException::class.java,
+                )
+            )
         }
     }
 }

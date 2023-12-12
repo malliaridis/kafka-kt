@@ -17,6 +17,10 @@
 
 package org.apache.kafka.clients
 
+import java.net.InetAddress
+import java.net.UnknownHostException
+import java.nio.ByteBuffer
+import java.util.concurrent.atomic.AtomicInteger
 import org.apache.kafka.clients.NetworkClientUtils.isReady
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.Node
@@ -48,16 +52,13 @@ import org.apache.kafka.test.MockSelector
 import org.apache.kafka.test.TestUtils
 import org.apache.kafka.test.TestUtils.singletonCluster
 import org.apache.kafka.test.TestUtils.waitForCondition
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
-import java.net.InetAddress
-import java.net.UnknownHostException
-import java.nio.ByteBuffer
-import java.util.concurrent.atomic.AtomicInteger
+import org.junit.jupiter.api.Test
 import kotlin.math.ln
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
-import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
@@ -371,8 +372,8 @@ class NetworkClientTest {
     private fun awaitReady(client: NetworkClient, node: Node) {
         if (client.discoverBrokerVersions) {
             setExpectedApiVersionsResponse(
-                ApiVersionsResponse.defaultApiVersionsResponse(
-                    listenerType = ApiMessageType.ListenerType.ZK_BROKER
+                TestUtils.defaultApiVersionsResponse(
+                    listenerType = ApiMessageType.ListenerType.ZK_BROKER,
                 )
             )
         }
@@ -592,6 +593,77 @@ class NetworkClientTest {
 
     @Test
     fun testRequestTimeout() {
+        testRequestTimeout(defaultRequestTimeoutMs + 5000)
+    }
+    
+    @Test
+    fun testDefaultRequestTimeout() {
+        testRequestTimeout(defaultRequestTimeoutMs)
+    }
+
+    /**
+     * This is a helper method that will execute two produce calls. The first call is expected to work and the
+     * second produce call is intentionally made to emulate a request timeout. In the case that a timeout occurs
+     * during a request, we want to ensure that we [Metadata.requestUpdate] request a metadata update} so that
+     * on a subsequent invocation of [poll][NetworkClient.poll], the metadata request will be sent.
+     *
+     * The [MetadataUpdater] has a specific method to handle
+     * [server disconnects][NetworkClient.DefaultMetadataUpdater.handleServerDisconnect]
+     * which is where we [request a metadata update][Metadata.requestUpdate]. This test helper method ensures
+     * that is invoked by checking [Metadata.updateRequested] after the simulated timeout.
+     *
+     * @param requestTimeoutMs Timeout in ms
+     */
+    private fun testRequestTimeout(requestTimeoutMs: Int) {
+        val metadata = Metadata(
+            refreshBackoffMs = 50,
+            metadataExpireMs = 5000,
+            logContext = LogContext(),
+            clusterResourceListeners = ClusterResourceListeners(),
+        )
+        val metadataResponse = metadataUpdateWith(
+            numNodes = 2,
+            topicPartitionCounts = emptyMap(),
+        )
+        metadata.updateWithCurrentRequestVersion(
+            response = metadataResponse,
+            isPartialUpdate = false,
+            nowMs = time.milliseconds(),
+        )
+
+        val client = createNetworkClientWithNoVersionDiscovery(metadata)
+
+        // Send first produce without any timeout.
+
+        // Send first produce without any timeout.
+        var clientResponse: ClientResponse = produce(
+            client = client,
+            requestTimeoutMs = requestTimeoutMs,
+            shouldEmulateTimeout = false,
+        )
+        assertEquals(node.idString(), clientResponse.destination)
+        assertFalse(clientResponse.disconnected, "Expected response to succeed and not disconnect")
+        assertFalse(clientResponse.timedOut, "Expected response to succeed and not time out")
+        assertFalse(metadata.updateRequested(), "Expected NetworkClient to not need to update metadata")
+
+        // Send second request, but emulate a timeout.
+
+        // Send second request, but emulate a timeout.
+        clientResponse = produce(
+            client = client,
+            requestTimeoutMs = requestTimeoutMs,
+            shouldEmulateTimeout = true,
+        )
+        assertEquals(node.idString(), clientResponse.destination)
+        assertTrue(clientResponse.disconnected, "Expected response to fail due to disconnection")
+        assertTrue(clientResponse.timedOut, "Expected response to fail due to timeout")
+        assertTrue(
+            actual = metadata.updateRequested(),
+            message = "Expected NetworkClient to have called requestUpdate on metadata on timeout",
+        )
+    }
+    
+    private fun produce(client: NetworkClient, requestTimeoutMs: Int, shouldEmulateTimeout: Boolean): ClientResponse {
         // has to be before creating any request, as it may send ApiVersionsRequest and its response
         // is mocked with correlation id 0
         awaitReady(client, node)
@@ -602,7 +674,6 @@ class NetworkClientTest {
                 .setTimeoutMs(1000)
         )
         val handler = TestCallbackHandler()
-        val requestTimeoutMs = defaultRequestTimeoutMs + 5000
         val request = client.newClientRequest(
             nodeId = node.idString(),
             requestBuilder = builder,
@@ -611,42 +682,24 @@ class NetworkClientTest {
             requestTimeoutMs = requestTimeoutMs,
             callback = handler,
         )
-        assertEquals(expected = requestTimeoutMs, actual = request.requestTimeoutMs)
-        testRequestTimeout(request)
-    }
-
-    @Test
-    fun testDefaultRequestTimeout() {
-        // has to be before creating any request, as it may send ApiVersionsRequest and its response
-        // is mocked with correlation id 0
-        awaitReady(client, node)
-        val builder = ProduceRequest.forCurrentMagic(
-            ProduceRequestData()
-                .setTopicData(TopicProduceDataCollection())
-                .setAcks(1.toShort())
-                .setTimeoutMs(1000)
-        )
-        val request = client.newClientRequest(
-            nodeId = node.idString(),
-            requestBuilder = builder,
-            createdTimeMs = time.milliseconds(),
-            expectResponse = true,
-        )
-        assertEquals(expected = defaultRequestTimeoutMs, actual = request.requestTimeoutMs)
-        testRequestTimeout(request)
-    }
-
-    private fun testRequestTimeout(request: ClientRequest) {
         client.send(request, time.milliseconds())
-        time.sleep((request.requestTimeoutMs + 1).toLong())
+
+        if (shouldEmulateTimeout) {
+            // For a delay of slightly more than our timeout threshold to emulate the request timing out.
+            time.sleep((requestTimeoutMs + 1).toLong())
+        } else {
+            val produceResponse = ProduceResponse(ProduceResponseData())
+            val buffer = serializeResponseWithHeader(
+                response = produceResponse,
+                version = ApiKeys.PRODUCE.latestVersion(),
+                correlationId = request.correlationId,
+            )
+            selector.completeReceive(NetworkReceive(source = node.idString(), buffer = buffer))
+        }
+
         val responses = client.poll(0, time.milliseconds())
-        assertEquals(expected = 1, actual = responses.size)
-        val clientResponse = responses[0]
-        assertEquals(this.node.idString(), clientResponse.destination)
-        assertTrue(
-            actual = clientResponse.disconnected,
-            message = "Expected response to fail due to disconnection"
-        )
+        assertEquals(1, responses.size)
+        return responses[0]
     }
 
     @Test
@@ -1147,7 +1200,6 @@ class NetworkClientTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testCallDisconnect() {
         awaitReady(client, node)
         assertTrue(
@@ -1458,7 +1510,7 @@ class NetworkClientTest {
     }
 
     private fun defaultApiVersionsResponse(): ApiVersionsResponse {
-        return ApiVersionsResponse.defaultApiVersionsResponse(
+        return TestUtils.defaultApiVersionsResponse(
             listenerType = ApiMessageType.ListenerType.ZK_BROKER,
         )
     }
@@ -1522,4 +1574,3 @@ class NetworkClientTest {
         }
     }
 }
-

@@ -22,7 +22,7 @@ package org.apache.kafka.clients.producer
  * complete. This callback will generally execute in the background I/O thread, so it should be
  * fast.
  */
-interface Callback {
+fun interface Callback {
 
     /**
      * A callback method the user can implement to provide asynchronous handling of request

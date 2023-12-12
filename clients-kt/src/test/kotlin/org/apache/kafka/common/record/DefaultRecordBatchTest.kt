@@ -51,6 +51,7 @@ import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -535,7 +536,7 @@ class DefaultRecordBatchTest {
             batch.skipKeyValueIterator(bufferSupplier).use { skipKeyValueIterator ->
                 if (CompressionType.NONE === compressionType) {
                     // assert that for uncompressed data stream record iterator is not used
-                    assertTrue(skipKeyValueIterator is DefaultRecordBatch.RecordIterator)
+                    assertIs<DefaultRecordBatch.RecordIterator>(skipKeyValueIterator)
                     // superficial validation for correctness. Deep validation is already performed in other tests
                     assertEquals(
                         records.records().toList().size,
@@ -543,7 +544,7 @@ class DefaultRecordBatchTest {
                     )
                 } else {
                     // assert that a streaming iterator is used for compressed records
-                    assertTrue(skipKeyValueIterator is StreamRecordIterator)
+                    assertIs<StreamRecordIterator>(skipKeyValueIterator)
                     // assert correctness for compressed records
                     assertContentEquals(
                         listOf(

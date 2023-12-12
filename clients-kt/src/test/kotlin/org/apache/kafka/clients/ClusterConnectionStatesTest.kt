@@ -31,6 +31,8 @@ import kotlin.math.pow
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertNotSame
 import kotlin.test.assertNull
 import kotlin.test.assertSame
@@ -188,10 +190,8 @@ class ClusterConnectionStatesTest {
             nodeId1, time.milliseconds(), AuthenticationException("No path to CA for certificate!")
         )
         time.sleep(1000)
-        assertEquals(
-            connectionStates.connectionState(nodeId1), ConnectionState.AUTHENTICATION_FAILED
-        )
-        assertTrue(connectionStates.authenticationException(nodeId1) is AuthenticationException)
+        assertEquals(connectionStates.connectionState(nodeId1), ConnectionState.AUTHENTICATION_FAILED)
+        assertNotNull(connectionStates.authenticationException(nodeId1))
         assertFalse(connectionStates.hasReadyNodes(time.milliseconds()))
         assertFalse(connectionStates.canConnect(nodeId1, time.milliseconds()))
         time.sleep(connectionStates.connectionDelay(nodeId1, time.milliseconds()) + 1)
@@ -507,4 +507,3 @@ class ClusterConnectionStatesTest {
         }
     }
 }
-

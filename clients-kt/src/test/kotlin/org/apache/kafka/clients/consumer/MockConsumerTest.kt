@@ -17,11 +17,11 @@
 
 package org.apache.kafka.clients.consumer
 
+import java.time.Duration
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.header.internals.RecordHeaders
 import org.apache.kafka.common.record.TimestampType
 import org.junit.jupiter.api.Test
-import java.time.Duration
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -206,5 +206,50 @@ class MockConsumerTest {
         assertEquals(11L, consumer.endOffsets(setOf(partition))[partition] as Long)
         assertEquals(11L, consumer.endOffsets(setOf(partition))[partition] as Long)
         assertEquals(11L, consumer.endOffsets(setOf(partition))[partition] as Long)
+    }
+
+
+    @Test
+    fun testRebalanceListener() {
+        val revoked = mutableListOf<TopicPartition>()
+        val assigned = mutableListOf<TopicPartition>()
+        val consumerRebalanceListener = object : ConsumerRebalanceListener {
+            override fun onPartitionsRevoked(partitions: Collection<TopicPartition>) {
+                revoked.clear()
+                revoked.addAll(partitions)
+            }
+
+            override fun onPartitionsAssigned(partitions: Collection<TopicPartition>) {
+                assigned.clear()
+                assigned.addAll(partitions)
+            }
+        }
+        consumer.subscribe(setOf("test"), consumerRebalanceListener)
+        assertEquals(0, consumer.poll(Duration.ZERO).count())
+        val topicPartitionList = listOf(
+            TopicPartition(topic = "test", partition = 0),
+            TopicPartition(topic = "test", partition = 1),
+        )
+        consumer.rebalance(topicPartitionList)
+
+        assertTrue(revoked.isEmpty())
+        assertEquals(2, assigned.size)
+        assertTrue(assigned.contains(topicPartitionList[0]))
+        assertTrue(assigned.contains(topicPartitionList[1]))
+
+        consumer.rebalance(emptyList())
+        assertEquals(2, assigned.size)
+        assertTrue(revoked.contains(topicPartitionList[0]))
+        assertTrue(revoked.contains(topicPartitionList[1]))
+
+        consumer.rebalance(listOf(topicPartitionList[0]))
+        assertEquals(1, assigned.size)
+        assertTrue(assigned.contains(topicPartitionList[0]))
+
+        consumer.rebalance(listOf(topicPartitionList[1]))
+        assertEquals(1, assigned.size)
+        assertTrue(assigned.contains(topicPartitionList[1]))
+        assertEquals(1, revoked.size)
+        assertTrue(revoked.contains(topicPartitionList[0]))
     }
 }

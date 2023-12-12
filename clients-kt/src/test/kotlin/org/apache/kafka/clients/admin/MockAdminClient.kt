@@ -17,6 +17,7 @@
 
 package org.apache.kafka.clients.admin
 
+import java.time.Duration
 import org.apache.kafka.clients.admin.AlterConfigOp.OpType
 import org.apache.kafka.clients.admin.CreateTopicsResult.TopicMetadataAndConfig
 import org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult.ReplicaLogDirInfo
@@ -43,6 +44,8 @@ import org.apache.kafka.common.acl.AclBinding
 import org.apache.kafka.common.acl.AclBindingFilter
 import org.apache.kafka.common.acl.AclOperation
 import org.apache.kafka.common.config.ConfigResource
+import org.apache.kafka.common.errors.DelegationTokenNotFoundException
+import org.apache.kafka.common.errors.InvalidPrincipalTypeException
 import org.apache.kafka.common.errors.InvalidReplicationFactorException
 import org.apache.kafka.common.errors.InvalidRequestException
 import org.apache.kafka.common.errors.InvalidUpdateVersionException
@@ -57,12 +60,10 @@ import org.apache.kafka.common.internals.KafkaFutureImpl
 import org.apache.kafka.common.quota.ClientQuotaAlteration
 import org.apache.kafka.common.quota.ClientQuotaFilter
 import org.apache.kafka.common.requests.DescribeLogDirsResponse
-import java.time.Duration
-import java.util.*
-import java.util.function.Function
-import java.util.stream.Collectors
+import org.apache.kafka.common.security.auth.KafkaPrincipal
+import org.apache.kafka.common.security.token.delegation.DelegationToken
+import org.apache.kafka.common.security.token.delegation.TokenInformation
 import kotlin.math.max
-import kotlin.math.min
 
 class MockAdminClient private constructor(
     private val brokers: List<Node> = listOf(Node.noNode()),
@@ -109,6 +110,8 @@ class MockAdminClient private constructor(
     private var listConsumerGroupOffsetsException: KafkaException? = null
 
     private val mockMetrics: MutableMap<MetricName, Metric> = HashMap()
+
+    private val allTokens = mutableListOf<DelegationToken>()
 
     init {
         this.controller = controller
@@ -271,7 +274,7 @@ class MockAdminClient private constructor(
                     topicId = topicId,
                     numPartitions = numberOfPartitions,
                     replicationFactor = replicationFactor,
-                    config = Config(emptyMap()),
+                    config = config(newTopic),
                 )
             )
             createTopicResult[topicName] = future
@@ -515,7 +518,29 @@ class MockAdminClient private constructor(
 
     @Synchronized
     override fun createDelegationToken(options: CreateDelegationTokenOptions): CreateDelegationTokenResult {
-        throw UnsupportedOperationException("Not implemented yet")
+        val future = KafkaFutureImpl<DelegationToken>()
+
+        for (principal in options.renewers) {
+            if (principal.principalType != KafkaPrincipal.USER_TYPE) {
+                future.completeExceptionally(InvalidPrincipalTypeException(""))
+                return CreateDelegationTokenResult(future)
+            }
+        }
+
+        val tokenId = Uuid.randomUuid().toString()
+        val tokenInfo = TokenInformation(
+            tokenId = tokenId,
+            owner = options.renewers[0],
+            renewers = options.renewers,
+            issueTimestamp = System.currentTimeMillis(),
+            maxTimestamp = options.maxLifeTimeMs,
+            expiryTimestamp = -1,
+        )
+        val token = DelegationToken(tokenInfo, tokenId.toByteArray())
+        allTokens.add(token)
+        future.complete(token)
+
+        return CreateDelegationTokenResult(future)
     }
 
     @Synchronized
@@ -523,7 +548,21 @@ class MockAdminClient private constructor(
         hmac: ByteArray,
         options: RenewDelegationTokenOptions,
     ): RenewDelegationTokenResult {
-        throw UnsupportedOperationException("Not implemented yet")
+        val future = KafkaFutureImpl<Long>()
+
+        var tokenFound = false
+        val expiryTimestamp = options.renewTimePeriodMs
+        for ((tokenInfo, hmac1) in allTokens) {
+            if (hmac1.contentEquals(hmac)) {
+                tokenInfo.expiryTimestamp = expiryTimestamp
+                tokenFound = true
+            }
+        }
+
+        if (tokenFound) future.complete(expiryTimestamp)
+        else future.completeExceptionally(DelegationTokenNotFoundException(""))
+
+        return RenewDelegationTokenResult(future)
     }
 
     @Synchronized
@@ -531,12 +570,42 @@ class MockAdminClient private constructor(
         hmac: ByteArray,
         options: ExpireDelegationTokenOptions,
     ): ExpireDelegationTokenResult {
-        throw UnsupportedOperationException("Not implemented yet")
+        val future = KafkaFutureImpl<Long>()
+
+        val expiryTimestamp = options.expiryTimePeriodMs
+        val tokensToRemove = mutableListOf<DelegationToken>()
+        var tokenFound = false
+        for (token in allTokens) {
+            if (token.hmac.contentEquals(hmac)) {
+                if (expiryTimestamp == -1L || expiryTimestamp < System.currentTimeMillis()) {
+                    tokensToRemove.add(token)
+                }
+                tokenFound = true
+            }
+        }
+
+        if (tokenFound) {
+            allTokens.removeAll(tokensToRemove)
+            future.complete(expiryTimestamp)
+        } else future.completeExceptionally(DelegationTokenNotFoundException(""))
+
+        return ExpireDelegationTokenResult(future)
     }
 
     @Synchronized
     override fun describeDelegationToken(options: DescribeDelegationTokenOptions): DescribeDelegationTokenResult {
-        throw UnsupportedOperationException("Not implemented yet")
+        val future = KafkaFutureImpl<List<DelegationToken>>()
+
+        if (options.owners.isEmpty()) future.complete(allTokens)
+        else {
+            val tokensResult = mutableListOf<DelegationToken>()
+            for (token in allTokens)
+                if (options.owners.contains(token.tokenInfo.owner)) tokensResult.add(token)
+
+            future.complete(tokensResult)
+        }
+
+        return DescribeDelegationTokenResult(future)
     }
 
     @Synchronized
@@ -790,7 +859,40 @@ class MockAdminClient private constructor(
         brokers: Collection<Int>,
         options: DescribeLogDirsOptions,
     ): DescribeLogDirsResult {
-        throw UnsupportedOperationException("Not implemented yet")
+        val unwrappedResults = mutableMapOf<Int, Map<String, LogDirDescription>>()
+
+        for (broker in brokers) unwrappedResults.putIfAbsent(broker, java.util.HashMap())
+
+        for ((topicName, topicMetadata) in allTopics) {
+            // For tests, we make the assumption that there will always be only 1 entry.
+            val partitionLogDirs = topicMetadata.partitionLogDirs
+            val topicPartitionInfos = topicMetadata.partitions
+            for (info in topicPartitionInfos) {
+                for (replica in info.replicas) {
+                    val logDirDescriptionMap = unwrappedResults[replica.id]!!
+                    val logDirDescription =
+                        logDirDescriptionMap[partitionLogDirs[0]] ?: LogDirDescription(
+                            error = null,
+                            replicaInfos = mutableMapOf(),
+                        )
+                    logDirDescription.replicaInfos()[
+                        TopicPartition(topicName, info.partition)
+                    ] = ReplicaInfo(
+                        size = 0,
+                        offsetLag = 0,
+                        isFuture = false
+                    )
+                }
+            }
+        }
+
+        val results = unwrappedResults.mapValues { (_, value) ->
+            val kafkaFuture = KafkaFutureImpl<Map<String, LogDirDescription>>()
+            kafkaFuture.complete(value)
+            kafkaFuture
+        }
+
+        return DescribeLogDirsResult(results)
     }
 
     @Synchronized
@@ -1197,7 +1299,7 @@ class MockAdminClient private constructor(
                 controller = controller ?: brokers[0],
                 clusterId = clusterId,
                 defaultPartitions = defaultPartitions?.toInt() ?: 1,
-                defaultReplicationFactor = defaultReplicationFactor ?: min(brokers.size.toDouble(), 3.0).toInt(),
+                defaultReplicationFactor = defaultReplicationFactor ?: (brokers.size).coerceAtMost(3),
                 brokerLogDirs = brokerLogDirs,
                 usingRaftController = usingRaftController,
                 featureLevels = featureLevels,
@@ -1252,6 +1354,9 @@ class MockAdminClient private constructor(
         val DEFAULT_LOG_DIRS = listOf("/tmp/kafka-logs")
 
         fun create(): Builder = Builder()
+
+        private fun config(newTopic: NewTopic): Config =
+            Config(newTopic.configs.map { (key, value) -> ConfigEntry(key, value) })
 
         private fun toConfigObject(map: Map<String, String?>): Config =
             Config(map.map { (key, value) -> ConfigEntry(key, value) })

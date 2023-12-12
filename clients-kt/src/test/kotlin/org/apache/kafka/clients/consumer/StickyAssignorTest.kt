@@ -17,9 +17,13 @@
 
 package org.apache.kafka.clients.consumer
 
+import java.nio.ByteBuffer
 import org.apache.kafka.clients.consumer.ConsumerPartitionAssignor.Subscription
 import org.apache.kafka.clients.consumer.StickyAssignor.Companion.serializeTopicPartitionAssignment
+import org.apache.kafka.clients.consumer.internals.AbstractPartitionAssignorTest.Companion.TEST_NAME_WITH_RACK_CONFIG
+import org.apache.kafka.clients.consumer.internals.AbstractPartitionAssignorTest.RackConfig
 import org.apache.kafka.clients.consumer.internals.AbstractStickyAssignor
+import org.apache.kafka.clients.consumer.internals.AbstractStickyAssignor.Companion.DEFAULT_GENERATION
 import org.apache.kafka.clients.consumer.internals.AbstractStickyAssignor.MemberData
 import org.apache.kafka.clients.consumer.internals.AbstractStickyAssignorTest
 import org.apache.kafka.common.TopicPartition
@@ -27,20 +31,22 @@ import org.apache.kafka.common.protocol.types.Struct
 import org.apache.kafka.common.utils.CollectionUtils.groupPartitionsByTopic
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
-import org.junit.jupiter.params.provider.ValueSource
-import java.nio.ByteBuffer
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.EnumSource
+import org.junit.jupiter.params.provider.MethodSource
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class StickyAssignorTest : AbstractStickyAssignorTest() {
 
-    public override fun createAssignor(): AbstractStickyAssignor = StickyAssignor()
+    override fun createAssignor(): AbstractStickyAssignor = StickyAssignor()
 
-    public override fun buildSubscriptionV0(
+    override fun buildSubscriptionV0(
         topics: List<String>,
         partitions: List<TopicPartition>,
         generationId: Int,
+        consumerIndex: Int,
     ): Subscription {
         return Subscription(
             topics = topics,
@@ -49,14 +55,15 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
             ),
             ownedPartitions = emptyList(),
             generationId = AbstractStickyAssignor.DEFAULT_GENERATION,
-            rackId = null,
+            rackId = consumerRackId(consumerIndex),
         )
     }
 
-    public override fun buildSubscriptionV1(
+    override fun buildSubscriptionV1(
         topics: List<String>,
         partitions: List<TopicPartition>,
         generationId: Int,
+        consumerIndex: Int,
     ): Subscription {
         return Subscription(
             topics = topics,
@@ -67,10 +74,11 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
         )
     }
 
-    public override fun buildSubscriptionV2Above(
+    override fun buildSubscriptionV2Above(
         topics: List<String>,
         partitions: List<TopicPartition>,
         generationId: Int,
+        consumerIndex: Int,
     ): Subscription {
         return Subscription(
             topics = topics,
@@ -87,10 +95,13 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
         generation: Int,
     ): ByteBuffer = serializeTopicPartitionAssignment(MemberData(partitions, generation))
 
-    @Test
-    fun testAllConsumersHaveOwnedPartitionInvalidatedWhenClaimedByMultipleConsumersInSameGenerationWithEqualPartitionsPerConsumer() {
-        val partitionsPerTopic: MutableMap<String, Int> = HashMap()
-        partitionsPerTopic[topic] = 3
+    @ParameterizedTest(name = TEST_NAME_WITH_RACK_CONFIG)
+    @EnumSource(RackConfig::class)
+    fun testAllConsumersHaveOwnedPartitionInvalidatedWhenClaimedByMultipleConsumersInSameGenerationWithEqualPartitionsPerConsumer(rackConfig: RackConfig) {
+        initializeRacks(rackConfig)
+        val partitionsPerTopic = mutableMapOf(
+            topic  to partitionInfos(topic, 3),
+        )
         subscriptions[consumer1] = buildSubscriptionV2Above(
             topics = listOf(topic),
             partitions = listOf(
@@ -98,6 +109,7 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
                 TopicPartition(topic = topic, partition = 1),
             ),
             generationId = generationId,
+            consumerIndex = 0,
         )
         subscriptions[consumer2] = buildSubscriptionV2Above(
             topics = listOf(topic),
@@ -106,13 +118,15 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
                 TopicPartition(topic = topic, partition = 2),
             ),
             generationId = generationId,
+            consumerIndex = 1,
         )
         subscriptions[consumer3] = buildSubscriptionV2Above(
             topics = listOf(topic),
             partitions = emptyList(),
             generationId = generationId,
+            consumerIndex = 2,
         )
-        val assignment = assignor.assign(partitionsPerTopic, subscriptions)
+        val assignment = assignor.assignPartitions(partitionsPerTopic, subscriptions)
         assertEquals(
             expected = listOf(TopicPartition(topic = topic, partition = 1)),
             actual = assignment[consumer1]!!,
@@ -129,9 +143,11 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
         assertTrue(isFullyBalanced(assignment))
     }
 
-    @Test
-    fun testAllConsumersHaveOwnedPartitionInvalidatedWhenClaimedByMultipleConsumersInSameGenerationWithUnequalPartitionsPerConsumer() {
-        val partitionsPerTopic = mapOf(topic to 4)
+    @ParameterizedTest(name = TEST_NAME_WITH_RACK_CONFIG)
+    @EnumSource(RackConfig::class)
+    fun testAllConsumersHaveOwnedPartitionInvalidatedWhenClaimedByMultipleConsumersInSameGenerationWithUnequalPartitionsPerConsumer(rackConfig: RackConfig) {
+        initializeRacks(rackConfig)
+        val partitionsPerTopic = mutableMapOf(topic to partitionInfos(topic, 4))
         subscriptions[consumer1] = buildSubscriptionV2Above(
             topics = listOf(topic),
             partitions = listOf(
@@ -139,6 +155,7 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
                 TopicPartition(topic = topic, partition = 1),
             ),
             generationId = generationId,
+            consumerIndex = 0,
         )
         subscriptions[consumer2] = buildSubscriptionV2Above(
             topics = listOf(topic),
@@ -147,13 +164,15 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
                 TopicPartition(topic = topic, partition = 2),
             ),
             generationId = generationId,
+            consumerIndex = 1,
         )
         subscriptions[consumer3] = buildSubscriptionV2Above(
             topics = listOf(topic),
             partitions = emptyList(),
             generationId = generationId,
+            consumerIndex = 2,
         )
-        val assignment = assignor.assign(partitionsPerTopic, subscriptions)
+        val assignment = assignor.assignPartitions(partitionsPerTopic, subscriptions)
         assertEquals(
             expected = mutableListOf(
                 TopicPartition(topic = topic, partition = 1),
@@ -173,26 +192,42 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
         assertTrue(isFullyBalanced(assignment))
     }
 
-    @ParameterizedTest(name = "testAssignmentWithMultipleGenerations1 with isAllSubscriptionsEqual: {0}")
-    @ValueSource(booleans = [true, false])
-    fun testAssignmentWithMultipleGenerations1(isAllSubscriptionsEqual: Boolean) {
+    @ParameterizedTest(name = "{displayName}.rackConfig = {0}, isAllSubscriptionsEqual = {1}")
+    @MethodSource("rackAndSubscriptionCombinations")
+    fun testAssignmentWithMultipleGenerations1(rackConfig: RackConfig, isAllSubscriptionsEqual: Boolean) {
+        initializeRacks(rackConfig)
         val allTopics = listOf(topic, topic2)
         val consumer2SubscribedTopics = if (isAllSubscriptionsEqual) allTopics else listOf(topic)
-        val partitionsPerTopic = mapOf(topic to 6, topic2 to 6)
-        subscriptions[consumer1] = Subscription(allTopics)
-        subscriptions[consumer2] = Subscription(consumer2SubscribedTopics)
-        subscriptions[consumer3] = Subscription(allTopics)
-        var assignment = assignor.assign(partitionsPerTopic, subscriptions)
+
+        val partitionsPerTopic = mutableMapOf(
+            topic to partitionInfos(topic, 6),
+            topic2 to partitionInfos(topic2, 6),
+        )
+        subscriptions[consumer1] = subscription(allTopics, 0)
+        subscriptions[consumer2] = subscription(consumer2SubscribedTopics, 1)
+        subscriptions[consumer3] = subscription(allTopics, 2)
+
+        var assignment = assignor.assignPartitions(partitionsPerTopic, subscriptions)
         val r1partitions1 = assignment[consumer1]!!
         val r1partitions2 = assignment[consumer2]!!
         val r1partitions3 = assignment[consumer3]!!
         assertTrue(r1partitions1.size == 4 && r1partitions2.size == 4 && r1partitions3.size == 4)
         verifyValidityAndBalance(subscriptions, assignment, partitionsPerTopic)
         assertTrue(isFullyBalanced(assignment))
-        subscriptions[consumer1] = buildSubscriptionV2Above(allTopics, r1partitions1, generationId)
-        subscriptions[consumer2] = buildSubscriptionV2Above(consumer2SubscribedTopics, r1partitions2, generationId)
+        subscriptions[consumer1] = buildSubscriptionV2Above(
+            topics = allTopics,
+            partitions = r1partitions1,
+            generationId = generationId,
+            consumerIndex = 0,
+        )
+        subscriptions[consumer2] = buildSubscriptionV2Above(
+            topics = consumer2SubscribedTopics,
+            partitions = r1partitions2,
+            generationId = generationId,
+            consumerIndex = 1,
+        )
         subscriptions.remove(consumer3)
-        assignment = assignor.assign(partitionsPerTopic, subscriptions)
+        assignment = assignor.assignPartitions(partitionsPerTopic, subscriptions)
         val r2partitions1 = assignment[consumer1]!!
         val r2partitions2 = assignment[consumer2]!!
         assertTrue(r2partitions1.size == 6 && r2partitions2.size == 6)
@@ -209,13 +244,16 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
             topics = consumer2SubscribedTopics,
             partitions = r2partitions2,
             generationId = 2,
+            consumerIndex = 1,
         )
         subscriptions[consumer3] = buildSubscriptionV2Above(
             topics = allTopics,
             partitions = r1partitions3,
             generationId = 1,
+            consumerIndex = 2,
         )
-        assignment = assignor.assign(partitionsPerTopic, subscriptions)
+
+        assignment = assignor.assignPartitions(partitionsPerTopic, subscriptions)
         val r3partitions2 = assignment[consumer2]!!
         val r3partitions3 = assignment[consumer3]!!
         assertTrue(r3partitions2.size == 6 && r3partitions3.size == 6)
@@ -224,21 +262,22 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
         assertTrue(isFullyBalanced(assignment))
     }
 
-    @ParameterizedTest(name = "testAssignmentWithMultipleGenerations2 with isAllSubscriptionsEqual: {0}")
-    @ValueSource(booleans = [true, false])
-    fun testAssignmentWithMultipleGenerations2(isAllSubscriptionsEqual: Boolean) {
+    @ParameterizedTest(name = "{displayName}.rackConfig = {0}, isAllSubscriptionsEqual = {1}")
+    @MethodSource("rackAndSubscriptionCombinations")
+    fun testAssignmentWithMultipleGenerations2(rackConfig: RackConfig, isAllSubscriptionsEqual: Boolean) {
+        initializeRacks(rackConfig)
         val allTopics = listOf(topic, topic2, topic3)
         val consumer1SubscribedTopics = if (isAllSubscriptionsEqual) allTopics else listOf(topic)
         val consumer3SubscribedTopics = if (isAllSubscriptionsEqual) allTopics else listOf(topic, topic2)
-        val partitionsPerTopic = mapOf(
-            topic to 4,
-            topic2 to 4,
-            topic3 to 4,
+        val partitionsPerTopic = mutableMapOf(
+            topic to partitionInfos(topic, 4),
+            topic2 to partitionInfos(topic2, 4),
+            topic3 to partitionInfos(topic3, 4),
         )
-        subscriptions[consumer1] = Subscription(consumer1SubscribedTopics)
-        subscriptions[consumer2] = Subscription(allTopics)
-        subscriptions[consumer3] = Subscription(consumer3SubscribedTopics)
-        var assignment = assignor.assign(partitionsPerTopic, subscriptions)
+        subscriptions[consumer1] = subscription(consumer1SubscribedTopics, 0)
+        subscriptions[consumer2] = subscription(allTopics, 1)
+        subscriptions[consumer3] = subscription(consumer3SubscribedTopics, 2)
+        var assignment = assignor.assignPartitions(partitionsPerTopic, subscriptions)
         val r1partitions1 = assignment[consumer1]!!
         val r1partitions2 = assignment[consumer2]!!
         val r1partitions3 = assignment[consumer3]!!
@@ -251,9 +290,10 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
             topics = allTopics,
             partitions = r1partitions2,
             generationId = 1,
+            consumerIndex = 1,
         )
         subscriptions.remove(consumer3)
-        assignment = assignor.assign(partitionsPerTopic, subscriptions)
+        assignment = assignor.assignPartitions(partitionsPerTopic, subscriptions)
         val r2partitions2 = assignment[consumer2]!!
         assertEquals(12, r2partitions2.size)
         assertTrue(r2partitions2.containsAll(r1partitions2))
@@ -263,18 +303,21 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
             topics = consumer1SubscribedTopics,
             partitions = r1partitions1,
             generationId = 1,
+            consumerIndex = 0,
         )
         subscriptions[consumer2] = buildSubscriptionV2Above(
             topics = allTopics,
             partitions = r2partitions2,
             generationId = 2,
+            consumerIndex = 1,
         )
         subscriptions[consumer3] = buildSubscriptionV2Above(
             topics = consumer3SubscribedTopics,
             partitions = r1partitions3,
             generationId = 1,
+            consumerIndex = 2,
         )
-        assignment = assignor.assign(partitionsPerTopic, subscriptions)
+        assignment = assignor.assignPartitions(partitionsPerTopic, subscriptions)
         val r3partitions1 = assignment[consumer1]!!
         val r3partitions2 = assignment[consumer2]!!
         val r3partitions3 = assignment[consumer3]!!
@@ -287,19 +330,20 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
         assertTrue(isFullyBalanced(assignment))
     }
 
-    @ParameterizedTest(name = "testAssignmentWithConflictingPreviousGenerations with isAllSubscriptionsEqual: {0}")
-    @ValueSource(booleans = [true, false])
-    fun testAssignmentWithConflictingPreviousGenerations(isAllSubscriptionsEqual: Boolean) {
-        val partitionsPerTopic: MutableMap<String, Int> = HashMap()
-        partitionsPerTopic[topic] = 4
-        partitionsPerTopic[topic2] = 4
-        partitionsPerTopic[topic3] = 4
+    @ParameterizedTest(name = "{displayName}.rackConfig = {0}, isAllSubscriptionsEqual = {1}")
+    @MethodSource("rackAndSubscriptionCombinations")
+    fun testAssignmentWithConflictingPreviousGenerations(rackConfig: RackConfig, isAllSubscriptionsEqual: Boolean) {
+        val partitionsPerTopic = mutableMapOf(
+            topic to partitionInfos(topic, 4),
+            topic2 to partitionInfos(topic2, 4),
+            topic3 to partitionInfos(topic3, 4),
+        )
         val allTopics = listOf(topic, topic2, topic3)
         val consumer1SubscribedTopics = if (isAllSubscriptionsEqual) allTopics else listOf(topic)
         val consumer2SubscribedTopics = if (isAllSubscriptionsEqual) allTopics else listOf(topic, topic2)
-        subscriptions[consumer1] = Subscription(consumer1SubscribedTopics)
-        subscriptions[consumer2] = Subscription(consumer2SubscribedTopics)
-        subscriptions[consumer3] = Subscription(allTopics)
+        subscriptions[consumer1] = subscription(consumer1SubscribedTopics, 0)
+        subscriptions[consumer2] = subscription(consumer2SubscribedTopics ,1)
+        subscriptions[consumer3] = subscription(allTopics, 2)
         val tp0 = TopicPartition(topic = topic, partition = 0)
         val tp1 = TopicPartition(topic = topic, partition = 1)
         val tp2 = TopicPartition(topic = topic, partition = 2)
@@ -312,15 +356,29 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
         val t3p1 = TopicPartition(topic = topic3, partition = 1)
         val t3p2 = TopicPartition(topic = topic3, partition = 2)
         val t3p3 = TopicPartition(topic = topic3, partition = 3)
-        val c1partitions0 =
-            if (isAllSubscriptionsEqual) listOf(tp0, tp1, tp2, t2p2, t2p3, t3p0)
-            else listOf(tp0, tp1, tp2, tp3)
+        val c1partitions0 = if (isAllSubscriptionsEqual) listOf(tp0, tp1, tp2, t2p2, t2p3, t3p0)
+        else listOf(tp0, tp1, tp2, tp3)
         val c2partitions0 = listOf(tp0, tp1, t2p0, t2p1, t2p2, t2p3)
         val c3partitions0 = listOf(tp2, tp3, t3p0, t3p1, t3p2, t3p3)
-        subscriptions[consumer1] = buildSubscriptionV2Above(consumer1SubscribedTopics, c1partitions0, 1)
-        subscriptions[consumer2] = buildSubscriptionV2Above(consumer2SubscribedTopics, c2partitions0, 2)
-        subscriptions[consumer3] = buildSubscriptionV2Above(allTopics, c3partitions0, 2)
-        val assignment = assignor.assign(partitionsPerTopic, subscriptions)
+        subscriptions[consumer1] = buildSubscriptionV2Above(
+            topics = consumer1SubscribedTopics,
+            partitions = c1partitions0,
+            generationId = 1,
+            consumerIndex = 0,
+        )
+        subscriptions[consumer2] = buildSubscriptionV2Above(
+            topics = consumer2SubscribedTopics,
+            partitions = c2partitions0,
+            generationId = 2,
+            consumerIndex = 1,
+        )
+        subscriptions[consumer3] = buildSubscriptionV2Above(
+            topics = allTopics,
+            partitions = c3partitions0,
+            generationId = 2,
+            consumerIndex = 2,
+        )
+        val assignment = assignor.assignPartitions(partitionsPerTopic, subscriptions)
         val c1partitions = assignment[consumer1]!!
         val c2partitions = assignment[consumer2]!!
         val c3partitions = assignment[consumer3]!!
@@ -331,12 +389,16 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
         assertTrue(isFullyBalanced(assignment))
     }
 
-    @Test
-    fun testSchemaBackwardCompatibility() {
-        val partitionsPerTopic = mapOf(topic to 3)
-        subscriptions[consumer1] = Subscription(listOf(topic))
-        subscriptions[consumer2] = Subscription(listOf(topic))
-        subscriptions[consumer3] = Subscription(listOf(topic))
+    @ParameterizedTest(name = TEST_NAME_WITH_RACK_CONFIG)
+    @EnumSource(RackConfig::class)
+    fun testSchemaBackwardCompatibility(rackConfig: RackConfig) {
+        initializeRacks(rackConfig)
+        val partitionsPerTopic = mutableMapOf(
+            topic to partitionInfos(topic, 3),
+        )
+        subscriptions[consumer1] = subscription(listOf(topic), 0)
+        subscriptions[consumer2] = subscription(listOf(topic), 1)
+        subscriptions[consumer3] = subscription(listOf(topic), 2)
         val tp0 = TopicPartition(topic = topic, partition = 0)
         val tp1 = TopicPartition(topic = topic, partition = 1)
         val tp2 = TopicPartition(topic = topic, partition = 2)
@@ -346,15 +408,18 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
             topics = listOf(topic),
             partitions = c1partitions0,
             generationId = 1,
+            consumerIndex = 0,
         )
         subscriptions[consumer2] = buildSubscriptionWithOldSchema(
             topics = listOf(topic),
             partitions = c2partitions0,
+            consumerIndex = 1,
         )
-        val assignment = assignor.assign(partitionsPerTopic, subscriptions)
+        val assignment = assignor.assignPartitions(partitionsPerTopic, subscriptions)
         val c1partitions = assignment[consumer1]!!
         val c2partitions = assignment[consumer2]!!
         val c3partitions = assignment[consumer3]!!
+
         assertTrue(c1partitions.size == 1 && c2partitions.size == 1 && c3partitions.size == 1)
         assertTrue(c1partitions0.containsAll(c1partitions))
         assertTrue(c2partitions0.containsAll(c2partitions))
@@ -362,13 +427,14 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
         assertTrue(isFullyBalanced(assignment))
     }
 
-    @Test
-    fun testMemberDataWithInconsistentData() {
+    @ParameterizedTest(name = TEST_NAME_WITH_RACK_CONFIG)
+    @EnumSource(RackConfig::class)
+    fun testMemberDataWithInconsistentData(rackConfig: RackConfig) {
+        initializeRacks(rackConfig)
         val ownedPartitionsInUserdata = listOf(tp1)
         val ownedPartitionsInSubscription = listOf(tp0)
         assignor.onAssignment(
-            ConsumerPartitionAssignor.Assignment(ownedPartitionsInUserdata),
-            ConsumerGroupMetadata(
+            ConsumerPartitionAssignor.Assignment(ownedPartitionsInUserdata), ConsumerGroupMetadata(
                 groupId = groupId,
                 generationId = generationId,
                 memberId = consumer1,
@@ -431,58 +497,80 @@ class StickyAssignorTest : AbstractStickyAssignorTest() {
 
     @Test
     fun testAssignorWithOldVersionSubscriptions() {
-        val partitionsPerTopic = mapOf(topic1 to 3)
+        val partitionsPerTopic = mutableMapOf(
+            topic1 to partitionInfos(topic1, 3),
+        )
         val subscribedTopics = listOf(topic1)
         subscriptions[consumer1] = buildSubscriptionV0(
             topics = subscribedTopics,
             partitions = listOf(TopicPartition(topic = topic1, partition = 0)),
             generationId = generationId,
+            consumerIndex = 0,
         )
         subscriptions[consumer2] = buildSubscriptionV1(
             topics = subscribedTopics,
             partitions = listOf(TopicPartition(topic = topic1, partition = 1)),
             generationId = generationId,
+            consumerIndex = 1,
         )
         subscriptions[consumer3] = buildSubscriptionV2Above(
             topics = subscribedTopics,
             partitions = emptyList(),
             generationId = generationId,
+            consumerIndex = 2,
         )
-        val assignment = assignor.assign(partitionsPerTopic, subscriptions)
+        val assignment = assignor.assignPartitions(partitionsPerTopic, subscriptions)
         assertEquals(
-            expected = mutableListOf(TopicPartition(topic =topic1, partition = 0)),
+            expected = mutableListOf(TopicPartition(topic = topic1, partition = 0)),
             actual = assignment[consumer1],
         )
         assertEquals(
-            expected = mutableListOf(TopicPartition(topic =topic1, partition = 1)),
+            expected = mutableListOf(TopicPartition(topic = topic1, partition = 1)),
             actual = assignment[consumer2],
         )
         assertEquals(
-            expected = mutableListOf(TopicPartition(topic =topic1, partition = 2)),
+            expected = mutableListOf(TopicPartition(topic = topic1, partition = 2)),
             actual = assignment[consumer3],
         )
         verifyValidityAndBalance(subscriptions, assignment, partitionsPerTopic)
         assertTrue(isFullyBalanced(assignment))
     }
 
-    companion object {
-        private fun buildSubscriptionWithOldSchema(
-            topics: List<String>,
-            partitions: List<TopicPartition>,
-        ): Subscription {
-            val struct = Struct(StickyAssignor.STICKY_ASSIGNOR_USER_DATA_V0)
-            val topicAssignments = mutableListOf<Struct>()
-            for ((key, value) in groupPartitionsByTopic(partitions)) {
-                val topicAssignment = Struct(StickyAssignor.TOPIC_ASSIGNMENT)
-                topicAssignment[StickyAssignor.TOPIC_KEY_NAME] = key
-                topicAssignment[StickyAssignor.PARTITIONS_KEY_NAME] = value.toTypedArray()
-                topicAssignments.add(topicAssignment)
-            }
-            struct[StickyAssignor.TOPIC_PARTITIONS_KEY_NAME] = topicAssignments.toTypedArray()
-            val buffer = ByteBuffer.allocate(StickyAssignor.STICKY_ASSIGNOR_USER_DATA_V0.sizeOf(struct))
-            StickyAssignor.STICKY_ASSIGNOR_USER_DATA_V0.write(buffer, struct)
-            buffer.flip()
-            return Subscription(topics, buffer)
+    private fun buildSubscriptionWithOldSchema(
+        topics: List<String>,
+        partitions: List<TopicPartition>,
+        consumerIndex: Int,
+    ): Subscription {
+        val struct = Struct(StickyAssignor.STICKY_ASSIGNOR_USER_DATA_V0)
+        val topicAssignments = mutableListOf<Struct>()
+        for ((key, value) in groupPartitionsByTopic(partitions)) {
+            val topicAssignment = Struct(StickyAssignor.TOPIC_ASSIGNMENT)
+            topicAssignment[StickyAssignor.TOPIC_KEY_NAME] = key
+            topicAssignment[StickyAssignor.PARTITIONS_KEY_NAME] = value.toTypedArray()
+            topicAssignments.add(topicAssignment)
         }
+        struct[StickyAssignor.TOPIC_PARTITIONS_KEY_NAME] = topicAssignments.toTypedArray()
+        val buffer = ByteBuffer.allocate(StickyAssignor.STICKY_ASSIGNOR_USER_DATA_V0.sizeOf(struct))
+        StickyAssignor.STICKY_ASSIGNOR_USER_DATA_V0.write(buffer, struct)
+        buffer.flip()
+
+        return Subscription(
+            topics = topics,
+            userData = buffer,
+            ownedPartitions = emptyList(),
+            generationId = DEFAULT_GENERATION,
+            rackId = consumerRackId(consumerIndex),
+        )
+    }
+
+    companion object {
+        fun rackAndSubscriptionCombinations(): Collection<Arguments> = listOf(
+            Arguments.of(RackConfig.NO_BROKER_RACK, true),
+            Arguments.of(RackConfig.NO_CONSUMER_RACK, true),
+            Arguments.of(RackConfig.BROKER_AND_CONSUMER_RACK, true),
+            Arguments.of(RackConfig.NO_BROKER_RACK, false),
+            Arguments.of(RackConfig.NO_CONSUMER_RACK, false),
+            Arguments.of(RackConfig.BROKER_AND_CONSUMER_RACK, false)
+        )
     }
 }

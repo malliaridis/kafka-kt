@@ -252,11 +252,7 @@ class ConsumerNetworkClientTest {
     fun testDisconnectWakesUpPoll() {
         val future = consumerClient.send(node, heartbeat())
         client.enableBlockingUntilWakeup(1)
-        val t: Thread = object : Thread() {
-            override fun run() {
-                consumerClient.poll(future)
-            }
-        }
+        val t = Thread { consumerClient.poll(future) }
         t.start()
         consumerClient.disconnectAsync(node)
         t.join()
@@ -328,16 +324,12 @@ class ConsumerNetworkClientTest {
         val future = consumerClient.send(node, heartbeat())
         consumerClient.pollNoWakeup() // dequeue and send the request
         client.enableBlockingUntilWakeup(2)
-        val t1 = object : Thread() {
-            override fun run() = consumerClient.pollNoWakeup()
-        }
+        val t1 = Thread {consumerClient.pollNoWakeup() }
         t1.start()
 
         // Sleep a little so that t1 is blocking in poll
         Thread.sleep(50)
-        val t2 = object : Thread() {
-            override fun run() = consumerClient.poll(future)
-        }
+        val t2 = Thread { consumerClient.poll(future) }
         t2.start()
 
         // Sleep a little so that t2 is awaiting the network client lock

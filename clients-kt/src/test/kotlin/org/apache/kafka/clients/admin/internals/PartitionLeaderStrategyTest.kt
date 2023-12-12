@@ -78,7 +78,7 @@ class PartitionLeaderStrategyTest {
     }
 
     @Test
-    fun testUnexpectedTopicErrror() {
+    fun testUnexpectedTopicError() {
         val topicPartition = TopicPartition("foo", 0)
         val exception = assertFatalTopicError(topicPartition, Errors.UNKNOWN_SERVER_ERROR)
         

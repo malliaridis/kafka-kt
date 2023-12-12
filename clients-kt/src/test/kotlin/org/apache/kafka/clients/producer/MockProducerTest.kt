@@ -147,7 +147,7 @@ class MockProducerTest {
 
         assertFalse(md2.isDone, "Send shouldn't have completed")
         assertTrue(producer.completeNext(), "Complete the first request")
-        assertFalse(isError(md1), "Requst should be successful")
+        assertFalse(isError(md1), "Request should be successful")
         assertFalse(md2.isDone, "Second request still incomplete")
 
         val e = IllegalArgumentException("blah")
