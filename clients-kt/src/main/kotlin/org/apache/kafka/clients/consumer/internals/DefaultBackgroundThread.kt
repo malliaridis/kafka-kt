@@ -17,21 +17,30 @@
 
 package org.apache.kafka.clients.consumer.internals
 
-import org.apache.kafka.clients.CommonClientConfigs
+import java.util.LinkedList
+import java.util.Objects
+import java.util.Queue
+import java.util.concurrent.BlockingQueue
+import org.apache.kafka.clients.ApiVersions
+import org.apache.kafka.clients.ClientUtils.createNetworkClient
+import org.apache.kafka.clients.GroupRebalanceConfig
 import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.consumer.internals.ConsumerUtils.CONSUMER_MAX_INFLIGHT_REQUESTS_PER_CONNECTION
+import org.apache.kafka.clients.consumer.internals.ConsumerUtils.CONSUMER_METRIC_GROUP_PREFIX
+import org.apache.kafka.clients.consumer.internals.NetworkClientDelegate.PollResult
 import org.apache.kafka.clients.consumer.internals.events.ApplicationEvent
+import org.apache.kafka.clients.consumer.internals.events.ApplicationEventProcessor
 import org.apache.kafka.clients.consumer.internals.events.BackgroundEvent
 import org.apache.kafka.clients.consumer.internals.events.NoopApplicationEvent
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.errors.WakeupException
 import org.apache.kafka.common.metrics.Metrics
+import org.apache.kafka.common.metrics.Sensor
 import org.apache.kafka.common.utils.KafkaThread
 import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.Time
 import org.apache.kafka.common.utils.Utils.closeQuietly
 import org.slf4j.Logger
-import java.util.concurrent.BlockingQueue
-import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Background thread runnable that consumes `ApplicationEvent` and produces `BackgroundEvent`. It
@@ -40,49 +49,147 @@ import java.util.concurrent.atomic.AtomicReference
  *
  * It holds a reference to the [SubscriptionState], which is initialized by the polling thread.
  */
-class DefaultBackgroundThread(
-    private val time: Time,
-    private val config: ConsumerConfig,
-    logContext: LogContext,
-    private val applicationEventQueue: BlockingQueue<ApplicationEvent>,
-    private val backgroundEventQueue: BlockingQueue<BackgroundEvent>,
-    // subscriptionState is initialized by the polling thread
-    private val subscriptions: SubscriptionState?,
-    private val metadata: ConsumerMetadata?,
-    private val networkClient: ConsumerNetworkClient,
-    private val metrics: Metrics?,
-) : KafkaThread(BACKGROUND_THREAD_NAME, true) {
+class DefaultBackgroundThread : KafkaThread {
 
-    private var log: Logger = logContext.logger(DefaultBackgroundThread::class.java)
+    private val time: Time
 
-    private var clientId: String? = null
+    private val config: ConsumerConfig
 
-    private var retryBackoffMs: Long = 0
+    private val applicationEventQueue: BlockingQueue<ApplicationEvent>
 
-    private var heartbeatIntervalMs = 0
+    private val backgroundEventQueue: BlockingQueue<BackgroundEvent>
+
+    private val metadata: ConsumerMetadata?
+
+    // empty if groupId is null
+    private val applicationEventProcessor: ApplicationEventProcessor
+
+    private val networkClientDelegate: NetworkClientDelegate
+
+    private var log: Logger
+
+    private val errorEventHandler: ErrorEventHandler
+
+    private val groupState: GroupState
+
+    private val subscriptionState: SubscriptionState
 
     var isRunning = false
         private set
 
-    private var inflightEvent: ApplicationEvent? = null
+    private val requestManagerRegistry: Map<RequestManager.Type, RequestManager?>
 
-    private val exception = AtomicReference<RuntimeException?>(null)
+    internal constructor(
+        time: Time,
+        config: ConsumerConfig,
+        logContext: LogContext,
+        applicationEventQueue: BlockingQueue<ApplicationEvent>,
+        backgroundEventQueue: BlockingQueue<BackgroundEvent>,
+        subscriptionState: SubscriptionState,
+        errorEventHandler: ErrorEventHandler,
+        processor: ApplicationEventProcessor,
+        metadata: ConsumerMetadata,
+        networkClient: NetworkClientDelegate,
+        groupState: GroupState,
+        coordinatorManager: CoordinatorRequestManager,
+        commitRequestManager: CommitRequestManager,
+    ) : super(BACKGROUND_THREAD_NAME, true) {
+        this.time = time
+        this.isRunning = true
+        this.log = logContext.logger(javaClass)
+        this.applicationEventQueue = applicationEventQueue
+        this.backgroundEventQueue = backgroundEventQueue
+        this.applicationEventProcessor = processor
+        this.config = config
+        this.metadata = metadata
+        this.networkClientDelegate = networkClient
+        this.errorEventHandler = errorEventHandler
+        this.groupState = groupState
+        this.subscriptionState = subscriptionState
 
-    init {
+        this.requestManagerRegistry = mapOf(
+            RequestManager.Type.COORDINATOR to coordinatorManager,
+            RequestManager.Type.COMMIT to commitRequestManager,
+        )
+    }
+
+    constructor(
+        time: Time,
+        config: ConsumerConfig,
+        rebalanceConfig: GroupRebalanceConfig,
+        logContext: LogContext,
+        applicationEventQueue: BlockingQueue<ApplicationEvent>,
+        backgroundEventQueue: BlockingQueue<BackgroundEvent>,
+        metadata: ConsumerMetadata,
+        subscriptionState: SubscriptionState,
+        apiVersions: ApiVersions,
+        metrics: Metrics,
+        fetcherThrottleTimeSensor: Sensor?,
+    ) : super(BACKGROUND_THREAD_NAME, true) {
         try {
-            setConfig()
+            this.time = time
+            this.log = logContext.logger(javaClass)
+            this.applicationEventQueue = applicationEventQueue
+            this.backgroundEventQueue = backgroundEventQueue
+            this.subscriptionState = subscriptionState
+            this.config = config
+            this.metadata = metadata
+            val networkClient = createNetworkClient(
+                config = config,
+                metrics = metrics,
+                metricsGroupPrefix = CONSUMER_METRIC_GROUP_PREFIX,
+                logContext = logContext,
+                apiVersions = apiVersions,
+                time = time,
+                maxInFlightRequestsPerConnection = CONSUMER_MAX_INFLIGHT_REQUESTS_PER_CONNECTION,
+                metadata = metadata,
+                throttleTimeSensor = fetcherThrottleTimeSensor,
+            )
+            networkClientDelegate = NetworkClientDelegate(
+                time = this.time,
+                config = this.config,
+                logContext = logContext,
+                client = networkClient,
+            )
             isRunning = true
+            this.errorEventHandler = ErrorEventHandler(this.backgroundEventQueue)
+            this.groupState = GroupState(rebalanceConfig)
+            this.requestManagerRegistry = buildRequestManagerRegistry(logContext)
+            this.applicationEventProcessor = ApplicationEventProcessor(
+                backgroundEventQueue = backgroundEventQueue,
+                registry = requestManagerRegistry,
+                metadata = metadata,
+            )
         } catch (e: Exception) {
-            // now propagate the exception
             close()
-            throw KafkaException("Failed to construct background processor", e)
+            throw KafkaException("Failed to construct background processor", e.cause)
         }
     }
 
-    private fun setConfig() {
-        retryBackoffMs = config.getLong(ConsumerConfig.RETRY_BACKOFF_MS_CONFIG)!!
-        clientId = config.getString(CommonClientConfigs.CLIENT_ID_CONFIG)
-        heartbeatIntervalMs = config.getInt(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG)!!
+    private fun buildRequestManagerRegistry(logContext: LogContext): Map<RequestManager.Type, RequestManager?> {
+        val coordinatorManager =
+            if (groupState.groupId == null) null
+            else CoordinatorRequestManager(
+                time = time,
+                logContext = logContext,
+                retryBackoffMs = config.getLong(ConsumerConfig.RETRY_BACKOFF_MS_CONFIG)!!,
+                nonRetriableErrorHandler = errorEventHandler,
+                groupId = groupState.groupId,
+            )
+        val commitRequestManager =
+            if (coordinatorManager == null) null
+            else CommitRequestManager(
+                time = time,
+                logContext = logContext,
+                subscriptionState = subscriptionState,
+                config = config,
+                coordinatorRequestManager = coordinatorManager,
+                groupState = groupState,
+            )
+        return mapOf(
+            RequestManager.Type.COORDINATOR to coordinatorManager,
+            RequestManager.Type.COMMIT to commitRequestManager,
+        )
     }
 
     override fun run() {
@@ -92,15 +199,13 @@ class DefaultBackgroundThread(
                 try {
                     runOnce()
                 } catch (e: WakeupException) {
-                    log.debug("Exception thrown, background thread won't terminate", e)
-                    // swallow the wakeup exception to prevent killing the
-                    // background thread.
+                    log.debug("WakeupException caught, background thread won't be interrupted")
+                    // swallow the wakeup exception to prevent killing the background thread.
                 }
             }
         } catch (t: Throwable) {
             log.error("The background thread failed due to unexpected error", t)
-            if (t is RuntimeException) exception.set(t)
-            else exception.set(RuntimeException(t))
+            throw RuntimeException(t)
         } finally {
             close()
             log.debug("{} closed", javaClass)
@@ -108,69 +213,59 @@ class DefaultBackgroundThread(
     }
 
     /**
-     * Process event from a single poll
+     * Poll and process an [ApplicationEvent]. It performs the following tasks:
+     * 1. Drains and try to process all the requests in the queue.
+     * 2. Iterate through the registry, poll, and get the next poll time for the network poll
+     * 3. Poll the networkClient to send and retrieve the response.
      */
     fun runOnce() {
-        inflightEvent = maybePollEvent()
-        if (inflightEvent != null) log.debug("processing application event: {}", inflightEvent)
+        drain()
+        val currentTimeMs = time.milliseconds()
+        val pollWaitTimeMs = requestManagerRegistry.values
+            .filterNotNull()
+            .minOf { handlePollResult(it.poll(currentTimeMs)) }
+            .coerceAtMost(MAX_POLL_TIMEOUT_MS)
 
-        inflightEvent?.let {
-            // clear inflight event upon successful consumption
-            if (maybeConsumeInflightEvent(it)) inflightEvent = null
+        networkClientDelegate.poll(pollWaitTimeMs, currentTimeMs)
+    }
+
+    private fun drain() {
+        val events: Queue<ApplicationEvent> = pollApplicationEvent()
+        for (event in events) {
+            log.debug("Consuming application event: {}", event)
+            consumeApplicationEvent(event)
         }
+    }
 
-        // if there are pending events to process, poll then continue without
-        // blocking.
-        if (!applicationEventQueue.isEmpty() || inflightEvent != null) {
-            networkClient.poll(time.timer(0))
-            return
+    fun handlePollResult(res: PollResult): Long {
+        if (res.unsentRequests.isNotEmpty()) networkClientDelegate.addAll(res.unsentRequests)
+        return res.timeUntilNextPollMs
+    }
+
+    private fun pollApplicationEvent(): Queue<ApplicationEvent> {
+        return if (applicationEventQueue.isEmpty()) LinkedList()
+        else {
+            val res = LinkedList<ApplicationEvent>()
+            applicationEventQueue.drainTo(res)
+            res
         }
-        // if there are no events to process, poll until timeout. The timeout
-        // will be the minimum of the requestTimeoutMs, nextHeartBeatMs, and
-        // nextMetadataUpdate. See NetworkClient.poll impl.
-        networkClient.poll(time.timer(timeToNextHeartbeatMs(time.milliseconds())))
     }
 
-    private fun timeToNextHeartbeatMs(nowMs: Long): Long {
-        // TODO: implemented when heartbeat is added to the impl
-        return 100
-    }
+    private fun consumeApplicationEvent(event: ApplicationEvent) =
+        applicationEventProcessor.process(event)
 
-    private fun maybePollEvent(): ApplicationEvent? {
-        return if (inflightEvent != null || applicationEventQueue.isEmpty()) inflightEvent
-        else applicationEventQueue.poll()
-    }
-
-    /**
-     * ApplicationEvent are consumed here.
-     *
-     * @param event an [ApplicationEvent]
-     * @return true when successfully consumed the event.
-     */
-    private fun maybeConsumeInflightEvent(event: ApplicationEvent): Boolean {
-        log.debug("try consuming event: {}", event)
-        return event.process()
-    }
-
-    /**
-     * Processes [NoopApplicationEvent] and equeue a [NoopBackgroundEvent]. This is intentionally
-     * left here for demonstration purpose.
-     *
-     * @param event a [NoopApplicationEvent]
-     */
-    private fun process(event: NoopApplicationEvent) =
-        backgroundEventQueue.add(NoopBackgroundEvent(event.message))
-
-    fun wakeup() = networkClient.wakeup()
+    fun wakeup() = networkClientDelegate.wakeup()
 
     fun close() {
         isRunning = false
         wakeup()
-        closeQuietly(networkClient, "consumer network client")
+        closeQuietly(networkClientDelegate, "consumer network client utils")
         closeQuietly(metadata, "consumer metadata client")
     }
 
     companion object {
+        private const val MAX_POLL_TIMEOUT_MS = 5000L
+
         private const val BACKGROUND_THREAD_NAME = "consumer_background_thread"
     }
 }

@@ -17,6 +17,7 @@
 
 package org.apache.kafka.common.requests
 
+import java.nio.ByteBuffer
 import org.apache.kafka.common.acl.AccessControlEntryFilter
 import org.apache.kafka.common.acl.AclBindingFilter
 import org.apache.kafka.common.acl.AclOperation
@@ -31,8 +32,6 @@ import org.apache.kafka.common.protocol.ByteBufferAccessor
 import org.apache.kafka.common.resource.PatternType
 import org.apache.kafka.common.resource.ResourcePatternFilter
 import org.apache.kafka.common.resource.ResourceType
-import java.nio.ByteBuffer
-import java.util.*
 
 class DeleteAclsRequest private constructor(
     private val data: DeleteAclsRequestData,
@@ -76,12 +75,11 @@ class DeleteAclsRequest private constructor(
 
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse {
         val apiError = ApiError.fromThrowable(e)
-        val filterResults = Collections.nCopies(
-            data.filters.size,
+        val filterResults = List(data.filters.size) {
             DeleteAclsFilterResult()
                 .setErrorCode(apiError.error.code)
                 .setErrorMessage(apiError.message)
-        )
+        }
 
         return DeleteAclsResponse(
             DeleteAclsResponseData()

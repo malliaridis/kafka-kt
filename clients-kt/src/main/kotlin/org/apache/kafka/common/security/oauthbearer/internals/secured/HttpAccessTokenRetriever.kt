@@ -28,7 +28,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import java.util.*
+import java.util.Base64
 import java.util.concurrent.ExecutionException
 import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLSocketFactory

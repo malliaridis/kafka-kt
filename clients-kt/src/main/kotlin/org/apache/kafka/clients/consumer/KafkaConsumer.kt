@@ -18,31 +18,31 @@
 package org.apache.kafka.clients.consumer
 
 import java.time.Duration
-import java.util.OptionalLong
 import java.util.Properties
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import java.util.regex.Pattern
 import org.apache.kafka.clients.ApiVersions
-import org.apache.kafka.clients.ClientUtils.createChannelBuilder
-import org.apache.kafka.clients.ClientUtils.parseAndValidateAddresses
+import org.apache.kafka.clients.ClientUtils
 import org.apache.kafka.clients.CommonClientConfigs
-import org.apache.kafka.clients.CommonClientConfigs.metricsReporters
 import org.apache.kafka.clients.GroupRebalanceConfig
 import org.apache.kafka.clients.Metadata.LeaderAndEpoch
-import org.apache.kafka.clients.NetworkClient
 import org.apache.kafka.clients.consumer.internals.ConsumerCoordinator
 import org.apache.kafka.clients.consumer.internals.ConsumerInterceptors
 import org.apache.kafka.clients.consumer.internals.ConsumerMetadata
 import org.apache.kafka.clients.consumer.internals.ConsumerNetworkClient
+import org.apache.kafka.clients.consumer.internals.ConsumerUtils
+import org.apache.kafka.clients.consumer.internals.ConsumerUtils.CONSUMER_JMX_PREFIX
+import org.apache.kafka.clients.consumer.internals.ConsumerUtils.CONSUMER_METRIC_GROUP_PREFIX
 import org.apache.kafka.clients.consumer.internals.Fetch
 import org.apache.kafka.clients.consumer.internals.Fetcher
-import org.apache.kafka.clients.consumer.internals.FetcherMetricsRegistry
 import org.apache.kafka.clients.consumer.internals.KafkaConsumerMetrics
 import org.apache.kafka.clients.consumer.internals.NoOpConsumerRebalanceListener
+import org.apache.kafka.clients.consumer.internals.OffsetFetcher
 import org.apache.kafka.clients.consumer.internals.SubscriptionState
 import org.apache.kafka.clients.consumer.internals.SubscriptionState.FetchPosition
+import org.apache.kafka.clients.consumer.internals.TopicMetadataFetcher
 import org.apache.kafka.common.Cluster
 import org.apache.kafka.common.IsolationLevel
 import org.apache.kafka.common.KafkaException
@@ -54,12 +54,7 @@ import org.apache.kafka.common.errors.InterruptException
 import org.apache.kafka.common.errors.InvalidGroupIdException
 import org.apache.kafka.common.errors.TimeoutException
 import org.apache.kafka.common.internals.ClusterResourceListeners
-import org.apache.kafka.common.metrics.KafkaMetricsContext
-import org.apache.kafka.common.metrics.MetricConfig
 import org.apache.kafka.common.metrics.Metrics
-import org.apache.kafka.common.metrics.Sensor
-import org.apache.kafka.common.network.Selector
-import org.apache.kafka.common.requests.MetadataRequest
 import org.apache.kafka.common.serialization.Deserializer
 import org.apache.kafka.common.utils.AppInfoParser.registerAppInfo
 import org.apache.kafka.common.utils.AppInfoParser.unregisterAppInfo
@@ -68,7 +63,9 @@ import org.apache.kafka.common.utils.Time
 import org.apache.kafka.common.utils.Timer
 import org.apache.kafka.common.utils.Utils.closeQuietly
 import org.apache.kafka.common.utils.Utils.propsToMap
+import org.apache.kafka.common.utils.Utils.swallow
 import org.slf4j.Logger
+import org.slf4j.event.Level
 import kotlin.math.min
 
 /**
@@ -430,7 +427,7 @@ import kotlin.math.min
  * One of such cases is stream processing, where processor fetches from two topics and performs the
  * join on these two streams. When one of the topics is long lagging behind the other, the processor
  * would like to pause fetching from the ahead topic in order to get the lagging stream to catch up.
- * Another example is bootstraping upon consumer starting up where there are a lot of history data
+ * Another example is bootstrapping upon consumer starting up where there are a lot of history data
  * to catch up, the applications usually want to get the latest data on some of the topics before
  * consider fetching other topics.
  *
@@ -567,11 +564,11 @@ import kotlin.math.min
 class KafkaConsumer<K, V> : Consumer<K, V> {
 
     // Visible for testing
-    val metrics: Metrics
+    internal val metrics: Metrics
 
     val kafkaConsumerMetrics: KafkaConsumerMetrics
 
-    private val log: Logger
+    private lateinit var log: Logger
 
     private val clientId: String?
 
@@ -583,13 +580,17 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
 
     private val valueDeserializer: Deserializer<V>
 
-    private val fetcher: Fetcher<K, V>
+    private lateinit var fetcher: Fetcher<K, V>
+
+    private val offsetFetcher: OffsetFetcher
+
+    private val topicMetadataFetcher: TopicMetadataFetcher
 
     private val interceptors: ConsumerInterceptors<K, V>
 
     private val isolationLevel: IsolationLevel
 
-    private val time: Time
+    private lateinit var time: Time
 
     private val client: ConsumerNetworkClient
 
@@ -606,7 +607,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
     @Volatile
     private var closed = false
 
-    private var assignors: List<ConsumerPartitionAssignor>? = null
+    private val assignors: List<ConsumerPartitionAssignor>
 
     // currentThread holds the threadId of the current thread accessing KafkaConsumer
     // and is used to prevent multi-threaded access
@@ -695,13 +696,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
             groupId = groupRebalanceConfig.groupId
             clientId = config.getString(CommonClientConfigs.CLIENT_ID_CONFIG)
 
-            // If group.instance.id is set, we will append it to the log context.
-            val logContext = LogContext(
-                if (groupRebalanceConfig.groupInstanceId != null)
-                    "[Consumer instanceId=${groupRebalanceConfig.groupInstanceId}, " +
-                            "clientId=$clientId, groupId=$groupId] "
-                else "[Consumer clientId=$clientId, groupId=$groupId] "
-            )
+            val logContext = ConsumerUtils.createLogContext(config, groupRebalanceConfig)
             log = logContext.logger(javaClass)
 
             val enableAutoCommit = config.maybeOverrideEnableAutoCommit()
@@ -715,121 +710,45 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
             requestTimeoutMs = config.getInt(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG)!!.toLong()
             defaultApiTimeoutMs = config.getInt(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG)!!
             time = Time.SYSTEM
-            metrics = buildMetrics(config, time, clientId)
+            metrics = ConsumerUtils.createMetrics(config, time)
             retryBackoffMs = config.getLong(ConsumerConfig.RETRY_BACKOFF_MS_CONFIG)!!
 
-            val interceptorList = config.getConfiguredInstances(
-                key = ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG,
-                t = ConsumerInterceptor::class.java,
-                configOverrides = mapOf(ConsumerConfig.CLIENT_ID_CONFIG to clientId)
-            ) as List<ConsumerInterceptor<K, V>>
-
+            val interceptorList = ConsumerUtils.createConsumerInterceptors<K, V>(config)
             interceptors = ConsumerInterceptors(interceptorList)
 
-            if (keyDeserializer == null) {
-                this.keyDeserializer = config.getConfiguredInstance(
-                    key = ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
-                    t = Deserializer::class.java,
-                ) as Deserializer<K>
+            this.keyDeserializer = ConsumerUtils.createKeyDeserializer(config, keyDeserializer)
+            this.valueDeserializer = ConsumerUtils.createValueDeserializer(config, valueDeserializer)
 
-                this.keyDeserializer.configure(
-                    configs = config.originals(mapOf(ConsumerConfig.CLIENT_ID_CONFIG to clientId)),
-                    isKey = true,
-                )
-            } else {
-                config.ignore(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG)
-                this.keyDeserializer = keyDeserializer
-            }
-            if (valueDeserializer == null) {
-                this.valueDeserializer = config.getConfiguredInstance(
-                    key = ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-                    t = Deserializer::class.java,
-                ) as Deserializer<V>
-                this.valueDeserializer.configure(
-                    configs = config.originals(mapOf(ConsumerConfig.CLIENT_ID_CONFIG to clientId)),
-                    isKey = false,
-                )
-            } else {
-                config.ignore(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG)
-                this.valueDeserializer = valueDeserializer
-            }
-            val offsetResetStrategy = OffsetResetStrategy.valueOf(
-                config.getString(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG)!!.uppercase()
-            )
-            subscriptions = SubscriptionState(logContext, offsetResetStrategy)
+            subscriptions = ConsumerUtils.createSubscriptionState(config, logContext)
             val clusterResourceListeners = configureClusterResourceListeners(
-                keyDeserializer = keyDeserializer,
-                valueDeserializer = valueDeserializer,
-                metrics.reporters,
-                interceptorList,
+                keyDeserializer = this.keyDeserializer,
+                valueDeserializer = this.valueDeserializer,
+                candidateLists = arrayOf(metrics.reporters, interceptorList),
             )
             metadata = ConsumerMetadata(
-                refreshBackoffMs = retryBackoffMs,
-                metadataExpireMs = config.getLong(ConsumerConfig.METADATA_MAX_AGE_CONFIG)!!,
-                includeInternalTopics =
-                !config.getBoolean(ConsumerConfig.EXCLUDE_INTERNAL_TOPICS_CONFIG)!!,
-                allowAutoTopicCreation =
-                config.getBoolean(ConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG)!!,
-                subscription = subscriptions,
+                config = config,
+                subscriptions = subscriptions,
                 logContext = logContext,
                 clusterResourceListeners = clusterResourceListeners,
             )
-            val addresses = parseAndValidateAddresses(
-                urls = config.getList(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG)!!,
-                clientDnsLookupConfig = config.getString(ConsumerConfig.CLIENT_DNS_LOOKUP_CONFIG)!!,
-            )
+            val addresses = ClientUtils.parseAndValidateAddresses(config)
             metadata.bootstrap(addresses)
-            val metricGrpPrefix = "consumer"
-            val metricsRegistry = FetcherMetricsRegistry(
-                tags = setOf(CLIENT_ID_METRIC_TAG),
-                metricGrpPrefix = metricGrpPrefix,
-            )
-            val channelBuilder = createChannelBuilder(config, time, logContext)
-            isolationLevel = IsolationLevel.valueOf(
-                config.getString(ConsumerConfig.ISOLATION_LEVEL_CONFIG)!!.uppercase()
-            )
-            val throttleTimeSensor = Fetcher.throttleTimeSensor(metrics, metricsRegistry)
-            val heartbeatIntervalMs = (config.getInt(ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG))!!
+
+            val fetchMetricsManager = ConsumerUtils.createFetchMetricsManager(metrics)
+            this.isolationLevel = ConsumerUtils.createIsolationLevel(config)
+
             val apiVersions = ApiVersions()
-            val netClient = NetworkClient(
-                selector = Selector(
-                    connectionMaxIdleMs =
-                    config.getLong(ConsumerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG)!!,
-                    metrics = metrics,
-                    time = time,
-                    metricGrpPrefix = metricGrpPrefix,
-                    channelBuilder = channelBuilder,
-                    logContext = logContext,
-                ),
-                metadata = metadata,
-                clientId = clientId,
-                // a fixed large enough value will suffice for max in-flight requests
-                maxInFlightRequestsPerConnection = 100,
-                reconnectBackoffMs = config.getLong(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG)!!,
-                reconnectBackoffMax =
-                config.getLong(ConsumerConfig.RECONNECT_BACKOFF_MAX_MS_CONFIG)!!,
-                socketSendBuffer = config.getInt(ConsumerConfig.SEND_BUFFER_CONFIG)!!,
-                socketReceiveBuffer = config.getInt(ConsumerConfig.RECEIVE_BUFFER_CONFIG)!!,
-                defaultRequestTimeoutMs = config.getInt(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG)!!,
-                connectionSetupTimeoutMs =
-                config.getLong(ConsumerConfig.SOCKET_CONNECTION_SETUP_TIMEOUT_MS_CONFIG)!!,
-                connectionSetupTimeoutMaxMs =
-                config.getLong(ConsumerConfig.SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS_CONFIG)!!,
-                time = time,
-                discoverBrokerVersions = true,
+            this.client = ConsumerUtils.createConsumerNetworkClient(
+                config = config,
+                metrics = metrics,
+                logContext = logContext,
                 apiVersions = apiVersions,
-                throttleTimeSensor = throttleTimeSensor,
-                logContext = logContext,
-            )
-            client = ConsumerNetworkClient(
-                logContext = logContext,
-                client = netClient,
-                metadata = metadata,
                 time = time,
+                metadata = metadata,
+                throttleTimeSensor = fetchMetricsManager.throttleTimeSensor(),
                 retryBackoffMs = retryBackoffMs,
-                requestTimeoutMs = config.getInt(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG)!!,
-                maxPollTimeoutMs = heartbeatIntervalMs,
-            ) //Will avoid blocking an extended period of time to prevent heartbeat thread starvation
+            )
+
             assignors = ConsumerPartitionAssignor.getAssignorInstances(
                 assignorClasses =
                 config.getList(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG),
@@ -837,6 +756,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
             )
 
             coordinator = if (groupId == null) {
+                // no coordinator will be constructed for the default (null) group id
                 config.ignore(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG)
                 config.ignore(ConsumerConfig.THROW_ON_FETCH_STABLE_OFFSET_UNSUPPORTED)
                 null
@@ -845,11 +765,11 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
                     rebalanceConfig = groupRebalanceConfig,
                     logContext = logContext,
                     client = client,
-                    assignors = assignors!!,
+                    assignors = assignors,
                     metadata = metadata,
                     subscriptions = subscriptions,
                     metrics = metrics,
-                    metricGrpPrefix = metricGrpPrefix,
+                    metricGrpPrefix = CONSUMER_METRIC_GROUP_PREFIX,
                     time = time,
                     autoCommitEnabled = enableAutoCommit,
                     autoCommitIntervalMs =
@@ -861,32 +781,42 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
                 )
             }
 
+            val fetchConfig = ConsumerUtils.createFetchConfig(
+                config = config,
+                keyDeserializer = this.keyDeserializer,
+                valueDeserializer = this.valueDeserializer,
+            )
             fetcher = Fetcher(
                 logContext = logContext,
                 client = client,
-                minBytes = (config.getInt(ConsumerConfig.FETCH_MIN_BYTES_CONFIG))!!,
-                maxBytes = (config.getInt(ConsumerConfig.FETCH_MAX_BYTES_CONFIG))!!,
-                maxWaitMs = (config.getInt(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG))!!,
-                fetchSize = (config.getInt(ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG))!!,
-                maxPollRecords = (config.getInt(ConsumerConfig.MAX_POLL_RECORDS_CONFIG))!!,
-                checkCrcs = (config.getBoolean(ConsumerConfig.CHECK_CRCS_CONFIG))!!,
-                clientRackId = (config.getString(ConsumerConfig.CLIENT_RACK_CONFIG))!!,
-                keyDeserializer = this.keyDeserializer,
-                valueDeserializer = this.valueDeserializer,
                 metadata = metadata,
                 subscriptions = subscriptions,
-                metrics = metrics,
-                metricsRegistry = metricsRegistry,
+                fetchConfig = fetchConfig,
+                metricsManager = fetchMetricsManager,
+                time = time,
+            )
+            offsetFetcher = OffsetFetcher(
+                logContext = logContext,
+                client = client,
+                metadata = metadata,
+                subscriptions = subscriptions,
                 time = time,
                 retryBackoffMs = retryBackoffMs,
                 requestTimeoutMs = requestTimeoutMs,
                 isolationLevel = isolationLevel,
                 apiVersions = apiVersions,
             )
-            kafkaConsumerMetrics = KafkaConsumerMetrics(metrics, metricGrpPrefix)
+            topicMetadataFetcher = TopicMetadataFetcher(
+                logContext = logContext,
+                client = client,
+                retryBackoffMs = retryBackoffMs,
+            )
+
+            kafkaConsumerMetrics = KafkaConsumerMetrics(metrics, CONSUMER_METRIC_GROUP_PREFIX)
+
             config.logUnused()
             registerAppInfo(
-                prefix = JMX_PREFIX,
+                prefix = CONSUMER_JMX_PREFIX,
                 id = clientId,
                 metrics = metrics,
                 nowMs = time.milliseconds(),
@@ -895,10 +825,15 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
         } catch (t: Throwable) {
             // call close methods if internal objects are already constructed; this is to prevent
             // resource leak. see KAFKA-2121
-            close(
-                timeoutMs = 0,
-                swallowException = true
-            )
+
+            // call close methods if internal objects are already constructed; this is to prevent resource leak. see KAFKA-2121
+            // we do not need to call `close` at all when `log` is null, which means no internal objects were initialized.
+            if (::log.isInitialized) {
+                close(
+                    timeout = Duration.ZERO,
+                    swallowException = true
+                )
+            }
 
             // now propagate the exception
             throw KafkaException("Failed to construct kafka consumer", t)
@@ -913,6 +848,8 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
         keyDeserializer: Deserializer<K>,
         valueDeserializer: Deserializer<V>,
         fetcher: Fetcher<K, V>,
+        offsetFetcher: OffsetFetcher,
+        topicMetadataFetcher: TopicMetadataFetcher,
         interceptors: ConsumerInterceptors<K, V>,
         time: Time,
         client: ConsumerNetworkClient,
@@ -922,7 +859,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
         retryBackoffMs: Long,
         requestTimeoutMs: Long,
         defaultApiTimeoutMs: Int,
-        assignors: List<ConsumerPartitionAssignor>?,
+        assignors: List<ConsumerPartitionAssignor>,
         groupId: String?,
     ) {
         log = logContext.logger(javaClass)
@@ -931,6 +868,8 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
         this.keyDeserializer = keyDeserializer
         this.valueDeserializer = valueDeserializer
         this.fetcher = fetcher
+        this.offsetFetcher = offsetFetcher
+        this.topicMetadataFetcher = topicMetadataFetcher
         isolationLevel = IsolationLevel.READ_UNCOMMITTED
         this.interceptors = interceptors
         this.time = time
@@ -1304,7 +1243,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
                     )
                 ) log.warn("Still waiting for metadata")
 
-                val fetch: Fetch<K, V> = pollForFetches(timer)
+                val fetch = pollForFetches(timer)
                 if (!fetch.isEmpty) {
                     // before returning the fetched records, we can send off the next round of
                     // fetches and avoid block waiting for their responses to enable pipelining
@@ -1313,7 +1252,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
                     // NOTE: since the consumed position has already been updated, we must not allow
                     // wakeups or any other errors to be triggered prior to returning the fetched
                     // records.
-                    if (fetcher.sendFetches() > 0 || client.hasPendingRequests())
+                    if (sendFetches() > 0 || client.hasPendingRequests())
                         client.transmitSends()
 
                     if (fetch.records().isEmpty()) log.trace(
@@ -1331,6 +1270,11 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
         }
     }
 
+    private fun sendFetches(): Int {
+        offsetFetcher.validatePositionsOnMetadataChange()
+        return fetcher.sendFetches()
+    }
+
     fun updateAssignmentMetadataIfNeeded(timer: Timer, waitForJoinGroup: Boolean = true): Boolean {
         return if (coordinator != null && !coordinator.poll(timer, waitForJoinGroup)) false
         else updateFetchPositions(timer)
@@ -1344,11 +1288,11 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
             ?: timer.remainingMs
 
         // if data is available already, return it immediately
-        val fetch: Fetch<K, V> = fetcher.collectFetch()
+        val fetch = fetcher.collectFetch()
         if (!fetch.isEmpty) return fetch
 
         // send any new fetches (won't resend pending fetches)
-        fetcher.sendFetches()
+        sendFetches()
 
         // We do not want to be stuck blocking in poll if we are missing some positions
         // since the offset lookup may be backing off after a failure
@@ -1667,6 +1611,28 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
      * the next poll(). Note that you may lose data if this API is arbitrarily used in the middle of
      * consumption, to reset the fetch offsets.
      *
+     * The next Consumer Record which will be retrieved when poll() is invoked will have the offset specified,
+     * given that a record with that offset exists (i.e. it is a valid offset).
+     *
+     * [seekToBeginning] will go to the first offset in the topic.
+     * seek(0) is equivalent to seekToBeginning for a TopicPartition with beginning offset 0,
+     * assuming that there is a record at offset 0 still available.
+     * [seekToEnd] is equivalent to seeking to the last offset of the partition, but behavior depends on
+     * `isolation.level`, so see [seekToEnd] documentation for more details.
+     *
+     * Seeking to the offset smaller than the log start offset or larger than the log end offset
+     * means an invalid offset is reached.
+     * Invalid offset behaviour is controlled by the `auto.offset.reset` property.
+     * If this is set to "earliest", the next poll will return records from the starting offset.
+     * If it is set to "latest", it will seek to the last offset (similar to seekToEnd()).
+     * If it is set to "none", an `OffsetOutOfRangeException` will be thrown.
+     *
+     * Note that, the seek offset won't change to the in-flight fetch request, it will take effect in
+     * next fetch request. So, the consumer might wait for {@code fetch.max.wait.ms} before starting to fetch
+     * the records from desired offset.
+     *
+     * @param partition the TopicPartition on which the seek will be performed.
+     * @param offset the next offset returned by poll().
      * @throws IllegalArgumentException if the provided offset is negative
      * @throws IllegalStateException if the provided TopicPartition is not assigned to this consumer
      */
@@ -2054,15 +2020,13 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
             val cluster: Cluster = metadata.fetch()
             val parts = cluster.partitionsForTopic(topic)
             if (parts.isNotEmpty()) return parts
-            val timer: Timer = time.timer(timeout)
-            val topicMetadata = fetcher.getTopicMetadata(
-                request = MetadataRequest.Builder(
-                    topics = listOf(topic),
-                    allowAutoTopicCreation = metadata.allowAutoTopicCreation(),
-                ),
+            val timer = time.timer(timeout)
+            val topicMetadata = topicMetadataFetcher.getTopicMetadata(
+                topic = topic,
+                allowAutoTopicCreation = metadata.allowAutoTopicCreation,
                 timer = timer,
             )
-            return topicMetadata.getOrDefault(topic, emptyList())
+            return topicMetadata ?: emptyList()
         } finally {
             release()
         }
@@ -2101,7 +2065,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
     override fun listTopics(timeout: Duration): Map<String, List<PartitionInfo>> {
         acquireAndEnsureOpen()
         try {
-            return fetcher.getAllTopicMetadata(time.timer(timeout))
+            return topicMetadataFetcher.getAllTopicMetadata(time.timer(timeout))
         } finally {
             release()
         }
@@ -2232,7 +2196,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
                             "negative."
                 }
             }
-            return fetcher.offsetsForTimes(timestampsToSearch, time.timer(timeout))
+            return offsetFetcher.offsetsForTimes(timestampsToSearch, time.timer(timeout))
         } finally {
             release()
         }
@@ -2283,7 +2247,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
     ): Map<TopicPartition, Long> {
         acquireAndEnsureOpen()
         try {
-            return fetcher.beginningOffsets(partitions, time.timer(timeout))
+            return offsetFetcher.beginningOffsets(partitions, time.timer(timeout))
         } finally {
             release()
         }
@@ -2344,7 +2308,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
     ): Map<TopicPartition, Long> {
         acquireAndEnsureOpen()
         try {
-            return fetcher.endOffsets(partitions, time.timer(timeout))
+            return offsetFetcher.endOffsets(partitions, time.timer(timeout))
         } finally {
             release()
         }
@@ -2354,7 +2318,8 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
      * Get the consumer's current lag on the partition. Returns an "empty" [OptionalLong] if the lag
      * is not known, for example if there is no position yet, or if the end offset is not known yet.
      *
-     * This method uses locally cached metadata and never makes a remote call.
+     * This method uses locally cached metadata. If the log end offset is not known yet, it triggers
+     * a request to fetch the log end offset, but returns immediately.
      *
      * @param topicPartition The partition to get the lag for.
      *
@@ -2381,7 +2346,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
                         topicPartition
                     )
                     subscriptions.requestPartitionEndOffset(topicPartition)
-                    fetcher.endOffsets(
+                    offsetFetcher.endOffsets(
                         partitions = setOf(topicPartition),
                         timer = time.timer(timeoutMs = 0L),
                     )
@@ -2486,7 +2451,7 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
             if (!closed) {
                 // need to close before setting the flag since the close function itself may trigger
                 // rebalance callback that needs the consumer to be open still
-                close(timeout.toMillis(), false)
+                close(timeout, false)
             }
         } finally {
             closed = true
@@ -2517,23 +2482,56 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
         return clusterResourceListeners
     }
 
-    private fun close(timeoutMs: Long, swallowException: Boolean) {
+    private fun createTimerForRequest(timeout: Duration): Timer {
+        // this.time could be null if an exception occurs in constructor prior to setting the this.time field
+        val localTime = if (::time.isInitialized) time else Time.SYSTEM
+        return localTime.timer(requestTimeoutMs.coerceAtMost(timeout.toMillis()))
+    }
+
+    private fun close(timeout: Duration, swallowException: Boolean) {
         log.trace("Closing the Kafka consumer")
         val firstException = AtomicReference<Throwable?>()
-        try {
-            coordinator?.close(time.timer(min(timeoutMs, requestTimeoutMs)))
-        } catch (t: Throwable) {
-            firstException.compareAndSet(null, t)
-            log.error("Failed to close coordinator", t)
+
+        val closeTimer = createTimerForRequest(timeout)
+        // Close objects with a timeout. The timeout is required because the coordinator & the fetcher send requests to
+        // the server in the process of closing which may not respect the overall timeout defined for closing the
+        // consumer.
+        if (coordinator != null) {
+            // This is a blocking call bound by the time remaining in closeTimer
+            swallow(
+                log = log,
+                level = Level.ERROR,
+                what = "Failed to close coordinator with a timeout(ms)=${closeTimer.timeoutMs}",
+                code = { coordinator.close(closeTimer) },
+                firstException = firstException,
+            )
         }
-        closeQuietly(fetcher, "fetcher", firstException)
+
+        if (::fetcher.isInitialized) {
+            // the timeout for the session close is at-most the requestTimeoutMs
+            var remainingDurationInTimeout = (timeout.toMillis() - closeTimer.elapsedMs).coerceAtLeast(0)
+            if (remainingDurationInTimeout > 0) {
+                remainingDurationInTimeout = requestTimeoutMs.coerceAtMost(remainingDurationInTimeout)
+            }
+            closeTimer.reset(remainingDurationInTimeout)
+
+            // This is a blocking call bound by the time remaining in closeTimer
+            swallow(
+                log = log,
+                level = Level.ERROR,
+                what = "Failed to close fetcher with a timeout(ms)=${closeTimer.timeoutMs}",
+                code = { fetcher.close(closeTimer) },
+                firstException = firstException,
+            )
+        }
+
         closeQuietly(interceptors, "consumer interceptors", firstException)
         closeQuietly(kafkaConsumerMetrics, "kafka consumer metrics", firstException)
         closeQuietly(metrics, "consumer metrics", firstException)
         closeQuietly(client, "consumer network client", firstException)
         closeQuietly(keyDeserializer, "consumer key deserializer", firstException)
         closeQuietly(valueDeserializer, "consumer value deserializer", firstException)
-        unregisterAppInfo(JMX_PREFIX, clientId, metrics)
+        unregisterAppInfo(CONSUMER_JMX_PREFIX, clientId, metrics)
         log.debug("Kafka consumer has been closed")
         val exception = firstException.get()
         if (exception != null && !swallowException) {
@@ -2553,9 +2551,9 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
      * @return `true` iff the operation completed without timing out
      */
     private fun updateFetchPositions(timer: Timer): Boolean {
-        // If any partitions have been truncated due to a leader change, we need to validate the
-        // offsets
-        fetcher.validateOffsetsIfNeeded()
+        // If any partitions have been truncated due to a leader change, we need to validate the offsets
+        offsetFetcher.validatePositionsIfNeeded()
+
         cachedSubscriptionHasAllFetchPositions = subscriptions.hasAllFetchPositions()
         if (cachedSubscriptionHasAllFetchPositions) return true
 
@@ -2571,9 +2569,10 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
         // with a missing position, then we will raise an exception.
         subscriptions.resetInitializingPositions()
 
-        // Finally send an asynchronous request to lookup and update the positions of any partitions
+        // Finally send an asynchronous request to look up and update the positions of any partitions
         // which are awaiting reset.
-        fetcher.resetOffsetsIfNeeded()
+        offsetFetcher.resetPositionsIfNeeded()
+
         return true
     }
 
@@ -2598,12 +2597,14 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
      * @throws ConcurrentModificationException if another thread already has the lock
      */
     private fun acquire() {
-        val threadId = Thread.currentThread().id
+        val thread = Thread.currentThread()
+        val threadId = thread.id
         if (
             threadId != currentThread.get()
             && !currentThread.compareAndSet(NO_CURRENT_THREAD, threadId)
         ) throw ConcurrentModificationException(
-            "KafkaConsumer is not safe for multi-threaded access"
+            "KafkaConsumer is not safe for multi-threaded access. currentThread(name: ${thread.name}, " +
+                    "id: $threadId) otherThread(id: ${currentThread.get()})"
         )
         refcount.incrementAndGet()
     }
@@ -2646,41 +2647,10 @@ class KafkaConsumer<K, V> : Consumer<K, V> {
 
     companion object {
 
-        private const val CLIENT_ID_METRIC_TAG = "client-id"
-
         private const val NO_CURRENT_THREAD = -1L
-
-        private const val JMX_PREFIX = "kafka.consumer"
 
         const val DEFAULT_CLOSE_TIMEOUT_MS = (30 * 1000).toLong()
 
         const val DEFAULT_REASON = "rebalance enforced by user"
-
-        private fun buildMetrics(config: ConsumerConfig, time: Time, clientId: String?): Metrics {
-            val metricsTags = mapOf(CLIENT_ID_METRIC_TAG to clientId)
-
-            val metricConfig = MetricConfig().apply {
-                samples = config.getInt(ConsumerConfig.METRICS_NUM_SAMPLES_CONFIG)!!
-                timeWindowMs = config.getLong(ConsumerConfig.METRICS_SAMPLE_WINDOW_MS_CONFIG)!!
-                recordingLevel =Sensor.RecordingLevel.forName(
-                    config.getString(ConsumerConfig.METRICS_RECORDING_LEVEL_CONFIG)!!
-                )
-                tags = metricsTags
-            }
-
-            val reporters = metricsReporters(clientId, config)
-
-            val metricsContext = KafkaMetricsContext(
-                namespace = JMX_PREFIX,
-                contextLabels =
-                config.originalsWithPrefix(CommonClientConfigs.METRICS_CONTEXT_PREFIX),
-            )
-            return Metrics(
-                config = metricConfig,
-                reporters = reporters.toMutableList(),
-                time = time,
-                metricsContext = metricsContext,
-            )
-        }
     }
 }

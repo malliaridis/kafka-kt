@@ -50,22 +50,9 @@ enum class SecurityProtocol(
 
     companion object {
 
-        private val CODE_TO_SECURITY_PROTOCOL: Map<Short, SecurityProtocol>
+        private val CODE_TO_SECURITY_PROTOCOL: Map<Short, SecurityProtocol> = entries.associateBy { it.id }
 
-        private val NAMES: List<String>
-
-        init {
-            val protocols = values()
-            val names: MutableList<String> = ArrayList(protocols.size)
-            val codeToSecurityProtocol: MutableMap<Short, SecurityProtocol> =
-                HashMap(protocols.size)
-            for (proto in protocols) {
-                codeToSecurityProtocol[proto.id] = proto
-                names.add(proto.name)
-            }
-            CODE_TO_SECURITY_PROTOCOL = codeToSecurityProtocol.toMap()
-            NAMES = names.toList()
-        }
+        private val NAMES: List<String> = entries.map { it.name }
 
         fun names(): List<String> = NAMES
 

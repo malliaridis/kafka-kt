@@ -20,7 +20,7 @@ package org.apache.kafka.clients.consumer.internals
 import org.apache.kafka.common.TopicPartition
 import java.io.Serializable
 
-internal class Utils {
+class Utils {
 
     internal class PartitionComparator(
         private val map: Map<String, List<String>>,
@@ -40,7 +40,7 @@ internal class Utils {
         }
     }
 
-    internal class TopicPartitionComparator : Comparator<TopicPartition>, Serializable {
+    class TopicPartitionComparator : Comparator<TopicPartition>, Serializable {
 
         override fun compare(
             topicPartition1: TopicPartition,

@@ -18,7 +18,6 @@
 package org.apache.kafka.common.protocol.types
 
 import java.nio.ByteBuffer
-import java.util.*
 import org.apache.kafka.common.protocol.types.Type.DocumentedType
 
 /**

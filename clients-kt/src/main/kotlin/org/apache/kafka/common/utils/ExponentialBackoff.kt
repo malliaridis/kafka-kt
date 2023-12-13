@@ -22,13 +22,16 @@ import kotlin.math.ln
 import kotlin.math.pow
 
 /**
- * An utility class for keeping the parameters and providing the value of exponential retry backoff,
- * exponential reconnect backoff, exponential timeout, etc.
+ * A utility class for keeping the parameters and providing the value of exponential
+ * retry backoff, exponential reconnect backoff, exponential timeout, etc.
  *
  * The formula is:
+ * ```java
  * Backoff(attempts) = random(1 - jitter, 1 + jitter) * initialInterval * multiplier ^ attempts
+ * ```
+ * If [initialInterval] is greater than or equal to `maxInterval`, a constant backoff of
+ * `initialInterval` will be provided.
  *
- * If initialInterval is greater or equal than maxInterval, a constant backoff of will be provided
  * This class is thread-safe.
  */
 class ExponentialBackoff(

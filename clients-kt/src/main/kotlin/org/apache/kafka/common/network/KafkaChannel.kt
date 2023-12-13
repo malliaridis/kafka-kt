@@ -4,7 +4,6 @@ import java.io.IOException
 import java.net.InetAddress
 import java.net.SocketAddress
 import java.nio.channels.SelectionKey
-import java.util.*
 import java.util.function.Supplier
 import org.apache.kafka.common.errors.AuthenticationException
 import org.apache.kafka.common.errors.SslAuthenticationException

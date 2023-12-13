@@ -17,15 +17,13 @@
 
 package org.apache.kafka.common.requests
 
+import java.nio.ByteBuffer
+import java.util.function.UnaryOperator
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.message.FetchSnapshotResponseData
 import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.protocol.ByteBufferAccessor
 import org.apache.kafka.common.protocol.Errors
-import java.nio.ByteBuffer
-import java.util.*
-import java.util.function.UnaryOperator
-
 
 class FetchSnapshotResponse(private val data: FetchSnapshotResponseData) :
     AbstractResponse(ApiKeys.FETCH_SNAPSHOT) {
@@ -105,7 +103,7 @@ class FetchSnapshotResponse(private val data: FetchSnapshotResponseData) :
                 .topics
                 .filter { topic -> topic.name == topicPartition.topic }
                 .flatMap { topic -> topic.partitions }
-                .firstOrNull { partition -> partition.index == topicPartition.partition }
+                .find { partition -> partition.index == topicPartition.partition }
         }
 
         fun parse(buffer: ByteBuffer, version: Short): FetchSnapshotResponse =

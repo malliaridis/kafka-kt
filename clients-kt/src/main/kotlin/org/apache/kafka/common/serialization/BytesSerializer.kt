@@ -19,7 +19,7 @@ package org.apache.kafka.common.serialization
 
 import org.apache.kafka.common.utils.Bytes
 
-class BytesSerializer : Serializer<Bytes> {
+class BytesSerializer : Serializer<Bytes?> {
 
     override fun serialize(topic: String, data: Bytes?): ByteArray? = data?.get()
 }

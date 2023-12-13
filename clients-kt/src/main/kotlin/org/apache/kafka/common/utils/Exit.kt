@@ -17,6 +17,8 @@
 
 package org.apache.kafka.common.utils
 
+import org.apache.kafka.common.utils.Exit.Procedure
+import org.apache.kafka.common.utils.Exit.ShutdownHookAdder
 import kotlin.system.exitProcess
 
 /**
@@ -25,16 +27,14 @@ import kotlin.system.exitProcess
  */
 object Exit {
 
-    private val DEFAULT_HALT_PROCEDURE =
-        Procedure { statusCode, _ -> Runtime.getRuntime().halt(statusCode) }
+    private val DEFAULT_HALT_PROCEDURE = Procedure { statusCode, _ -> Runtime.getRuntime().halt(statusCode) }
 
     private val DEFAULT_EXIT_PROCEDURE = Procedure { statusCode, _ -> exitProcess(statusCode) }
 
     private val DEFAULT_SHUTDOWN_HOOK_ADDER = ShutdownHookAdder { name, runnable ->
-        if (name != null) Runtime.getRuntime()
-            .addShutdownHook(KafkaThread.nonDaemon(name, runnable))
-        else Runtime.getRuntime().addShutdownHook(Thread(runnable))
-    }
+            if (name != null) Runtime.getRuntime().addShutdownHook(KafkaThread.nonDaemon(name, runnable))
+            else Runtime.getRuntime().addShutdownHook(Thread(runnable))
+        }
 
     @Volatile
     private var exitProcedure = DEFAULT_EXIT_PROCEDURE
@@ -45,8 +45,7 @@ object Exit {
     @Volatile
     private var shutdownHookAdder = DEFAULT_SHUTDOWN_HOOK_ADDER
 
-    fun exit(statusCode: Int, message: String? = null) =
-        exitProcedure.execute(statusCode, message)
+    fun exit(statusCode: Int, message: String? = null) = exitProcedure.execute(statusCode, message)
 
     fun halt(statusCode: Int, message: String? = null) =
         haltProcedure.execute(statusCode, message)

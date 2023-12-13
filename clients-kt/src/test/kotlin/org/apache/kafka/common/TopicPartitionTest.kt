@@ -21,6 +21,7 @@ import org.apache.kafka.common.utils.Serializer
 import java.io.IOException
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 /**
@@ -59,8 +60,8 @@ class TopicPartitionTest {
 
         //deserialize the byteArray and check if the values are same as original
         val deserializedObject = Serializer.deserialize(byteArray)
-        assertTrue(deserializedObject is TopicPartition)
-        checkValues(deserializedObject as TopicPartition)
+        assertIs<TopicPartition>(deserializedObject)
+        checkValues(deserializedObject)
     }
 
     @Test
@@ -69,7 +70,7 @@ class TopicPartitionTest {
         // assert serialized TopicPartition object in file (serializedData/topicPartitionSerializedfile) is
         // deserializable into TopicPartition and is compatible
         val deserializedObject = Serializer.deserialize(fileName)
-        assertTrue(deserializedObject is TopicPartition)
+        assertIs<TopicPartition>(deserializedObject)
         checkValues(deserializedObject)
     }
 }

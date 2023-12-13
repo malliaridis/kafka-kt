@@ -19,7 +19,6 @@ package org.apache.kafka.clients.admin.internals
 
 import org.apache.kafka.common.requests.AbstractRequest
 import org.apache.kafka.common.requests.AbstractResponse
-import java.util.*
 
 /**
  * This lookup strategy is used when we already know the destination broker ID, and we have no need

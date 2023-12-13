@@ -17,13 +17,13 @@
 
 package org.apache.kafka.common.record
 
+import java.io.IOException
+import java.util.Queue
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.network.Send
 import org.apache.kafka.common.network.TransferableChannel
 import org.slf4j.LoggerFactory
-import java.io.IOException
-import java.util.*
 
 /**
  * A set of composite sends with nested [RecordsSend], sent one after another
@@ -76,7 +76,7 @@ class MultiRecordsSend : Send {
         if (completed())
             throw KafkaException("This operation cannot be invoked on a complete request.")
 
-        var totalWrittenPerCall = 0
+        var totalWrittenPerCall = 0L
         var sendComplete: Boolean
         do {
             val written = current!!.writeTo(channel)
@@ -87,7 +87,7 @@ class MultiRecordsSend : Send {
                 current = sendQueue.poll()
             }
         } while (!completed() && sendComplete)
-        totalWritten += totalWrittenPerCall.toLong()
+        totalWritten += totalWrittenPerCall
         if (completed() && totalWritten != size) log.error(
             "mismatch in sending bytes over socket; expected: {} actual: {}",
             size,

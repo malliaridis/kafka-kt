@@ -21,7 +21,7 @@ import org.junit.jupiter.api.BeforeEach
 import java.io.IOException
 import java.io.Reader
 import java.io.StringReader
-import java.util.*
+import java.util.ServiceLoader
 import java.util.stream.StreamSupport
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
@@ -38,7 +38,6 @@ class FileConfigProviderTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testGetAllKeysAtPath() {
         val (data, ttl) = configProvider!!["dummy"]
         val result = mutableMapOf<String, String>()
@@ -49,7 +48,6 @@ class FileConfigProviderTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testGetOneKeyAtPath() {
         val (data, ttl) = configProvider!!["dummy", setOf("testKey")]
         val result = mutableMapOf<String, String>()
@@ -59,7 +57,6 @@ class FileConfigProviderTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testEmptyPath() {
         val (data, ttl) = configProvider!!["", setOf("testKey")]
         assertTrue(data.isEmpty())
@@ -67,7 +64,6 @@ class FileConfigProviderTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testEmptyPathWithKey() {
         val (data, ttl) = configProvider!![""]
         assertTrue(data.isEmpty())
@@ -75,7 +71,6 @@ class FileConfigProviderTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testNullPath() {
         val (data, ttl) = configProvider!![null]
         assertTrue(data.isEmpty())
@@ -83,7 +78,6 @@ class FileConfigProviderTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testNullPathWithKey() {
         val (data, ttl) = configProvider!![null, setOf("testKey")]
         assertTrue(data.isEmpty())

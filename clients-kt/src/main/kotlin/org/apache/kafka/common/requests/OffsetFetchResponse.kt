@@ -20,6 +20,7 @@ package org.apache.kafka.common.requests
 import java.nio.ByteBuffer
 import java.util.stream.Collectors
 import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.errors.UnsupportedVersionException
 import org.apache.kafka.common.message.OffsetFetchResponseData
 import org.apache.kafka.common.message.OffsetFetchResponseData.OffsetFetchResponseGroup
 import org.apache.kafka.common.message.OffsetFetchResponseData.OffsetFetchResponsePartition
@@ -46,14 +47,9 @@ import org.apache.kafka.common.record.RecordBatch
  */
 class OffsetFetchResponse : AbstractResponse {
 
-    private val data: OffsetFetchResponseData
-    private val error: Errors?
+    private var data: OffsetFetchResponseData
+    private var error: Errors?
     private val groupLevelErrors: MutableMap<String, Errors?> = HashMap()
-
-    constructor(data: OffsetFetchResponseData) : super(ApiKeys.OFFSET_FETCH) {
-        this.data = data
-        error = null
-    }
 
     /**
      * Constructor without throttle time.
@@ -73,7 +69,7 @@ class OffsetFetchResponse : AbstractResponse {
     constructor(
         throttleTimeMs: Int,
         error: Errors,
-        responseData: Map<TopicPartition, PartitionData>
+        responseData: Map<TopicPartition, PartitionData>,
     ) : super(ApiKeys.OFFSET_FETCH) {
         val offsetFetchResponseTopicMap: MutableMap<String, OffsetFetchResponseTopic> = HashMap()
 
@@ -98,7 +94,7 @@ class OffsetFetchResponse : AbstractResponse {
         }
 
         data = OffsetFetchResponseData()
-            .setTopics(ArrayList(offsetFetchResponseTopicMap.values))
+            .setTopics(offsetFetchResponseTopicMap.values.toList())
             .setErrorCode(error.code)
             .setThrottleTimeMs(throttleTimeMs)
 
@@ -114,7 +110,7 @@ class OffsetFetchResponse : AbstractResponse {
     constructor(
         throttleTimeMs: Int,
         errors: Map<String, Errors>,
-        responseData: Map<String, Map<TopicPartition, PartitionData>>
+        responseData: Map<String, Map<TopicPartition, PartitionData>>,
     ) : super(ApiKeys.OFFSET_FETCH) {
 
         val groupList: MutableList<OffsetFetchResponseGroup> = ArrayList()
@@ -145,7 +141,7 @@ class OffsetFetchResponse : AbstractResponse {
             groupList.add(
                 OffsetFetchResponseGroup()
                     .setGroupId(groupName)
-                    .setTopics(ArrayList(offsetFetchResponseTopicsMap.values))
+                    .setTopics(offsetFetchResponseTopicsMap.values.toList())
                     .setErrorCode(errors[groupName]!!.code)
             )
             groupLevelErrors[groupName] = errors[groupName]
@@ -156,6 +152,47 @@ class OffsetFetchResponse : AbstractResponse {
             .setThrottleTimeMs(throttleTimeMs)
 
         error = null
+    }
+
+    constructor(groups: List<OffsetFetchResponseGroup>, version: Short) : super(ApiKeys.OFFSET_FETCH) {
+        data = OffsetFetchResponseData()
+        if (version >= 8) {
+            data.setGroups(groups)
+            error = null
+            for (group in data.groups)
+                groupLevelErrors[group.groupId] = Errors.forCode(group.errorCode)
+        } else {
+            if (groups.size != 1) throw UnsupportedVersionException(
+                "Version $version of OffsetFetchResponse only supports one group."
+            )
+            val group = groups[0]
+            data.setErrorCode(group.errorCode)
+            error = Errors.forCode(group.errorCode)
+            group.topics.forEach { topic ->
+                val newTopic = OffsetFetchResponseTopic().setName(topic.name)
+                data.topics += newTopic
+                topic.partitions.forEach { partition ->
+                    val newPartition =
+                        if (version < 2 && group.errorCode != Errors.NONE.code)
+                        // Versions prior to version 2 do not support a top level error. Therefore,
+                        // we put it at the partition level.
+                            OffsetFetchResponsePartition()
+                                .setPartitionIndex(partition.partitionIndex)
+                                .setErrorCode(group.errorCode)
+                                .setCommittedOffset(INVALID_OFFSET)
+                                .setMetadata(NO_METADATA)
+                                .setCommittedLeaderEpoch(RecordBatch.NO_PARTITION_LEADER_EPOCH)
+                        else OffsetFetchResponsePartition()
+                            .setPartitionIndex(partition.partitionIndex)
+                            .setErrorCode(partition.errorCode)
+                            .setCommittedOffset(partition.committedOffset)
+                            .setMetadata(partition.metadata)
+                            .setCommittedLeaderEpoch(partition.committedLeaderEpoch)
+
+                    newTopic.partitions += newPartition
+                }
+            }
+        }
     }
 
     constructor(data: OffsetFetchResponseData, version: Short) : super(ApiKeys.OFFSET_FETCH) {
@@ -181,7 +218,7 @@ class OffsetFetchResponse : AbstractResponse {
         val offset: Long,
         val leaderEpoch: Int?,
         val metadata: String?,
-        val error: Errors
+        val error: Errors,
     ) {
 
         fun hasError(): Boolean {
@@ -263,11 +300,7 @@ class OffsetFetchResponse : AbstractResponse {
 
     private fun buildResponseData(groupId: String): Map<TopicPartition, PartitionData> {
         val responseData: MutableMap<TopicPartition, PartitionData> = HashMap()
-        val group = data
-            .groups
-            .stream()
-            .filter { group -> group.groupId == groupId }
-            .collect(Collectors.toList())[0]
+        val group = data.groups.first { group -> group.groupId == groupId }
 
         group.topics.forEach { topic ->
             topic.partitions.forEach { partition ->

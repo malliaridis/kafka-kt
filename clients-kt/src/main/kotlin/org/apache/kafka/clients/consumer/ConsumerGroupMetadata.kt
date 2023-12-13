@@ -18,7 +18,6 @@
 package org.apache.kafka.clients.consumer
 
 import org.apache.kafka.common.requests.JoinGroupRequest
-import java.util.*
 
 /**
  * A metadata struct containing the consumer group information.

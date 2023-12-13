@@ -300,13 +300,13 @@ class KafkaLZ4Test {
             args.ignoreFlagDescriptorChecksum
         )
         var n = 100
-        var remaining = args.payload.size
+        var remaining = args.payload.size.toLong()
         var skipped = inputStream.skip(n.toLong())
-        assertEquals(min(n.toDouble(), remaining.toDouble()).toLong(), skipped)
+        assertEquals(remaining.coerceAtMost(n.toLong()), skipped)
         n = 10000
-        remaining -= skipped.toInt()
+        remaining -= skipped
         skipped = inputStream.skip(n.toLong())
-        assertEquals(min(n.toDouble(), remaining.toDouble()).toLong(), skipped)
+        assertEquals(remaining.coerceAtMost(n.toLong()), skipped)
     }
 
     @Throws(IOException::class)

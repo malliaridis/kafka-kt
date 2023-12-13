@@ -76,7 +76,7 @@ class AlterConsumerGroupOffsetsHandler(
         }
         val data = OffsetCommitRequestData()
             .setGroupId(groupId.idValue)
-            .setTopics(ArrayList(offsetData.values))
+            .setTopics(offsetData.values.toList())
 
         return OffsetCommitRequest.Builder(data)
     }
@@ -109,7 +109,7 @@ class AlterConsumerGroupOffsetsHandler(
         }
         return if (groupsToUnmap.isEmpty() && groupsToRetry.isEmpty())
             ApiResult.completed(groupId, partitionResults)
-        else ApiResult.unmapped(ArrayList(groupsToUnmap))
+        else ApiResult.unmapped(groupsToUnmap.toList())
     }
 
     private fun handleError(

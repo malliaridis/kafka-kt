@@ -40,10 +40,7 @@ object ZstdFactory {
             // Set input buffer (uncompressed) to 16 KB (none by default) to ensure reasonable
             // performance in cases where the caller passes a small number of bytes to write
             // (potentially a single byte).
-            BufferedOutputStream(
-                ZstdOutputStreamNoFinalizer(buffer, RecyclingBufferPool.INSTANCE),
-                INPUT_BUFFER_SIZE
-            )
+            BufferedOutputStream(ZstdOutputStreamNoFinalizer(buffer, RecyclingBufferPool.INSTANCE), INPUT_BUFFER_SIZE)
         } catch (exception: Throwable) {
             throw KafkaException(cause = exception)
         }
@@ -56,8 +53,11 @@ object ZstdFactory {
     ): InputStream {
 
         return try {
-            // We use our own BufferSupplier instead of com.github.luben.zstd.RecyclingBufferPool
-            // since our implementation doesn't require locking or soft references.
+            // We use our own BufferSupplier instead of com.github.luben.zstd.RecyclingBufferPool since our
+            // implementation doesn't require locking or soft references. The buffer allocated by this buffer pool is
+            // used by zstd-jni for
+            // 1\ reading compressed data from input stream into a buffer before passing it over JNI
+            // 2\ implementation of skip inside zstd-jni where buffer is obtained and released with every call
             val bufferPool: BufferPool = object : BufferPool {
 
                 override fun get(capacity: Int): ByteBuffer =
@@ -67,15 +67,10 @@ object ZstdFactory {
                     decompressionBufferSupplier.release(buffer)
             }
 
-            // Set output buffer (uncompressed) to 16 KB (none by default) to ensure reasonable
-            // performance in cases where the caller reads a small number of bytes (potentially a
-            // single byte).
-            BufferedInputStream(
-                ZstdInputStreamNoFinalizer(
-                    ByteBufferInputStream(buffer),
-                    bufferPool
-                ), INPUT_BUFFER_SIZE
-            )
+            // Ideally, data from ZstdInputStreamNoFinalizer should be read in a bulk because every call to
+            // `ZstdInputStreamNoFinalizer#read()` is a JNI call. The caller is expected to
+            // balance the tradeoff between reading large amount of data vs. making multiple JNI calls.
+            ZstdInputStreamNoFinalizer(ByteBufferInputStream(buffer), bufferPool)
         } catch (exception: Throwable) {
             throw KafkaException(cause = exception)
         }

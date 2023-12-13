@@ -22,8 +22,10 @@ import org.apache.kafka.common.compress.KafkaLZ4BlockInputStream
 import org.apache.kafka.common.compress.KafkaLZ4BlockOutputStream
 import org.apache.kafka.common.utils.BufferSupplier
 import org.apache.kafka.common.utils.ByteBufferOutputStream
+import org.apache.kafka.common.utils.ChunkedBytesStream
 import org.junit.jupiter.api.Test
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class CompressionTypeTest {
@@ -42,8 +44,9 @@ class CompressionTypeTest {
             buffer = buffer,
             messageVersion = RecordBatch.MAGIC_VALUE_V0,
             decompressionBufferSupplier = BufferSupplier.NO_CACHING,
-        ) as KafkaLZ4BlockInputStream
-        assertTrue(input.ignoreFlagDescriptorChecksum())
+        ) as ChunkedBytesStream
+        val stream = assertIs<KafkaLZ4BlockInputStream>(input.sourceStream())
+        assertTrue(stream.ignoreFlagDescriptorChecksum())
     }
 
     @Test
@@ -60,7 +63,8 @@ class CompressionTypeTest {
             buffer = buffer,
             messageVersion = RecordBatch.MAGIC_VALUE_V1,
             decompressionBufferSupplier = BufferSupplier.create()
-        ) as KafkaLZ4BlockInputStream
-        assertFalse(input.ignoreFlagDescriptorChecksum())
+        ) as ChunkedBytesStream
+        val stream = assertIs<KafkaLZ4BlockInputStream>(input.sourceStream())
+        assertFalse(stream.ignoreFlagDescriptorChecksum())
     }
 }

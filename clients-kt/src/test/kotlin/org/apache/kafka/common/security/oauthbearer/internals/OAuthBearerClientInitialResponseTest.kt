@@ -30,14 +30,14 @@ class OAuthBearerClientInitialResponseTest {
     @Test
     @Throws(Exception::class)
     fun testBuildClientResponseToBytes() {
-        val expectedMesssage = "n,,\u0001auth=Bearer 123.345.567\u0001nineteen=42\u0001\u0001"
+        val expectedMessage = "n,,\u0001auth=Bearer 123.345.567\u0001nineteen=42\u0001\u0001"
         val extensions = mapOf("nineteen" to "42")
         val response = OAuthBearerClientInitialResponse(
             tokenValue = "123.345.567",
             extensions = SaslExtensions(extensions),
         )
         val message = String(response.toBytes())
-        assertEquals(expectedMesssage, message)
+        assertEquals(expectedMessage, message)
     }
 
     @Test
@@ -50,7 +50,6 @@ class OAuthBearerClientInitialResponseTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testThrowsSaslExceptionOnInvalidExtensionKey() {
         val extensions = mapOf("19" to "42") // keys can only be a-z
         assertFailsWith<SaslException> {

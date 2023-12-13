@@ -18,7 +18,6 @@
 package org.apache.kafka.common.security.auth
 
 import java.net.InetAddress
-import java.util.*
 import javax.net.ssl.SSLSession
 import javax.security.sasl.SaslServer
 

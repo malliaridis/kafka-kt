@@ -6,7 +6,6 @@ import java.nio.channels.CancelledKeyException
 import java.nio.channels.SelectionKey
 import java.nio.channels.SocketChannel
 import java.nio.channels.UnresolvedAddressException
-import java.util.*
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import org.apache.kafka.common.KafkaException
@@ -318,7 +317,7 @@ open class Selector private constructor(
      * Close this selector and all associated connections
      */
     override fun close() {
-        val connections: MutableList<String> = ArrayList(channels.keys)
+        val connections = channels.keys.toList()
         val firstException = AtomicReference<Throwable?>()
         Utils.closeAllQuietly(
             firstException = firstException,
@@ -458,7 +457,7 @@ open class Selector private constructor(
                 isImmediatelyConnected = false,
                 currentTimeNanos = endSelect,
             )
-            // Clear all selected keys so that they are included in the ready count for the next select
+            // Clear all selected keys so that they are excluded from the ready count for the next select
             readyKeys.clear()
 
             pollSelectionKeys(
@@ -659,7 +658,7 @@ open class Selector private constructor(
         //this may cause starvation of reads when memory is low. to address this we shuffle the keys
         // if memory is low.
         return if (!isOutOfMemory && memoryPool.availableMemory() < lowMemThreshold) {
-            val shuffledKeys: MutableList<SelectionKey?> = ArrayList(selectionKeys)
+            val shuffledKeys = selectionKeys.toMutableList()
             shuffledKeys.shuffle()
             shuffledKeys
         } else selectionKeys

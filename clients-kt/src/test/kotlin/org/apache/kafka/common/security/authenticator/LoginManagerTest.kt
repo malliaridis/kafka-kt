@@ -23,6 +23,7 @@ import org.apache.kafka.common.network.ListenerName
 import org.apache.kafka.common.security.JaasContext
 import org.apache.kafka.common.security.plain.PlainLoginModule
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
@@ -208,11 +209,9 @@ class LoginManagerTest {
             "client.id" to "client",
             SaslConfigs.SASL_OAUTHBEARER_TOKEN_ENDPOINT_URL to "http://host1:1234",
         )
-        val configs2 = configs1 + mapOf(
-            SaslConfigs.SASL_OAUTHBEARER_TOKEN_ENDPOINT_URL to "http://host2:1234",
-        )
+        val configs2 = configs1 + (SaslConfigs.SASL_OAUTHBEARER_TOKEN_ENDPOINT_URL to "http://host2:1234")
         val dynamicContext = JaasContext.loadClientContext(configs1)
-        val configs3 = configs1 + mapOf("client.id" to "client3")
+        val configs3 = configs1 + ("client.id" to "client3")
         val dynamicLogin1 = LoginManager.acquireLoginManager(
             jaasContext = dynamicContext,
             saslMechanism = "PLAIN",
@@ -253,7 +252,7 @@ class LoginManagerTest {
                 saslMechanism = "PLAIN",
                 defaultLoginClass = DefaultLogin::class.java,
                 configs = configs1.toMap(),
-            )
+            ),
         )
         assertSame(
             expected = dynamicLogin1,
@@ -262,7 +261,7 @@ class LoginManagerTest {
                 saslMechanism = "PLAIN",
                 defaultLoginClass = DefaultLogin::class.java,
                 configs = configs3,
-            )
+            ),
         )
         val staticContext = JaasContext.loadClientContext(emptyMap<String, Any>())
         val staticLogin1 = LoginManager.acquireLoginManager(

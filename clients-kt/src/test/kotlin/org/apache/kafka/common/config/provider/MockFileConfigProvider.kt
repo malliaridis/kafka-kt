@@ -17,11 +17,12 @@
 
 package org.apache.kafka.common.config.provider
 
-import org.junit.jupiter.api.Assertions
 import java.io.IOException
 import java.io.Reader
 import java.io.StringReader
-import java.util.*
+import java.util.Collections
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 class MockFileConfigProvider : FileConfigProvider() {
 
@@ -48,11 +49,13 @@ class MockFileConfigProvider : FileConfigProvider() {
     }
 
     companion object {
+
         private val INSTANCES = Collections.synchronizedMap(HashMap<String, MockFileConfigProvider>())
+
         fun assertClosed(id: String) {
             val instance = INSTANCES.remove(id)
-            Assertions.assertNotNull(instance)
-            synchronized(instance!!) { Assertions.assertTrue(instance.closed) }
+            assertNotNull(instance)
+            synchronized(instance) { assertTrue(instance.closed) }
         }
     }
 }

@@ -23,12 +23,13 @@ import org.apache.kafka.common.config.ConfigChangeCallback
 import org.apache.kafka.common.config.ConfigData
 
 /**
- * A provider of configuration data, which may optionally support subscriptions to configuration
- * changes. Implementations are required to safely support concurrent calls to any of the methods
- * in this interface. Kafka Connect discovers configuration providers using Java's Service Provider
- * mechanism (see `java.util.ServiceLoader`). To support this, implementations of this interface
- * should also contain a service provider configuration file in
- * `META-INF/service/org.apache.kafka.common.config.provider.ConfigProvider`.
+ * A provider of configuration data, which may optionally support subscriptions to configuration changes.
+ *
+ * Implementations are required to safely support concurrent calls to any of the methods in this interface.
+ *
+ * Kafka Connect discovers implementations of this interface using the Java [java.util.ServiceLoader] mechanism.
+ * To support this, implementations of this interface should also contain a service provider configuration file in
+ * `META-INF/services/org.apache.kafka.common.config.provider.ConfigProvider`.
  */
 interface ConfigProvider : Configurable, Closeable {
 

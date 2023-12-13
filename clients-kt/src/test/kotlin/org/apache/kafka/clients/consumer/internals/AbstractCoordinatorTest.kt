@@ -17,6 +17,11 @@
 
 package org.apache.kafka.clients.consumer.internals
 
+import java.nio.ByteBuffer
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import org.apache.kafka.clients.GroupRebalanceConfig
 import org.apache.kafka.clients.MockClient
 import org.apache.kafka.clients.MockClient.RequestMatcher
@@ -43,7 +48,6 @@ import org.apache.kafka.common.metrics.Metrics
 import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.protocol.Errors
 import org.apache.kafka.common.requests.AbstractRequest
-import org.apache.kafka.common.requests.AbstractResponse
 import org.apache.kafka.common.requests.FindCoordinatorResponse
 import org.apache.kafka.common.requests.HeartbeatRequest
 import org.apache.kafka.common.requests.HeartbeatResponse
@@ -61,14 +65,7 @@ import org.apache.kafka.common.utils.Timer
 import org.apache.kafka.common.utils.Utils.closeQuietly
 import org.apache.kafka.test.TestUtils.waitForCondition
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
-import java.nio.ByteBuffer
-import java.util.*
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
@@ -356,7 +353,7 @@ class AbstractCoordinatorTest {
 
         mockTime.sleep((REBALANCE_TIMEOUT_MS - REQUEST_TIMEOUT_MS + AbstractCoordinator.JOIN_GROUP_TIMEOUT_LAPSE).toLong())
         assertTrue(consumerClient.poll(future, mockTime.timer(0)))
-        assertTrue(future.exception() is DisconnectException)
+        assertIs<DisconnectException>(future.exception())
     }
 
     @Test
@@ -374,7 +371,7 @@ class AbstractCoordinatorTest {
 
         mockTime.sleep(expectedRequestDeadline - mockTime.milliseconds() + 1)
         assertTrue(consumerClient.poll(future, mockTime.timer(0)))
-        assertTrue(future.exception() is DisconnectException)
+        assertIs<DisconnectException>(future.exception())
     }
 
     @Test
@@ -1189,7 +1186,7 @@ class AbstractCoordinatorTest {
             }
             fail("Expected pollHeartbeat to raise fenced instance id exception in 1 second")
         } catch (exception: RuntimeException) {
-            assertTrue(exception is FencedInstanceIdException)
+            assertIs<FencedInstanceIdException>(exception)
         }
     }
 
@@ -1326,7 +1323,7 @@ class AbstractCoordinatorTest {
         val leaveGroupFuture = setupLeaveGroup(response)
 
         assertNotNull(leaveGroupFuture)
-        assertTrue(leaveGroupFuture.exception() is IllegalStateException)
+        assertIs<IllegalStateException>(leaveGroupFuture.exception())
     }
 
     @Test
@@ -1390,9 +1387,21 @@ class AbstractCoordinatorTest {
             },
             response = heartbeatResponse(Errors.UNKNOWN_SERVER_ERROR),
         )
+        coordinator.ensureActiveGroup()
+        mockTime.sleep(HEARTBEAT_INTERVAL_MS.toLong())
+
+        val exception = assertFailsWith<RuntimeException>(
+            message = "Expected timeToNextHeartbeat to raise an error in 1 second",
+        ) {
+            val startMs = System.currentTimeMillis()
+            while (System.currentTimeMillis() - startMs < 1000) {
+                Thread.sleep(10)
+                coordinator.timeToNextHeartbeat(0)
+            }
+        }
+        assertEquals(e, exception)
+
         try {
-            coordinator.ensureActiveGroup()
-            mockTime.sleep(HEARTBEAT_INTERVAL_MS.toLong())
             val startMs = System.currentTimeMillis()
 
             while (System.currentTimeMillis() - startMs < 1000) {
@@ -1444,7 +1453,7 @@ class AbstractCoordinatorTest {
         mockTime.sleep(50)
 
         val future = coordinator.lookupCoordinator()
-        assertFalse(future.isDone, "Request not sent")
+        assertFalse(future.isDone(), "Request not sent")
         assertSame(
             expected = future,
             actual = coordinator.lookupCoordinator(),
@@ -1759,6 +1768,44 @@ class AbstractCoordinatorTest {
         }
     }
 
+    @Test
+    fun testBackoffAndRetryUponRetriableError() {
+        mockTime = MockTime()
+        val currentTimeMs = System.currentTimeMillis()
+        mockTime.setCurrentTimeMs(System.currentTimeMillis())
+        setupCoordinator() // note: uses 100ms backoff
+        mockClient.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
+        coordinator.ensureCoordinatorReady(mockTime.timer(0))
+
+        // Retriable Exception
+        mockClient.prepareResponse(joinGroupResponse(Errors.COORDINATOR_LOAD_IN_PROGRESS))
+        mockClient.prepareResponse(joinGroupResponse(Errors.NONE)) // Retry w/o error
+        mockClient.prepareResponse(syncGroupResponse(Errors.NONE))
+        coordinator.joinGroupIfNeeded(mockTime.timer(REQUEST_TIMEOUT_MS.toLong()))
+        assertEquals(100f, (mockTime.milliseconds() - currentTimeMs).toFloat(), 1f)
+    }
+
+    @Test
+    @Throws(InterruptedException::class)
+    fun testReturnUponRetriableErrorAndExpiredTimer() {
+        setupCoordinator()
+        mockClient.prepareResponse(groupCoordinatorResponse(node, Errors.NONE))
+        coordinator.ensureCoordinatorReady(mockTime.timer(0))
+        val executor = Executors.newFixedThreadPool(1)
+        val t = mockTime.timer(500)
+        try {
+            val attempt = executor.submit<Boolean> { coordinator.joinGroupIfNeeded(t) }
+            mockTime.sleep(500)
+            mockClient.prepareResponse(joinGroupResponse(Errors.COORDINATOR_LOAD_IN_PROGRESS))
+            assertFalse(attempt.get())
+        } catch (_: Exception) {
+            fail()
+        } finally {
+            executor.shutdownNow()
+            executor.awaitTermination(1000, TimeUnit.MILLISECONDS)
+        }
+    }
+
     private fun prepareFirstHeartbeat(): AtomicBoolean {
         val heartbeatReceived = AtomicBoolean(false)
         mockClient.prepareResponse(
@@ -1874,7 +1921,7 @@ class AbstractCoordinatorTest {
             leaderId: String,
             protocol: String,
             allMemberMetadata: List<JoinGroupResponseMember>,
-            skipAssignment: Boolean
+            skipAssignment: Boolean,
         ): Map<String, ByteBuffer> {
             return allMemberMetadata.associate { member -> member.memberId to EMPTY_DATA }
         }

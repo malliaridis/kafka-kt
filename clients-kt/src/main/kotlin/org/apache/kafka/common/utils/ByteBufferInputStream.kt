@@ -17,6 +17,7 @@
 
 package org.apache.kafka.common.utils
 
+import java.io.IOException
 import java.io.InputStream
 import java.nio.ByteBuffer
 
@@ -40,4 +41,7 @@ class ByteBufferInputStream(private val buffer: ByteBuffer) : InputStream() {
         buffer[bytes, off, len]
         return len
     }
+
+    @Throws(IOException::class)
+    override fun available(): Int = buffer.remaining()
 }

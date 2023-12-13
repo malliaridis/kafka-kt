@@ -18,7 +18,9 @@
 package org.apache.kafka.common.protocol.types
 
 import java.nio.ByteBuffer
-import java.util.*
+import java.util.Collections
+import java.util.NavigableMap
+import java.util.TreeMap
 import org.apache.kafka.common.protocol.types.Type.DocumentedType
 import org.apache.kafka.common.utils.ByteUtils.readUnsignedVarint
 import org.apache.kafka.common.utils.ByteUtils.sizeOfUnsignedVarint
@@ -28,8 +30,6 @@ import org.apache.kafka.common.utils.ByteUtils.writeUnsignedVarint
  * Represents a tagged fields section.
  */
 class TaggedFields(private val fields: Map<Int, Field>) : DocumentedType() {
-
-    override val isNullable: Boolean = false
 
     override fun write(buffer: ByteBuffer, o: Any?) {
         val objects = o as NavigableMap<Int, Any>
@@ -57,12 +57,16 @@ class TaggedFields(private val fields: Map<Int, Field>) : DocumentedType() {
 
         val objects: NavigableMap<Int, Any?> = TreeMap()
         var prevTag = -1
-        for (i in 0 until numTaggedFields) {
+        for (i in 0..<numTaggedFields) {
             val tag = readUnsignedVarint(buffer)
             if (tag <= prevTag) throw RuntimeException("Invalid or out-of-order tag $tag")
 
             prevTag = tag
             val size = readUnsignedVarint(buffer)
+            if (size < 0) throw SchemaException("field size $size cannot be negative")
+            if (size > buffer.remaining())
+                throw SchemaException("Error reading field of size $size, only ${buffer.remaining()} bytes available")
+
             val field = fields[tag]
             if (field == null) {
                 val bytes = ByteArray(size)
@@ -120,7 +124,7 @@ class TaggedFields(private val fields: Map<Int, Field>) : DocumentedType() {
             }
             objects
         } catch (e: ClassCastException) {
-            throw SchemaException("Not a NavigableMap.")
+            throw SchemaException("Not a NavigableMap. Found class ${item!!.javaClass.name}")
         }
     }
 

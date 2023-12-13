@@ -18,7 +18,6 @@
 package org.apache.kafka.common.requests
 
 import java.nio.ByteBuffer
-import java.util.*
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.message.WriteTxnMarkersRequestData
 import org.apache.kafka.common.message.WriteTxnMarkersRequestData.WritableTxnMarker
@@ -26,7 +25,6 @@ import org.apache.kafka.common.message.WriteTxnMarkersRequestData.WritableTxnMar
 import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.protocol.ByteBufferAccessor
 import org.apache.kafka.common.protocol.Errors
-
 
 class WriteTxnMarkersRequest private constructor(
     private val data: WriteTxnMarkersRequestData,
@@ -179,7 +177,7 @@ class WriteTxnMarkersRequest private constructor(
                         .setProducerEpoch(marker.producerEpoch)
                         .setCoordinatorEpoch(marker.coordinatorEpoch)
                         .setTransactionResult(marker.transactionResult.id)
-                        .setTopics(ArrayList(topicMap.values))
+                        .setTopics(topicMap.values.toList())
                 )
             }
             data = WriteTxnMarkersRequestData().setMarkers(dataMarkers)

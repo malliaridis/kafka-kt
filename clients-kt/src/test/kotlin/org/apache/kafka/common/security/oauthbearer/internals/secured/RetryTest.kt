@@ -135,7 +135,6 @@ class RetryTest : OAuthBearerTest() {
     }
 
     @Test
-    @Throws(IOException::class)
     fun testUseMaxTimeout() {
         val attempts = arrayOf<Exception?>(
             IOException("pretend connect error"),

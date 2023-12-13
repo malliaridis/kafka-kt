@@ -17,6 +17,8 @@
 
 package org.apache.kafka.common.config
 
+import java.util.Properties
+import java.util.UUID
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.config.ConfigDef.Importance
 import org.apache.kafka.common.config.ConfigDef.NonNullValidator
@@ -27,10 +29,10 @@ import org.apache.kafka.common.metrics.FakeMetricsReporter
 import org.apache.kafka.common.metrics.JmxReporter
 import org.apache.kafka.common.metrics.MetricsReporter
 import org.apache.kafka.common.security.TestSecurityConfig
-import org.apache.kafka.test.MockConsumerInterceptor
-import org.junit.jupiter.api.Test
-import java.util.*
 import org.apache.kafka.common.utils.Utils
+import org.apache.kafka.test.MockConsumerInterceptor
+import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
@@ -42,8 +44,10 @@ class AbstractConfigTest {
 
     @Test
     fun testConfiguredInstances() {
+        testValidInputs("    ")
         testValidInputs("")
         testValidInputs("org.apache.kafka.common.metrics.FakeMetricsReporter")
+        testValidInputs(" org.apache.kafka.common.metrics.FakeMetricsReporter ")
         testValidInputs(
             "org.apache.kafka.common.metrics.FakeMetricsReporter, org.apache.kafka.common.metrics.FakeMetricsReporter"
         )
@@ -82,7 +86,7 @@ class AbstractConfigTest {
         assertTrue(config.unused().contains("foo.bar"))
         originalsWithPrefix["bar"]
         assertFalse(config.unused().contains("foo.bar"))
-        val expected: MutableMap<String, Any> = HashMap()
+        val expected: MutableMap<String, Any?> = HashMap()
         expected["bar"] = "abc"
         assertEquals(expected, originalsWithPrefix)
     }

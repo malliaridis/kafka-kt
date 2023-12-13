@@ -19,7 +19,7 @@ package org.apache.kafka.common.serialization
 
 import org.apache.kafka.common.utils.Bytes
 
-class BytesDeserializer : Deserializer<Bytes> {
+class BytesDeserializer : Deserializer<Bytes?> {
 
     override fun deserialize(topic: String, data: ByteArray?): Bytes? = data?.let { Bytes(it) }
 }

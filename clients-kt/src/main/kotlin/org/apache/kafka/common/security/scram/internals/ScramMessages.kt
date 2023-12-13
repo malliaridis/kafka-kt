@@ -18,7 +18,7 @@
 package org.apache.kafka.common.security.scram.internals
 
 import java.nio.charset.StandardCharsets
-import java.util.*
+import java.util.Base64
 import java.util.regex.Pattern
 import javax.security.sasl.SaslException
 import org.apache.kafka.common.utils.Utils.mkString
@@ -98,7 +98,7 @@ class ScramMessages {
         constructor(
             saslName: String,
             nonce: String,
-            extensions: Map<String, String>
+            extensions: Map<String, String>,
         ) {
             this.saslName = saslName
             this.nonce = nonce
@@ -191,7 +191,7 @@ class ScramMessages {
                 if (iterations <= 0)
                     throw SaslException("Invalid SCRAM server first message format: invalid iterations $iterations")
             } catch (e: NumberFormatException) {
-                throw SaslException("Invalid SCRAM server first message format: invalid iterations")
+                throw SaslException("Invalid SCRAM server first message format: invalid iterations", e)
             }
             
             nonce = matcher.group("nonce")

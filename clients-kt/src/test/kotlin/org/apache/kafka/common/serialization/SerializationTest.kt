@@ -23,6 +23,7 @@ import java.util.LinkedList
 import java.util.Stack
 import java.util.UUID
 import org.apache.kafka.common.errors.SerializationException
+import org.apache.kafka.common.serialization.Serdes.Boolean
 import org.apache.kafka.common.serialization.Serdes.Double
 import org.apache.kafka.common.serialization.Serdes.Float
 import org.apache.kafka.common.serialization.Serdes.Integer
@@ -34,8 +35,12 @@ import org.apache.kafka.common.serialization.Serdes.UUID
 import org.apache.kafka.common.serialization.Serdes.Void
 import org.apache.kafka.common.serialization.Serdes.serdeFrom
 import org.apache.kafka.common.utils.Bytes
+import org.apache.kafka.common.utils.Utils.wrapNullable
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -47,20 +52,21 @@ class SerializationTest {
     private val topic = "testTopic"
     
     private val testData = mapOf(
-        String::class.java to listOf("my string"),
-        Short::class.java to listOf<Short>(32767, -32768),
-        Int::class.java to listOf(423412424, -41243432),
-        Long::class.java to listOf(922337203685477580L, -922337203685477581L),
-        Float::class.java to listOf(5678567.12312f, -5678567.12341f),
-        Double::class.java to listOf(5678567.12312, -5678567.12341),
-        ByteArray::class.java to listOf("my string".toByteArray()),
+        String::class.java to listOf(null, "my string"),
+        Short::class.java to listOf<Short?>(null, 32767, -32768),
+        Int::class.java to listOf(null, 423412424, -41243432),
+        Long::class.java to listOf(null, 922337203685477580L, -922337203685477581L),
+        Float::class.java to listOf(null, 5678567.12312f, -5678567.12341f),
+        Double::class.java to listOf(null, 5678567.12312, -5678567.12341),
+        ByteArray::class.java to listOf(null, "my string".toByteArray()),
         ByteBuffer::class.java to listOf(
+            null,
             ByteBuffer.wrap("my string".toByteArray()),
             ByteBuffer.allocate(10).put("my string".toByteArray()),
             ByteBuffer.allocateDirect(10).put("my string".toByteArray()),
         ),
-        Bytes::class.java to listOf(Bytes("my string".toByteArray())),
-        UUID::class.java to listOf(UUID.randomUUID()),
+        Bytes::class.java to listOf(null, Bytes("my string".toByteArray())),
+        UUID::class.java to listOf(null, UUID.randomUUID()),
     )
 
     private inner class DummyClass
@@ -70,11 +76,31 @@ class SerializationTest {
         for ((key, value) in testData) {
             assertIs<Class<Any>>(key)
             serdeFrom(key).use { serde ->
-                for (element in value) assertEquals(
-                    expected = element,
-                    actual = serde.deserializer().deserialize(topic, serde.serializer().serialize(topic, element)),
-                    message = "Should get the original ${key.getSimpleName()} after serialization and deserialization",
-                )
+                for (element in value) {
+                    val serialized = serde.serializer().serialize(topic, element)
+                    assertEquals(
+                        expected = element,
+                        actual = serde.deserializer().deserialize(topic, serialized),
+                        message = "Should get the original ${key.name} after serialization and deserialization"
+                    )
+
+                    if (element is ByteArray) assertContentEquals(
+                        expected = element,
+                        actual = serde.deserializer().deserialize(
+                            topic = topic,
+                            data = element,
+                        ) as ByteArray?,
+                        message = "Should get the original ${key.name} after serialization and deserialization"
+                    )
+                    else assertEquals(
+                        expected = element,
+                        actual = serde.deserializer().deserialize(
+                            topic = topic,
+                            data = wrapNullable(serialized),
+                        ),
+                        message = "Should get the original ${key.name} after serialization and deserialization",
+                    )
+                }
             }
         }
     }
@@ -84,11 +110,15 @@ class SerializationTest {
         for (cls in testData.keys) {
             serdeFrom(cls).use { serde ->
                 assertNull(
-                    actual = serde.serializer().serialize(topic, null),
+                    actual = serde.serializer().serialize(topic = topic, data = null),
                     message = "Should support null in ${cls.name} serialization",
                 )
                 assertNull(
-                    actual = serde.deserializer().deserialize(topic, null),
+                    actual = serde.deserializer().deserialize(topic = topic, data = null as ByteArray?),
+                    message = "Should support null in ${cls.name} deserialization",
+                )
+                assertNull(
+                    actual = serde.deserializer().deserialize(topic = topic, data = null as ByteBuffer?),
                     message = "Should support null in ${cls.name} deserialization",
                 )
             }
@@ -138,7 +168,7 @@ class SerializationTest {
 
     @Test
     fun listSerdeShouldReturnNull() {
-        val testData: List<Int>? = null
+        val testData: List<Int?>? = null
         val listSerde = ListSerde(ArrayList::class.java, Integer())
         assertEquals(
             expected = testData,
@@ -384,12 +414,12 @@ class SerializationTest {
 
     @Test
     fun testSerializeVoid() {
-        Void().use { serde -> serde.serializer().serialize(topic, null) }
+        Void().use { serde -> serde.serializer().serialize(topic = topic, data = null) }
     }
 
     @Test
     fun testDeserializeVoid() {
-        Void().use { serde -> serde.deserializer().deserialize(topic, null) }
+        Void().use { serde -> serde.deserializer().deserialize(topic = topic, data = null as ByteArray?) }
     }
 
     @Test
@@ -399,7 +429,27 @@ class SerializationTest {
         }
     }
 
-    private fun getStringSerde(encoder: String): Serde<String> {
+    @Test
+    fun stringDeserializerSupportByteBuffer() {
+        val data = "Hello, ByteBuffer!"
+        String().use { serde ->
+            val serializer = serde.serializer()
+            val deserializer = serde.deserializer()
+            val serializedBytes = serializer.serialize(topic, data)!!
+
+            val heapBuff = ByteBuffer.allocate(serializedBytes.size shl 1)
+                .put(serializedBytes)
+            heapBuff.flip()
+            assertEquals(data, deserializer.deserialize(topic = topic, data = heapBuff))
+
+            val directBuff = ByteBuffer.allocateDirect(serializedBytes.size shl 2)
+                .put(serializedBytes)
+            directBuff.flip()
+            assertEquals(data, deserializer.deserialize(topic = topic, data = directBuff))
+        }
+    }
+
+    private fun getStringSerde(encoder: String): Serde<String?> {
         val serializerConfigs: MutableMap<String, Any?> = HashMap()
         serializerConfigs["key.serializer.encoding"] = encoder
         val serializer = String().serializer()
@@ -425,6 +475,33 @@ class SerializationTest {
             assertContentEquals(bytes, serializer.serialize(topic, heapBuffer2))
             assertContentEquals(bytes, serializer.serialize(topic, directBuffer0))
             assertContentEquals(bytes, serializer.serialize(topic, directBuffer1))
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [true, false])
+    fun testBooleanSerializer(dataToSerialize: Boolean) {
+        val testData = ByteArray(1)
+        testData[0] = (if (dataToSerialize) 1 else 0).toByte()
+        val booleanSerde = Boolean()
+        assertContentEquals(testData, booleanSerde.serializer().serialize(topic, dataToSerialize))
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [true, false])
+    fun testBooleanDeserializer(dataToDeserialize: Boolean) {
+        val testData = ByteArray(1)
+        testData[0] = (if (dataToDeserialize) 1 else 0).toByte()
+        val booleanSerde = Boolean()
+        assertEquals(dataToDeserialize, booleanSerde.deserializer().deserialize(topic, testData))
+    }
+
+    @Test
+    fun booleanDeserializerShouldThrowOnEmptyInput() {
+        Boolean().use { serde ->
+            assertFailsWith<SerializationException> {
+                serde.deserializer().deserialize(topic, ByteArray(0))
+            }
         }
     }
 }

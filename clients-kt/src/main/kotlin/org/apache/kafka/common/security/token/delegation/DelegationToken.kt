@@ -17,7 +17,7 @@
 
 package org.apache.kafka.common.security.token.delegation
 
-import java.util.*
+import java.util.Base64
 import org.apache.kafka.common.annotation.InterfaceStability.Evolving
 
 /**
@@ -41,9 +41,7 @@ data class DelegationToken(
     )
     fun hmac(): ByteArray = hmac
 
-    fun hmacAsBase64String(): String {
-        return Base64.getEncoder().encodeToString(hmac)
-    }
+    fun hmacAsBase64String(): String = Base64.getEncoder().encodeToString(hmac)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

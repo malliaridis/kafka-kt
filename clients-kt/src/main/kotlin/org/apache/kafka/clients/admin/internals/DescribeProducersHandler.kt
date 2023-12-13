@@ -17,7 +17,6 @@
 
 package org.apache.kafka.clients.admin.internals
 
-import java.util.*
 import org.apache.kafka.clients.admin.DescribeProducersOptions
 import org.apache.kafka.clients.admin.DescribeProducersResult.PartitionProducerState
 import org.apache.kafka.clients.admin.ProducerState
@@ -29,7 +28,6 @@ import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.InvalidTopicException
 import org.apache.kafka.common.errors.TopicAuthorizationException
 import org.apache.kafka.common.message.DescribeProducersRequestData
-import org.apache.kafka.common.message.DescribeProducersRequestData.TopicRequest
 import org.apache.kafka.common.protocol.Errors
 import org.apache.kafka.common.requests.AbstractResponse
 import org.apache.kafka.common.requests.ApiError

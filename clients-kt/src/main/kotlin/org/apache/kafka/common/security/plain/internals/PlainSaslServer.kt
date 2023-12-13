@@ -17,8 +17,6 @@
 
 package org.apache.kafka.common.security.plain.internals
 
-import java.nio.charset.StandardCharsets
-import java.util.*
 import javax.security.auth.callback.CallbackHandler
 import javax.security.auth.callback.NameCallback
 import javax.security.sasl.Sasl
@@ -69,7 +67,7 @@ class PlainSaslServer(private val callbackHandler: CallbackHandler) : SaslServer
          * SAFE      = UTF1 / UTF2 / UTF3 / UTF4
          *                ;; any UTF-8 encoded Unicode character except NUL
          */
-        val response = String(responseBytes, StandardCharsets.UTF_8)
+        val response = String(responseBytes)
         val tokens = extractTokens(response)
         val authorizationIdFromClient = tokens[0]
         val username = tokens[1]

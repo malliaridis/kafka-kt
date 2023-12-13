@@ -17,22 +17,28 @@
 
 package org.apache.kafka.common.serialization
 
+import java.nio.ByteBuffer
 import org.apache.kafka.common.errors.SerializationException
+import org.apache.kafka.common.header.Headers
 
-class LongDeserializer : Deserializer<Long> {
+class LongDeserializer : Deserializer<Long?> {
 
-    override fun deserialize(topic: String, data: ByteArray?): Long? {
-        if (data == null) return null
-
-        if (data.size != 8)
-            throw SerializationException("Size of data received by LongDeserializer is not 8")
-
-        var value: Long = 0
-        data.forEach { b ->
-            value = value shl 8
-            value = value or (b.toInt() and 0xFF).toLong()
+    override fun deserialize(topic: String, data: ByteArray?): Long? = when {
+        data == null -> null
+        data.size != 8 -> throw SerializationException("Size of data received by LongDeserializer is not 8")
+        else -> {
+            var value: Long = 0
+            data.forEach { b ->
+                value = value shl 8
+                value = value or (b.toInt() and 0xFF).toLong()
+            }
+            value
         }
+    }
 
-        return value
+    override fun deserialize(topic: String, headers: Headers, data: ByteBuffer?): Long? = when {
+        data == null -> null
+        data.remaining() != 8 -> throw SerializationException("Size of data received by LongDeserializer is not 8")
+        else -> data.getLong(data.position())
     }
 }

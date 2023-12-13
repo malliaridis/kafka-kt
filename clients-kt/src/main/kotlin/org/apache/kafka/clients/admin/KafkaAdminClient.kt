@@ -17,9 +17,19 @@
 
 package org.apache.kafka.clients.admin
 
+import java.security.InvalidKeyException
+import java.security.NoSuchAlgorithmException
+import java.time.Duration
+import java.util.LinkedList
+import java.util.TreeMap
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
+import java.util.function.Predicate
 import org.apache.kafka.clients.ApiVersions
 import org.apache.kafka.clients.ClientResponse
 import org.apache.kafka.clients.ClientUtils
+import org.apache.kafka.clients.ClientUtils.createNetworkClient
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.DefaultHostResolver
 import org.apache.kafka.clients.HostResolver
@@ -37,19 +47,21 @@ import org.apache.kafka.clients.admin.internals.AbortTransactionHandler
 import org.apache.kafka.clients.admin.internals.AdminApiDriver
 import org.apache.kafka.clients.admin.internals.AdminApiDriver.RequestSpec
 import org.apache.kafka.clients.admin.internals.AdminApiFuture
+import org.apache.kafka.clients.admin.internals.AdminApiFuture.SimpleAdminApiFuture
 import org.apache.kafka.clients.admin.internals.AdminApiHandler
 import org.apache.kafka.clients.admin.internals.AdminMetadataManager
 import org.apache.kafka.clients.admin.internals.AlterConsumerGroupOffsetsHandler
 import org.apache.kafka.clients.admin.internals.CoordinatorKey
 import org.apache.kafka.clients.admin.internals.DeleteConsumerGroupOffsetsHandler
 import org.apache.kafka.clients.admin.internals.DeleteConsumerGroupsHandler
+import org.apache.kafka.clients.admin.internals.DeleteRecordsHandler
 import org.apache.kafka.clients.admin.internals.DescribeConsumerGroupsHandler
 import org.apache.kafka.clients.admin.internals.DescribeProducersHandler
 import org.apache.kafka.clients.admin.internals.DescribeTransactionsHandler
 import org.apache.kafka.clients.admin.internals.FenceProducersHandler
 import org.apache.kafka.clients.admin.internals.ListConsumerGroupOffsetsHandler
+import org.apache.kafka.clients.admin.internals.ListOffsetsHandler
 import org.apache.kafka.clients.admin.internals.ListTransactionsHandler
-import org.apache.kafka.clients.admin.internals.MetadataOperationContext
 import org.apache.kafka.clients.admin.internals.RemoveMembersFromConsumerGroupHandler
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.clients.consumer.internals.ConsumerProtocol
@@ -115,9 +127,6 @@ import org.apache.kafka.common.message.CreateTopicsResponseData.CreatableTopicCo
 import org.apache.kafka.common.message.DeleteAclsRequestData
 import org.apache.kafka.common.message.DeleteAclsRequestData.DeleteAclsFilter
 import org.apache.kafka.common.message.DeleteAclsResponseData.DeleteAclsFilterResult
-import org.apache.kafka.common.message.DeleteRecordsRequestData
-import org.apache.kafka.common.message.DeleteRecordsRequestData.DeleteRecordsPartition
-import org.apache.kafka.common.message.DeleteRecordsRequestData.DeleteRecordsTopic
 import org.apache.kafka.common.message.DeleteTopicsRequestData
 import org.apache.kafka.common.message.DeleteTopicsRequestData.DeleteTopicState
 import org.apache.kafka.common.message.DescribeClusterRequestData
@@ -136,8 +145,6 @@ import org.apache.kafka.common.message.ExpireDelegationTokenRequestData
 import org.apache.kafka.common.message.LeaveGroupRequestData.MemberIdentity
 import org.apache.kafka.common.message.ListGroupsRequestData
 import org.apache.kafka.common.message.ListGroupsResponseData.ListedGroup
-import org.apache.kafka.common.message.ListOffsetsRequestData.ListOffsetsPartition
-import org.apache.kafka.common.message.ListOffsetsRequestData.ListOffsetsTopic
 import org.apache.kafka.common.message.ListPartitionReassignmentsRequestData
 import org.apache.kafka.common.message.ListPartitionReassignmentsRequestData.ListPartitionReassignmentsTopics
 import org.apache.kafka.common.message.MetadataRequestData
@@ -151,8 +158,6 @@ import org.apache.kafka.common.metrics.KafkaMetricsContext
 import org.apache.kafka.common.metrics.MetricConfig
 import org.apache.kafka.common.metrics.Metrics
 import org.apache.kafka.common.metrics.Sensor
-import org.apache.kafka.common.network.ChannelBuilder
-import org.apache.kafka.common.network.Selector
 import org.apache.kafka.common.protocol.Errors
 import org.apache.kafka.common.quota.ClientQuotaAlteration
 import org.apache.kafka.common.quota.ClientQuotaEntity
@@ -182,8 +187,6 @@ import org.apache.kafka.common.requests.CreateTopicsRequest
 import org.apache.kafka.common.requests.CreateTopicsResponse
 import org.apache.kafka.common.requests.DeleteAclsRequest
 import org.apache.kafka.common.requests.DeleteAclsResponse
-import org.apache.kafka.common.requests.DeleteRecordsRequest
-import org.apache.kafka.common.requests.DeleteRecordsResponse
 import org.apache.kafka.common.requests.DeleteTopicsRequest
 import org.apache.kafka.common.requests.DeleteTopicsResponse
 import org.apache.kafka.common.requests.DescribeAclsRequest
@@ -212,7 +215,6 @@ import org.apache.kafka.common.requests.JoinGroupRequest
 import org.apache.kafka.common.requests.ListGroupsRequest
 import org.apache.kafka.common.requests.ListGroupsResponse
 import org.apache.kafka.common.requests.ListOffsetsRequest
-import org.apache.kafka.common.requests.ListOffsetsResponse
 import org.apache.kafka.common.requests.ListPartitionReassignmentsRequest
 import org.apache.kafka.common.requests.ListPartitionReassignmentsResponse
 import org.apache.kafka.common.requests.MetadataRequest
@@ -233,17 +235,7 @@ import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.Time
 import org.apache.kafka.common.utils.Utils
 import org.slf4j.Logger
-import java.security.InvalidKeyException
-import java.security.NoSuchAlgorithmException
-import java.time.Duration
-import java.util.LinkedList
-import java.util.TreeMap
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicLong
-import java.util.function.Predicate
 import kotlin.math.min
-import kotlin.time.Duration.Companion.hours
 
 /**
  * The default implementation of [Admin]. An instance of this class is created by invoking one of the
@@ -1870,17 +1862,15 @@ class KafkaAdminClient internal constructor(
     ): TopicDescription {
         val isInternal = cluster.internalTopics.contains(topicName)
         val partitionInfos = cluster.partitionsForTopic(topicName)
-        val partitions: MutableList<TopicPartitionInfo> = ArrayList(partitionInfos.size)
-        for (partitionInfo: PartitionInfo in partitionInfos) {
-            val topicPartitionInfo = TopicPartitionInfo(
+        val partitions = partitionInfos.map { partitionInfo ->
+            TopicPartitionInfo(
                 partition = partitionInfo.partition,
                 leader = leader(partitionInfo),
                 replicas = partitionInfo.replicas,
                 inSyncReplicas = partitionInfo.inSyncReplicas
             )
-            partitions.add(topicPartitionInfo)
-        }
-        partitions.sortBy { obj: TopicPartitionInfo -> obj.partition }
+        }.sortedBy { it.partition }
+
         return TopicDescription(
             name = topicName,
             internal = isInternal,
@@ -2801,128 +2791,15 @@ class KafkaAdminClient internal constructor(
         recordsToDelete: Map<TopicPartition, RecordsToDelete>,
         options: DeleteRecordsOptions,
     ): DeleteRecordsResult {
+        val future: SimpleAdminApiFuture<TopicPartition, DeletedRecords> =
+            DeleteRecordsHandler.newFuture(recordsToDelete.keys)
 
-        // requests need to be sent to partitions leader nodes so ...
-        // ... from the provided map it's needed to create more maps grouping topic/partition per leader
-        val futures: MutableMap<TopicPartition, KafkaFutureImpl<DeletedRecords>> =
-            HashMap(recordsToDelete.size)
-        for (topicPartition: TopicPartition in recordsToDelete.keys) {
-            futures[topicPartition] = KafkaFutureImpl()
-        }
+        val timeoutMs = options.timeoutMs ?: defaultApiTimeoutMs
 
-        // preparing topics list for asking metadata about them
-        val topics: MutableSet<String> = HashSet()
-        for (topicPartition: TopicPartition in recordsToDelete.keys) {
-            topics.add(topicPartition.topic)
-        }
-        val nowMetadata = time.milliseconds()
-        val deadline = calcDeadlineMs(nowMetadata, options.timeoutMs)
-        // asking for topics metadata for getting partitions leaders
-        runnable.call(object : Call(
-            callName = "topicsMetadata",
-            deadlineMs = deadline,
-            nodeProvider = LeastLoadedNodeProvider(),
-        ) {
-            override fun createRequest(timeoutMs: Int): MetadataRequest.Builder {
-                return MetadataRequest.Builder(
-                    MetadataRequestData()
-                        .setTopics(MetadataRequest.convertToMetadataRequestTopic(topics))
-                        .setAllowAutoTopicCreation(false)
-                )
-            }
+        val handler = DeleteRecordsHandler(recordsToDelete, logContext, timeoutMs)
+        invokeDriver(handler, future, options.timeoutMs)
 
-            override fun handleResponse(abstractResponse: AbstractResponse) {
-                val response = abstractResponse as MetadataResponse
-                val errors = response.errors()
-                val cluster = response.buildCluster()
-
-                // Group topic partitions by leader
-                val leaders: MutableMap<Node, MutableMap<String, DeleteRecordsTopic>> = HashMap()
-                for ((topicPartition, records) in recordsToDelete) {
-                    val future = futures[topicPartition]
-
-                    // Fail partitions with topic errors
-                    val topicError = errors[topicPartition.topic]
-
-                    topicError?.let { error ->
-                        future!!.completeExceptionally(error.exception!!)
-                    } ?: run {
-                        val node = cluster.leaderFor(topicPartition)
-                        if (node != null) {
-                            val deletionsForLeader = leaders.computeIfAbsent(node) { HashMap() }
-                            var deleteRecords = deletionsForLeader[topicPartition.topic]
-                            if (deleteRecords == null) {
-                                deleteRecords = DeleteRecordsTopic()
-                                    .setName(topicPartition.topic)
-                                deletionsForLeader[topicPartition.topic] = deleteRecords
-                            }
-                            deleteRecords.partitions += DeleteRecordsPartition()
-                                .setPartitionIndex(topicPartition.partition)
-                                .setOffset(records.beforeOffset)
-                        } else future!!.completeExceptionally(Errors.LEADER_NOT_AVAILABLE.exception!!)
-                    }
-                }
-                val deleteRecordsCallTimeMs = time.milliseconds()
-
-                for ((broker, partitionDeleteOffsets) in leaders) {
-                    runnable.call(object : Call(
-                        callName = "deleteRecords",
-                        deadlineMs = deadline,
-                        nodeProvider = ConstantNodeIdProvider(broker.id),
-                    ) {
-                        override fun createRequest(timeoutMs: Int): DeleteRecordsRequest.Builder {
-                            return DeleteRecordsRequest.Builder(
-                                DeleteRecordsRequestData()
-                                    .setTimeoutMs(timeoutMs)
-                                    .setTopics(ArrayList(partitionDeleteOffsets.values))
-                            )
-                        }
-
-                        override fun handleResponse(abstractResponse: AbstractResponse) {
-
-                            (abstractResponse as DeleteRecordsResponse).data()
-                                .topics
-                                .forEach { topicResult ->
-
-                                    topicResult.partitions.forEach { partitionResult ->
-
-                                        val future = futures[
-                                            TopicPartition(
-                                                topic = topicResult.name,
-                                                partition = partitionResult.partitionIndex,
-                                            )
-                                        ]!!
-
-                                        if (partitionResult.errorCode == Errors.NONE.code)
-                                            future.complete(DeletedRecords(partitionResult.lowWatermark))
-                                        else future.completeExceptionally(
-                                            Errors.forCode(partitionResult.errorCode).exception!!
-                                        )
-                                    }
-                                }
-                        }
-
-                        override fun handleFailure(throwable: Throwable) {
-                            val callFutures = partitionDeleteOffsets.values
-                                .flatMap { recordsToDelete ->
-                                    recordsToDelete.partitions.map { partitionsToDelete ->
-                                        TopicPartition(
-                                            topic = recordsToDelete.name,
-                                            partition = partitionsToDelete.partitionIndex
-                                        )
-                                    }
-                                }
-                                .map { futures[it] }
-                            completeAllExceptionally(callFutures, throwable)
-                        }
-                    }, deleteRecordsCallTimeMs)
-                }
-            }
-
-            override fun handleFailure(throwable: Throwable) =
-                completeAllExceptionally(futures.values, throwable)
-        }, nowMetadata)
-        return DeleteRecordsResult(futures.toMap())
+        return DeleteRecordsResult(future.all())
     }
 
     override fun createDelegationToken(options: CreateDelegationTokenOptions): CreateDelegationTokenResult {
@@ -3078,17 +2955,6 @@ class KafkaAdminClient internal constructor(
         return DescribeDelegationTokenResult(tokensFuture)
     }
 
-    private fun rescheduleMetadataTask(
-        context: MetadataOperationContext<*, *>,
-        nextCalls: () -> List<Call>,
-    ) {
-        log.info("Retrying to fetch metadata.")
-        // Requeue the task so that we can re-attempt fetching metadata
-        context.response = null
-        val metadataCall = getMetadataCall(context, nextCalls)
-        runnable.call(metadataCall, time.milliseconds())
-    }
-
     override fun describeConsumerGroups(
         groupIds: Collection<String>,
         options: DescribeConsumerGroupsOptions,
@@ -3102,45 +2968,6 @@ class KafkaAdminClient internal constructor(
         return DescribeConsumerGroupsResult(
             future.all().entries.associate { it.key.idValue to it.value }
         )
-    }
-
-    /**
-     * Returns a `Call` object to fetch the cluster metadata. Takes a List of Calls parameter to
-     * schedule actions that need to be taken using the metadata. The param is a Supplier so that it
-     * can be lazily created, so that it can use the results of the metadata call in its
-     * construction.
-     *
-     * @param T The type of return value of the KafkaFuture, like ListOffsetsResultInfo, etc.
-     * @param O The type of configuration option, like ListOffsetsOptions, etc
-     */
-    private fun <T, O : AbstractOptions<O>?> getMetadataCall(
-        context: MetadataOperationContext<T, O>,
-        nextCalls: () -> List<Call>,
-    ): Call {
-        return object : Call(
-            callName = "metadata",
-            deadlineMs = context.deadline,
-            nodeProvider = LeastLoadedNodeProvider(),
-        ) {
-            override fun createRequest(timeoutMs: Int): MetadataRequest.Builder {
-                return MetadataRequest.Builder(
-                    MetadataRequestData()
-                        .setTopics(MetadataRequest.convertToMetadataRequestTopic(context.topics))
-                        .setAllowAutoTopicCreation(false)
-                )
-            }
-
-            override fun handleResponse(abstractResponse: AbstractResponse) {
-                val response = abstractResponse as MetadataResponse
-                MetadataOperationContext.handleMetadataErrors(response)
-                context.response = response
-                nextCalls().forEach { call -> runnable.call(call, time.milliseconds()) }
-            }
-
-            override fun handleFailure(throwable: Throwable) {
-                context.futures.forEach { (_, future) -> future.completeExceptionally(throwable) }
-            }
-        }
     }
 
     private fun validAclOperations(authorizedOperations: Int): Set<AclOperation>? {
@@ -3553,7 +3380,7 @@ class KafkaAdminClient internal constructor(
                     reassignmentTopic.partitionIndexes += tp.partition
                 }
 
-                listData.setTopics(ArrayList(reassignmentTopicByTopicName.values))
+                listData.setTopics(reassignmentTopicByTopicName.values.toList())
                 return ListPartitionReassignmentsRequest.Builder(listData)
             }
 
@@ -3692,189 +3519,13 @@ class KafkaAdminClient internal constructor(
         topicPartitionOffsets: Map<TopicPartition, OffsetSpec>,
         options: ListOffsetsOptions,
     ): ListOffsetsResult {
-
-        // preparing topics list for asking metadata about them
-        val futures: MutableMap<TopicPartition, KafkaFutureImpl<ListOffsetsResultInfo>> =
-            HashMap(topicPartitionOffsets.size)
-
-        val topics = mutableSetOf<String>()
-        topicPartitionOffsets.keys.forEach { topicPartition ->
-            topics.add(topicPartition.topic)
-            futures[topicPartition] = KafkaFutureImpl()
-        }
-
-        val nowMetadata = time.milliseconds()
-        val deadline = calcDeadlineMs(nowMetadata, options.timeoutMs)
-        val context = MetadataOperationContext(topics, options, deadline, futures)
-        val metadataCall = getMetadataCall(context) {
-            getListOffsetsCalls(context, topicPartitionOffsets, futures)
-        }
-
-        runnable.call(metadataCall, nowMetadata)
-
-        return ListOffsetsResult(futures.toMap())
-    }
-
-    // visible for benchmark
-    internal fun getListOffsetsCalls(
-        context: MetadataOperationContext<ListOffsetsResultInfo, ListOffsetsOptions>,
-        topicPartitionOffsets: Map<TopicPartition, OffsetSpec>,
-        futures: Map<TopicPartition, KafkaFutureImpl<ListOffsetsResultInfo>>,
-    ): List<Call> {
-
-        val mr = checkNotNull(context.response) { "No Metadata response" }
-        val clusterSnapshot = mr.buildCluster()
-        val calls: MutableList<Call> = ArrayList()
-        // grouping topic partitions per leader
-        val leaders: MutableMap<Node, MutableMap<String, ListOffsetsTopic>> = HashMap()
-
-        topicPartitionOffsets.forEach { (tp, offsetSpec) ->
-            val future = futures[tp]!!
-            val offsetQuery = getOffsetFromOffsetSpec(offsetSpec)
-
-            // avoid sending listOffsets request for topics with errors
-            val error = mr.errors()[tp.topic]
-            if (error == null) {
-
-                clusterSnapshot.leaderFor(tp)?.let { node ->
-                    val leadersOnNode = leaders.computeIfAbsent(node) { HashMap() }
-                    val topic = leadersOnNode.computeIfAbsent(tp.topic) {
-                        ListOffsetsTopic().setName(tp.topic)
-                    }
-                    topic.partitions += ListOffsetsPartition()
-                        .setPartitionIndex(tp.partition)
-                        .setTimestamp(offsetQuery)
-                } ?: run { future.completeExceptionally(Errors.LEADER_NOT_AVAILABLE.exception!!) }
-            } else future.completeExceptionally(error.exception!!)
-        }
-
-        leaders.forEach { (key, value) ->
-            val brokerId = key.id
-
-            calls.add(object : Call(
-                callName = "listOffsets on broker $brokerId",
-                deadlineMs = context.deadline,
-                nodeProvider = ConstantNodeIdProvider(brokerId),
-            ) {
-                val partitionsToQuery: MutableList<ListOffsetsTopic> = ArrayList(value.values)
-                private var supportsMaxTimestamp = partitionsToQuery
-                    .flatMap { t -> t.partitions }
-                    .any { p -> p.timestamp == ListOffsetsRequest.MAX_TIMESTAMP }
-
-                override fun createRequest(timeoutMs: Int): ListOffsetsRequest.Builder {
-                    return ListOffsetsRequest.Builder
-                        .forConsumer(
-                            requireTimestamp = true,
-                            isolationLevel = context.options.isolationLevel,
-                            requireMaxTimestamp = supportsMaxTimestamp,
-                        )
-                        .setTargetTimes(partitionsToQuery)
-                }
-
-                override fun handleResponse(abstractResponse: AbstractResponse) {
-                    val response = abstractResponse as ListOffsetsResponse
-                    val retryTopicPartitionOffsets = mutableMapOf<TopicPartition, OffsetSpec>()
-                    for (topic in response.topics) {
-                        for (partition in topic.partitions) {
-                            val tp = TopicPartition(topic.name, partition.partitionIndex)
-                            val future = futures[tp]!!
-                            val error = Errors.forCode(partition.errorCode)
-                            val offsetRequestSpec = topicPartitionOffsets[tp]
-                            if (offsetRequestSpec == null)
-                                log.warn("Server response mentioned unknown topic partition {}", tp)
-                            else if (MetadataOperationContext.shouldRefreshMetadata(error))
-                                retryTopicPartitionOffsets[tp] = offsetRequestSpec
-                            else if (error == Errors.NONE) {
-                                val leaderEpoch =
-                                    if (partition.leaderEpoch == ListOffsetsResponse.UNKNOWN_EPOCH) null
-                                    else partition.leaderEpoch
-                                future.complete(
-                                    ListOffsetsResultInfo(
-                                        offset = partition.offset,
-                                        timestamp = partition.timestamp,
-                                        leaderEpoch = leaderEpoch,
-                                    )
-                                )
-                            } else future.completeExceptionally(error.exception!!)
-                        }
-                    }
-                    if (retryTopicPartitionOffsets.isEmpty()) {
-                        // The server should send back a response for every topic partition. But do
-                        // a sanity check anyway.
-                        for (topic: ListOffsetsTopic in partitionsToQuery) {
-                            for (partition: ListOffsetsPartition in topic.partitions) {
-                                val tp = TopicPartition(topic.name, partition.partitionIndex)
-                                val error = ApiException(
-                                    "The response from broker $brokerId did not contain a result for topic" +
-                                            "partition $tp"
-                                )
-                                futures[tp]!!.completeExceptionally(error)
-                            }
-                        }
-                    } else {
-                        val retryTopics = retryTopicPartitionOffsets.keys.map { it.topic }
-                            .toSet()
-                        val retryContext = MetadataOperationContext(
-                            topics = retryTopics,
-                            options = context.options,
-                            deadline = context.deadline,
-                            futures = futures,
-                        )
-
-                        rescheduleMetadataTask(retryContext) {
-                            getListOffsetsCalls(
-                                retryContext,
-                                retryTopicPartitionOffsets,
-                                futures
-                            )
-                        }
-                    }
-                }
-
-                override fun handleFailure(throwable: Throwable) {
-                    for (topic: ListOffsetsTopic in value.values) {
-                        for (partition: ListOffsetsPartition in topic.partitions) {
-                            val tp = TopicPartition(topic.name, partition.partitionIndex)
-                            val future = (futures[tp])!!
-                            future.completeExceptionally(throwable)
-                        }
-                    }
-                }
-
-                override fun handleUnsupportedVersionException(exception: UnsupportedVersionException): Boolean {
-                    if (supportsMaxTimestamp) {
-                        supportsMaxTimestamp = false
-
-                        // fail any unsupported futures and remove partitions from the downgraded retry
-                        val topicIterator = partitionsToQuery.iterator()
-                        while (topicIterator.hasNext()) {
-                            val topic = topicIterator.next()
-                            val partitionIterator = topic.partitions.iterator()
-                            while (partitionIterator.hasNext()) {
-                                val partition = partitionIterator.next()
-                                if (partition.timestamp == ListOffsetsRequest.MAX_TIMESTAMP) {
-                                    futures[
-                                        TopicPartition(
-                                            topic = topic.name,
-                                            partition = partition.partitionIndex,
-                                        )
-                                    ]!!.completeExceptionally(
-                                        UnsupportedVersionException(
-                                            "Broker $brokerId does not support MAX_TIMESTAMP offset spec"
-                                        )
-                                    )
-                                    topic.partitions -= partition
-                                }
-                            }
-                            if (topic.partitions.isEmpty()) topicIterator.remove()
-                        }
-                        return partitionsToQuery.isNotEmpty()
-                    }
-                    return false
-                }
-            })
-        }
-        return calls
+        val future: SimpleAdminApiFuture<TopicPartition, ListOffsetsResultInfo> =
+            ListOffsetsHandler.newFuture(topicPartitionOffsets.keys)
+        val offsetQueriesByPartition =
+            topicPartitionOffsets.mapValues { (_, value) -> getOffsetFromSpec(value) }
+        val handler = ListOffsetsHandler(offsetQueriesByPartition, options, logContext)
+        invokeDriver(handler, future, options.timeoutMs)
+        return ListOffsetsResult(future.all())
     }
 
     override fun describeClientQuotas(
@@ -4493,15 +4144,6 @@ class KafkaAdminClient internal constructor(
         }
     }
 
-    private fun getOffsetFromOffsetSpec(offsetSpec: OffsetSpec): Long {
-        return when (offsetSpec) {
-            is TimestampSpec -> offsetSpec.timestamp
-            is EarliestSpec -> ListOffsetsRequest.EARLIEST_TIMESTAMP
-            is MaxTimestampSpec -> ListOffsetsRequest.MAX_TIMESTAMP
-            else -> ListOffsetsRequest.LATEST_TIMESTAMP
-        }
-    }
-
     @Suppress("TooManyFunctions")
     companion object {
 
@@ -4634,8 +4276,6 @@ class KafkaAdminClient internal constructor(
             var networkClient: NetworkClient? = null
             val time = Time.SYSTEM
             val clientId = generateClientId(config)
-            var channelBuilder: ChannelBuilder? = null
-            var selector: Selector? = null
             val apiVersions = ApiVersions()
             val logContext = createLogContext(clientId)
             try {
@@ -4646,11 +4286,7 @@ class KafkaAdminClient internal constructor(
                     refreshBackoffMs = config.getLong(AdminClientConfig.RETRY_BACKOFF_MS_CONFIG)!!,
                     metadataExpireMs = config.getLong(AdminClientConfig.METADATA_MAX_AGE_CONFIG)!!,
                 )
-                val addresses = ClientUtils.parseAndValidateAddresses(
-                    urls = config.getList(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG)!!,
-                    clientDnsLookupConfig =
-                    config.getString(AdminClientConfig.CLIENT_DNS_LOOKUP_CONFIG)!!,
-                )
+                val addresses = ClientUtils.parseAndValidateAddresses(config)
                 metadataManager.update(Cluster.bootstrap(addresses), time.milliseconds())
                 val reporters = CommonClientConfigs.metricsReporters(clientId, config)
                 val metricTags = mapOf("client-id" to clientId)
@@ -4675,39 +4311,19 @@ class KafkaAdminClient internal constructor(
                     time = time,
                     metricsContext = metricsContext,
                 )
-                val metricGrpPrefix = "admin-client"
-                channelBuilder = ClientUtils.createChannelBuilder(config, time, logContext)
-                selector = Selector(
-                    connectionMaxIdleMs =
-                    config.getLong(AdminClientConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG)!!,
-                    metrics = metrics,
-                    time = time,
-                    metricGrpPrefix = metricGrpPrefix,
-                    channelBuilder = channelBuilder,
-                    logContext = logContext,
-                )
-                val client = NetworkClient(
-                    metadataUpdater = metadataManager.updater(),
-                    selector = selector,
+                networkClient = createNetworkClient(
+                    config = config,
                     clientId = clientId,
-                    maxInFlightRequestsPerConnection = 1,
-                    reconnectBackoffMs =
-                    config.getLong(AdminClientConfig.RECONNECT_BACKOFF_MS_CONFIG)!!,
-                    reconnectBackoffMax =
-                    config.getLong(AdminClientConfig.RECONNECT_BACKOFF_MAX_MS_CONFIG)!!,
-                    socketSendBuffer = config.getInt(AdminClientConfig.SEND_BUFFER_CONFIG)!!,
-                    socketReceiveBuffer = config.getInt(AdminClientConfig.RECEIVE_BUFFER_CONFIG)!!,
-                    defaultRequestTimeoutMs = 1.hours.inWholeMilliseconds.toInt(),
-                    connectionSetupTimeoutMs =
-                    config.getLong(AdminClientConfig.SOCKET_CONNECTION_SETUP_TIMEOUT_MS_CONFIG)!!,
-                    connectionSetupTimeoutMaxMs =
-                    config.getLong(AdminClientConfig.SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS_CONFIG)!!,
-                    time = time,
-                    discoverBrokerVersions = true,
-                    apiVersions = apiVersions,
+                    metrics = metrics,
+                    metricsGroupPrefix = "admin-client",
                     logContext = logContext,
-                    hostResolver = hostResolver ?: DefaultHostResolver()
-                ).also { networkClient = it }
+                    apiVersions = apiVersions,
+                    time = time,
+                    maxInFlightRequestsPerConnection = 1,
+                    requestTimeoutMs = TimeUnit.HOURS.toMillis(1).toInt(),
+                    metadataUpdater = metadataManager.updater(),
+                    hostResolver = hostResolver ?: DefaultHostResolver(),
+                )
 
                 return KafkaAdminClient(
                     config = config,
@@ -4715,15 +4331,13 @@ class KafkaAdminClient internal constructor(
                     time = time,
                     metadataManager = metadataManager,
                     metrics = metrics,
-                    client = client,
+                    client = networkClient,
                     timeoutProcessorFactory = timeoutProcessorFactory,
                     logContext = logContext
                 )
             } catch (exc: Throwable) {
                 Utils.closeQuietly(metrics, "Metrics")
                 Utils.closeQuietly(networkClient, "NetworkClient")
-                Utils.closeQuietly(selector, "Selector")
-                Utils.closeQuietly(channelBuilder, "ChannelBuilder")
                 throw KafkaException("Failed to create new KafkaAdminClient", exc)
             }
         }
@@ -4880,5 +4494,14 @@ class KafkaAdminClient internal constructor(
         ): Throwable? = subLevelErrors.getOrElse(subKey) {
             return IllegalArgumentException(keyNotFoundMsg)
         }.exception
+
+        private fun getOffsetFromSpec(offsetSpec: OffsetSpec): Long {
+            return when (offsetSpec) {
+                is TimestampSpec -> offsetSpec.timestamp
+                is EarliestSpec -> ListOffsetsRequest.EARLIEST_TIMESTAMP
+                is MaxTimestampSpec -> ListOffsetsRequest.MAX_TIMESTAMP
+                else -> ListOffsetsRequest.LATEST_TIMESTAMP
+            }
+        }
     }
 }

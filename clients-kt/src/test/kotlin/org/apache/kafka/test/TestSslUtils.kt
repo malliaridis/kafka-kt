@@ -17,33 +17,6 @@
 
 package org.apache.kafka.test
 
-import org.apache.kafka.common.config.SslConfigs
-import org.apache.kafka.common.config.types.Password
-import org.apache.kafka.common.network.Mode
-import org.apache.kafka.common.security.auth.SslEngineFactory
-import org.apache.kafka.common.security.ssl.DefaultSslEngineFactory
-import org.bouncycastle.asn1.DEROctetString
-import org.bouncycastle.asn1.DERSequence
-import org.bouncycastle.asn1.x500.X500Name
-import org.bouncycastle.asn1.x509.Extension
-import org.bouncycastle.asn1.x509.GeneralName
-import org.bouncycastle.asn1.x509.GeneralNames
-import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo
-import org.bouncycastle.cert.X509v3CertificateBuilder
-import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
-import org.bouncycastle.crypto.util.PrivateKeyFactory
-import org.bouncycastle.jce.provider.BouncyCastleProvider
-import org.bouncycastle.openssl.PKCS8Generator
-import org.bouncycastle.openssl.jcajce.JcaMiscPEMGenerator
-import org.bouncycastle.openssl.jcajce.JcaPKCS8Generator
-import org.bouncycastle.openssl.jcajce.JceOpenSSLPKCS8EncryptorBuilder
-import org.bouncycastle.operator.DefaultDigestAlgorithmIdentifierFinder
-import org.bouncycastle.operator.DefaultSignatureAlgorithmIdentifierFinder
-import org.bouncycastle.operator.bc.BcContentSignerBuilder
-import org.bouncycastle.operator.bc.BcDSAContentSignerBuilder
-import org.bouncycastle.operator.bc.BcECContentSignerBuilder
-import org.bouncycastle.operator.bc.BcRSAContentSignerBuilder
-import org.bouncycastle.util.io.pem.PemWriter
 import java.io.ByteArrayOutputStream
 import java.io.EOFException
 import java.io.File
@@ -68,9 +41,42 @@ import java.security.Security
 import java.security.cert.Certificate
 import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
-import java.util.*
+import java.util.Date
+import java.util.Properties
 import javax.net.ssl.SSLEngine
 import javax.net.ssl.TrustManagerFactory
+import org.apache.kafka.common.config.SslConfigs
+import org.apache.kafka.common.config.types.Password
+import org.apache.kafka.common.network.Mode
+import org.apache.kafka.common.security.auth.SslEngineFactory
+import org.apache.kafka.common.security.ssl.DefaultSslEngineFactory
+import org.bouncycastle.asn1.DEROctetString
+import org.bouncycastle.asn1.DERSequence
+import org.bouncycastle.asn1.DERT61String
+import org.bouncycastle.asn1.DERUTF8String
+import org.bouncycastle.asn1.x500.AttributeTypeAndValue
+import org.bouncycastle.asn1.x500.RDN
+import org.bouncycastle.asn1.x500.X500Name
+import org.bouncycastle.asn1.x500.style.BCStyle
+import org.bouncycastle.asn1.x509.Extension
+import org.bouncycastle.asn1.x509.GeneralName
+import org.bouncycastle.asn1.x509.GeneralNames
+import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo
+import org.bouncycastle.cert.X509v3CertificateBuilder
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
+import org.bouncycastle.crypto.util.PrivateKeyFactory
+import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.bouncycastle.openssl.PKCS8Generator
+import org.bouncycastle.openssl.jcajce.JcaMiscPEMGenerator
+import org.bouncycastle.openssl.jcajce.JcaPKCS8Generator
+import org.bouncycastle.openssl.jcajce.JceOpenSSLPKCS8EncryptorBuilder
+import org.bouncycastle.operator.DefaultDigestAlgorithmIdentifierFinder
+import org.bouncycastle.operator.DefaultSignatureAlgorithmIdentifierFinder
+import org.bouncycastle.operator.bc.BcContentSignerBuilder
+import org.bouncycastle.operator.bc.BcDSAContentSignerBuilder
+import org.bouncycastle.operator.bc.BcECContentSignerBuilder
+import org.bouncycastle.operator.bc.BcRSAContentSignerBuilder
+import org.bouncycastle.util.io.pem.PemWriter
 
 object TestSslUtils {
 
@@ -116,7 +122,7 @@ object TestSslUtils {
     @Throws(GeneralSecurityException::class, IOException::class)
     private fun saveKeyStore(
         ks: KeyStore, filename: String,
-        password: Password
+        password: Password,
     ) {
         Files.newOutputStream(Paths.get(filename)).use { out ->
             ks.store(out, password.value.toCharArray())
@@ -172,7 +178,7 @@ object TestSslUtils {
     fun createSslConfig(
         keyManagerAlgorithm: String,
         trustManagerAlgorithm: String,
-        tlsProtocol: String
+        tlsProtocol: String,
     ): Map<String, Any> {
         val sslConfigs: MutableMap<String, Any> = HashMap()
         sslConfigs[SslConfigs.SSL_PROTOCOL_CONFIG] = tlsProtocol // protocol to create SSLContext
@@ -211,7 +217,7 @@ object TestSslUtils {
         trustStoreFile: File,
         certAlias: String,
         cn: String,
-        certBuilder: CertificateBuilder
+        certBuilder: CertificateBuilder,
     ): Map<String, Any> {
         var builder = SslConfigsBuilder(mode)
             .useClientCert(useClientCert)
@@ -358,7 +364,7 @@ object TestSslUtils {
         storePassword: Password,
         keyPassword: Password,
         storeType: String?,
-        pemKeyPassword: Password?
+        pemKeyPassword: Password?,
     ): Password {
         FileInputStream(storePath).use { inputStream ->
             val ks = KeyStore.getInstance(storeType)
@@ -376,7 +382,7 @@ object TestSslUtils {
     @Throws(IOException::class)
     fun pem(cert: Certificate?): String {
         val out = ByteArrayOutputStream()
-        PemWriter(OutputStreamWriter(out, StandardCharsets.UTF_8.name())).use { pemWriter ->
+        PemWriter(OutputStreamWriter(out, StandardCharsets.UTF_8)).use { pemWriter ->
             pemWriter.writeObject(JcaMiscPEMGenerator(cert))
         }
         return String(out.toByteArray(), StandardCharsets.UTF_8)
@@ -431,7 +437,30 @@ object TestSslUtils {
         }
 
         @Throws(CertificateException::class)
-        fun generate(dn: String?, keyPair: KeyPair): X509Certificate {
+        fun generate(dn: String?, keyPair: KeyPair): X509Certificate = generate(X500Name(dn), keyPair)
+
+        @Throws(CertificateException::class)
+        fun generate(commonName: String?, org: String, utf8: Boolean, keyPair: KeyPair): X509Certificate {
+            val rdns = arrayOfNulls<RDN>(2)
+            rdns[0] = RDN(
+                AttributeTypeAndValue(
+                    BCStyle.CN,
+                    if (utf8) DERUTF8String(commonName)
+                    else DERT61String(commonName)
+                )
+            )
+            rdns[1] = RDN(
+                AttributeTypeAndValue(
+                    BCStyle.O,
+                    if (utf8) DERUTF8String(org)
+                    else DERT61String(org)
+                )
+            )
+            return generate(X500Name(rdns), keyPair)
+        }
+
+        @Throws(CertificateException::class)
+        fun generate(dn: X500Name, keyPair: KeyPair): X509Certificate {
             return try {
                 Security.addProvider(BouncyCastleProvider())
                 val sigAlgId = DefaultSignatureAlgorithmIdentifierFinder().find(algorithm)
@@ -449,11 +478,10 @@ object TestSslUtils {
                 }
 
                 val sigGen = signerBuilder.build(privateKeyAsymKeyParam)
-                val name = X500Name(dn)
                 val from = Date()
                 val to = Date(from.time + days * 86400000L)
                 val sn = BigInteger(64, SecureRandom())
-                val v3CertGen = X509v3CertificateBuilder(name, sn, from, to, name, subPubKeyInfo)
+                val v3CertGen = X509v3CertificateBuilder(dn, sn, from, to, dn, subPubKeyInfo)
 
                 if (::subjectAltName.isInitialized) v3CertGen.addExtension(
                     Extension.subjectAlternativeName,
@@ -646,7 +674,7 @@ object TestSslUtils {
         override fun createClientSslEngine(
             peerHost: String,
             peerPort: Int,
-            endpointIdentification: String?
+            endpointIdentification: String?,
         ): SSLEngine {
             return defaultSslEngineFactory.createClientSslEngine(
                 peerHost,

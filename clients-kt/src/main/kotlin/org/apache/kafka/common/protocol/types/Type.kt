@@ -52,6 +52,7 @@ abstract class Type {
 
     /**
      * Read the typed object from the buffer
+     * Please remember to do size validation before creating the container (ex: array) for the following data
      *
      * @throws SchemaException If the object is not valid for its type
      */
@@ -1098,9 +1099,13 @@ abstract class Type {
                 if (size > buffer.remaining()) throw SchemaException(
                     "Error reading bytes of size $size, only ${buffer.remaining()} bytes available"
                 )
+
+                val limit = buffer.limit()
+                val newPosition = buffer.position() + size
+                buffer.limit(newPosition)
                 val value = buffer.slice()
-                value.limit(size)
-                buffer.position(buffer.position() + size)
+                buffer.limit(limit)
+                buffer.position(newPosition)
                 return value
             }
 
@@ -1138,10 +1143,13 @@ abstract class Type {
                 if (size > buffer.remaining()) throw SchemaException(
                     "Error reading bytes of size $size, only ${buffer.remaining()} bytes available"
                 )
-                
+
+                val limit = buffer.limit()
+                val newPosition = buffer.position() + size
+                buffer.limit(newPosition)
                 val value = buffer.slice()
-                value.limit(size)
-                buffer.position(buffer.position() + size)
+                buffer.limit(limit)
+                buffer.position(newPosition)
                 return value
             }
 
@@ -1187,10 +1195,13 @@ abstract class Type {
                 if (size > buffer.remaining()) throw SchemaException(
                     "Error reading bytes of size $size, only ${buffer.remaining()} bytes available"
                 )
-                
+
+                val limit = buffer.limit()
+                val newPosition = buffer.position() + size
+                buffer.limit(newPosition)
                 val value = buffer.slice()
-                value.limit(size)
-                buffer.position(buffer.position() + size)
+                buffer.limit(limit)
+                buffer.position(newPosition)
                 return value
             }
 
@@ -1237,10 +1248,13 @@ abstract class Type {
                 if (size > buffer.remaining()) throw SchemaException(
                     "Error reading bytes of size $size, only ${buffer.remaining()} bytes available"
                 )
-                
+
+                val limit = buffer.limit()
+                val newPosition = buffer.position() + size
+                buffer.limit(newPosition)
                 val value = buffer.slice()
-                value.limit(size)
-                buffer.position(buffer.position() + size)
+                buffer.limit(limit)
+                buffer.position(newPosition)
                 return value
             }
 

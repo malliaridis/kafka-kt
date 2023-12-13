@@ -18,6 +18,7 @@
 package org.apache.kafka.clients.consumer.internals
 
 import org.apache.kafka.clients.Metadata
+import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.internals.ClusterResourceListeners
 import org.apache.kafka.common.requests.MetadataRequest
 import org.apache.kafka.common.utils.LogContext
@@ -26,21 +27,39 @@ class ConsumerMetadata(
     refreshBackoffMs: Long,
     metadataExpireMs: Long,
     private val includeInternalTopics: Boolean,
-    private val allowAutoTopicCreation: Boolean,
+    val allowAutoTopicCreation: Boolean,
     private val subscription: SubscriptionState,
     logContext: LogContext,
     clusterResourceListeners: ClusterResourceListeners,
 ) : Metadata(
-    refreshBackoffMs = refreshBackoffMs, metadataExpireMs = metadataExpireMs,
+    refreshBackoffMs = refreshBackoffMs,
+    metadataExpireMs = metadataExpireMs,
     logContext = logContext,
     clusterResourceListeners = clusterResourceListeners,
 ) {
 
     private val transientTopics = mutableSetOf<String>()
 
-    fun allowAutoTopicCreation(): Boolean {
-        return allowAutoTopicCreation
-    }
+    constructor(
+        config: ConsumerConfig,
+        subscriptions: SubscriptionState,
+        logContext: LogContext,
+        clusterResourceListeners: ClusterResourceListeners,
+    ) : this(
+        refreshBackoffMs = config.getLong(ConsumerConfig.RETRY_BACKOFF_MS_CONFIG)!!,
+        metadataExpireMs = config.getLong(ConsumerConfig.METADATA_MAX_AGE_CONFIG)!!,
+        includeInternalTopics = !config.getBoolean(ConsumerConfig.EXCLUDE_INTERNAL_TOPICS_CONFIG)!!,
+        allowAutoTopicCreation = config.getBoolean(ConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG)!!,
+        subscription = subscriptions,
+        logContext = logContext,
+        clusterResourceListeners = clusterResourceListeners,
+    )
+
+    @Deprecated(
+        message = "Use property instead",
+        replaceWith = ReplaceWith("allowAutoTopicCreation"),
+    )
+    fun allowAutoTopicCreation(): Boolean = allowAutoTopicCreation
 
     @Synchronized
     override fun newMetadataRequestBuilder(): MetadataRequest.Builder {
@@ -62,10 +81,11 @@ class ConsumerMetadata(
     override fun retainTopic(
         topic: String,
         isInternal: Boolean,
-        nowMs: Long
+        nowMs: Long,
     ): Boolean = if (
         transientTopics.contains(topic)
-        || subscription.needsMetadata(topic)) true
+        || subscription.needsMetadata(topic)
+    ) true
     else if (isInternal && !includeInternalTopics) false
     else subscription.matchesSubscribedPattern(topic)
 }

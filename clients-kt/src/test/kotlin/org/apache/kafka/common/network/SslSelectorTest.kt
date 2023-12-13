@@ -396,7 +396,6 @@ abstract class SslSelectorTest : SelectorTest() {
         logContext = LogContext(),
     ) {
 
-        @Throws(IOException::class)
         override fun buildTransportLayer(
             sslFactory: SslFactory,
             id: String,
@@ -437,7 +436,6 @@ abstract class SslSelectorTest : SelectorTest() {
 
             // Leave one byte in network read buffer so that some buffered bytes are present,
             // but not enough to make progress on a read.
-            @Throws(Exception::class)
             fun truncateReadBuffer() {
                 netReadBuffer()!!.position(1)
                 appReadBuffer()!!.position(0)

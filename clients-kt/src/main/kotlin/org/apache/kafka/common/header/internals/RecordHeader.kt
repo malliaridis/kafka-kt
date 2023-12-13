@@ -18,7 +18,6 @@
 package org.apache.kafka.common.header.internals
 
 import java.nio.ByteBuffer
-import java.util.*
 import org.apache.kafka.common.header.Header
 import org.apache.kafka.common.utils.Utils
 import org.apache.kafka.common.utils.Utils.utf8

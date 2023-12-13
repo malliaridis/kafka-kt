@@ -17,19 +17,43 @@
 
 package org.apache.kafka.common.record
 
+import java.io.IOException
+import java.io.InputStream
 import java.nio.ByteBuffer
+import java.security.NoSuchAlgorithmException
+import java.security.SecureRandom
+import java.util.Random
+import java.util.stream.Stream
 import org.apache.kafka.common.InvalidRecordException
+import org.apache.kafka.common.compress.ZstdFactory.wrapForInput
 import org.apache.kafka.common.errors.CorruptRecordException
 import org.apache.kafka.common.header.Header
 import org.apache.kafka.common.header.internals.RecordHeader
+import org.apache.kafka.common.record.DefaultRecordBatch.StreamRecordIterator
 import org.apache.kafka.common.utils.BufferSupplier
-import org.apache.kafka.common.utils.Utils.toList
-import org.apache.kafka.test.TestUtils
+import org.apache.kafka.common.utils.ChunkedBytesStream
 import org.apache.kafka.test.TestUtils.checkEquals
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.EnumSource
+import org.junit.jupiter.params.provider.MethodSource
+import org.mockito.ArgumentMatchers
+import org.mockito.Mockito
+import org.mockito.kotlin.any
+import org.mockito.kotlin.doReturn
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
+import org.mockito.kotlin.spy
+import org.mockito.kotlin.times
+import org.mockito.kotlin.verify
+import org.mockito.kotlin.whenever
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class DefaultRecordBatchTest {
@@ -366,7 +390,7 @@ class DefaultRecordBatchTest {
         batch.setPartitionLeaderEpoch(leaderEpoch)
         assertEquals(leaderEpoch, batch.partitionLeaderEpoch())
         assertTrue(batch.isValid)
-        val recordBatches = toList(records.batches().iterator())
+        val recordBatches = records.batches().iterator().asSequence().toList()
         assertEquals(1, recordBatches.size)
         assertEquals(leaderEpoch, recordBatches[0].partitionLeaderEpoch())
     }
@@ -453,12 +477,13 @@ class DefaultRecordBatchTest {
         assertEquals(marker, EndTransactionMarker.deserialize(commitRecord))
     }
 
-    @Test
-    fun testStreamingIteratorConsistency() {
+    @ParameterizedTest
+    @EnumSource(value = CompressionType::class)
+    fun testStreamingIteratorConsistency(compressionType: CompressionType) {
         val records = MemoryRecords.withRecords(
             magic = RecordBatch.MAGIC_VALUE_V2,
             initialOffset = 0L,
-            compressionType = CompressionType.GZIP,
+            compressionType = compressionType,
             timestampType = TimestampType.CREATE_TIME,
             records = arrayOf(
                 SimpleRecord(timestamp = 1L, key = "a".toByteArray(), value = "1".toByteArray()),
@@ -475,82 +500,206 @@ class DefaultRecordBatchTest {
         }
     }
 
-    @Test
-    fun testSkipKeyValueIteratorCorrectness() {
+    @ParameterizedTest
+    @EnumSource(value = CompressionType::class)
+    fun testSkipKeyValueIteratorCorrectness(compressionType: CompressionType) {
         val headers = arrayOf<Header>(
             RecordHeader(key = "k1", value = "v1".toByteArray()),
-            RecordHeader(key = "k2", value = "v2".toByteArray()),
+            RecordHeader(key = "k2", value = null),
         )
+        val largeRecordValue = ByteArray(200 * 1024) // 200KB
+        RANDOM.nextBytes(largeRecordValue)
+        
         val records = MemoryRecords.withRecords(
             magic = RecordBatch.MAGIC_VALUE_V2,
             initialOffset = 0L,
-            compressionType = CompressionType.LZ4,
+            compressionType = compressionType,
             timestampType = TimestampType.CREATE_TIME,
             records = arrayOf(
+                // one sample with small value size
                 SimpleRecord(timestamp = 1L, key = "a".toByteArray(), value = "1".toByteArray()),
-                SimpleRecord(timestamp = 2L, key = "b".toByteArray(), value = "2".toByteArray()),
-                SimpleRecord(timestamp = 3L, key = "c".toByteArray(), value = "3".toByteArray()),
-                SimpleRecord(timestamp = 1000L, key = "abc".toByteArray(), value = "0".toByteArray()),
-                SimpleRecord(
-                    timestamp = 9999L,
-                    key = "abc".toByteArray(),
-                    value = "0".toByteArray(),
-                    headers = headers,
-                ),
+                // one sample with null value
+                SimpleRecord(timestamp = 2L, key = "b".toByteArray(), value = null),
+                // one sample with null key
+                SimpleRecord(timestamp = 3L, key = null, value = "3".toByteArray()),
+                // one sample with null key and null value
+                SimpleRecord(timestamp = 4L, key = null, value = null as ByteArray?),
+                // one sample with large value size
+                SimpleRecord(timestamp = 1000L, key = "abc".toByteArray(), value = largeRecordValue),
+                // one sample with headers, one of the header has null value
+                SimpleRecord(timestamp = 9999L, key = "abc".toByteArray(), value = "0".toByteArray(), headers = headers)
+            )
+        )
+        
+        val batch = DefaultRecordBatch(records.buffer())
+        
+        BufferSupplier.create().use { bufferSupplier ->
+            batch.skipKeyValueIterator(bufferSupplier).use { skipKeyValueIterator ->
+                if (CompressionType.NONE === compressionType) {
+                    // assert that for uncompressed data stream record iterator is not used
+                    assertIs<DefaultRecordBatch.RecordIterator>(skipKeyValueIterator)
+                    // superficial validation for correctness. Deep validation is already performed in other tests
+                    assertEquals(
+                        records.records().toList().size,
+                        skipKeyValueIterator.asSequence().toList().size,
+                    )
+                } else {
+                    // assert that a streaming iterator is used for compressed records
+                    assertIs<StreamRecordIterator>(skipKeyValueIterator)
+                    // assert correctness for compressed records
+                    assertContentEquals(
+                        listOf(
+                            PartialDefaultRecord(
+                                sizeInBytes = 9,
+                                attributes = 0,
+                                offset = 0L,
+                                timestamp = 1L,
+                                sequence = -1,
+                                keySize = 1,
+                                valueSize = 1,
+                            ),
+                            PartialDefaultRecord(
+                                sizeInBytes = 8,
+                                attributes = 0,
+                                offset = 1L,
+                                timestamp = 2L,
+                                sequence = -1,
+                                keySize = 1,
+                                valueSize = -1,
+                            ),
+                            PartialDefaultRecord(
+                                sizeInBytes = 8,
+                                attributes = 0,
+                                offset = 2L,
+                                timestamp = 3L,
+                                sequence = -1,
+                                keySize = -1,
+                                valueSize = 1,
+                            ),
+                            PartialDefaultRecord(
+                                sizeInBytes = 7,
+                                attributes = 0,
+                                offset = 3L,
+                                timestamp = 4L,
+                                sequence = -1,
+                                keySize = -1,
+                                valueSize = -1,
+                            ),
+                            PartialDefaultRecord(
+                                sizeInBytes = 15 + largeRecordValue.size,
+                                attributes = 0,
+                                offset = 4L,
+                                timestamp = 1000L,
+                                sequence = -1,
+                                keySize = 3,
+                                valueSize = largeRecordValue.size,
+                            ),
+                            PartialDefaultRecord(
+                                sizeInBytes = 23,
+                                attributes = 0,
+                                offset = 5L,
+                                timestamp = 9999L,
+                                sequence = -1,
+                                keySize = 3,
+                                valueSize = 1,
+                            )
+                        ),
+                        skipKeyValueIterator.asSequence().toList(),
+                    )
+                }
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource
+    fun testBufferReuseInSkipKeyValueIterator(
+        compressionType: CompressionType?,
+        expectedNumBufferAllocations: Int,
+        recordValue: ByteArray?,
+    ) {
+        val records = MemoryRecords.withRecords(
+            magic = RecordBatch.MAGIC_VALUE_V2,
+            initialOffset = 0L,
+            compressionType = compressionType,
+            timestampType = TimestampType.CREATE_TIME,
+            records = arrayOf(
+                SimpleRecord(timestamp = 1000L, key = "a".toByteArray(), value = "0".toByteArray()),
+                SimpleRecord(timestamp = 9999L, key = "b".toByteArray(), value = recordValue),
             )
         )
         val batch = DefaultRecordBatch(records.buffer())
-        batch.skipKeyValueIterator(BufferSupplier.NO_CACHING).use { streamingIterator ->
-            assertEquals(
-                listOf(
-                    PartialDefaultRecord(
-                        sizeInBytes = 9,
-                        attributes = 0.toByte(),
-                        offset = 0L,
-                        timestamp = 1L,
-                        sequence = -1,
-                        keySize = 1,
-                        valueSize = 1,
-                    ),
-                    PartialDefaultRecord(
-                        sizeInBytes = 9,
-                        attributes = 0.toByte(),
-                        offset = 1L,
-                        timestamp = 2L,
-                        sequence = -1,
-                        keySize = 1,
-                        valueSize = 1,
-                    ),
-                    PartialDefaultRecord(
-                        sizeInBytes = 9,
-                        attributes = 0.toByte(),
-                        offset = 2L,
-                        timestamp = 3L,
-                        sequence = -1,
-                        keySize = 1,
-                        valueSize = 1,
-                    ),
-                    PartialDefaultRecord(
-                        sizeInBytes = 12,
-                        attributes = 0.toByte(),
-                        offset = 3L,
-                        timestamp = 1000L,
-                        sequence = -1,
-                        keySize = 3,
-                        valueSize = 1,
-                    ),
-                    PartialDefaultRecord(
-                        sizeInBytes = 25,
-                        attributes = 0.toByte(),
-                        offset = 4L,
-                        timestamp = 9999L,
-                        sequence = -1,
-                        keySize = 3,
-                        valueSize = 1,
-                    )
-                ),
-                streamingIterator.asSequence().toList(),
-            )
+        spy(BufferSupplier.create()).use { bufferSupplier ->
+            batch.skipKeyValueIterator(bufferSupplier).use { streamingIterator ->
+                
+                // Consume through the iterator
+                streamingIterator.asSequence().toList()
+
+                // Close the iterator to release any buffers
+                streamingIterator.close()
+
+                // assert number of buffer allocations
+                verify(bufferSupplier, times(expectedNumBufferAllocations))[ArgumentMatchers.anyInt()]
+                verify(bufferSupplier, times(expectedNumBufferAllocations)).release(any<ByteBuffer>())
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource
+    @Throws(IOException::class)
+    fun testZstdJniForSkipKeyValueIterator(expectedJniCalls: Int, recordValue: ByteArray?) {
+        val records = MemoryRecords.withRecords(
+            magic = RecordBatch.MAGIC_VALUE_V2,
+            initialOffset = 0L,
+            compressionType = CompressionType.ZSTD,
+            timestampType = TimestampType.CREATE_TIME,
+            records = arrayOf(
+                SimpleRecord(timestamp = 9L, key = "hakuna-matata".toByteArray(), value = recordValue),
+            ),
+        )
+
+        // Buffer containing compressed data
+        val compressedBuf = records.buffer()
+        // Create a RecordBatch object
+        val batch = spy(DefaultRecordBatch(compressedBuf.duplicate()))
+        val mockCompression = mock<CompressionType>()
+        doReturn(mockCompression).whenever(batch).compressionType()
+
+        // Buffer containing compressed records to be used for creating zstd-jni stream
+        val recordsBuffer = compressedBuf.duplicate()
+        recordsBuffer.position(DefaultRecordBatch.RECORDS_OFFSET)
+        
+        BufferSupplier.create().use { bufferSupplier ->
+            spy(
+                wrapForInput(
+                    buffer = recordsBuffer,
+                    messageVersion = batch.magic(),
+                    decompressionBufferSupplier = bufferSupplier
+                )
+            ).use { zstdStream ->
+                ChunkedBytesStream(
+                    inputStream = zstdStream,
+                    bufferSupplier = bufferSupplier,
+                    intermediateBufSize = 16 * 1024,
+                    delegateSkipToSourceStream = false,
+                ).use { chunkedStream ->
+
+                    whenever(mockCompression.wrapForInput(any<ByteBuffer>(), any(), any<BufferSupplier>()))
+                        .thenReturn(chunkedStream)
+
+                    batch.skipKeyValueIterator(bufferSupplier).use { streamingIterator ->
+                        assertNotNull(streamingIterator)
+                        streamingIterator.asSequence().toList()
+                        // verify the number of read() calls to zstd JNI stream. Each read() call is a JNI call.
+                        verify(zstdStream, Mockito.times(expectedJniCalls)).read(any<ByteArray>(), any(), any())
+                        // verify that we don't use the underlying skip() functionality. The underlying skip()
+                        // allocates 1 buffer per skip call from he buffer pool whereas our implementation does not
+                        // perform any allocation during skip.
+                        verify<InputStream>(zstdStream, never()).skip(any())
+                    }
+                }
+            }
         }
     }
 
@@ -568,6 +717,61 @@ class DefaultRecordBatchTest {
     }
 
     companion object {
+        
+        private val RANDOM: Random = try {
+            SecureRandom.getInstanceStrong()
+        } catch (exception: NoSuchAlgorithmException) {
+            throw RuntimeException(exception)
+        }
+
+        @Throws(NoSuchAlgorithmException::class)
+        @JvmStatic
+        private fun testBufferReuseInSkipKeyValueIterator(): Stream<Arguments> {
+            val smallRecordValue = "1".toByteArray()
+            val largeRecordValue = ByteArray(512 * 1024) // 512KB
+            RANDOM.nextBytes(largeRecordValue)
+            return Stream.of(
+                /*
+                 * 1 allocation per batch (i.e. per iterator instance) for buffer holding uncompressed data
+                 * = 1 buffer allocations
+                 */
+                Arguments.of(CompressionType.GZIP, 1, smallRecordValue),
+                Arguments.of(CompressionType.GZIP, 1, largeRecordValue),
+                Arguments.of(CompressionType.SNAPPY, 1, smallRecordValue),
+                Arguments.of(CompressionType.SNAPPY, 1, largeRecordValue), 
+                /*
+                 * 1 allocation per batch (i.e. per iterator instance) for buffer holding compressed data
+                 * 1 allocation per batch (i.e. per iterator instance) for buffer holding uncompressed data
+                 * = 2 buffer allocations
+                 */
+                Arguments.of(CompressionType.LZ4, 2, smallRecordValue),
+                Arguments.of(CompressionType.LZ4, 2, largeRecordValue),
+                Arguments.of(CompressionType.ZSTD, 2, smallRecordValue),
+                Arguments.of(CompressionType.ZSTD, 2, largeRecordValue),
+            )
+        }
+
+        @Throws(NoSuchAlgorithmException::class)
+        @JvmStatic
+        private fun testZstdJniForSkipKeyValueIterator(): Stream<Arguments> {
+            val smallRecordValue = "1".toByteArray()
+            val largeRecordValue = ByteArray(40 * 1024) // 40KB
+            RANDOM.nextBytes(largeRecordValue)
+            return Stream.of(
+                /*
+                 * We expect exactly 2 read call to the JNI:
+                 * 1 for fetching the full data (size < 16KB)
+                 * 1 for detecting end of stream by trying to read more data
+                 */
+                Arguments.of(2, smallRecordValue),
+                /*
+                 * We expect exactly 4 read call to the JNI:
+                 * 3 for fetching the full data (Math.ceil(40/16))
+                 * 1 for detecting end of stream by trying to read more data
+                 */
+                Arguments.of(4, largeRecordValue),
+            )
+        }
 
         private fun recordsWithInvalidRecordCount(
             magicValue: Byte,

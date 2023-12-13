@@ -17,6 +17,7 @@
 
 package org.apache.kafka.common.requests
 
+import java.nio.ByteBuffer
 import org.apache.kafka.common.IsolationLevel
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.message.ListOffsetsRequestData
@@ -28,7 +29,6 @@ import org.apache.kafka.common.message.ListOffsetsResponseData.ListOffsetsTopicR
 import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.protocol.ByteBufferAccessor
 import org.apache.kafka.common.protocol.Errors
-import java.nio.ByteBuffer
 
 class ListOffsetsRequest private constructor(
     private val data: ListOffsetsRequestData,
@@ -154,7 +154,7 @@ class ListOffsetsRequest private constructor(
             fun forConsumer(
                 requireTimestamp: Boolean,
                 isolationLevel: IsolationLevel,
-                requireMaxTimestamp: Boolean
+                requireMaxTimestamp: Boolean,
             ): Builder {
                 val minVersion: Short =
                     if (requireMaxTimestamp) 7
@@ -184,6 +184,12 @@ class ListOffsetsRequest private constructor(
 
         const val DEBUGGING_REPLICA_ID = -2
 
+        /**
+         * It is used to represent the earliest message stored in the local log which is also called
+         * the local-log-start-offset
+         */
+        const val EARLIEST_LOCAL_TIMESTAMP = -4L
+
         fun parse(buffer: ByteBuffer, version: Short): ListOffsetsRequest =
             ListOffsetsRequest(
                 ListOffsetsRequestData(ByteBufferAccessor(buffer), version),
@@ -193,14 +199,14 @@ class ListOffsetsRequest private constructor(
         fun toListOffsetsTopics(
             timestampsToSearch: Map<TopicPartition, ListOffsetsPartition>,
         ): List<ListOffsetsTopic> {
-            val topics: MutableMap<String, ListOffsetsTopic> = HashMap()
+            val topics = hashMapOf<String, ListOffsetsTopic>()
 
             for ((tp, value) in timestampsToSearch) {
                 val topic =
                     topics.computeIfAbsent(tp.topic) { ListOffsetsTopic().setName(tp.topic) }
                 topic.partitions += value
             }
-            return ArrayList(topics.values)
+            return topics.values.toList()
         }
 
         fun singletonRequestData(

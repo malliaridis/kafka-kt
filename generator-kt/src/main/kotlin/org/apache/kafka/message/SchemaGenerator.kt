@@ -17,6 +17,7 @@
 
 package org.apache.kafka.message
 
+import java.util.TreeMap
 import org.apache.kafka.message.FieldType.BoolFieldType
 import org.apache.kafka.message.FieldType.BytesFieldType
 import org.apache.kafka.message.FieldType.Float32FieldType
@@ -31,7 +32,6 @@ import org.apache.kafka.message.FieldType.Uint16FieldType
 import org.apache.kafka.message.FieldType.Uint32FieldType
 import org.apache.kafka.message.FieldType.Uint64FieldType
 import org.apache.kafka.message.FieldType.Uint8FieldType
-import java.util.*
 
 /**
  * Generates Schemas for Kafka MessageData classes.
@@ -42,7 +42,7 @@ import java.util.*
  */
 internal class SchemaGenerator(
     private val headerGenerator: HeaderGenerator,
-    private val structRegistry: StructRegistry
+    private val structRegistry: StructRegistry,
 ) {
 
     /**
@@ -138,7 +138,7 @@ internal class SchemaGenerator(
     private fun generateSchemaForVersion(
         struct: StructSpec,
         version: Short,
-        buffer: CodeBuffer
+        buffer: CodeBuffer,
     ) {
         // Find the last valid field index.
         var lastValidIndex = struct.fields.size - 1
@@ -330,10 +330,8 @@ internal class SchemaGenerator(
                     )
                 )
             }
-        } else if (type.isStruct) {
-            if (nullable) throw RuntimeException("Type $type cannot be nullable.")
-            String.format("%s.SCHEMA_%d", type.toString(), floorVersion(type.toString(), version))
-        } else throw RuntimeException("Unsupported type $type")
+        } else if (type.isStruct) String.format("%s.SCHEMA_%d", type, floorVersion(type.toString(), version))
+        else throw RuntimeException("Unsupported type $type")
     }
 
     /**

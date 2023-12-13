@@ -18,28 +18,30 @@
 package org.apache.kafka.server.policy
 
 import org.apache.kafka.common.config.ConfigResource
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
-import java.util.*
+import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
 
 class AlterConfigPolicyTest {
 
     @Test
     fun testRequestMetadataEquals() {
         val requestMetadata = AlterConfigPolicy.RequestMetadata(
-            ConfigResource(ConfigResource.Type.BROKER, "0"),
-            Collections.singletonMap("foo", "bar")
+            resource = ConfigResource(ConfigResource.Type.BROKER, "0"),
+            configs = mapOf("foo" to "bar"),
         )
-        Assertions.assertEquals(requestMetadata, requestMetadata)
-        Assertions.assertNotEquals(requestMetadata, null)
-        Assertions.assertNotEquals(requestMetadata, Any())
-        Assertions.assertNotEquals(
-            requestMetadata, AlterConfigPolicy.RequestMetadata(
-                ConfigResource(ConfigResource.Type.BROKER, "1"),
-                Collections.singletonMap("foo", "bar")
+        assertEquals(requestMetadata, requestMetadata)
+        assertNotNull(requestMetadata)
+        assertNotEquals(requestMetadata, Any())
+        assertNotEquals(
+            illegal = requestMetadata,
+            actual = AlterConfigPolicy.RequestMetadata(
+                resource = ConfigResource(ConfigResource.Type.BROKER, "1"),
+                configs = mapOf("foo" to "bar"),
             )
         )
-        Assertions.assertNotEquals(
+        assertNotEquals(
             requestMetadata,
             AlterConfigPolicy.RequestMetadata(
                 ConfigResource(ConfigResource.Type.BROKER, "0"), emptyMap()

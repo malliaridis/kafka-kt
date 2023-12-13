@@ -18,7 +18,6 @@
 package org.apache.kafka.common.metrics
 
 import java.lang.management.ManagementFactory
-import java.util.*
 import java.util.concurrent.locks.ReentrantLock
 import java.util.function.Predicate
 import java.util.regex.Pattern

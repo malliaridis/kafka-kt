@@ -17,10 +17,8 @@
 
 package org.apache.kafka.clients.admin
 
-import java.util.*
 import java.util.concurrent.ExecutionException
 import org.apache.kafka.common.KafkaFuture
-import org.apache.kafka.common.KafkaFuture.BaseFunction
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.annotation.InterfaceStability.Evolving
 

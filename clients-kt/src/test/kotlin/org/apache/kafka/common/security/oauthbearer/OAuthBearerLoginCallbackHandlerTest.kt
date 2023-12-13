@@ -19,6 +19,8 @@ package org.apache.kafka.common.security.oauthbearer
 
 import java.io.IOException
 import java.util.Base64
+import java.util.Calendar
+import java.util.TimeZone
 import javax.security.auth.callback.Callback
 import javax.security.auth.callback.UnsupportedCallbackException
 import org.apache.kafka.common.config.ConfigException
@@ -32,6 +34,7 @@ import org.apache.kafka.common.security.oauthbearer.internals.secured.FileTokenR
 import org.apache.kafka.common.security.oauthbearer.internals.secured.HttpAccessTokenRetriever
 import org.apache.kafka.common.security.oauthbearer.internals.secured.OAuthBearerTest
 import org.jose4j.jws.AlgorithmIdentifiers
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -39,6 +42,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.fail
 
 class OAuthBearerLoginCallbackHandlerTest : OAuthBearerTest() {
     
@@ -173,6 +177,42 @@ class OAuthBearerLoginCallbackHandlerTest : OAuthBearerTest() {
                 executable = { handler.handle(arrayOf(callback)) },
                 substring = "token endpoint response access_token value must be non-null",
             )
+        } finally {
+            handler.close()
+        }
+    }
+
+    @Test
+    @Throws(IOException::class)
+    fun testFileTokenRetrieverHandlesNewline() {
+        val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+        val cur = cal.getTimeInMillis() / 1000
+        val exp = "" + (cur + 60 * 60) // 1 hour in future
+        val iat = "" + cur
+        val expected = createAccessKey(
+            header = "{}",
+            payload = "{\"exp\":$exp, \"iat\":$iat, \"sub\":\"subj\"}",
+            signature = "sign"
+        )
+        val withNewline = expected + "\n"
+        val tmpDir = createTempDir("access-token")
+        val accessTokenFile = createTempFile(
+            tmpDir = tmpDir,
+            prefix = "access-token-",
+            suffix = ".json",
+            contents = withNewline,
+        )
+        val configs = saslConfigs
+        val handler = createHandler(
+            accessTokenRetriever = FileTokenRetriever(accessTokenFile.toPath()),
+            configs = configs,
+        )
+        val callback = OAuthBearerTokenCallback()
+        try {
+            handler.handle(arrayOf(callback))
+            assertEquals(callback.token!!.value(), expected)
+        } catch (e: Exception) {
+            fail(cause = e)
         } finally {
             handler.close()
         }

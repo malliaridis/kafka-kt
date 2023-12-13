@@ -27,7 +27,7 @@ import org.apache.kafka.common.config.ConfigException
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 
-class MockProducerInterceptor : ClusterResourceListener, ProducerInterceptor<String, String> {
+class MockProducerInterceptor : ClusterResourceListener, ProducerInterceptor<String?, String?> {
 
     private var appendStr: String? = null
 
@@ -53,7 +53,7 @@ class MockProducerInterceptor : ClusterResourceListener, ProducerInterceptor<Str
         )
     }
 
-    override fun onSend(record: ProducerRecord<String, String>): ProducerRecord<String, String> {
+    override fun onSend(record: ProducerRecord<String?, String?>): ProducerRecord<String?, String?> {
         ONSEND_COUNT.incrementAndGet()
         return ProducerRecord(
             topic = record.topic,

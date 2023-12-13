@@ -25,7 +25,7 @@ package org.apache.kafka.clients.consumer.internals
  */
 abstract class RequestFutureAdapter<F, T> {
 
-    abstract fun onSuccess(value: F, future: RequestFuture<T>)
+    abstract fun onSuccess(response: F, future: RequestFuture<T>)
 
     open fun onFailure(
         exception: RuntimeException,

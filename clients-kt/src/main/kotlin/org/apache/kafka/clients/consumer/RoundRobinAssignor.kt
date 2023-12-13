@@ -17,10 +17,11 @@
 
 package org.apache.kafka.clients.consumer
 
+import java.util.SortedSet
+import java.util.TreeSet
 import org.apache.kafka.clients.consumer.internals.AbstractPartitionAssignor
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.utils.CircularIterator
-import java.util.*
 import kotlin.collections.ArrayList
 
 /**

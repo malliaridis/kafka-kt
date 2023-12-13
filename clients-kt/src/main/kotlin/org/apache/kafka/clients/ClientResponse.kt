@@ -28,12 +28,13 @@ import org.apache.kafka.common.requests.RequestHeader
  *
  * @property requestHeader The header of the corresponding request
  * @property callback The callback to be invoked
- * @property createdTimeMs The unix timestamp when the corresponding request was created
+ * @param createdTimeMs The unix timestamp when the corresponding request was created
  * @property destination The node the corresponding request was sent to
  * @property receivedTimeMs The unix timestamp when this response was received
  * @property disconnected Whether the client disconnected before fully reading a response
- * @property versionMismatch Whether there was a version mismatch that prevented sending the
- * request.
+ * @property timedOut Whether the client was disconnected because of a timeout; when setting this
+ * to `true`, `disconnected` must be `true` or an [IllegalStateException] will be thrown
+ * @property versionMismatch Whether there was a version mismatch that prevented sending the request.
  * @property responseBody The response contents (or null) if we disconnected, no response was
  * expected, or if there was a version mismatch.
  */
@@ -44,11 +45,18 @@ class ClientResponse(
     createdTimeMs: Long,
     val receivedTimeMs: Long,
     val disconnected: Boolean,
+    val timedOut: Boolean = false,
     val versionMismatch: UnsupportedVersionException? = null,
     val authenticationException: AuthenticationException? = null,
     val responseBody: AbstractResponse? = null,
 ) {
     val requestLatencyMs: Long = receivedTimeMs - createdTimeMs
+
+    init {
+        check(disconnected || !timedOut) {
+            "The client response can't be in the state of connected, yet timed out"
+        }
+    }
 
     @Deprecated(
         message = "User property instead",
@@ -61,6 +69,13 @@ class ClientResponse(
         replaceWith = ReplaceWith("disconnected"),
     )
     fun wasDisconnected(): Boolean = disconnected
+
+
+    @Deprecated(
+        message = "User property instead",
+        replaceWith = ReplaceWith("timedOut"),
+    )
+    fun wasTimedOut(): Boolean = timedOut
 
     @Deprecated(
         message = "User property instead",
@@ -112,6 +127,7 @@ class ClientResponse(
         return "ClientResponse(receivedTimeMs=$receivedTimeMs" +
                 ", latencyMs=$requestLatencyMs" +
                 ", disconnected=$disconnected" +
+                ", timedOut=$timedOut" +
                 ", requestHeader=$requestHeader" +
                 ", responseBody=$responseBody" +
                 ")"

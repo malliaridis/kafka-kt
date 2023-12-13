@@ -17,14 +17,16 @@
 
 package org.apache.kafka.clients.consumer
 
+import java.util.Properties
 import org.apache.kafka.clients.consumer.ConsumerPartitionAssignor.Companion.getAssignorInstances
 import org.apache.kafka.clients.consumer.ConsumerPartitionAssignor.GroupAssignment
 import org.apache.kafka.clients.consumer.ConsumerPartitionAssignor.GroupSubscription
 import org.apache.kafka.common.Cluster
+import org.apache.kafka.common.Configurable
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.junit.jupiter.api.Test
-import java.util.Properties
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 
@@ -123,16 +125,34 @@ class ConsumerPartitionAssignorTest {
         }
     }
 
-    class TestConsumerPartitionAssignor : ConsumerPartitionAssignor {
+    @Test
+    fun shouldBeConfigurable() {
+        val configs = mapOf("key" to "value")
+        val assignors = getAssignorInstances(
+            assignorClasses = listOf(TestConsumerPartitionAssignor::class.java.name),
+            configs = configs,
+        )
+        assertEquals(1, assignors.size)
+        val assignor = assertIs<TestConsumerPartitionAssignor>(assignors[0])
+        assertEquals(configs, assignor.configs)
+    }
+
+    class TestConsumerPartitionAssignor : ConsumerPartitionAssignor, Configurable {
+
+        var configs: Map<String, Any?>? = null
 
         override fun assign(
             metadata: Cluster,
-            groupSubscription: GroupSubscription
+            groupSubscription: GroupSubscription,
         ): GroupAssignment = GroupAssignment(emptyMap())
 
         override fun name(): String {
             // use the RangeAssignor's name to cause naming conflict
             return RangeAssignor().name()
+        }
+
+        override fun configure(configs: Map<String, Any?>) {
+            this.configs = configs
         }
     }
 

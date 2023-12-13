@@ -17,6 +17,11 @@
 
 package org.apache.kafka.clients.consumer
 
+import java.time.Duration
+import java.util.LinkedList
+import java.util.Queue
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.regex.Pattern
 import org.apache.kafka.clients.Metadata.LeaderAndEpoch
 import org.apache.kafka.clients.consumer.internals.NoOpConsumerRebalanceListener
 import org.apache.kafka.clients.consumer.internals.SubscriptionState
@@ -28,10 +33,6 @@ import org.apache.kafka.common.PartitionInfo
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.WakeupException
 import org.apache.kafka.common.utils.LogContext
-import java.time.Duration
-import java.util.*
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.regex.Pattern
 
 /**
  * A mock of the [Consumer] interface you can use for testing code that uses Kafka. **This class is 
@@ -80,9 +81,19 @@ class MockConsumer<K, V>(offsetResetStrategy: OffsetResetStrategy) : Consumer<K,
      */
     @Synchronized
     fun rebalance(newAssignment: Collection<TopicPartition>) {
-        // TODO: Rebalance callbacks
+        // compute added and removed partitions for rebalance callback
+        val oldAssignmentSet = subscriptions.assignedPartitions()
+        val newAssignmentSet = newAssignment.toSet()
+        val added = newAssignment.filter { tp -> !oldAssignmentSet.contains(tp) }
+        val removed = oldAssignmentSet.filter { tp -> !newAssignmentSet.contains(tp) }
+
+        // rebalance
         records.clear()
         subscriptions.assignFromSubscribed(newAssignment)
+
+        // rebalance callbacks
+        if (added.isNotEmpty()) subscriptions.rebalanceListener!!.onPartitionsAssigned(added)
+        if (removed.isNotEmpty()) subscriptions.rebalanceListener!!.onPartitionsRevoked(removed)
     }
 
     @Synchronized
@@ -291,7 +302,7 @@ class MockConsumer<K, V>(offsetResetStrategy: OffsetResetStrategy) : Consumer<K,
     @Synchronized
     override fun committed(
         partitions: Set<TopicPartition>,
-        timeout: Duration
+        timeout: Duration,
     ): Map<TopicPartition, OffsetAndMetadata?> = committed(partitions)
 
     @Synchronized

@@ -17,8 +17,11 @@
 
 package org.apache.kafka.clients.consumer
 
+import java.util.function.Function
+import java.util.function.Predicate
+import java.util.stream.Collectors
 import org.apache.kafka.clients.consumer.ConsumerPartitionAssignor.Subscription
-import org.apache.kafka.clients.consumer.RangeAssignorTest.Companion.checkStaticAssignment
+import org.apache.kafka.clients.consumer.internals.AbstractPartitionAssignor
 import org.apache.kafka.clients.consumer.internals.AbstractPartitionAssignor.MemberInfo
 import org.apache.kafka.common.TopicPartition
 import org.junit.jupiter.api.Test
@@ -436,4 +439,18 @@ class RoundRobinAssignorTest {
         topic1 to numberOfPartitions1,
         topic2 to numberOfPartitions2,
     )
+
+    companion object {
+
+        private fun checkStaticAssignment(
+            assignor: AbstractPartitionAssignor,
+            partitionsPerTopic: Map<String, Int>,
+            consumers: Map<String, Subscription>,
+        ): Map<String, List<TopicPartition>> {
+            val assignmentByMemberId = assignor.assign(partitionsPerTopic, consumers)
+            return consumers.entries
+                .filter { (_, subscription) -> subscription.groupInstanceId != null }
+                .associate { (key, value) -> value.groupInstanceId!! to assignmentByMemberId[key]!! }
+        }
+    }
 }

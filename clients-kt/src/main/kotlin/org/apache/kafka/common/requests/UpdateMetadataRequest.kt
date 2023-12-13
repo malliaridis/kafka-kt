@@ -175,7 +175,7 @@ class UpdateMetadataRequest internal constructor(
             if (version >= 8) data.setIsKRaftController(kraftController)
             if (version >= 5) {
                 val topicStatesMap = groupByTopic(topicIds, partitionStates)
-                data.setTopicStates(ArrayList(topicStatesMap.values))
+                data.setTopicStates(topicStatesMap.values.toList())
             } else data.setUngroupedPartitionStates(partitionStates)
 
             return UpdateMetadataRequest(data, version)

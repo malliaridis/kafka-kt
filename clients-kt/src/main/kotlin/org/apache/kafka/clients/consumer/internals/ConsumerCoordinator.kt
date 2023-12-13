@@ -17,6 +17,13 @@
 
 package org.apache.kafka.clients.consumer.internals
 
+import java.nio.ByteBuffer
+import java.util.SortedSet
+import java.util.TreeSet
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 import org.apache.kafka.clients.GroupRebalanceConfig
 import org.apache.kafka.clients.consumer.CommitFailedException
 import org.apache.kafka.clients.consumer.ConsumerConfig
@@ -32,6 +39,7 @@ import org.apache.kafka.clients.consumer.internals.SubscriptionState.FetchPositi
 import org.apache.kafka.clients.consumer.internals.Utils.TopicPartitionComparator
 import org.apache.kafka.common.Cluster
 import org.apache.kafka.common.KafkaException
+import org.apache.kafka.common.PartitionInfo
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.FencedInstanceIdException
 import org.apache.kafka.common.errors.GroupAuthorizationException
@@ -66,12 +74,6 @@ import org.apache.kafka.common.utils.Time
 import org.apache.kafka.common.utils.Timer
 import org.apache.kafka.common.utils.Utils
 import org.slf4j.Logger
-import java.nio.ByteBuffer
-import java.util.*
-import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.min
 
 /**
@@ -107,6 +109,11 @@ class ConsumerCoordinator(
 
     private val defaultOffsetCommitCallback: OffsetCommitCallback = DefaultOffsetCommitCallback()
 
+    // track number of async commits for which callback must be called
+    // package private for testing
+    internal val inFlightAsyncCommits: AtomicInteger = AtomicInteger()
+
+    // track the number of pending async commits waiting on the coordinator lookup to complete
     private val pendingAsyncCommits = AtomicInteger()
 
     // this collection must be thread-safe because it is modified from the response handler of
@@ -114,13 +121,12 @@ class ConsumerCoordinator(
     private val completedOffsetCommits = ConcurrentLinkedQueue<OffsetCommitCompletion>()
 
     // package private for testing
-    var isLeader = false
+    internal var isLeader = false
         private set
 
     private lateinit var joinedSubscription: Set<String>
 
-    private var metadataSnapshot: MetadataSnapshot =
-        MetadataSnapshot(subscriptions, metadata.fetch(), metadata.updateVersion())
+    private var metadataSnapshot: MetadataSnapshot
 
     private var assignmentSnapshot: MetadataSnapshot? = null
 
@@ -161,6 +167,12 @@ class ConsumerCoordinator(
      */
     init {
         this.rackId = if (rackId.isNullOrEmpty()) null else rackId
+        metadataSnapshot = MetadataSnapshot(
+            clientRack = this.rackId,
+            subscription = subscriptions,
+            cluster = metadata.fetch(),
+            version = metadata.updateVersion(),
+        )
         if (autoCommitEnabled) nextAutoCommitTimer = time.timer(autoCommitIntervalMs.toLong())
 
         // Select the rebalance protocol such that:
@@ -171,10 +183,10 @@ class ConsumerCoordinator(
         // We know there are at least one assignor in the list, no need to double check for NPE
         protocol = if (assignors.isNotEmpty()) {
             val supportedProtocols: MutableList<RebalanceProtocol> =
-                ArrayList(assignors[0].supportedProtocols()!!)
+                assignors[0].supportedProtocols().toMutableList()
 
             for (assignor in assignors)
-                supportedProtocols.retainAll(assignor.supportedProtocols()!!.toSet())
+                supportedProtocols.retainAll(assignor.supportedProtocols().toSet())
 
             require(supportedProtocols.isNotEmpty()) {
                 "Specified assignors ${assignors.map(ConsumerPartitionAssignor::name)} do not " +
@@ -227,7 +239,7 @@ class ConsumerCoordinator(
             // subscription, if yes we will obey what leader has decided and add these topics
             // into the subscriptions as long as they still match the subscribed pattern
             val addedTopics = assignedPartitions.filterNot { joinedSubscription.contains(it.topic) }
-                .map { it.topic }
+                .map { it.topic } // this is a copy because it's handed to listener below
 
             if (addedTopics.isNotEmpty()) {
                 val newSubscription = subscriptions.subscription().toMutableSet()
@@ -461,7 +473,12 @@ class ConsumerCoordinator(
 
             // Update the current snapshot, which will be used to check for subscription
             // changes that would require a rebalance (e.g. new partitions).
-            metadataSnapshot = MetadataSnapshot(subscriptions, cluster, version)
+            metadataSnapshot = MetadataSnapshot(
+                clientRack = rackId,
+                subscription = subscriptions,
+                cluster = cluster,
+                version = version,
+            )
         }
     }
 
@@ -734,8 +751,8 @@ class ConsumerCoordinator(
         )
 
         joinPrepareTimer?.update() ?: run {
-            // We should complete onJoinPrepare before rebalanceTimeout, and continue to join group
-            // to avoid member got kicked out from group
+            // We should complete onJoinPrepare before rebalanceTimeoutMs,
+            // and continue to join group to avoid member got kicked out from group
             joinPrepareTimer = time.timer(rebalanceConfig.rebalanceTimeoutMs!!.toLong())
         }
 
@@ -757,16 +774,15 @@ class ConsumerCoordinator(
 
             // Keep retrying/waiting the offset commit when:
             // 1. offset commit haven't done (and joinPrepareTimer not expired)
-            // 2. failed with retryable exception (and joinPrepareTimer not expired)
+            // 2. failed with retriable exception (and joinPrepareTimer not expired)
             // Otherwise, continue to revoke partitions, ex:
-            // 1. if joinPrepareTime has expired
-            // 2. if offset commit failed with no-retryable exception
+            // 1. if joinPrepareTimer has expired
+            // 2. if offset commit failed with non-retriable exception
             // 3. if offset commit success
             var onJoinPrepareAsyncCommitCompleted = true
             if (joinPrepareTimer!!.isExpired) log.error(
-                "Asynchronous auto-commit of offsets failed: joinPrepare timeout. Will continue " +
-                        "to join group"
-            ) else if (!requestFuture.isDone) onJoinPrepareAsyncCommitCompleted = false
+                "Asynchronous auto-commit of offsets failed: joinPrepare timeout. Will continue to join group"
+            ) else if (!requestFuture.isDone()) onJoinPrepareAsyncCommitCompleted = false
             else if (requestFuture.failed() && requestFuture.isRetriable) {
                 log.debug(
                     "Asynchronous auto-commit of offsets failed with retryable error: {}. Will retry it.",
@@ -777,7 +793,7 @@ class ConsumerCoordinator(
                 "Asynchronous auto-commit of offsets failed: {}. Will continue to join group.",
                 requestFuture.exception().message
             )
-            if (requestFuture.isDone) this.autoCommitOffsetRequestFuture = null
+            if (requestFuture.isDone()) this.autoCommitOffsetRequestFuture = null
 
             if (!onJoinPrepareAsyncCommitCompleted) {
                 pollTimer.sleep(min(pollTimer.remainingMs, rebalanceConfig.retryBackoffMs!!))
@@ -817,7 +833,7 @@ class ConsumerCoordinator(
             }
 
             RebalanceProtocol.COOPERATIVE -> {
-                // only revoke those partitions that are not in the subscription any more.
+                // only revoke those partitions that are not in the subscription anymore.
                 val ownedPartitions: MutableSet<TopicPartition> =
                     subscriptions.assignedPartitions().toMutableSet()
 
@@ -960,7 +976,7 @@ class ConsumerCoordinator(
      */
     fun fetchCommittedOffsets(
         partitions: Set<TopicPartition>,
-        timer: Timer
+        timer: Timer,
     ): Map<TopicPartition, OffsetAndMetadata?>? {
         if (partitions.isEmpty()) return emptyMap()
         val generationForOffsetRequest = generationIfStable
@@ -989,7 +1005,7 @@ class ConsumerCoordinator(
 
             client.poll(future, timer)
 
-            if (future.isDone) {
+            if (future.isDone()) {
                 pendingCommittedOffsetRequest = null
                 if (future.succeeded()) return future.value()
                 else if (!future.isRetriable) throw future.exception()
@@ -1070,19 +1086,19 @@ class ConsumerCoordinator(
             // concurrent coordinator lookup requests.
             pendingAsyncCommits.incrementAndGet()
             lookupCoordinator().addListener(object : RequestFutureListener<Unit> {
-                override fun onSuccess(value: Unit) {
+                override fun onSuccess(result: Unit) {
                     pendingAsyncCommits.decrementAndGet()
                     doCommitOffsetsAsync(offsets, callback)
                     client.pollNoWakeup()
                 }
 
-                override fun onFailure(e: RuntimeException) {
+                override fun onFailure(exception: RuntimeException) {
                     pendingAsyncCommits.decrementAndGet()
                     completedOffsetCommits.add(
                         OffsetCommitCompletion(
                             callback = callback,
                             offsets = offsets,
-                            exception = RetriableCommitFailedException(cause = e),
+                            exception = RetriableCommitFailedException(cause = exception),
                         )
                     )
                 }
@@ -1101,17 +1117,22 @@ class ConsumerCoordinator(
         callback: OffsetCommitCallback?,
     ): RequestFuture<Unit> {
         val future = sendOffsetCommitRequest(offsets)
+        inFlightAsyncCommits.incrementAndGet()
         val cb = callback ?: defaultOffsetCommitCallback
         future.addListener(object : RequestFutureListener<Unit> {
-            override fun onSuccess(value: Unit) {
+            override fun onSuccess(result: Unit) {
+                inFlightAsyncCommits.decrementAndGet()
+
                 interceptors?.onCommit(offsets)
                 completedOffsetCommits.add(OffsetCommitCompletion(cb, offsets, null))
             }
 
-            override fun onFailure(e: RuntimeException) {
-                var commitException: Exception = e
-                if (e is RetriableException)
-                    commitException = RetriableCommitFailedException(cause = e)
+            override fun onFailure(exception: RuntimeException) {
+                inFlightAsyncCommits.decrementAndGet()
+
+                var commitException: Exception = exception
+                if (exception is RetriableException)
+                    commitException = RetriableCommitFailedException(cause = exception)
 
                 completedOffsetCommits.add(
                     OffsetCommitCompletion(
@@ -1142,7 +1163,13 @@ class ConsumerCoordinator(
      */
     fun commitOffsetsSync(offsets: Map<TopicPartition, OffsetAndMetadata>, timer: Timer): Boolean {
         invokeCompletedOffsetCommitCallbacks()
-        if (offsets.isEmpty()) return true
+
+        if (offsets.isEmpty()) {
+            // We guarantee that the callbacks for all commitAsync() will be invoked when
+            // commitSync() completes, even if the user tries to commit empty offsets.
+            return invokePendingAsyncCommits(timer)
+        }
+
         do {
             if (coordinatorUnknownAndUnreadySync(timer)) return false
 
@@ -1209,6 +1236,19 @@ class ConsumerCoordinator(
                 autoCommitOffsetsAsync()
             }
         }
+    }
+
+    private fun invokePendingAsyncCommits(timer: Timer): Boolean {
+        if (inFlightAsyncCommits.get() == 0) return true
+
+        do {
+            ensureCoordinatorReady(timer)
+            client.poll(timer)
+            invokeCompletedOffsetCommitCallbacks()
+            if (inFlightAsyncCommits.get() == 0) return true
+            timer.sleep(rebalanceConfig.retryBackoffMs!!)
+        } while (timer.isNotExpired)
+        return false
     }
 
     private fun autoCommitOffsetsAsync(): RequestFuture<Unit>? {
@@ -1321,10 +1361,10 @@ class ConsumerCoordinator(
         val builder = OffsetCommitRequest.Builder(
             OffsetCommitRequestData()
                 .setGroupId(rebalanceConfig.groupId!!)
-                .setGenerationId(generation.generationId)
+                .setGenerationIdOrMemberEpoch(generation.generationId)
                 .setMemberId(generation.memberId)
                 .setGroupInstanceId(groupInstanceId)
-                .setTopics(ArrayList(requestTopicDataMap.values))
+                .setTopics(requestTopicDataMap.values.toList())
         )
         log.trace("Sending OffsetCommit request with {} to coordinator {}", offsets, coordinator)
 
@@ -1511,7 +1551,7 @@ class ConsumerCoordinator(
         val requestBuilder = OffsetFetchRequest.Builder(
             groupId = rebalanceConfig.groupId!!,
             requireStable = true,
-            partitions = ArrayList(partitions),
+            partitions = partitions.toList(),
             throwOnFetchStableOffsetsUnsupported = throwOnFetchStableOffsetsUnsupported
         )
 
@@ -1714,29 +1754,50 @@ class ConsumerCoordinator(
     }
 
     private class MetadataSnapshot(
+        clientRack: String?,
         subscription: SubscriptionState,
         cluster: Cluster,
         val version: Int,
     ) {
-
-        private val partitionsPerTopic: Map<String, Int>
+        private val partitionsPerTopic: Map<String, List<ConsumerCoordinator.PartitionRackInfo>>
 
         init {
-            val partitionsPerTopic: MutableMap<String, Int> = HashMap()
-            for (topic: String in subscription.metadataTopics()) {
-                val numPartitions = cluster.partitionCountForTopic(topic)
-                if (numPartitions != null) partitionsPerTopic[topic] = numPartitions
+            val partitionsPerTopic = mutableMapOf<String, List<PartitionRackInfo>>()
+            for (topic in subscription.metadataTopics()) {
+                val partitions = cluster.partitionsForTopic(topic)
+                if (partitions.isNotEmpty()) {
+                    val partitionRacks = partitions.map { p -> PartitionRackInfo(clientRack, p) }
+                    partitionsPerTopic[topic] = partitionRacks
+                }
             }
             this.partitionsPerTopic = partitionsPerTopic
         }
 
-        fun matches(other: MetadataSnapshot): Boolean {
-            return version == other.version || (partitionsPerTopic == other.partitionsPerTopic)
+        fun matches(other: MetadataSnapshot): Boolean =
+            version == other.version || (partitionsPerTopic == other.partitionsPerTopic)
+
+        override fun toString(): String = "(version$version: $partitionsPerTopic)"
+    }
+
+    private class PartitionRackInfo(clientRack: String?, partition: PartitionInfo) {
+
+        private val racks: Set<String?>
+
+        init {
+            racks = if (clientRack != null && partition.replicas.isNotEmpty()) {
+                partition.replicas.map { node -> node.rack }.toSet()
+            } else emptySet()
         }
 
-        override fun toString(): String {
-            return "(version$version: $partitionsPerTopic)"
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is PartitionRackInfo) return false
+            return racks == other.racks
         }
+
+        override fun hashCode(): Int = racks.hashCode()
+
+        override fun toString(): String = if (racks.isEmpty()) "NO_RACKS" else "racks=$racks"
     }
 
     private data class OffsetCommitCompletion(

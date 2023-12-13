@@ -17,8 +17,6 @@
 
 package org.apache.kafka.common.feature
 
-import java.util.*
-
 /**
  * Represents an immutable dictionary with key being feature name, and value being [VersionRangeType].
  * Also provides API to convert the features and their version ranges to/from a map.

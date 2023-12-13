@@ -17,7 +17,7 @@
 
 package org.apache.kafka.clients
 
-import java.util.*
+import java.util.Queue
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentLinkedDeque
 import java.util.function.Consumer
@@ -81,6 +81,8 @@ open class MockClient(
     private val obj = Object()
 
     constructor(time: Time, metadata: Metadata) : this(time, DefaultMockMetadataUpdater(metadata))
+
+    constructor(time: Time, staticNodes: List<Node>) : this(time, StaticMetadataUpdater(staticNodes))
 
     fun isConnected(idString: String): Boolean {
         return connectionState(idString).state == ConnectionState.State.CONNECTED
@@ -152,7 +154,9 @@ open class MockClient(
         this.disconnectFuture = disconnectFuture
     }
 
-    override fun disconnect(nodeId: String) {
+    override fun disconnect(nodeId: String) = disconnect(nodeId, false)
+
+    fun disconnect(nodeId: String, allowLateResponses: Boolean) {
         val now = time.milliseconds()
         val iter = requests.iterator()
         while (iter.hasNext()) {
@@ -169,7 +173,7 @@ open class MockClient(
                         disconnected = true,
                     )
                 )
-                iter.remove()
+                if (!allowLateResponses) iter.remove()
             }
         }
         val curDisconnectFuture = disconnectFuture
@@ -183,13 +187,10 @@ open class MockClient(
         }
 
         // Check if the request is directed to a node with a pending authentication error.
-        val authErrorIter: MutableIterator<Map.Entry<Node, Long>> =
-            pendingAuthenticationErrors.entries.iterator()
+        val authErrorIter = pendingAuthenticationErrors.iterator()
 
         while (authErrorIter.hasNext()) {
-            val entry = authErrorIter.next()
-            val node = entry.key
-            val backoffMs = entry.value
+            val (node, backoffMs) = authErrorIter.next()
             if (node.idString() == request.destination) {
                 authErrorIter.remove()
                 // Set up a disconnected ClientResponse and create an authentication error
@@ -227,15 +228,14 @@ open class MockClient(
             val builder = request.requestBuilder()
             try {
                 val version = nodeApiVersions.latestUsableVersion(
-                    request.apiKey,
-                    builder.oldestAllowedVersion,
-                    builder.latestAllowedVersion
+                    apiKey = request.apiKey,
+                    oldestAllowedVersion = builder.oldestAllowedVersion,
+                    latestAllowedVersion = builder.latestAllowedVersion
                 )
                 var unsupportedVersionException: UnsupportedVersionException? = null
                 if (futureResp.isUnsupportedRequest) {
-                    unsupportedVersionException = UnsupportedVersionException(
-                        "Api ${request.apiKey} with version $version"
-                    )
+                    unsupportedVersionException =
+                        UnsupportedVersionException("Api ${request.apiKey} with version $version")
                 } else {
                     val abstractRequest = request.requestBuilder().build(version)
                     check(futureResp.requestMatcher.matches(abstractRequest)) {
@@ -611,7 +611,7 @@ open class MockClient(
         fun close() = Unit
     }
 
-    private class NoOpMetadataUpdater : MockMetadataUpdater {
+    private open class NoOpMetadataUpdater : MockMetadataUpdater {
 
         override fun fetchNodes(): List<Node> = emptyList()
 
@@ -619,6 +619,10 @@ open class MockClient(
 
         override fun update(time: Time, update: MetadataUpdate) =
             throw UnsupportedOperationException()
+    }
+
+    private class StaticMetadataUpdater(private val nodes: List<Node>) : NoOpMetadataUpdater() {
+        override fun fetchNodes(): List<Node> = nodes
     }
 
     private class DefaultMockMetadataUpdater(private val metadata: Metadata) : MockMetadataUpdater {

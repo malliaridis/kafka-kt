@@ -18,8 +18,6 @@
 package org.apache.kafka.clients.admin.internals
 
 import java.nio.ByteBuffer
-import java.util.*
-import java.util.stream.Collectors
 import org.apache.kafka.clients.admin.ConsumerGroupDescription
 import org.apache.kafka.clients.admin.MemberAssignment
 import org.apache.kafka.clients.admin.MemberDescription
@@ -95,10 +93,9 @@ class DescribeConsumerGroupsHandler(
             val protocolType = describedGroup.protocolType
             if (protocolType == ConsumerProtocol.PROTOCOL_TYPE || protocolType.isEmpty()) {
                 val members = describedGroup.members
-                val memberDescriptions: MutableList<MemberDescription> = ArrayList(members.size)
                 val authorizedOperations = validAclOperations(describedGroup.authorizedOperations)
 
-                members.forEach { groupMember ->
+                val memberDescriptions = members.map { groupMember ->
                     var partitions: Set<TopicPartition> = emptySet()
 
                     if (groupMember.memberAssignment.isNotEmpty()) {
@@ -108,14 +105,12 @@ class DescribeConsumerGroupsHandler(
                         partitions = assignment.partitions.toSet()
                     }
 
-                    memberDescriptions.add(
-                        MemberDescription(
-                            memberId = groupMember.memberId,
-                            groupInstanceId = groupMember.groupInstanceId,
-                            clientId = groupMember.clientId,
-                            host = groupMember.clientHost,
-                            assignment = MemberAssignment(partitions)
-                        )
+                    MemberDescription(
+                        memberId = groupMember.memberId,
+                        groupInstanceId = groupMember.groupInstanceId,
+                        clientId = groupMember.clientId,
+                        host = groupMember.clientHost,
+                        assignment = MemberAssignment(partitions)
                     )
                 }
 

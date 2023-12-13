@@ -17,9 +17,7 @@
 
 package org.apache.kafka.common.security.oauthbearer.internals.unsecured
 
-import java.io.IOException
 import java.util.Base64
-import javax.security.auth.callback.UnsupportedCallbackException
 import org.apache.kafka.common.security.authenticator.TestJaasConfig
 import org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule
 import org.apache.kafka.common.security.oauthbearer.OAuthBearerValidatorCallback
@@ -49,7 +47,6 @@ class OAuthBearerUnsecuredValidatorCallbackHandlerTest {
     }
 
     @Test
-    @Throws(IOException::class, UnsupportedCallbackException::class)
     fun badOrMissingPrincipal() {
         for (exists in booleanArrayOf(true, false)) {
             val claimsJson = "{$EXPIRATION_TIME_CLAIM_TEXT${if (exists) ",$BAD_PRINCIPAL_CLAIM_TEXT" else ""}}"
@@ -62,7 +59,6 @@ class OAuthBearerUnsecuredValidatorCallbackHandlerTest {
     }
 
     @Test
-    @Throws(IOException::class, UnsupportedCallbackException::class)
     fun tooEarlyExpirationTime() {
         val claimsJson = "{" + PRINCIPAL_CLAIM_TEXT + comma(ISSUED_AT_CLAIM_TEXT) +
                 comma(TOO_EARLY_EXPIRATION_TIME_CLAIM_TEXT) + "}"
@@ -86,7 +82,6 @@ class OAuthBearerUnsecuredValidatorCallbackHandlerTest {
     }
 
     @Test
-    @Throws(IOException::class, UnsupportedCallbackException::class)
     fun missingRequiredScope() {
         val claimsJson = "{" + SUB_CLAIM_TEXT + comma(EXPIRATION_TIME_CLAIM_TEXT) + comma(SCOPE_CLAIM_TEXT) + "}"
         confirmFailsValidation(

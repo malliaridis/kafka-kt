@@ -17,18 +17,12 @@
 
 package org.apache.kafka.clients.consumer.internals.events
 
-import java.util.concurrent.BlockingQueue
-import org.apache.kafka.clients.consumer.internals.NoopBackgroundEvent
-
 /**
  * The event is NoOp. This is intentionally left here for demonstration purpose.
  */
 class NoopApplicationEvent(
-    private val backgroundEventQueue: BlockingQueue<BackgroundEvent>,
     val message: String,
-) : ApplicationEvent() {
+) : ApplicationEvent(Type.NOOP) {
 
-    override fun process(): Boolean = backgroundEventQueue.add(NoopBackgroundEvent(message))
-
-    override fun toString(): String = javaClass.toString() + "_" + message
+    override fun toString(): String = "${javaClass}_$message"
 }

@@ -245,19 +245,16 @@ class HttpAccessTokenRetrieverTest : OAuthBearerTest() {
     }
 
     @Test
-    @Throws(IOException::class)
     fun testFormatAuthorizationHeader() {
         assertAuthorizationHeader("id", "secret")
     }
 
     @Test
-    @Throws(IOException::class)
     fun testFormatAuthorizationHeaderEncoding() {
         // See KAFKA-14496
         assertAuthorizationHeader("SOME_RANDOM_LONG_USER_01234", "9Q|0`8i~ute-n9ksjLWb\\50\"AX@UUED5E")
     }
 
-    @Throws(IOException::class)
     private fun assertAuthorizationHeader(clientId: String, clientSecret: String) {
         val expected = "Basic " + Base64.getEncoder().encodeToString("$clientId:$clientSecret".toByteArray())
         val actual = HttpAccessTokenRetriever.formatAuthorizationHeader(clientId, clientSecret)

@@ -20,12 +20,16 @@ package org.apache.kafka.clients.consumer.internals.events
 /**
  * This is the abstract definition of the events created by the KafkaConsumer API
  */
-abstract class ApplicationEvent {
+abstract class ApplicationEvent internal constructor(val type: ApplicationEvent.Type) {
 
-    /**
-     * Process the application event. Return true upon successful execution, false otherwise.
-     *
-     * @return true if the event was successfully executed; false otherwise.
-     */
-    abstract fun process(): Boolean
+    override fun toString(): String = "$type ApplicationEvent"
+
+    enum class Type {
+        NOOP,
+        COMMIT,
+        POLL,
+        FETCH_COMMITTED_OFFSET,
+        METADATA_UPDATE,
+        ASSIGNMENT_CHANGE
+    }
 }

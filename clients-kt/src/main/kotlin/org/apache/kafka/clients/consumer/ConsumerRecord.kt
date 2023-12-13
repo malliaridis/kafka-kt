@@ -31,7 +31,7 @@ import org.apache.kafka.common.record.TimestampType
  * @param topic The topic this record is received from
  * @param partition The partition of the topic this record is received from
  * @param offset The offset of this record in the corresponding Kafka partition
- * @param timestamp The timestamp of the record.
+ * @param timestamp The timestamp of this record, in milliseconds elapsed since unix epoch.
  * @param timestampType The timestamp type
  * @param serializedKeySize The length of the serialized key
  * @param serializedValueSize The length of the serialized value
@@ -242,7 +242,7 @@ data class ConsumerRecord<K, V>(
     fun offset(): Long = offset
 
     /**
-     * The timestamp of this record
+     * The timestamp of this record, in milliseconds elapsed since unix epoch.
      */
     @Deprecated(
         message = "User property instead",

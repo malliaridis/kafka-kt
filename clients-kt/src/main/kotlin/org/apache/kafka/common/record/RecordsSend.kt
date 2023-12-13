@@ -36,17 +36,17 @@ abstract class RecordsSend<T : BaseRecords?> protected constructor(
 
     @Throws(IOException::class)
     override fun writeTo(channel: TransferableChannel): Long {
-        var written: Long = 0
+        var written = 0
         if (remaining > 0) {
-            written = writeTo(channel, size() - remaining, remaining)
+            written = writeTo(channel, maxBytesToWrite - remaining, remaining)
             if (written < 0)
                 throw EOFException("Wrote negative bytes to channel. This shouldn't happen.")
 
-            remaining -= written.toInt()
+            remaining -= written
         }
         pending = channel.hasPendingWrites()
         if (remaining <= 0 && pending) channel.write(EMPTY_BYTE_BUFFER)
-        return written
+        return written.toLong()
     }
 
     override fun size(): Long = maxBytesToWrite.toLong()
@@ -68,11 +68,11 @@ abstract class RecordsSend<T : BaseRecords?> protected constructor(
      * @throws IOException For any IO errors
      */
     @Throws(IOException::class)
-    protected abstract fun writeTo(
+    internal abstract fun writeTo(
         channel: TransferableChannel,
-        previouslyWritten: Long,
+        previouslyWritten: Int,
         remaining: Int
-    ): Long
+    ): Int
 
     companion object {
         private val EMPTY_BYTE_BUFFER = ByteBuffer.allocate(0)

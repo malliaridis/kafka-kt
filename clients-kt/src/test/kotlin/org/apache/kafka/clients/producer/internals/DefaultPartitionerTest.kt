@@ -38,7 +38,7 @@ class DefaultPartitionerTest {
             invalidTopics = emptySet(),
         )
         val partition = partitioner.partition(
-            topic = "test",
+            topic = TOPIC,
             key = null,
             keyBytes = KEY_BYTES,
             value = null,
@@ -48,7 +48,7 @@ class DefaultPartitionerTest {
         assertEquals(
             expected = partition,
             actual = partitioner.partition(
-                topic = "test",
+                topic = TOPIC,
                 key = null,
                 keyBytes = KEY_BYTES,
                 value = null,

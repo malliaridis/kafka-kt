@@ -17,6 +17,8 @@
 
 package org.apache.kafka.common.requests
 
+import java.nio.ByteBuffer
+import java.util.function.Consumer
 import org.apache.kafka.common.IsolationLevel
 import org.apache.kafka.common.TopicIdPartition
 import org.apache.kafka.common.TopicPartition
@@ -31,8 +33,6 @@ import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.protocol.ByteBufferAccessor
 import org.apache.kafka.common.protocol.Errors
 import org.apache.kafka.common.record.RecordBatch
-import java.nio.ByteBuffer
-import java.util.function.Consumer
 
 class FetchRequest(
     private val data: FetchRequestData,
@@ -84,7 +84,11 @@ class FetchRequest(
         )
     }
 
-    fun replicaId(): Int = data.replicaId
+    fun replicaId(): Int =
+        if (version < 15) data.replicaId
+        else data.replicaState.replicaId
+
+    fun replicaEpoch(): Long = data.replicaState.replicaEpoch
 
     fun maxWait(): Int = data.maxWaitMs
 
@@ -189,6 +193,7 @@ class FetchRequest(
         private val replicaId: Int,
         private val maxWait: Int,
         private val minBytes: Int,
+        private val replicaEpoch: Long = -1,
         private val toFetch: Map<TopicPartition, PartitionData>,
     ) : AbstractRequest.Builder<FetchRequest>(ApiKeys.FETCH, minVersion, maxVersion) {
 
@@ -208,6 +213,9 @@ class FetchRequest(
             this.isolationLevel = isolationLevel
             return this
         }
+
+        // Visible for testing
+        internal fun metadata(): FetchMetadata = metadata
 
         fun metadata(metadata: FetchMetadata): Builder {
             this.metadata = metadata
@@ -242,7 +250,7 @@ class FetchRequest(
 
         private fun addToForgottenTopicMap(
             toForget: List<TopicIdPartition>,
-            forgottenTopicMap: MutableMap<String, ForgottenTopic>
+            forgottenTopicMap: MutableMap<String, ForgottenTopic>,
         ) {
             toForget.forEach(Consumer { topicIdPartition ->
                 val forgottenTopic = forgottenTopicMap.computeIfAbsent(topicIdPartition.topic) {
@@ -259,12 +267,17 @@ class FetchRequest(
             if (version < 3) maxBytes = DEFAULT_RESPONSE_MAX_BYTES
 
             val fetchRequestData = FetchRequestData()
-                .setReplicaId(replicaId)
                 .setMaxWaitMs(maxWait)
                 .setMinBytes(minBytes)
                 .setMaxBytes(maxBytes)
                 .setIsolationLevel(isolationLevel.id())
-                .setForgottenTopicsData(ArrayList())
+                .setForgottenTopicsData(emptyList())
+            if (version < 15) fetchRequestData.setReplicaId(replicaId)
+            else fetchRequestData.setReplicaState(
+                FetchRequestData.ReplicaState()
+                    .setReplicaId(replicaId)
+                    .setReplicaEpoch(replicaEpoch)
+            )
 
             val forgottenTopicMap = mutableMapOf<String, ForgottenTopic>()
             addToForgottenTopicMap(removed, forgottenTopicMap)
@@ -286,7 +299,7 @@ class FetchRequest(
                     fetchTopic = FetchTopic()
                         .setTopic(topicPartition.topic)
                         .setTopicId(partitionData.topicId)
-                        .setPartitions(ArrayList())
+                        .setPartitions(emptyList())
                     fetchRequestData.topics += fetchTopic
                 }
                 val fetchPartition = FetchPartition()
@@ -332,7 +345,7 @@ class FetchRequest(
                 maxVersion: Short,
                 maxWait: Int,
                 minBytes: Int,
-                fetchData: Map<TopicPartition, PartitionData>
+                fetchData: Map<TopicPartition, PartitionData>,
             ): Builder = Builder(
                 minVersion = ApiKeys.FETCH.oldestVersion(),
                 maxVersion = maxVersion,
@@ -345,17 +358,36 @@ class FetchRequest(
             fun forReplica(
                 allowedVersion: Short,
                 replicaId: Int,
+                replicaEpoch: Long,
                 maxWait: Int,
                 minBytes: Int,
-                fetchData: Map<TopicPartition, PartitionData>
+                fetchData: Map<TopicPartition, PartitionData>,
             ): Builder = Builder(
                 minVersion = allowedVersion,
                 maxVersion = allowedVersion,
                 replicaId = replicaId,
+                replicaEpoch = replicaEpoch,
                 maxWait = maxWait,
                 minBytes = minBytes,
                 toFetch = fetchData
             )
+        }
+    }
+
+    // It is only used by KafkaRaftClient for downgrading the FetchRequest.
+    class SimpleBuilder(
+        private val fetchRequestData: FetchRequestData,
+    ) : AbstractRequest.Builder<FetchRequest>(ApiKeys.FETCH) {
+
+        override fun build(version: Short): FetchRequest {
+            check(fetchRequestData.replicaId < 0) {
+                "The replica id should be placed in the replicaState of a fetchRequestData"
+            }
+            if (version < 15) {
+                fetchRequestData.setReplicaId(fetchRequestData.replicaState.replicaId)
+                fetchRequestData.setReplicaState(FetchRequestData.ReplicaState())
+            }
+            return FetchRequest(fetchRequestData, version)
         }
     }
 
@@ -365,7 +397,7 @@ class FetchRequest(
         val logStartOffset: Long,
         val maxBytes: Int,
         val currentLeaderEpoch: Int?,
-        val lastFetchedEpoch: Int? = null
+        val lastFetchedEpoch: Int? = null,
     ) {
 
         override fun toString(): String = "PartitionData(" +
@@ -387,9 +419,34 @@ class FetchRequest(
 
         const val INVALID_LOG_START_OFFSET = -1L
 
+        const val ORDINARY_CONSUMER_ID = -1
+
+        const val DEBUGGING_CONSUMER_ID = -2
+
+        const val FUTURE_LOCAL_REPLICA_ID = -3
+
         private fun optionalEpoch(rawEpochValue: Int): Int? =
             if (rawEpochValue < 0) null
             else rawEpochValue
+
+        fun replicaId(fetchRequestData: FetchRequestData): Int {
+            return if (fetchRequestData.replicaId != -1) fetchRequestData.replicaId
+            else fetchRequestData.replicaState.replicaId
+        }
+
+        // Broker ids are non-negative int.
+        fun isValidBrokerId(brokerId: Int): Boolean = brokerId >= 0
+
+        fun isConsumer(replicaId: Int): Boolean = replicaId < 0 && replicaId != FUTURE_LOCAL_REPLICA_ID
+
+        fun describeReplicaId(replicaId: Int): String = when (replicaId) {
+            ORDINARY_CONSUMER_ID -> "consumer"
+            DEBUGGING_CONSUMER_ID -> "debug consumer"
+            FUTURE_LOCAL_REPLICA_ID -> "future local replica"
+            else ->
+                if (isValidBrokerId(replicaId)) "replica [$replicaId]"
+                else "invalid replica [$replicaId]"
+        }
 
         fun parse(buffer: ByteBuffer, version: Short): FetchRequest =
             FetchRequest(

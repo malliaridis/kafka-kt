@@ -33,9 +33,12 @@ import org.slf4j.Logger
 /**
  * Base driver implementation for APIs which target partition leaders.
  */
-class PartitionLeaderStrategy(logContext: LogContext) : AdminApiLookupStrategy<TopicPartition> {
-    private val log: Logger = logContext.logger(PartitionLeaderStrategy::class.java)
+class PartitionLeaderStrategy(
+    logContext: LogContext,
+    private val tolerateUnknownTopics: Boolean = true,
+) : AdminApiLookupStrategy<TopicPartition> {
 
+    private val log: Logger = logContext.logger(PartitionLeaderStrategy::class.java)
 
     override fun lookupScope(key: TopicPartition): ApiRequestScope {
         // Metadata requests can group topic partitions arbitrarily, so they can all share
@@ -56,10 +59,24 @@ class PartitionLeaderStrategy(logContext: LogContext) : AdminApiLookupStrategy<T
         topic: String,
         topicError: Errors,
         requestPartitions: Set<TopicPartition>,
-        failed: MutableMap<TopicPartition, Throwable>
+        failed: MutableMap<TopicPartition, Throwable>,
     ) {
         when (topicError) {
-            Errors.UNKNOWN_TOPIC_OR_PARTITION, Errors.LEADER_NOT_AVAILABLE, Errors.BROKER_NOT_AVAILABLE -> log.debug(
+            Errors.UNKNOWN_TOPIC_OR_PARTITION -> {
+                if (!tolerateUnknownTopics) {
+                    log.error("Received unknown topic error for topic {}", topic, topicError.exception)
+                    failAllPartitionsForTopic(
+                        topic = topic, partitions = requestPartitions, failed = failed,
+                        exceptionGenerator = { tp ->
+                            topicError.exception(
+                                "Failed to fetch metadata for partition $tp because metadata for topic `$topic` could not be found"
+                            )!!
+                        }
+                    )
+                }
+                log.debug("Metadata request for topic {} returned topic-level error {}. Will retry", topic, topicError)
+            }
+            Errors.LEADER_NOT_AVAILABLE, Errors.BROKER_NOT_AVAILABLE -> log.debug(
                 "Metadata request for topic {} returned topic-level error {}. Will retry",
                 topic, topicError
             )
@@ -114,7 +131,7 @@ class PartitionLeaderStrategy(logContext: LogContext) : AdminApiLookupStrategy<T
         topic: String,
         partitions: Set<TopicPartition>,
         failed: MutableMap<TopicPartition, Throwable>,
-        exceptionGenerator: Function<TopicPartition, Throwable>
+        exceptionGenerator: Function<TopicPartition, Throwable>,
     ) {
         partitions.stream().filter { tp: TopicPartition -> tp.topic == topic }
             .forEach { tp: TopicPartition ->
@@ -125,14 +142,16 @@ class PartitionLeaderStrategy(logContext: LogContext) : AdminApiLookupStrategy<T
     private fun handlePartitionError(
         topicPartition: TopicPartition,
         partitionError: Errors,
-        failed: MutableMap<TopicPartition, Throwable>
+        failed: MutableMap<TopicPartition, Throwable>,
     ) {
         when (partitionError) {
             Errors.NOT_LEADER_OR_FOLLOWER,
             Errors.REPLICA_NOT_AVAILABLE,
             Errors.LEADER_NOT_AVAILABLE,
             Errors.BROKER_NOT_AVAILABLE,
-            Errors.KAFKA_STORAGE_ERROR -> log.debug(
+            Errors.KAFKA_STORAGE_ERROR,
+            Errors.UNKNOWN_TOPIC_OR_PARTITION,
+            -> log.debug(
                 "Metadata request for partition {} returned partition-level error {}. Will retry",
                 topicPartition, partitionError
             )
@@ -151,7 +170,7 @@ class PartitionLeaderStrategy(logContext: LogContext) : AdminApiLookupStrategy<T
 
     override fun handleResponse(
         keys: Set<TopicPartition>,
-        response: AbstractResponse
+        response: AbstractResponse,
     ): AdminApiLookupStrategy.LookupResult<TopicPartition> {
         val failed: MutableMap<TopicPartition, Throwable> = HashMap()
         val mapped: MutableMap<TopicPartition, Int> = HashMap()

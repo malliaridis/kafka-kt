@@ -23,10 +23,12 @@ import org.apache.kafka.clients.CommonClientConfigs.postProcessReconnectBackoffC
 import org.apache.kafka.clients.CommonClientConfigs.postValidateSaslMechanismConfig
 import org.apache.kafka.common.config.AbstractConfig
 import org.apache.kafka.common.config.ConfigDef
-import org.apache.kafka.common.config.ConfigDef.CaseInsensitiveValidString.Companion.`in`
+import org.apache.kafka.common.config.ConfigDef.CaseInsensitiveValidString
+import org.apache.kafka.common.config.ConfigDef.ValidString
 import org.apache.kafka.common.config.ConfigDef.Importance
 import org.apache.kafka.common.config.ConfigDef.Range.Companion.atLeast
 import org.apache.kafka.common.config.ConfigDef.Range.Companion.between
+import org.apache.kafka.common.config.ConfigDef.Type
 import org.apache.kafka.common.config.SecurityConfig
 import org.apache.kafka.common.metrics.Sensor
 import org.apache.kafka.common.security.auth.SecurityProtocol
@@ -82,14 +84,12 @@ class AdminClientConfig internal constructor(
          */
         val RETRY_BACKOFF_MS_CONFIG = CommonClientConfigs.RETRY_BACKOFF_MS_CONFIG
         private const val RETRY_BACKOFF_MS_DOC =
-            "The amount of time to wait before attempting to retry a failed request. This avoids " +
-                    "repeatedly sending requests in a tight loop under some failure scenarios."
+            "The amount of time to wait before attempting to retry a failed request. This avoids " + "repeatedly sending requests in a tight loop under some failure scenarios."
 
         /**
          * `socket.connection.setup.timeout.ms`
          */
-        val SOCKET_CONNECTION_SETUP_TIMEOUT_MS_CONFIG =
-            CommonClientConfigs.SOCKET_CONNECTION_SETUP_TIMEOUT_MS_CONFIG
+        val SOCKET_CONNECTION_SETUP_TIMEOUT_MS_CONFIG = CommonClientConfigs.SOCKET_CONNECTION_SETUP_TIMEOUT_MS_CONFIG
 
         /**
          * `socket.connection.setup.timeout.max.ms`
@@ -153,120 +153,120 @@ class AdminClientConfig internal constructor(
         init {
             CONFIG = ConfigDef().define(
                 name = BOOTSTRAP_SERVERS_CONFIG,
-                type = ConfigDef.Type.LIST,
+                type = Type.LIST,
                 importance = Importance.HIGH,
                 documentation = BOOTSTRAP_SERVERS_DOC,
             ).define(
                 name = CLIENT_ID_CONFIG,
-                type = ConfigDef.Type.STRING,
+                type = Type.STRING,
                 defaultValue = "",
                 importance = Importance.MEDIUM,
                 documentation = CLIENT_ID_DOC,
             ).define(
                 name = METADATA_MAX_AGE_CONFIG,
-                type = ConfigDef.Type.LONG,
+                type = Type.LONG,
                 defaultValue = 5 * 60 * 1000,
                 validator = atLeast(0),
                 importance = Importance.LOW,
                 documentation = METADATA_MAX_AGE_DOC,
             ).define(
                 name = SEND_BUFFER_CONFIG,
-                type = ConfigDef.Type.INT,
+                type = Type.INT,
                 defaultValue = 128 * 1024,
-                validator = atLeast(-1),
+                validator = atLeast(CommonClientConfigs.SEND_BUFFER_LOWER_BOUND),
                 importance = Importance.MEDIUM,
                 documentation = SEND_BUFFER_DOC,
             ).define(
                 name = RECEIVE_BUFFER_CONFIG,
-                type = ConfigDef.Type.INT,
+                type = Type.INT,
                 defaultValue = 64 * 1024,
-                validator = atLeast(-1),
+                validator = atLeast(CommonClientConfigs.RECEIVE_BUFFER_LOWER_BOUND),
                 importance = Importance.MEDIUM,
                 documentation = RECEIVE_BUFFER_DOC,
             ).define(
                 name = RECONNECT_BACKOFF_MS_CONFIG,
-                type = ConfigDef.Type.LONG,
+                type = Type.LONG,
                 defaultValue = 50L,
                 validator = atLeast(0L),
                 importance = Importance.LOW,
                 documentation = RECONNECT_BACKOFF_MS_DOC,
             ).define(
                 name = RECONNECT_BACKOFF_MAX_MS_CONFIG,
-                type = ConfigDef.Type.LONG,
+                type = Type.LONG,
                 defaultValue = 1000L,
                 validator = atLeast(0L),
                 importance = Importance.LOW,
                 documentation = RECONNECT_BACKOFF_MAX_MS_DOC,
             ).define(
                 name = RETRY_BACKOFF_MS_CONFIG,
-                type = ConfigDef.Type.LONG,
+                type = Type.LONG,
                 defaultValue = 100L,
                 validator = atLeast(0L),
                 importance = Importance.LOW,
                 documentation = RETRY_BACKOFF_MS_DOC,
             ).define(
                 name = REQUEST_TIMEOUT_MS_CONFIG,
-                type = ConfigDef.Type.INT,
+                type = Type.INT,
                 defaultValue = 30000,
                 validator = atLeast(0),
                 importance = Importance.MEDIUM,
                 documentation = REQUEST_TIMEOUT_MS_DOC,
             ).define(
                 name = SOCKET_CONNECTION_SETUP_TIMEOUT_MS_CONFIG,
-                type = ConfigDef.Type.LONG,
+                type = Type.LONG,
                 defaultValue = CommonClientConfigs.DEFAULT_SOCKET_CONNECTION_SETUP_TIMEOUT_MS,
                 importance = Importance.MEDIUM,
                 documentation = CommonClientConfigs.SOCKET_CONNECTION_SETUP_TIMEOUT_MS_DOC,
             ).define(
                 name = SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS_CONFIG,
-                type = ConfigDef.Type.LONG,
+                type = Type.LONG,
                 defaultValue = CommonClientConfigs.DEFAULT_SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS,
                 importance = Importance.MEDIUM,
                 documentation = CommonClientConfigs.SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS_DOC,
             ).define(
                 name = CONNECTIONS_MAX_IDLE_MS_CONFIG,
-                type = ConfigDef.Type.LONG,
+                type = Type.LONG,
                 defaultValue = 5 * 60 * 1000,
                 importance = Importance.MEDIUM,
                 documentation = CONNECTIONS_MAX_IDLE_MS_DOC,
             ).define(
                 name = RETRIES_CONFIG,
-                type = ConfigDef.Type.INT, Int.MAX_VALUE,
+                type = Type.INT, Int.MAX_VALUE,
                 validator = between(0, Int.MAX_VALUE),
                 importance = Importance.LOW,
                 documentation = CommonClientConfigs.RETRIES_DOC,
             ).define(
                 name = DEFAULT_API_TIMEOUT_MS_CONFIG,
-                type = ConfigDef.Type.INT,
+                type = Type.INT,
                 defaultValue = 60000,
                 validator = atLeast(0),
                 importance = Importance.MEDIUM,
                 documentation = CommonClientConfigs.DEFAULT_API_TIMEOUT_MS_DOC,
             ).define(
                 name = METRICS_SAMPLE_WINDOW_MS_CONFIG,
-                type = ConfigDef.Type.LONG,
+                type = Type.LONG,
                 defaultValue = 30000,
                 validator = atLeast(0),
                 importance = Importance.LOW,
                 documentation = METRICS_SAMPLE_WINDOW_MS_DOC,
             ).define(
                 name = METRICS_NUM_SAMPLES_CONFIG,
-                type = ConfigDef.Type.INT,
+                type = Type.INT,
                 defaultValue = 2,
                 validator = atLeast(1),
                 importance = Importance.LOW,
                 documentation = METRICS_NUM_SAMPLES_DOC,
             ).define(
                 name = METRIC_REPORTER_CLASSES_CONFIG,
-                type = ConfigDef.Type.LIST,
+                type = Type.LIST,
                 defaultValue = "",
                 importance = Importance.LOW,
                 documentation = METRIC_REPORTER_CLASSES_DOC,
             ).define(
                 name = METRICS_RECORDING_LEVEL_CONFIG,
-                type = ConfigDef.Type.STRING,
+                type = Type.STRING,
                 defaultValue = Sensor.RecordingLevel.INFO.toString(),
-                validator = `in`(
+                validator = ValidString.`in`(
                     Sensor.RecordingLevel.INFO.toString(),
                     Sensor.RecordingLevel.DEBUG.toString(),
                     Sensor.RecordingLevel.TRACE.toString(),
@@ -275,15 +275,15 @@ class AdminClientConfig internal constructor(
                 documentation = METRICS_RECORDING_LEVEL_DOC,
             ).define(
                 name = AUTO_INCLUDE_JMX_REPORTER_CONFIG,
-                type = ConfigDef.Type.BOOLEAN,
+                type = Type.BOOLEAN,
                 defaultValue = true,
                 importance = Importance.LOW,
                 documentation = AUTO_INCLUDE_JMX_REPORTER_DOC,
             ).define(
                 name = CLIENT_DNS_LOOKUP_CONFIG,
-                type = ConfigDef.Type.STRING,
+                type = Type.STRING,
                 defaultValue = ClientDnsLookup.USE_ALL_DNS_IPS.toString(),
-                validator = `in`(
+                validator = ValidString.`in`(
                     ClientDnsLookup.USE_ALL_DNS_IPS.toString(),
                     ClientDnsLookup.RESOLVE_CANONICAL_BOOTSTRAP_SERVERS_ONLY.toString(),
                 ),
@@ -292,20 +292,18 @@ class AdminClientConfig internal constructor(
             ).define(
                 // security support
                 name = SECURITY_PROVIDERS_CONFIG,
-                type = ConfigDef.Type.STRING,
+                type = Type.STRING,
                 defaultValue = null,
                 importance = Importance.LOW,
                 documentation = SECURITY_PROVIDERS_DOC,
             ).define(
                 name = SECURITY_PROTOCOL_CONFIG,
-                type = ConfigDef.Type.STRING,
+                type = Type.STRING,
                 defaultValue = DEFAULT_SECURITY_PROTOCOL,
-                validator = `in`(*enumOptions(SecurityProtocol::class.java)),
+                validator = CaseInsensitiveValidString.`in`(*enumOptions(SecurityProtocol::class.java)),
                 importance = Importance.MEDIUM,
                 documentation = SECURITY_PROTOCOL_DOC,
-            )
-                .withClientSslSupport()
-                .withClientSaslSupport()
+            ).withClientSslSupport().withClientSaslSupport()
         }
 
         fun configNames(): Set<String> = CONFIG.names()

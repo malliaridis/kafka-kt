@@ -32,7 +32,6 @@ import org.apache.kafka.common.resource.PatternType
 import org.apache.kafka.common.resource.ResourcePattern
 import org.apache.kafka.common.resource.ResourceType
 import java.nio.ByteBuffer
-import java.util.*
 
 class CreateAclsRequest internal constructor(
     data: CreateAclsRequestData,
@@ -53,7 +52,7 @@ class CreateAclsRequest internal constructor(
     override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse {
         val result = aclResult(e)
 
-        val results = Collections.nCopies(data.creations.size, result)
+        val results = List(data.creations.size) { result }
         return CreateAclsResponse(
             CreateAclsResponseData()
                 .setThrottleTimeMs(throttleTimeMs)

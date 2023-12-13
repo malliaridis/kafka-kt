@@ -33,7 +33,6 @@ import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.StandardOpenOption
-import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.min
 
@@ -308,7 +307,7 @@ class FileRecords internal constructor(
     }
 
     @Throws(IOException::class)
-    override fun writeTo(channel: TransferableChannel, position: Long, length: Int): Long {
+    override fun writeTo(channel: TransferableChannel, position: Int, length: Int): Int {
         val newSize = min(this.channel.size(), end.toLong()) - start
         val oldSize = sizeInBytes()
         if (newSize < oldSize) throw KafkaException(
@@ -318,8 +317,9 @@ class FileRecords internal constructor(
             )
         )
         val position = start + position
-        val count = min(length.toLong(), oldSize - position)
-        return channel.transferFrom(this.channel, position, count)
+        val count = min(length, oldSize - position)
+        // safe to cast to int since `count` is an int
+        return channel.transferFrom(this.channel, position.toLong(), count.toLong()).toInt()
     }
 
     /**

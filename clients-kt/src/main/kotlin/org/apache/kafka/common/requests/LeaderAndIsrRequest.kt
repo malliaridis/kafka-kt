@@ -139,7 +139,7 @@ class LeaderAndIsrRequest internal constructor(
             if (version >= 7) data.setIsKRaftController(kraftController)
             if (version >= 2) {
                 val topicStatesMap = groupByTopic(partitionStates, topicIds)
-                data.setTopicStates(ArrayList(topicStatesMap.values))
+                data.setTopicStates(topicStatesMap.values.toList())
             } else data.setUngroupedPartitionStates(partitionStates)
 
             return LeaderAndIsrRequest(data, version)

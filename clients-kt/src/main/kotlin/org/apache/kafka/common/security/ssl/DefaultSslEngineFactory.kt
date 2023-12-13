@@ -31,7 +31,8 @@ import java.security.cert.Certificate
 import java.security.cert.CertificateFactory
 import java.security.spec.InvalidKeySpecException
 import java.security.spec.PKCS8EncodedKeySpec
-import java.util.*
+import java.util.Base64
+import java.util.Date
 import java.util.regex.Pattern
 import javax.crypto.Cipher
 import javax.crypto.EncryptedPrivateKeyInfo
@@ -184,7 +185,6 @@ class DefaultSslEngineFactory : SslEngineFactory {
                 SslClientAuth.REQUESTED -> sslEngine.wantClientAuth = true
                 SslClientAuth.NONE -> {}
             }
-            sslEngine.useClientMode = false
         } else {
             sslEngine.useClientMode = true
             val sslParams = sslEngine.sslParameters

@@ -17,11 +17,8 @@
 
 package org.apache.kafka.common.config.internals
 
-import java.util.*
-import java.util.function.Consumer
 import org.apache.kafka.common.config.ConfigDef
 import org.apache.kafka.common.security.scram.internals.ScramMechanism
-import org.apache.kafka.common.security.scram.internals.ScramMechanism.Companion.mechanismNames
 
 /**
  * Define the dynamic quota configs. Note that these are not normal configurations that exist in properties files. They
@@ -58,9 +55,11 @@ object QuotaConfigs {
 
     const val IP_CONNECTION_RATE_DEFAULT = Int.MAX_VALUE
 
-    private val userClientConfigNames: Set<String> = hashSetOf(
-        PRODUCER_BYTE_RATE_OVERRIDE_CONFIG, CONSUMER_BYTE_RATE_OVERRIDE_CONFIG,
-        REQUEST_PERCENTAGE_OVERRIDE_CONFIG, CONTROLLER_MUTATION_RATE_OVERRIDE_CONFIG
+    private val USER_AND_CLIENT_QUOTA_NAMES = setOf(
+        PRODUCER_BYTE_RATE_OVERRIDE_CONFIG,
+        CONSUMER_BYTE_RATE_OVERRIDE_CONFIG,
+        REQUEST_PERCENTAGE_OVERRIDE_CONFIG,
+        CONTROLLER_MUTATION_RATE_OVERRIDE_CONFIG
     )
 
     private fun buildUserClientQuotaConfigDef(configDef: ConfigDef) {
@@ -95,27 +94,26 @@ object QuotaConfigs {
     }
 
     fun isClientOrUserConfig(name: String): Boolean {
-        return userClientConfigNames.contains(name)
+        return USER_AND_CLIENT_QUOTA_NAMES.contains(name)
     }
 
-    fun userConfigs(): ConfigDef {
+    fun userAndClientQuotaConfigs(): ConfigDef {
         val configDef = ConfigDef()
-        mechanismNames.forEach(
-            Consumer { mechanismName: String ->
-                configDef.define(
-                    name = mechanismName,
-                    type = ConfigDef.Type.STRING,
-                    defaultValue = null,
-                    importance = ConfigDef.Importance.MEDIUM,
-                    documentation = "User credentials for SCRAM mechanism $mechanismName"
-                )
-            })
         buildUserClientQuotaConfigDef(configDef)
         return configDef
     }
 
-    fun clientConfigs(): ConfigDef {
+    fun scramMechanismsPlusUserAndClientQuotaConfigs(): ConfigDef {
         val configDef = ConfigDef()
+        ScramMechanism.mechanismNames.forEach { mechanismName ->
+            configDef.define(
+                name = mechanismName,
+                type = ConfigDef.Type.STRING,
+                defaultValue = null,
+                importance = ConfigDef.Importance.MEDIUM,
+                documentation = "User credentials for SCRAM mechanism $mechanismName"
+            )
+        }
         buildUserClientQuotaConfigDef(configDef)
         return configDef
     }

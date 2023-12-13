@@ -1,7 +1,7 @@
 package org.apache.kafka.common
 
 import java.net.InetSocketAddress
-import java.util.*
+import java.util.Objects
 
 /**
  * An immutable representation of a subset of the nodes, topics, and partitions in the Kafka
@@ -275,24 +275,16 @@ class Cluster private constructor(
         message = "Use property instead",
         replaceWith = ReplaceWith("controller")
     )
-    fun controller(): Node? {
-        return controller
-    }
+    fun controller(): Node? = controller
 
-    fun topicIds(): Collection<Uuid> {
-        return topicIds.values
-    }
+    fun topicIds(): Collection<Uuid> = topicIds.values
 
-    fun topicId(topic: String): Uuid {
-        return topicIds[topic] ?: Uuid.ZERO_UUID
-    }
+    fun topicId(topic: String): Uuid = topicIds[topic] ?: Uuid.ZERO_UUID
 
-    fun topicName(topicId: Uuid): String? {
-        return topicNames[topicId]
-    }
+    fun topicName(topicId: Uuid): String? = topicNames[topicId]
 
     override fun toString(): String {
-        return "Cluster(id = ${clusterResource.clusterId}" + ", nodes = $nodes" +
+        return "Cluster(id = ${clusterResource.clusterId}, nodes = $nodes" +
                 ", partitions = ${partitionsByTopicPartition.values}, controller = $controller)"
     }
 

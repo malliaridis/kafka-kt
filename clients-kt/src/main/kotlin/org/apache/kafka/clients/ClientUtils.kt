@@ -17,32 +17,43 @@
 
 package org.apache.kafka.clients
 
+import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.net.UnknownHostException
+import java.util.Collections
+import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.config.AbstractConfig
 import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.common.config.SaslConfigs
+import org.apache.kafka.common.metrics.Metrics
+import org.apache.kafka.common.metrics.Sensor
 import org.apache.kafka.common.network.ChannelBuilder
 import org.apache.kafka.common.network.ChannelBuilders.clientChannelBuilder
+import org.apache.kafka.common.network.Selector
 import org.apache.kafka.common.security.JaasContext
 import org.apache.kafka.common.security.auth.SecurityProtocol
 import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.Time
+import org.apache.kafka.common.utils.Utils.closeQuietly
 import org.apache.kafka.common.utils.Utils.getHost
 import org.apache.kafka.common.utils.Utils.getPort
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import java.net.InetAddress
-import java.net.InetSocketAddress
-import java.net.UnknownHostException
 
 object ClientUtils {
 
     private val log: Logger = LoggerFactory.getLogger(ClientUtils::class.java)
 
+    fun parseAndValidateAddresses(config: AbstractConfig): List<InetSocketAddress> {
+        val urls = config.getList(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG)!!
+        val clientDnsLookupConfig = config.getString(CommonClientConfigs.CLIENT_DNS_LOOKUP_CONFIG)!!
+        return parseAndValidateAddresses(urls, clientDnsLookupConfig)
+    }
+
     fun parseAndValidateAddresses(
         urls: List<String>,
         clientDnsLookupConfig: String,
-    ): List<InetSocketAddress> =
-        parseAndValidateAddresses(urls, ClientDnsLookup.forConfig(clientDnsLookupConfig))
+    ): List<InetSocketAddress> = parseAndValidateAddresses(urls, ClientDnsLookup.forConfig(clientDnsLookupConfig))
 
     fun parseAndValidateAddresses(
         urls: List<String>,
@@ -132,11 +143,9 @@ object ClientUtils {
     fun resolve(host: String?, hostResolver: HostResolver): List<InetAddress> {
         val addresses = hostResolver.resolve(host)
         val result = filterPreferredAddresses(addresses)
-        if (log.isDebugEnabled) log.debug(
-            "Resolved host {} as {}",
+        if (log.isDebugEnabled) log.debug("Resolved host {} as {}",
             host,
-            result.joinToString(",") { address -> address.hostAddress }
-        )
+            result.joinToString(",") { address -> address.hostAddress })
         return result
     }
 
@@ -154,5 +163,90 @@ object ClientUtils {
             if (clazz == null) clazz = address.javaClass
             clazz!!.isInstance(address)
         }
+    }
+
+    fun createNetworkClient(
+        config: AbstractConfig,
+        clientId: String? = config.getString(CommonClientConfigs.CLIENT_ID_CONFIG),
+        metrics: Metrics,
+        metricsGroupPrefix: String,
+        logContext: LogContext,
+        apiVersions: ApiVersions,
+        time: Time,
+        maxInFlightRequestsPerConnection: Int,
+        requestTimeoutMs: Int = config.getInt(CommonClientConfigs.REQUEST_TIMEOUT_MS_CONFIG)!!,
+        metadata: Metadata? = null,
+        metadataUpdater: MetadataUpdater? = null,
+        hostResolver: HostResolver = DefaultHostResolver(),
+        throttleTimeSensor: Sensor? = null,
+    ): NetworkClient {
+        var channelBuilder: ChannelBuilder? = null
+        var selector: Selector? = null
+        return try {
+            channelBuilder = createChannelBuilder(config, time, logContext)
+            selector = Selector(
+                connectionMaxIdleMs = config.getLong(CommonClientConfigs.CONNECTIONS_MAX_IDLE_MS_CONFIG)!!,
+                metrics = metrics,
+                time = time,
+                metricGrpPrefix = metricsGroupPrefix,
+                channelBuilder = channelBuilder,
+                logContext = logContext,
+            )
+            NetworkClient(
+                metadataUpdater = metadataUpdater,
+                metadata = metadata,
+                selector = selector,
+                clientId = clientId,
+                maxInFlightRequestsPerConnection = maxInFlightRequestsPerConnection,
+                reconnectBackoffMs = config.getLong(CommonClientConfigs.RECONNECT_BACKOFF_MS_CONFIG)!!,
+                reconnectBackoffMax = config.getLong(CommonClientConfigs.RECONNECT_BACKOFF_MAX_MS_CONFIG)!!,
+                socketSendBuffer = config.getInt(CommonClientConfigs.SEND_BUFFER_CONFIG)!!,
+                socketReceiveBuffer = config.getInt(CommonClientConfigs.RECEIVE_BUFFER_CONFIG)!!,
+                defaultRequestTimeoutMs = requestTimeoutMs,
+                connectionSetupTimeoutMs =
+                config.getLong(CommonClientConfigs.SOCKET_CONNECTION_SETUP_TIMEOUT_MS_CONFIG)!!,
+                connectionSetupTimeoutMaxMs =
+                config.getLong(CommonClientConfigs.SOCKET_CONNECTION_SETUP_TIMEOUT_MAX_MS_CONFIG)!!,
+                time = time,
+                discoverBrokerVersions = true,
+                apiVersions = apiVersions,
+                throttleTimeSensor = throttleTimeSensor,
+                logContext = logContext,
+                hostResolver = hostResolver,
+            )
+        } catch (t: Throwable) {
+            closeQuietly(selector, "Selector")
+            closeQuietly(channelBuilder, "ChannelBuilder")
+            throw KafkaException("Failed to create new NetworkClient", t)
+        }
+    }
+
+    @Deprecated(
+        message = "Use function with generic type and no clazz param.",
+        replaceWith = ReplaceWith("createConfiguredInterceptors<T>(config, interceptorClassesConfigName)")
+    )
+    fun <T> createConfiguredInterceptors(
+        config: AbstractConfig,
+        interceptorClassesConfigName: String,
+        clazz: Class<T>,
+    ): List<T> {
+        val clientId = config.getString(CommonClientConfigs.CLIENT_ID_CONFIG)
+        return config.getConfiguredInstances(
+            key = interceptorClassesConfigName,
+            t = clazz,
+            configOverrides = mapOf(CommonClientConfigs.CLIENT_ID_CONFIG to clientId),
+        )
+    }
+
+    inline fun <reified T> createConfiguredInterceptors(
+        config: AbstractConfig,
+        interceptorClassesConfigName: String,
+    ): List<T> {
+        val clientId = config.getString(CommonClientConfigs.CLIENT_ID_CONFIG)
+        return config.getConfiguredInstances(
+            key = interceptorClassesConfigName,
+            t = T::class.java,
+            configOverrides = mapOf(CommonClientConfigs.CLIENT_ID_CONFIG to clientId),
+        )
     }
 }

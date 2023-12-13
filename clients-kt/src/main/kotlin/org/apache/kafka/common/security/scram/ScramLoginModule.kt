@@ -17,7 +17,6 @@
 
 package org.apache.kafka.common.security.scram
 
-import java.util.*
 import javax.security.auth.Subject
 import javax.security.auth.callback.CallbackHandler
 import javax.security.auth.spi.LoginModule
@@ -42,7 +41,7 @@ class ScramLoginModule : LoginModule {
             "true".equals(options[TOKEN_AUTH_CONFIG] as String?, ignoreCase = true)
 
         if (useTokenAuthentication) {
-            val scramExtensions = Collections.singletonMap(TOKEN_AUTH_CONFIG, "true")
+            val scramExtensions = mapOf(TOKEN_AUTH_CONFIG to "true")
             subject.publicCredentials.add(scramExtensions)
         }
     }

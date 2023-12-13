@@ -119,7 +119,6 @@ class KafkaMbeanTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testInvoke() {
         val e = assertFailsWith<RuntimeMBeanException> {
             mBeanServer.invoke(
@@ -133,7 +132,6 @@ class KafkaMbeanTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testSetAttribute() {
         val e = assertFailsWith<RuntimeMBeanException> {
             mBeanServer.setAttribute(
@@ -145,7 +143,6 @@ class KafkaMbeanTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testSetAttributes() {
         val e = assertFailsWith<RuntimeMBeanException> {
             mBeanServer.setAttributes(objectName(countMetricName), AttributeList(1))

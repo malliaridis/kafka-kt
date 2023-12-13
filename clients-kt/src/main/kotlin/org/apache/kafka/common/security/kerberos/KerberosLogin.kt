@@ -17,7 +17,7 @@
 
 package org.apache.kafka.common.security.kerberos
 
-import java.util.*
+import java.util.Date
 import javax.security.auth.Subject
 import javax.security.auth.kerberos.KerberosTicket
 import javax.security.auth.login.Configuration
@@ -32,6 +32,7 @@ import org.apache.kafka.common.utils.KafkaThread
 import org.apache.kafka.common.utils.Shell
 import org.apache.kafka.common.utils.Time
 import org.slf4j.LoggerFactory
+import kotlin.random.Random
 
 /**
  * This class is responsible for refreshing Kerberos credentials for logins for both Kafka client
@@ -357,7 +358,7 @@ class KerberosLogin : AbstractLogin() {
         log.info("[Principal={}]: TGT valid starting at: {}", principal, tgt.startTime)
         log.info("[Principal={}]: TGT expires: {}", principal, tgt.endTime)
         val proposedRefresh = start + ((expires - start) *
-                (ticketRenewWindowFactor + ticketRenewJitter * RNG.nextDouble())).toLong()
+                (ticketRenewWindowFactor + ticketRenewJitter * Random.nextDouble())).toLong()
         return if (proposedRefresh > expires)
             // proposedRefresh is too far in the future: it's after ticket expires: simply return
             // now / current time.
@@ -447,8 +448,6 @@ class KerberosLogin : AbstractLogin() {
     companion object {
 
         private val log = LoggerFactory.getLogger(KerberosLogin::class.java)
-
-        private val RNG = Random()
 
         private fun getServiceName(
             configs: Map<String, *>,

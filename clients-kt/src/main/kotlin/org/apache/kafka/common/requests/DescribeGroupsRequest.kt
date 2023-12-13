@@ -17,11 +17,12 @@
 
 package org.apache.kafka.common.requests
 
+import java.nio.ByteBuffer
 import org.apache.kafka.common.message.DescribeGroupsRequestData
+import org.apache.kafka.common.message.DescribeGroupsResponseData
 import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.protocol.ByteBufferAccessor
 import org.apache.kafka.common.protocol.Errors
-import java.nio.ByteBuffer
 
 class DescribeGroupsRequest private constructor(
     private val data: DescribeGroupsRequestData,
@@ -30,13 +31,18 @@ class DescribeGroupsRequest private constructor(
 
     override fun data(): DescribeGroupsRequestData = data
 
-    override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse =
-        DescribeGroupsResponse.fromError(
-            throttleTimeMs = if (version.toInt() == 0) AbstractResponse.DEFAULT_THROTTLE_TIME
-            else throttleTimeMs,
-            error = Errors.forException(e),
-            groupIds = data.groups
-        )
+    override fun getErrorResponse(throttleTimeMs: Int, e: Throwable): AbstractResponse {
+        val error = Errors.forException(e)
+        val describeGroupsResponseData = DescribeGroupsResponseData()
+
+        describeGroupsResponseData.groups += data.groups.map { groupId ->
+            DescribeGroupsResponse.groupError(groupId, error)
+        }
+
+        if (version >= 1) describeGroupsResponseData.setThrottleTimeMs(throttleTimeMs)
+
+        return DescribeGroupsResponse(describeGroupsResponseData)
+    }
 
     class Builder(
         private val data: DescribeGroupsRequestData,

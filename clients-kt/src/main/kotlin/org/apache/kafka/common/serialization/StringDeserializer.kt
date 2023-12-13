@@ -17,16 +17,20 @@
 
 package org.apache.kafka.common.serialization
 
+import java.io.UnsupportedEncodingException
+import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.nio.charset.UnsupportedCharsetException
 import org.apache.kafka.common.errors.SerializationException
+import org.apache.kafka.common.header.Headers
+import org.apache.kafka.common.utils.Utils
 
 /**
  * String encoding defaults to UTF8 and can be customized by setting the property
  * key.deserializer.encoding, value.deserializer.encoding or deserializer.encoding. The first two
  * take precedence over the last.
  */
-class StringDeserializer : Deserializer<String> {
+class StringDeserializer : Deserializer<String?> {
 
     private var encoding = StandardCharsets.UTF_8.name()
 
@@ -43,6 +47,23 @@ class StringDeserializer : Deserializer<String> {
         } catch (e: UnsupportedCharsetException) {
             throw SerializationException(
                 "Error when deserializing byte[] to string due to unsupported encoding $encoding"
+            )
+        }
+    }
+
+    override fun deserialize(topic: String, headers: Headers, data: ByteBuffer?): String? = when (data) {
+        null -> null
+        else -> try {
+            if (data.hasArray()) String(
+                bytes = data.array(),
+                offset = data.position() + data.arrayOffset(),
+                length = data.remaining(),
+                charset = charset(encoding),
+            )
+            else String(Utils.toArray(data), charset(encoding))
+        } catch (_: UnsupportedEncodingException) {
+            throw SerializationException(
+                "Error when deserializing ByteBuffer to string due to unsupported encoding $encoding"
             )
         }
     }

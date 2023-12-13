@@ -17,7 +17,6 @@
 
 package org.apache.kafka.clients.producer.internals
 
-import java.util.*
 import org.apache.kafka.clients.Metadata
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.internals.ClusterResourceListeners
@@ -53,12 +52,12 @@ class ProducerMetadata(
 
     @Synchronized
     override fun newMetadataRequestBuilder(): MetadataRequest.Builder {
-        return MetadataRequest.Builder(ArrayList(topics.keys), true)
+        return MetadataRequest.Builder(topics.keys.toList(), true)
     }
 
     @Synchronized
     override fun newMetadataRequestBuilderForNewTopics(): MetadataRequest.Builder {
-        return MetadataRequest.Builder(ArrayList(newTopics), true)
+        return MetadataRequest.Builder(newTopics.toList(), true)
     }
 
     @Synchronized

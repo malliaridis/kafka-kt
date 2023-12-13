@@ -30,7 +30,6 @@ import org.apache.kafka.common.config.ConfigResource
 import org.apache.kafka.common.quota.ClientQuotaAlteration
 import org.apache.kafka.common.quota.ClientQuotaFilter
 import java.time.Duration
-import java.util.*
 
 /**
  * `ForwardingAdmin` is the default value of `forwarding.admin.class` in MirrorMaker. Users who wish

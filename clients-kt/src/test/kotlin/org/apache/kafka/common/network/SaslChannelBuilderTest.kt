@@ -38,6 +38,7 @@ import org.apache.kafka.common.security.plain.PlainLoginModule
 import org.apache.kafka.common.security.scram.ScramLoginModule
 import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.Time
+import org.apache.kafka.test.TestUtils
 import org.ietf.jgss.GSSContext
 import org.ietf.jgss.GSSCredential
 import org.ietf.jgss.GSSManager
@@ -206,7 +207,7 @@ class SaslChannelBuilderTest {
     }
 
     private val defaultApiVersionsSupplier = {
-        ApiVersionsResponse.defaultApiVersionsResponse(listenerType = ApiMessageType.ListenerType.ZK_BROKER)
+        TestUtils.defaultApiVersionsResponse(listenerType = ApiMessageType.ListenerType.ZK_BROKER)
     }
 
     private fun createChannelBuilder(securityProtocol: SecurityProtocol, saslMechanism: String): SaslChannelBuilder {

@@ -17,11 +17,10 @@
 
 package org.apache.kafka.common.record
 
-import org.apache.kafka.common.network.TransferableChannel
-import org.apache.kafka.common.utils.Utils.tryWriteTo
 import java.io.IOException
 import java.nio.ByteBuffer
-import java.util.*
+import org.apache.kafka.common.network.TransferableChannel
+import org.apache.kafka.common.utils.Utils.tryWriteTo
 
 /**
  * Represents a memory record set which is not necessarily offset-aligned
@@ -33,15 +32,12 @@ class UnalignedMemoryRecords(private val buffer: ByteBuffer) : UnalignedRecords 
     override fun sizeInBytes(): Int = buffer.remaining()
 
     @Throws(IOException::class)
-    override fun writeTo(channel: TransferableChannel, position: Long, length: Int): Long {
-        require(position <= Int.MAX_VALUE) {
-            "position should not be greater than Integer.MAX_VALUE: $position"
-        }
-        require(position + length <= buffer.limit()) {
-            "position+length should not be greater than buffer.limit(), position: $position" +
-                    ", length: $length, buffer.limit(): ${buffer.limit()}"
+    override fun writeTo(channel: TransferableChannel, position: Int, length: Int): Int {
+        require (position.toLong() + length <= buffer.limit()) {
+            "position+length should not be greater than buffer.limit(), position: $position, " +
+                    "length: $length, buffer.limit(): ${buffer.limit()}"
         }
 
-        return tryWriteTo(channel, position.toInt(), length, buffer)
+        return tryWriteTo(channel, position, length, buffer)
     }
 }

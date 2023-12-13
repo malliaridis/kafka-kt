@@ -18,8 +18,6 @@
 package org.apache.kafka.clients
 
 import java.net.InetSocketAddress
-import java.util.*
-import java.util.stream.Collectors
 import org.apache.kafka.common.Cluster
 import org.apache.kafka.common.ClusterResource
 import org.apache.kafka.common.Node

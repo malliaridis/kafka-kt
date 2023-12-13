@@ -23,9 +23,7 @@ import org.apache.kafka.common.message.MetadataResponseData.MetadataResponseBrok
 import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.requests.MetadataResponse
 import org.apache.kafka.common.utils.LogContext
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
-import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 

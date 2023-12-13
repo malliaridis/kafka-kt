@@ -33,7 +33,8 @@ class FileTokenRetriever(private val accessTokenFile: Path) : AccessTokenRetriev
 
     @Throws(IOException::class)
     override fun init() {
-        accessToken = readFileAsString(accessTokenFile.toFile().path)
+        // always non-null; to remove any newline chars or backend will report err
+        accessToken = readFileAsString(accessTokenFile.toFile().path).trim { it <= ' ' }
     }
 
     @Throws(IOException::class)

@@ -1,7 +1,7 @@
 package org.apache.kafka.common.requests
 
 import java.nio.ByteBuffer
-import java.util.*
+import java.util.EnumMap
 import java.util.stream.Collectors
 import java.util.stream.Stream
 import org.apache.kafka.common.network.Send
@@ -37,9 +37,7 @@ abstract class AbstractResponse(
      */
     abstract fun errorCounts(): Map<Errors, Int>
 
-    protected fun errorCounts(error: Errors): Map<Errors, Int> {
-        return Collections.singletonMap(error, 1)
-    }
+    protected fun errorCounts(error: Errors): Map<Errors, Int> = mapOf(error to 1)
 
     protected fun errorCounts(errors: Stream<Errors>): Map<Errors, Int> {
         return errors.collect(
@@ -169,10 +167,8 @@ abstract class AbstractResponse(
                 ApiKeys.OFFSET_DELETE -> OffsetDeleteResponse.parse(responseBuffer, version)
                 ApiKeys.DESCRIBE_CLIENT_QUOTAS -> DescribeClientQuotasResponse.parse(responseBuffer, version)
                 ApiKeys.ALTER_CLIENT_QUOTAS -> AlterClientQuotasResponse.parse(responseBuffer, version)
-                ApiKeys.DESCRIBE_USER_SCRAM_CREDENTIALS -> DescribeUserScramCredentialsResponse.parse(
-                    responseBuffer,
-                    version
-                )
+                ApiKeys.DESCRIBE_USER_SCRAM_CREDENTIALS ->
+                    DescribeUserScramCredentialsResponse.parse(responseBuffer, version)
 
                 ApiKeys.ALTER_USER_SCRAM_CREDENTIALS -> AlterUserScramCredentialsResponse.parse(responseBuffer, version)
                 ApiKeys.VOTE -> VoteResponse.parse(responseBuffer, version)
@@ -191,12 +187,7 @@ abstract class AbstractResponse(
                 ApiKeys.DESCRIBE_TRANSACTIONS -> DescribeTransactionsResponse.parse(responseBuffer, version)
                 ApiKeys.LIST_TRANSACTIONS -> ListTransactionsResponse.parse(responseBuffer, version)
                 ApiKeys.ALLOCATE_PRODUCER_IDS -> AllocateProducerIdsResponse.parse(responseBuffer, version)
-                else -> throw AssertionError(
-                    String.format(
-                        "ApiKey %s is not currently handled in `parseResponse`, the code should be updated to do so.",
-                        apiKey,
-                    )
-                )
+                ApiKeys.CONSUMER_GROUP_HEARTBEAT -> ConsumerGroupHeartbeatResponse.parse(responseBuffer, version)
             }
         }
     }

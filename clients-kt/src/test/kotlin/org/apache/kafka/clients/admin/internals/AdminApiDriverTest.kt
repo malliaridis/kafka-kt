@@ -17,6 +17,8 @@
 
 package org.apache.kafka.clients.admin.internals
 
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ExecutionException
 import org.apache.kafka.clients.admin.internals.AdminApiDriver.RequestSpec
 import org.apache.kafka.clients.admin.internals.AdminApiFuture.SimpleAdminApiFuture
 import org.apache.kafka.clients.admin.internals.AdminApiHandler.ApiResult
@@ -25,6 +27,7 @@ import org.apache.kafka.clients.admin.internals.AdminApiLookupStrategy.LookupRes
 import org.apache.kafka.common.Node
 import org.apache.kafka.common.errors.DisconnectException
 import org.apache.kafka.common.errors.UnknownServerException
+import org.apache.kafka.common.errors.UnsupportedVersionException
 import org.apache.kafka.common.message.MetadataResponseData
 import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.requests.AbstractRequest
@@ -35,7 +38,6 @@ import org.apache.kafka.common.requests.MetadataResponse
 import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.MockTime
 import org.junit.jupiter.api.Test
-import java.util.concurrent.ExecutionException
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
@@ -76,15 +78,30 @@ internal class AdminApiDriverTest {
 
     @Test
     fun testKeyLookupFailure() {
-        val ctx = TestContext.dynamicMapped(mapOf("foo" to "c1", "bar" to "c2"))
-        val lookupRequests = mapOf(
-            setOf("foo") to failedLookup("foo", UnknownServerException()),
-            setOf("bar") to mapped("bar", 1),
+        // Ensure that both generic failures and unhandled UnsupportedVersionExceptions (which could be specifically
+        // handled in both the lookup and the fulfillment stages) result in the expected lookup failures.
+        val keyLookupExceptions = arrayOf<Exception>(
+            UnknownServerException(),
+            UnsupportedVersionException(""),
         )
-        ctx.poll(lookupRequests, emptyMap())
-        val fulfillmentResults = mapOf(setOf("bar") to completed("bar", 30L))
-        ctx.poll(emptyMap(), fulfillmentResults)
-        ctx.poll(emptyMap(), emptyMap())
+        for (keyLookupException in keyLookupExceptions) {
+            val ctx = TestContext.dynamicMapped(
+                mapOf(
+                    "foo" to "c1",
+                    "bar" to "c2",
+                )
+            )
+            val lookupRequests = mapOf(
+                setOf("foo") to failedLookup("foo", keyLookupException),
+                setOf("bar") to mapped("bar", 1),
+            )
+            ctx.poll(lookupRequests, emptyMap())
+            val fulfillmentResults = mapOf(
+                setOf("bar") to completed("bar", 30L),
+            )
+            ctx.poll(emptyMap(), fulfillmentResults)
+            ctx.poll(emptyMap(), emptyMap())
+        }
     }
 
     @Test
@@ -155,6 +172,67 @@ internal class AdminApiDriverTest {
         ctx.poll(barLookupRetry, emptyMap())
         val barFulfillRetry = mapOf(setOf("bar") to completed("bar", 30L))
         ctx.poll(emptyMap(), barFulfillRetry)
+        ctx.poll(emptyMap(), emptyMap())
+    }
+
+    @Test
+    fun testFulfillmentFailureUnsupportedVersion() {
+        val ctx = TestContext.staticMapped(
+            mapOf(
+                "foo" to 0,
+                "bar" to 1,
+                "baz" to 1,
+            )
+        )
+        val fulfillmentResults = mapOf(
+            setOf("foo") to failed("foo", UnsupportedVersionException("")),
+            setOf("bar", "baz") to completed("bar", 30L, "baz", 45L),
+        )
+        ctx.poll(emptyMap(), fulfillmentResults)
+        ctx.poll(emptyMap(), emptyMap())
+    }
+
+    @Test
+    fun testFulfillmentRetriableUnsupportedVersion() {
+        val ctx = TestContext.staticMapped(
+            mapOf(
+                "foo" to 0,
+                "bar" to 1,
+                "baz" to 2,
+            )
+        )
+
+        ctx.handler.addRetriableUnsupportedVersionKey("foo")
+        // The mapped ApiResults are only used in the onResponse/handleResponse path - anything that needs
+        // to be handled in the onFailure path needs to be manually set up later.
+        ctx.handler.expectRequest(setOf("foo"), failed("foo", UnsupportedVersionException("")))
+        ctx.handler.expectRequest(setOf("bar"), failed("bar", UnsupportedVersionException("")))
+        ctx.handler.expectRequest(setOf("baz"), completed("baz", 45L))
+        // Setting up specific fulfillment stage executions requires polling the driver in order to obtain
+        // the request specs needed for the onResponse/onFailure callbacks.
+        val requestSpecs = ctx.driver.poll()
+
+        requestSpecs.forEach { requestSpec ->
+            if (requestSpec.keys.contains("foo") || requestSpec.keys.contains("bar")) {
+                ctx.driver.onFailure(
+                    currentTimeMs = ctx.time.milliseconds(),
+                    spec = requestSpec,
+                    t = UnsupportedVersionException(""),
+                )
+            } else {
+                ctx.driver.onResponse(
+                    currentTimeMs = ctx.time.milliseconds(),
+                    spec = requestSpec,
+                    response = MetadataResponse(MetadataResponseData(), ApiKeys.METADATA.latestVersion()),
+                    node = Node.noNode(),
+                )
+            }
+        }
+        // Verify retry for "foo" but not for "bar" or "baz"
+        ctx.poll(
+            emptyMap(),
+            mapOf(setOf("foo") to failed("foo", UnsupportedVersionException("")))
+        )
         ctx.poll(emptyMap(), emptyMap())
     }
 
@@ -456,6 +534,8 @@ internal class AdminApiDriverTest {
 
         private val expectedRequests: MutableMap<Set<K>, ApiResult<K, V>> = HashMap()
 
+        private val retriableUnsupportedVersionKeys: MutableMap<K, Boolean> = ConcurrentHashMap()
+
         override fun apiName(): String = "mock-api"
 
         override fun lookupStrategy(): AdminApiLookupStrategy<K> = lookupStrategy
@@ -475,7 +555,20 @@ internal class AdminApiDriverTest {
                 ?: throw AssertionError("Unexpected fulfillment request for keys $keys")
         }
 
+        override fun handleUnsupportedVersionException(
+            brokerId: Int,
+            exception: UnsupportedVersionException,
+            keys: Set<K>,
+        ): Map<K, Throwable> {
+            return keys.filter { k -> !retriableUnsupportedVersionKeys.containsKey(k) }
+                .associateWith { exception }
+        }
+
         fun reset() = expectedRequests.clear()
+
+        fun addRetriableUnsupportedVersionKey(key: K) {
+            retriableUnsupportedVersionKeys[key] = true
+        }
     }
 
     companion object {

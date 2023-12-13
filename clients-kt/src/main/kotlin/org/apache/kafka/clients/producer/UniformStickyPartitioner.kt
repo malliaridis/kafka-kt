@@ -21,9 +21,10 @@ import org.apache.kafka.clients.producer.internals.StickyPartitionCache
 import org.apache.kafka.common.Cluster
 
 /**
- * NOTE this partitioner is deprecated and shouldn't be used. To use default partitioning logic
- * remove partitioner.class configuration setting and set partitioner.ignore.keys=true.
- * See KIP-794 for more info.
+ * @deprecated Since 3.3.0, in order to use default partitioning logic
+ * remove the {@code partitioner.class} configuration setting and set {@code partitioner.ignore.keys=true}.
+ * See [KIP-794](https://cwiki.apache.org/confluence/display/KAFKA/KIP-794%3A+Strictly+Uniform+Sticky+Partitioner)
+ * for more info.
  *
  * The partitioning strategy:
  *
@@ -34,7 +35,8 @@ import org.apache.kafka.common.Cluster
  * partitioning strategy in this partitioner. Records with the same key are not guaranteed to be
  * sent to the same partition.
  *
- * See KIP-480 for details about sticky partitioning.
+ * See [KIP-480](https://cwiki.apache.org/confluence/display/KAFKA/KIP-480%3A+Sticky+Partitioner) for details
+ * about sticky partitioning.
  */
 @Deprecated("")
 class UniformStickyPartitioner : Partitioner {

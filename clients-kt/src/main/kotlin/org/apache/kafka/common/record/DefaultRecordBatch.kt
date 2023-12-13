@@ -17,12 +17,10 @@
 
 package org.apache.kafka.common.record
 
-import java.io.DataInputStream
-import java.io.EOFException
 import java.io.IOException
+import java.io.InputStream
 import java.nio.BufferUnderflowException
 import java.nio.ByteBuffer
-import java.util.*
 import org.apache.kafka.common.InvalidRecordException
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.errors.CorruptRecordException
@@ -185,10 +183,10 @@ class DefaultRecordBatch internal constructor(
 
     override fun partitionLeaderEpoch(): Int = buffer.getInt(PARTITION_LEADER_EPOCH_OFFSET)
 
-    fun recordInputStream(bufferSupplier: BufferSupplier): DataInputStream {
+    fun recordInputStream(bufferSupplier: BufferSupplier): InputStream {
         val buffer = buffer.duplicate()
         buffer.position(RECORDS_OFFSET)
-        return DataInputStream(compressionType().wrapForInput(buffer, magic(), bufferSupplier))
+        return compressionType().wrapForInput(buffer, magic(), bufferSupplier)
     }
 
     private fun compressedIterator(
@@ -197,8 +195,6 @@ class DefaultRecordBatch internal constructor(
     ): CloseableIterator<Record> {
         val inputStream = recordInputStream(bufferSupplier)
         return if (skipKeyValue) {
-            // this buffer is used to skip length delimited fields like key, value, headers
-            val skipArray = ByteArray(MAX_SKIP_BUFFER_SIZE)
             object : StreamRecordIterator(inputStream) {
 
                 @Throws(IOException::class)
@@ -210,7 +206,6 @@ class DefaultRecordBatch internal constructor(
                 ): Record {
                     return DefaultRecord.readPartiallyFrom(
                         input = inputStream,
-                        skipArray = skipArray,
                         baseOffset = baseOffset,
                         baseTimestamp = baseTimestamp,
                         baseSequence = baseSequence,
@@ -270,32 +265,27 @@ class DefaultRecordBatch internal constructor(
     }
 
     override fun iterator(): Iterator<Record> {
-        if (count() == 0) return Collections.emptyIterator()
+        if (count() == 0) return emptyList<Record>().iterator()
         if (!isCompressed) return uncompressedIterator()
         compressedIterator(BufferSupplier.NO_CACHING, false).use { iterator ->
-            val records: MutableList<Record> =
-                ArrayList(count())
+            val records: MutableList<Record> = ArrayList(count())
             while (iterator.hasNext()) records.add(iterator.next())
             return records.iterator()
         }
     }
 
     override fun skipKeyValueIterator(bufferSupplier: BufferSupplier): CloseableIterator<Record> {
-        if (count() == 0) {
-            return CloseableIterator.wrap(Collections.emptyIterator())
-        }
+        if (count() == 0) return CloseableIterator.wrap(mutableListOf<Record>().iterator())
 
         /*
          * For uncompressed iterator, it is actually not worth skipping key / value / headers at all since
          * its ByteBufferInputStream's skip() function is less efficient compared with just reading it actually
          * as it will allocate new byte array.
-         */return if (!isCompressed) uncompressedIterator() else compressedIterator(
-            bufferSupplier,
-            true
-        )
-
+         */
+        return if (!isCompressed) uncompressedIterator()
         // we define this to be a closable iterator so that caller (i.e. the log validator) needs to close it
         // while we can save memory footprint of not decompressing the full record set ahead of time
+        else compressedIterator(bufferSupplier, true)
     }
 
     override fun streamingIterator(
@@ -363,7 +353,7 @@ class DefaultRecordBatch internal constructor(
                 ", crc=${checksum()})"
     }
 
-    private abstract inner class RecordIterator : CloseableIterator<Record> {
+    internal abstract inner class RecordIterator : CloseableIterator<Record> {
 
         private val logAppendTime: Long?
 
@@ -419,8 +409,8 @@ class DefaultRecordBatch internal constructor(
         override fun remove() = throw UnsupportedOperationException()
     }
 
-    private abstract inner class StreamRecordIterator(
-        private val inputStream: DataInputStream,
+    internal abstract inner class StreamRecordIterator(
+        private val inputStream: InputStream,
     ) : RecordIterator() {
 
         @Throws(IOException::class)
@@ -439,8 +429,8 @@ class DefaultRecordBatch internal constructor(
         ): Record {
             try {
                 return doReadRecord(baseOffset, baseTimestamp, baseSequence, logAppendTime)
-            } catch (e: EOFException) {
-                throw InvalidRecordException("Incorrect declared batch size, premature EOF reached")
+            } catch (e: IllegalArgumentException) {
+                throw InvalidRecordException("Incorrect declared batch size, premature EOF reached", e)
             } catch (e: IOException) {
                 throw KafkaException("Failed to decompress record stream", e)
             }
@@ -486,8 +476,6 @@ class DefaultRecordBatch internal constructor(
         override fun baseSequence(): Int = loadBatchHeader().baseSequence()
 
         override fun lastSequence(): Int = loadBatchHeader().lastSequence()
-
-        override fun checksum(): UInt = loadBatchHeader().checksum()
 
         override fun countOrNull(): Int? = loadBatchHeader().countOrNull()
 
@@ -572,8 +560,6 @@ class DefaultRecordBatch internal constructor(
 
         private const val TIMESTAMP_TYPE_MASK: Byte = 0x08
 
-        private const val MAX_SKIP_BUFFER_SIZE = 2048
-
         private fun computeAttributes(
             type: CompressionType?,
             timestampType: TimestampType,
@@ -591,7 +577,7 @@ class DefaultRecordBatch internal constructor(
             if (isControl) attributes = (attributes.toInt() or CONTROL_FLAG_MASK).toByte()
 
             if (type!!.id > 0) attributes =
-                (attributes.toInt() or (COMPRESSION_CODEC_MASK.toInt() and type.id)).toByte()
+                (attributes.toInt() or (COMPRESSION_CODEC_MASK.toInt() and type.id.toInt())).toByte()
 
             if (timestampType == TimestampType.LOG_APPEND_TIME) attributes =
                 (attributes.toInt() or TIMESTAMP_TYPE_MASK.toInt()).toByte()

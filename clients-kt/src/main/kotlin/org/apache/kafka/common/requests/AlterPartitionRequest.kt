@@ -17,12 +17,14 @@
 
 package org.apache.kafka.common.requests
 
+import java.nio.ByteBuffer
+import java.util.stream.Collectors
 import org.apache.kafka.common.message.AlterPartitionRequestData
+import org.apache.kafka.common.message.AlterPartitionRequestData.BrokerState
 import org.apache.kafka.common.message.AlterPartitionResponseData
 import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.protocol.ByteBufferAccessor
 import org.apache.kafka.common.protocol.Errors
-import java.nio.ByteBuffer
 
 class AlterPartitionRequest(
     private val data: AlterPartitionRequestData,
@@ -59,13 +61,30 @@ class AlterPartitionRequest(
         if (canUseTopicIds) ApiKeys.ALTER_PARTITION.latestVersion() else 1
     ) {
 
-        override fun build(version: Short): AlterPartitionRequest =
-            AlterPartitionRequest(data, version)
+        override fun build(version: Short): AlterPartitionRequest {
+            if (version < 3) {
+                data.topics.forEach { topicData ->
+                    topicData.partitions.forEach { partitionData ->
+                        // The newIsrWithEpochs will be empty after build. Then we can skip the conversion if the build
+                        // is called again.
+                        if (partitionData.newIsrWithEpochs.isNotEmpty()) {
+                            val newIsr = partitionData.newIsrWithEpochs.map {it.brokerId }
+                            partitionData.setNewIsr(newIsr.toIntArray())
+                            partitionData.setNewIsrWithEpochs(emptyList())
+                        }
+                    }
+                }
+            }
+            return AlterPartitionRequest(data, version)
+        }
 
         override fun toString(): String = data.toString()
     }
 
     companion object {
+
+        fun newIsrToSimpleNewIsrWithBrokerEpochs(newIsr: List<Int>): List<BrokerState> =
+            newIsr.map { brokerId -> BrokerState().setBrokerId(brokerId) }
 
         fun parse(buffer: ByteBuffer, version: Short): AlterPartitionRequest =
             AlterPartitionRequest(

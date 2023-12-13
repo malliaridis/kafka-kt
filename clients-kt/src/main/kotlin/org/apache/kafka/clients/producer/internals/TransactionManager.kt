@@ -17,12 +17,14 @@
 
 package org.apache.kafka.clients.producer.internals
 
+import java.util.PriorityQueue
 import org.apache.kafka.clients.ApiVersions
 import org.apache.kafka.clients.ClientResponse
 import org.apache.kafka.clients.RequestCompletionHandler
 import org.apache.kafka.clients.consumer.CommitFailedException
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
+import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.Node
 import org.apache.kafka.common.TopicPartition
@@ -67,7 +69,6 @@ import org.apache.kafka.common.requests.TxnOffsetCommitResponse
 import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.ProducerIdAndEpoch
 import org.slf4j.Logger
-import java.util.*
 import kotlin.math.max
 import kotlin.math.min
 
@@ -119,6 +120,47 @@ class TransactionManager(
 
     private val partitionsInTransaction = mutableSetOf<TopicPartition>()
 
+    /**
+     * During its normal course of operations, the transaction manager transitions through different internal
+     * states (i.e. by updating [currentState]) to one of those defined in [State]. These state transitions
+     * result from actions on one of the following classes of threads:
+     *
+     * - *Application* threads that invokes [Producer] API calls
+     * - *[Sender]* thread operations
+     *
+     * When an invalid state transition is detected during execution on an *application* thread, the
+     * [.currentState] is *not updated* and an [IllegalStateException] is thrown. This gives the
+     * application the opportunity to fix the issue without permanently poisoning the state of the
+     * transaction manager. The [Producer] API calls that perform a state transition include:
+     *
+     * - [Producer.initTransactions] calls [.initializeTransactions]
+     * - [Producer.beginTransaction] calls [.beginTransaction]
+     * - [Producer.commitTransaction]} calls [.beginCommit]
+     * - [Producer.abortTransaction] calls [.beginAbort]
+     *
+     * - [Producer.sendOffsetsToTransaction] calls
+     * [sendOffsetsToTransaction]
+     *
+     * - [Producer.send] (and its variants) calls
+     * [maybeAddPartition] and
+     * [maybeTransitionToErrorState]
+     *
+     * The [Producer] is implemented such that much of its work delegated to and performed asynchronously on the
+     * *[Sender]* thread. This includes record batching, network I/O, broker response handlers, etc. If an
+     * invalid state transition is detected in the *[Sender]* thread, in addition to throwing an
+     * [IllegalStateException], the transaction manager intentionally "poisons" itself by setting its
+     * [currentState] to [State.FATAL_ERROR], a state from which it cannot recover.
+     *
+     * It's important to prevent possible corruption when the transaction manager has determined that it is in a
+     * fatal state. Subsequent transaction operations attempted via either the *application* or the
+     * *[Sender]* thread should fail. This is achieved when these operations invoke the
+     * [maybeFailWithError] method, as it causes a [KafkaException] to be thrown, ensuring the stated
+     * transactional guarantees are not violated.
+     *
+     * See KAFKA-14831 for more detail.
+     */
+    private val shouldPoisonStateOnInvalidTransition: ThreadLocal<Boolean> = ThreadLocal.withInitial { false }
+
     private var pendingTransition: PendingStateTransition? = null
 
     private var inFlightRequestCorrelationId = NO_INFLIGHT_REQUEST_CORRELATION_ID
@@ -151,6 +193,10 @@ class TransactionManager(
 
     @Volatile
     private var epochBumpRequired = false
+
+    fun setPoisonStateOnInvalidTransition(shouldPoisonState: Boolean) {
+        shouldPoisonStateOnInvalidTransition.set(shouldPoisonState)
+    }
 
     @Synchronized
     fun initializeTransactions(): TransactionalRequestResult = initializeTransactions(ProducerIdAndEpoch.NONE)
@@ -406,6 +452,11 @@ class TransactionManager(
 
     @Synchronized
     fun maybeUpdateProducerIdAndEpoch(topicPartition: TopicPartition) {
+        if (hasFatalError) {
+            log.debug("Ignoring producer ID and epoch update request since the producer is in fatal error state")
+            return
+        }
+
         if (hasStaleProducerIdAndEpoch(topicPartition) && !hasInflightBatches(topicPartition)) {
             // If the batch was on a different ID and/or epoch (due to an epoch bump) and all its
             // in-flight batches have completed, reset the partition sequence so that the next batch
@@ -611,6 +662,13 @@ class TransactionManager(
         )
         updateLastAckedOffset(response, batch)
         removeInFlightBatch(batch)
+    }
+
+    @Synchronized
+    fun transitionToUninitialized(exception: RuntimeException?) {
+        transitionTo(State.UNINITIALIZED)
+        pendingTransition?.result?.fail(exception)
+        lastError = null
     }
 
     @Synchronized
@@ -874,6 +932,11 @@ class TransactionManager(
     }
 
     @Synchronized
+    fun failPendingRequests(exception: RuntimeException) {
+        pendingRequests.forEach { handler -> handler.abortableError(exception) }
+    }
+
+    @Synchronized
     fun close() {
         val shutdownException = KafkaException("The producer closed forcefully")
         pendingRequests.forEach { handler -> handler.fatalError(shutdownException) }
@@ -1060,9 +1123,14 @@ class TransactionManager(
     }
 
     @get:Synchronized
-    val isReady: Boolean
+    internal val isReady: Boolean
         // visible for testing
         get() = isTransactional && currentState == State.READY
+
+    // visible for testing
+    @get:Synchronized
+    internal val isInitializing: Boolean
+        get() = isTransactional && currentState == State.INITIALIZING
 
     fun handleCoordinatorReady() {
         val nodeApiVersions =
@@ -1074,19 +1142,22 @@ class TransactionManager(
     }
 
     private fun transitionTo(target: State, error: RuntimeException? = null) {
-        check(currentState.isTransitionValid(currentState, target)) {
-            val idString =
-                if (transactionalId == null) ""
-                else "TransactionalId $transactionalId: "
+        if (!currentState.isTransitionValid(currentState, target)) {
+            val idString = if (transactionalId == null) "" else "TransactionalId $transactionalId: "
+            val message =
+                "${idString}Invalid transition attempted from state ${currentState.name} to state ${target.name}"
 
-            idString + "Invalid transition attempted from state ${currentState.name} to " +
-                    "state ${target.name}"
-        }
-
-        lastError = if (target == State.FATAL_ERROR || target == State.ABORTABLE_ERROR) {
+            if (shouldPoisonStateOnInvalidTransition.get()) {
+                currentState = State.FATAL_ERROR
+                IllegalStateException(message).apply {
+                    lastError = this
+                    throw this
+                }
+            } else throw IllegalStateException(message)
+        } else if (target == State.FATAL_ERROR || target == State.ABORTABLE_ERROR) {
             requireNotNull(error) { "Cannot transition to $target with a null exception" }
-            error
-        } else null
+            lastError = error
+        } else lastError = null
 
         if (lastError != null) log.debug(
             "Transition from state {} to error state {}",
@@ -1102,25 +1173,31 @@ class TransactionManager(
         check(isTransactional) { "Transactional method invoked on a non-transactional producer." }
 
     private fun maybeFailWithError() {
-        if (hasError) {
-            // for ProducerFencedException, do not wrap it as a KafkaException but create a new
-            // instance without the call trace since it was not thrown because of the current call
-            when (lastError) {
-                is ProducerFencedException -> throw ProducerFencedException(
-                    "Producer with transactionalId '$transactionalId' and $producerIdAndEpoch " +
-                            "has been fenced by another producer with the same transactionalId"
-                )
+        if (!hasError) return
 
-                is InvalidProducerEpochException -> throw InvalidProducerEpochException(
-                    "Producer with transactionalId '$transactionalId' and $producerIdAndEpoch " +
-                            "attempted to produce with an old epoch"
-                )
+        // for ProducerFencedException, do not wrap it as a KafkaException but create a new
+        // instance without the call trace since it was not thrown because of the current call
+        when (lastError) {
+            is ProducerFencedException -> throw ProducerFencedException(
+                "Producer with transactionalId '$transactionalId' and $producerIdAndEpoch " +
+                        "has been fenced by another producer with the same transactionalId"
+            )
 
-                else -> throw KafkaException(
-                    "Cannot execute transactional method because we are in an error state",
-                    lastError,
-                )
-            }
+            is InvalidProducerEpochException -> throw InvalidProducerEpochException(
+                "Producer with transactionalId '$transactionalId' and $producerIdAndEpoch " +
+                        "attempted to produce with an old epoch"
+            )
+
+            is IllegalStateException -> throw IllegalStateException(
+                "Producer with transactionalId '$transactionalId' and $producerIdAndEpoch cannot execute " +
+                        "transactional method because of previous invalid state transition attempt",
+                lastError
+            )
+
+            else -> throw KafkaException(
+                "Cannot execute transactional method because we are in an error state",
+                lastError,
+            )
         }
     }
 
@@ -1157,11 +1234,11 @@ class TransactionManager(
     private fun addPartitionsToTransactionHandler(): TxnRequestHandler {
         pendingPartitionsInTransaction.addAll(newPartitionsInTransaction)
         newPartitionsInTransaction.clear()
-        val builder = AddPartitionsToTxnRequest.Builder(
-            transactionalId,
-            producerIdAndEpoch.producerId,
-            producerIdAndEpoch.epoch,
-            ArrayList(pendingPartitionsInTransaction)
+        val builder = AddPartitionsToTxnRequest.Builder.forClient(
+            transactionalId = transactionalId!!,
+            producerId = producerIdAndEpoch.producerId,
+            producerEpoch = producerIdAndEpoch.epoch,
+            partitions = pendingPartitionsInTransaction.toList(),
         )
         return AddPartitionsToTxnHandler(builder)
     }
@@ -1381,8 +1458,15 @@ class TransactionManager(
             } else if (error.exception is RetriableException) reenqueue()
             else if (error === Errors.TRANSACTIONAL_ID_AUTHORIZATION_FAILED
                 || error === Errors.CLUSTER_AUTHORIZATION_FAILED
-            ) fatalError(error.exception)
-            else if (error === Errors.INVALID_PRODUCER_EPOCH || error === Errors.PRODUCER_FENCED) {
+            ) {
+                log.info(
+                    "Abortable authorization error: {}.  Transition the producer state to {}",
+                    error.message,
+                    State.ABORTABLE_ERROR
+                )
+                lastError = error.exception
+                abortableError(error.exception!!)
+            } else if (error === Errors.INVALID_PRODUCER_EPOCH || error === Errors.PRODUCER_FENCED) {
                 // We could still receive INVALID_PRODUCER_EPOCH from old versioned transaction
                 // coordinator, just treat it the same as PRODUCE_FENCED.
                 fatalError(Errors.PRODUCER_FENCED.exception)
@@ -1406,7 +1490,7 @@ class TransactionManager(
 
         override fun handleResponse(responseBody: AbstractResponse?) {
             val addPartitionsToTxnResponse = responseBody as AddPartitionsToTxnResponse
-            val errors = addPartitionsToTxnResponse.errors()
+            val errors = addPartitionsToTxnResponse.errors()[AddPartitionsToTxnResponse.V3_AND_BELOW_TXN_ID]!!
             var hasPartitionErrors = false
             val unauthorizedTopics: MutableSet<String> = hashSetOf()
             retryBackoffMs = this@TransactionManager.retryBackoffMs
@@ -1442,7 +1526,7 @@ class TransactionManager(
                     fatalError(error.exception)
                     return
                 } else if (error === Errors.INVALID_TXN_STATE) {
-                    fatalError(KafkaException(cause = error.exception))
+                    fatalError(error.exception)
                     return
                 } else if (error === Errors.TOPIC_AUTHORIZATION_FAILED)
                     unauthorizedTopics.add(topicPartition.topic)
@@ -1453,10 +1537,7 @@ class TransactionManager(
                         topicPartition,
                     )
                     hasPartitionErrors = true
-                } else if (
-                    error === Errors.UNKNOWN_PRODUCER_ID
-                    || error === Errors.INVALID_PRODUCER_ID_MAPPING
-                ) {
+                } else if (error === Errors.UNKNOWN_PRODUCER_ID || error === Errors.INVALID_PRODUCER_ID_MAPPING) {
                     abortableErrorIfPossible(error.exception!!)
                     return
                 } else {
@@ -1608,10 +1689,8 @@ class TransactionManager(
             } else if (error === Errors.TRANSACTIONAL_ID_AUTHORIZATION_FAILED)
                 fatalError(error.exception)
             else if (error === Errors.INVALID_TXN_STATE) fatalError(error.exception)
-            else if (
-                error === Errors.UNKNOWN_PRODUCER_ID
-                || error === Errors.INVALID_PRODUCER_ID_MAPPING
-            ) abortableErrorIfPossible(error.exception!!)
+            else if (error === Errors.UNKNOWN_PRODUCER_ID || error === Errors.INVALID_PRODUCER_ID_MAPPING)
+                abortableErrorIfPossible(error.exception!!)
             else fatalError(KafkaException("Unhandled error in EndTxnResponse: ${error.message}"))
         }
     }
@@ -1649,15 +1728,15 @@ class TransactionManager(
                 )
                 reenqueue()
             } else if (error.exception is RetriableException) reenqueue()
-            else if (
-                error === Errors.UNKNOWN_PRODUCER_ID
-                || error === Errors.INVALID_PRODUCER_ID_MAPPING
-            ) abortableErrorIfPossible(error.exception!!)
+            else if (error === Errors.UNKNOWN_PRODUCER_ID || error === Errors.INVALID_PRODUCER_ID_MAPPING)
+                abortableErrorIfPossible(error.exception!!)
             else if (error === Errors.INVALID_PRODUCER_EPOCH || error === Errors.PRODUCER_FENCED) {
                 // We could still receive INVALID_PRODUCER_EPOCH from old versioned transaction coordinator,
                 // just treat it the same as PRODUCE_FENCED.
                 fatalError(Errors.PRODUCER_FENCED.exception)
             } else if (error === Errors.TRANSACTIONAL_ID_AUTHORIZATION_FAILED)
+                fatalError(error.exception)
+            else if (error === Errors.INVALID_TXN_STATE)
                 fatalError(error.exception)
             else if (error === Errors.GROUP_AUTHORIZATION_FAILED)
                 abortableError(GroupAuthorizationException(groupId = builder.data.groupId))
@@ -1723,13 +1802,19 @@ class TransactionManager(
                         )
                     )
                     break
-                } else if (isFatalException(error)) {
+                } else if (error == Errors.INVALID_PRODUCER_EPOCH || error == Errors.PRODUCER_FENCED) {
+                    // We could still receive INVALID_PRODUCER_EPOCH from old versioned transaction coordinator,
+                    // just treat it the same as PRODUCE_FENCED.
+                    fatalError(Errors.PRODUCER_FENCED.exception)
+                    break
+                } else if (
+                    error == Errors.TRANSACTIONAL_ID_AUTHORIZATION_FAILED
+                    || error == Errors.UNSUPPORTED_FOR_MESSAGE_FORMAT
+                ) {
                     fatalError(error.exception)
                     break
                 } else {
-                    fatalError(
-                        KafkaException("Unexpected error in TxnOffsetCommitResponse: ${error.message}")
-                    )
+                    fatalError(KafkaException("Unexpected error in TxnOffsetCommitResponse: ${error.message}"))
                     break
                 }
             }
@@ -1738,12 +1823,6 @@ class TransactionManager(
             else reenqueue() // Retry the commits which failed with a retryable error
         }
     }
-
-    private fun isFatalException(error: Errors): Boolean =
-        error === Errors.TRANSACTIONAL_ID_AUTHORIZATION_FAILED
-                || error === Errors.INVALID_PRODUCER_EPOCH
-                || error === Errors.PRODUCER_FENCED
-                || error === Errors.UNSUPPORTED_FOR_MESSAGE_FORMAT
 
     private class PendingStateTransition(
         val result: TransactionalRequestResult,
@@ -1770,7 +1849,7 @@ class TransactionManager(
         FATAL_ERROR;
 
         fun isTransitionValid(source: State, target: State): Boolean = when (target) {
-            UNINITIALIZED -> source == READY
+            UNINITIALIZED -> source == READY || source == ABORTABLE_ERROR
             INITIALIZING -> source == UNINITIALIZED || source == ABORTING_TRANSACTION
             READY -> source == INITIALIZING
                     || source == COMMITTING_TRANSACTION
@@ -1782,6 +1861,7 @@ class TransactionManager(
             ABORTABLE_ERROR -> source == IN_TRANSACTION
                     || source == COMMITTING_TRANSACTION
                     || source == ABORTABLE_ERROR
+                    || source == INITIALIZING
 
             FATAL_ERROR ->
                 // We can transition to FATAL_ERROR unconditionally.

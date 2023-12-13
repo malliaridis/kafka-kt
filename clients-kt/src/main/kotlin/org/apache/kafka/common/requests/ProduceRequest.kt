@@ -18,7 +18,6 @@
 package org.apache.kafka.common.requests
 
 import java.nio.ByteBuffer
-import java.util.*
 import org.apache.kafka.common.InvalidRecordException
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.UnsupportedCompressionTypeException
@@ -137,7 +136,7 @@ class ProduceRequest(
 
     override fun errorCounts(e: Throwable): Map<Errors, Int> {
         val error = Errors.forException(e)
-        return Collections.singletonMap(error, partitionSizes.size)
+        return mapOf(error to partitionSizes.size)
     }
 
     @Deprecated(
@@ -230,7 +229,7 @@ class ProduceRequest(
                 if (baseRecords is Records) {
                     val iterator = baseRecords.batches().iterator()
                     if (!iterator.hasNext()) throw InvalidRecordException(
-                        "Produce requests with version $version must have at least one record batch"
+                        "Produce requests with version $version must have at least one record batch per partition"
                     )
 
                     val entry = iterator.next()
@@ -247,7 +246,7 @@ class ProduceRequest(
 
                     if (iterator.hasNext()) throw InvalidRecordException(
                         "Produce requests with version $version are only allowed to " +
-                                "contain exactly one record batch"
+                                "contain exactly one record batch per partition"
                     )
                 }
             }

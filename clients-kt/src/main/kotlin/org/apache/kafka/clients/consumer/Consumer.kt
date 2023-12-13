@@ -19,7 +19,6 @@ package org.apache.kafka.clients.consumer
 
 import java.io.Closeable
 import java.time.Duration
-import java.util.*
 import java.util.regex.Pattern
 import org.apache.kafka.common.Metric
 import org.apache.kafka.common.MetricName

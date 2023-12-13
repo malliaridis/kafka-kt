@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.kafka.common.security.oauthbearer
+package org.apache.kafka.common.security.oauthbearer.internals
 
 import java.io.IOException
 import javax.security.auth.callback.Callback
@@ -27,8 +27,12 @@ import org.apache.kafka.common.security.JaasContext
 import org.apache.kafka.common.security.auth.AuthenticateCallbackHandler
 import org.apache.kafka.common.security.auth.SaslExtensions
 import org.apache.kafka.common.security.authenticator.SaslInternalConfigs
-import org.apache.kafka.common.security.oauthbearer.internals.OAuthBearerClientInitialResponse
-import org.apache.kafka.common.security.oauthbearer.internals.OAuthBearerSaslServer
+import org.apache.kafka.common.security.oauthbearer.OAuthBearerExtensionsValidatorCallback
+import org.apache.kafka.common.security.oauthbearer.OAuthBearerLoginModule
+import org.apache.kafka.common.security.oauthbearer.OAuthBearerToken
+import org.apache.kafka.common.security.oauthbearer.OAuthBearerTokenCallback
+import org.apache.kafka.common.security.oauthbearer.OAuthBearerTokenMock
+import org.apache.kafka.common.security.oauthbearer.OAuthBearerValidatorCallback
 import org.apache.kafka.common.security.oauthbearer.internals.unsecured.OAuthBearerConfigException
 import org.apache.kafka.common.security.oauthbearer.internals.unsecured.OAuthBearerUnsecuredLoginCallbackHandler
 import org.apache.kafka.common.security.oauthbearer.internals.unsecured.OAuthBearerUnsecuredValidatorCallbackHandler
@@ -157,13 +161,13 @@ class OAuthBearerSaslServerTest {
 
     @Test
     @Throws(Exception::class)
-    fun authorizatonIdEqualsAuthenticationId() {
+    fun authorizationIdEqualsAuthenticationId() {
         val nextChallenge = saslServer.evaluateResponse(clientInitialResponse(USER))
         assertTrue(nextChallenge.isEmpty(), "Next challenge is not empty")
     }
 
     @Test
-    fun authorizatonIdNotEqualsAuthenticationId() {
+    fun authorizationIdNotEqualsAuthenticationId() {
         assertFailsWith<SaslAuthenticationException> {
             saslServer.evaluateResponse(clientInitialResponse(authorizationId = USER + "x"))
         }
@@ -184,19 +188,10 @@ class OAuthBearerSaslServerTest {
     }
 
     @Throws(OAuthBearerConfigException::class, IOException::class, UnsupportedCallbackException::class)
-    private fun clientInitialResponse(authorizationId: String?, illegalToken: Boolean = false): ByteArray {
-        return clientInitialResponse(
-            authorizationId = authorizationId,
-            illegalToken = false,
-            customExtensions = emptyMap(),
-        )
-    }
-
-    @Throws(OAuthBearerConfigException::class, IOException::class, UnsupportedCallbackException::class)
     private fun clientInitialResponse(
         authorizationId: String?,
-        illegalToken: Boolean,
-        customExtensions: Map<String, String>,
+        illegalToken: Boolean = false,
+        customExtensions: Map<String, String> = emptyMap(),
     ): ByteArray {
         val callback = OAuthBearerTokenCallback()
         LOGIN_CALLBACK_HANDLER.handle(arrayOf(callback))

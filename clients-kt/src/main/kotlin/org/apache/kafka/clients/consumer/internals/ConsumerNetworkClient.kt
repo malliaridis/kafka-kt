@@ -17,6 +17,13 @@
 
 package org.apache.kafka.clients.consumer.internals
 
+import java.io.Closeable
+import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.ConcurrentMap
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.locks.ReentrantLock
 import org.apache.kafka.clients.ClientRequest
 import org.apache.kafka.clients.ClientResponse
 import org.apache.kafka.clients.KafkaClient
@@ -32,14 +39,6 @@ import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.Time
 import org.apache.kafka.common.utils.Timer
 import org.slf4j.Logger
-import java.io.Closeable
-import java.io.IOException
-import java.util.*
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.ConcurrentMap
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.locks.ReentrantLock
 import kotlin.math.min
 
 /**
@@ -82,6 +81,14 @@ class ConsumerNetworkClient(
     private val wakeup = AtomicBoolean(false)
 
     fun defaultRequestTimeoutMs(): Int = requestTimeoutMs
+
+    /**
+     * Send a request with the default timeout. See [.send].
+     */
+    fun send(
+        node: Node,
+        requestBuilder: AbstractRequest.Builder<*>,
+    ): RequestFuture<ClientResponse> = send(node, requestBuilder, requestTimeoutMs)
 
     /**
      * Send a new request. Note that the request is not actually transmitted on the network until
@@ -181,7 +188,7 @@ class ConsumerNetworkClient(
      * @throws InterruptException if the calling thread is interrupted
      */
     fun poll(future: RequestFuture<*>) {
-        while (!future.isDone) poll(time.timer(Long.MAX_VALUE), future)
+        while (!future.isDone()) poll(time.timer(Long.MAX_VALUE), future)
     }
 
     /**
@@ -198,9 +205,9 @@ class ConsumerNetworkClient(
     fun poll(future: RequestFuture<*>, timer: Timer, disableWakeup: Boolean = false): Boolean {
         do {
             poll(timer, future, disableWakeup)
-        } while (!future.isDone && timer.isNotExpired)
+        } while (!future.isDone() && timer.isNotExpired)
 
-        return future.isDone
+        return future.isDone()
     }
 
     /**
@@ -671,7 +678,7 @@ class ConsumerNetworkClient(
 
         fun requestIterator(node: Node): MutableIterator<ClientRequest> {
             val requests = unsent[node]
-            return requests?.iterator() ?: Collections.emptyIterator()
+            return (requests ?: mutableListOf()).iterator()
         }
 
         fun nodes(): Collection<Node> = unsent.keys

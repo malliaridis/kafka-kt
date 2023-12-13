@@ -34,7 +34,6 @@ class ConfigTransformerTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testReplaceVariable() {
         val (data, ttls) = configTransformer!!.transform(mapOf(MY_KEY to "\${test:testPath:testKey}"))
         assertEquals(TEST_RESULT, data[MY_KEY])
@@ -42,7 +41,6 @@ class ConfigTransformerTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testReplaceVariableWithTTL() {
         val (data, ttls) = configTransformer!!.transform(mapOf(MY_KEY to "\${test:testPath:testKeyWithTTL}"))
         assertEquals(TEST_RESULT_WITH_TTL, data[MY_KEY])
@@ -50,7 +48,6 @@ class ConfigTransformerTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testReplaceMultipleVariablesInValue() {
         val (data) = configTransformer!!.transform(
             mapOf(MY_KEY to "hello, \${test:testPath:testKey}; goodbye, \${test:testPath:testKeyWithTTL}!!!")
@@ -59,21 +56,18 @@ class ConfigTransformerTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testNoReplacement() {
         val (data) = configTransformer!!.transform(mapOf(MY_KEY to "\${test:testPath:missingKey}"))
         assertEquals("\${test:testPath:missingKey}", data[MY_KEY])
     }
 
     @Test
-    @Throws(Exception::class)
     fun testSingleLevelOfIndirection() {
         val (data) = configTransformer!!.transform(mapOf(MY_KEY to "\${test:testPath:testIndirection}"))
         assertEquals("\${test:testPath:testResult}", data[MY_KEY])
     }
 
     @Test
-    @Throws(Exception::class)
     fun testReplaceVariableNoPath() {
         val (data, ttls) = configTransformer!!.transform(mapOf(MY_KEY to "\${test:testKey}"))
         assertEquals(TEST_RESULT_NO_PATH, data[MY_KEY])
@@ -81,14 +75,12 @@ class ConfigTransformerTest {
     }
 
     @Test
-    @Throws(Exception::class)
     fun testReplaceMultipleVariablesWithoutPathInValue() {
         val (data) = configTransformer!!.transform(mapOf(MY_KEY to "first \${test:testKey}; second \${test:testKey}"))
         assertEquals("first testResultNoPath; second testResultNoPath", data[MY_KEY])
     }
 
     @Test
-    @Throws(Exception::class)
     fun testNullConfigValue() {
         // Kotlin Migration: keys with null values are treated equally to undefined keys and therefore
         // the migration replaces the single entry map with an empty map

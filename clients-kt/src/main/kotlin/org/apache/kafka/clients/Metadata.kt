@@ -19,7 +19,6 @@ package org.apache.kafka.clients
 
 import java.io.Closeable
 import java.net.InetSocketAddress
-import java.util.*
 import org.apache.kafka.common.Cluster
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.Node
@@ -55,7 +54,7 @@ open class Metadata(
     private val refreshBackoffMs: Long,
     private val metadataExpireMs: Long,
     private val clusterResourceListeners: ClusterResourceListeners,
-    private val log: Logger
+    private val log: Logger,
 ) : Closeable {
 
     private var updateVersion = 0 // bumped on every metadata response
@@ -210,7 +209,10 @@ open class Metadata(
         return updated
     }
 
-    @Deprecated("User property directly")
+    @Deprecated(
+        message = "User property directly",
+        replaceWith = ReplaceWith("lastSeenLeaderEpochs[topicPartition]")
+    )
     fun lastSeenLeaderEpoch(topicPartition: TopicPartition): Int? =
         lastSeenLeaderEpochs[topicPartition]
 
@@ -274,7 +276,7 @@ open class Metadata(
     fun updateWithCurrentRequestVersion(
         response: MetadataResponse,
         isPartialUpdate: Boolean,
-        nowMs: Long
+        nowMs: Long,
     ) {
         update(requestVersion, response, isPartialUpdate, nowMs)
     }
@@ -294,7 +296,7 @@ open class Metadata(
         requestVersion: Int,
         response: MetadataResponse,
         isPartialUpdate: Boolean,
-        nowMs: Long
+        nowMs: Long,
     ) {
         check(!isClosed) { "Update requested after metadata close" }
         needPartialUpdate = requestVersion < this.requestVersion
@@ -349,7 +351,7 @@ open class Metadata(
     private fun handleMetadataResponse(
         metadataResponse: MetadataResponse,
         isPartialUpdate: Boolean,
-        nowMs: Long
+        nowMs: Long,
     ): MetadataCache {
         // All encountered topics.
         val topics: MutableSet<String> = mutableSetOf()
@@ -379,10 +381,10 @@ open class Metadata(
                     // Even if the partition's metadata includes an error, we need to handle
                     // the update to catch new epochs
                     updateLatestMetadata(
-                        partitionMetadata,
-                        metadataResponse.hasReliableLeaderEpochs(),
-                        topicId,
-                        oldTopicId
+                        partitionMetadata = partitionMetadata,
+                        hasReliableLeaderEpoch = metadataResponse.hasReliableLeaderEpochs(),
+                        topicId = topicId,
+                        oldTopicId = oldTopicId,
                     )?.let { e: PartitionMetadata -> partitions.add(e) }
 
                     if (partitionMetadata.error.exception is InvalidMetadataException) {
@@ -440,13 +442,21 @@ open class Metadata(
         partitionMetadata: PartitionMetadata,
         hasReliableLeaderEpoch: Boolean,
         topicId: Uuid?,
-        oldTopicId: Uuid?
+        oldTopicId: Uuid?,
     ): PartitionMetadata? {
         val tp = partitionMetadata.topicPartition
         return if (hasReliableLeaderEpoch && partitionMetadata.leaderEpoch != null) {
             val newEpoch = partitionMetadata.leaderEpoch
             val currentEpoch = lastSeenLeaderEpochs[tp]
-            if (topicId != null && topicId != oldTopicId) {
+            if (currentEpoch == null) {
+                // We have no previous info, so we can just insert the new epoch info
+                log.debug(
+                    "Setting the last seen epoch of partition {} to {} since the last known epoch was undefined.",
+                    tp, newEpoch
+                )
+                lastSeenLeaderEpochs[tp] = newEpoch
+                return partitionMetadata
+            } else if (topicId != null && topicId != oldTopicId) {
                 // If the new topic ID is valid and different from the last seen topic ID, update the metadata.
                 // Between the time that a topic is deleted and re-created, the client may lose track of the
                 // corresponding topicId (i.e. `oldTopicId` will be null). In this case, when we discover the new
@@ -457,7 +467,7 @@ open class Metadata(
                 )
                 lastSeenLeaderEpochs[tp] = newEpoch
                 partitionMetadata
-            } else if (currentEpoch == null || newEpoch >= currentEpoch) {
+            } else if (newEpoch >= currentEpoch) {
                 // If the received leader epoch is at least the same as the previous one, update the metadata
                 log.debug(
                     "Updating last seen epoch for partition {} from {} to epoch {} from new metadata",
@@ -627,7 +637,7 @@ open class Metadata(
     class MetadataRequestAndVersion internal constructor(
         val requestBuilder: MetadataRequest.Builder,
         val requestVersion: Int,
-        val isPartialUpdate: Boolean
+        val isPartialUpdate: Boolean,
     )
 
     /**

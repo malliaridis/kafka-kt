@@ -18,8 +18,6 @@
 package org.apache.kafka.common.requests
 
 import java.nio.ByteBuffer
-import java.util.function.Function
-import java.util.stream.Stream
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.message.OffsetCommitResponseData
 import org.apache.kafka.common.message.OffsetCommitResponseData.OffsetCommitResponsePartition
@@ -72,7 +70,7 @@ class OffsetCommitResponse : AbstractResponse {
         }
 
         data = OffsetCommitResponseData()
-            .setTopics(ArrayList(responseTopicDataMap.values))
+            .setTopics(responseTopicDataMap.values.toList())
             .setThrottleTimeMs(requestThrottleMs)
     }
 
@@ -102,6 +100,79 @@ class OffsetCommitResponse : AbstractResponse {
     }
 
     override fun shouldClientThrottle(version: Short): Boolean = version >= 4
+
+    class Builder {
+
+        var data = OffsetCommitResponseData()
+
+        var byTopicName = mutableMapOf<String, OffsetCommitResponseTopic>()
+
+        private fun getOrCreateTopic(
+            topicName: String,
+        ): OffsetCommitResponseTopic {
+            var topic = byTopicName[topicName]
+            if (topic == null) {
+                topic = OffsetCommitResponseTopic().setName(topicName)
+                data.topics += topic
+                byTopicName[topicName] = topic
+            }
+            return topic
+        }
+
+        fun addPartition(
+            topicName: String,
+            partitionIndex: Int,
+            error: Errors,
+        ): Builder {
+            val topicResponse = getOrCreateTopic(topicName)
+            topicResponse.partitions += OffsetCommitResponsePartition()
+                .setPartitionIndex(partitionIndex)
+                .setErrorCode(error.code)
+            return this
+        }
+
+        fun <P> addPartitions(
+            topicName: String,
+            partitions: List<P>,
+            partitionIndex: (P) -> Int,
+            error: Errors,
+        ): Builder {
+            val topicResponse = getOrCreateTopic(topicName)
+            partitions.forEach { partition ->
+                topicResponse.partitions += OffsetCommitResponsePartition()
+                    .setPartitionIndex(partitionIndex(partition))
+                    .setErrorCode(error.code)
+            }
+            return this
+        }
+
+        fun merge(
+            newData: OffsetCommitResponseData,
+        ): Builder {
+            if (data.topics.isEmpty()) {
+                // If the current data is empty, we can discard it and use the new data.
+                data = newData
+            } else {
+                // Otherwise, we have to merge them together.
+                newData.topics.forEach { newTopic ->
+                    val existingTopic = byTopicName[newTopic.name]
+                    if (existingTopic == null) {
+                        // If no topic exists, we can directly copy the new topic data.
+                        data.topics += newTopic
+                        byTopicName[newTopic.name] = newTopic
+                    } else {
+                        // Otherwise, we add the partitions to the existing one. Note we
+                        // expect non-overlapping partitions here as we don't verify
+                        // if the partition is already in the list before adding it.
+                        existingTopic.partitions += newTopic.partitions
+                    }
+                }
+            }
+            return this
+        }
+
+        fun build(): OffsetCommitResponse = OffsetCommitResponse(data)
+    }
 
     companion object {
 

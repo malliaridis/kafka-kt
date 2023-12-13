@@ -38,6 +38,8 @@ import org.apache.kafka.common.utils.Utils.newInstance
  * assignment decisions. For this, you can override [subscriptionUserData] and provide custom
  * userData in the returned Subscription. For example, to have a rack-aware assignor, an
  * implementation can use this user data to forward the rackId belonging to each member.
+ *
+ * The implementation can extend [Configurable] to get configs from consumer.
  */
 interface ConsumerPartitionAssignor {
 
@@ -72,7 +74,7 @@ interface ConsumerPartitionAssignor {
      * Indicate which rebalance protocol this assignor works with;
      * By default it should always work with [RebalanceProtocol.EAGER].
      */
-    fun supportedProtocols(): List<RebalanceProtocol?>? = listOf(RebalanceProtocol.EAGER)
+    fun supportedProtocols(): List<RebalanceProtocol> = listOf(RebalanceProtocol.EAGER)
 
     /**
      * Return the version of the assignor which indicates how the user metadata encodings

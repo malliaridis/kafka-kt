@@ -18,7 +18,6 @@
 package org.apache.kafka.common.requests
 
 import java.nio.ByteBuffer
-import java.util.*
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.errors.UnsupportedVersionException
 import org.apache.kafka.common.message.TxnOffsetCommitRequestData
@@ -82,20 +81,24 @@ class TxnOffsetCommitRequest(
 
     }
 
-    class Builder(
-        transactionalId: String,
-        consumerGroupId: String,
-        producerId: Long,
-        producerEpoch: Short,
-        pendingTxnOffsetCommits: Map<TopicPartition, CommittedOffset>,
-        memberId: String = JoinGroupRequest.UNKNOWN_MEMBER_ID,
-        generationId: Int = JoinGroupRequest.UNKNOWN_GENERATION_ID,
-        groupInstanceId: String? = null,
-    ) : AbstractRequest.Builder<TxnOffsetCommitRequest>(ApiKeys.TXN_OFFSET_COMMIT) {
+    class Builder : AbstractRequest.Builder<TxnOffsetCommitRequest> {
 
         val data: TxnOffsetCommitRequestData
 
-        init {
+        constructor(data: TxnOffsetCommitRequestData) : super(ApiKeys.TXN_OFFSET_COMMIT) {
+            this.data = data
+        }
+
+        constructor(
+            transactionalId: String,
+            consumerGroupId: String,
+            producerId: Long,
+            producerEpoch: Short,
+            pendingTxnOffsetCommits: Map<TopicPartition, CommittedOffset>,
+            memberId: String = JoinGroupRequest.UNKNOWN_MEMBER_ID,
+            generationId: Int = JoinGroupRequest.UNKNOWN_GENERATION_ID,
+            groupInstanceId: String? = null,
+        ) : super(ApiKeys.TXN_OFFSET_COMMIT) {
             data = TxnOffsetCommitRequestData()
                 .setTransactionalId(transactionalId)
                 .setGroupId(consumerGroupId)
@@ -135,7 +138,7 @@ class TxnOffsetCommitRequest(
                 mutableMapOf<String, MutableList<TxnOffsetCommitRequestPartition>>()
 
             for ((topicPartition, offset) in pendingTxnOffsetCommits) {
-                val partitions = topicPartitionMap.getOrDefault(topicPartition.topic, ArrayList())
+                val partitions = topicPartitionMap.getOrDefault(topicPartition.topic, mutableListOf())
                 partitions.add(
                     TxnOffsetCommitRequestPartition()
                         .setPartitionIndex(topicPartition.partition)

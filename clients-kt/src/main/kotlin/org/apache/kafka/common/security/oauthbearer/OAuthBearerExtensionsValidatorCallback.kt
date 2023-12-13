@@ -17,10 +17,8 @@
 
 package org.apache.kafka.common.security.oauthbearer
 
-import java.util.*
 import javax.security.auth.callback.Callback
 import org.apache.kafka.common.security.auth.SaslExtensions
-import org.apache.kafka.common.utils.CollectionUtils
 
 /**
  * A [Callback] for use by the `SaslServer` implementation when it needs to validate the SASL

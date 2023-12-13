@@ -20,6 +20,7 @@ package org.apache.kafka.common.protocol.types
 import java.nio.ByteBuffer
 import org.apache.kafka.common.utils.ByteUtils.sizeOfUnsignedVarint
 import org.apache.kafka.common.utils.ByteUtils.writeUnsignedVarint
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlin.test.assertContains
@@ -223,6 +224,30 @@ class ProtocolSerializationTest {
         assertFailsWith<SchemaException>("Array size not validated") {
             type.read(invalidBuffer)
         }
+    }
+
+    @Test
+    fun testReadTaggedFieldsSizeTooLarge() {
+        val tag = 1
+        val type: Type = TaggedFields.of(tag, Field("field", Type.NULLABLE_STRING))
+        val size = 10
+        val buffer = ByteBuffer.allocate(size)
+        val numTaggedFields = 1
+        // write the number of tagged fields
+        writeUnsignedVarint(numTaggedFields, buffer)
+        // write the tag of the first tagged fields
+        writeUnsignedVarint(tag, buffer)
+        // write the size of tagged fields for this tag, using a large number for testing
+        writeUnsignedVarint(Int.MAX_VALUE, buffer)
+        val expectedRemaining = buffer.remaining()
+        buffer.rewind()
+
+        // should throw SchemaException while reading the buffer, instead of OOM
+        val exception = assertFailsWith<SchemaException> { type.read(buffer) }
+        assertEquals(
+            expected = "Error reading field of size ${Int.MAX_VALUE}, only $expectedRemaining bytes available",
+            actual = exception.message,
+        )
     }
 
     @Test
@@ -450,5 +475,22 @@ class ProtocolSerializationTest {
         buffer.flip()
         val e = assertFailsWith<SchemaException> { newSchema.read(buffer) }
         assertContains(e.message!!, "Missing value for field 'field2' which has no default value")
+    }
+
+    @Test
+    fun testReadBytesBeyondItsSize() {
+        val types = arrayOf<Type>(
+            Type.BYTES,
+            Type.COMPACT_BYTES,
+            Type.NULLABLE_BYTES,
+            Type.COMPACT_NULLABLE_BYTES,
+        )
+        for (type in types) {
+            val buffer = ByteBuffer.allocate(20)
+            type.write(buffer, ByteBuffer.allocate(4))
+            buffer.rewind()
+            val bytes = type.read(buffer) as ByteBuffer
+            assertFailsWith<IllegalArgumentException> { bytes.limit(bytes.limit() + 1) }
+        }
     }
 }

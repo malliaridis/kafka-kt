@@ -17,11 +17,13 @@
 
 package org.apache.kafka.clients.consumer.internals.events
 
+import java.io.Closeable
+
 /**
  * This class interfaces with the KafkaConsumer and the background thread. It allows the caller to
  * enqueue events via the [add] method and to retrieve events via the [poll] method.
  */
-interface EventHandler {
+interface EventHandler : Closeable {
 
     /**
      * Retrieves and removes a [BackgroundEvent]. Returns an empty Optional instance if there is

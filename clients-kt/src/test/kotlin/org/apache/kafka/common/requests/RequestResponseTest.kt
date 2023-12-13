@@ -19,6 +19,7 @@ package org.apache.kafka.common.requests
 
 import java.nio.BufferUnderflowException
 import java.nio.ByteBuffer
+import java.util.Collections
 import org.apache.kafka.common.ConsumerGroupState
 import org.apache.kafka.common.ElectionType
 import org.apache.kafka.common.IsolationLevel
@@ -40,6 +41,12 @@ import org.apache.kafka.common.errors.UnknownServerException
 import org.apache.kafka.common.errors.UnsupportedVersionException
 import org.apache.kafka.common.message.AddOffsetsToTxnRequestData
 import org.apache.kafka.common.message.AddOffsetsToTxnResponseData
+import org.apache.kafka.common.message.AddPartitionsToTxnRequestData.AddPartitionsToTxnTopic
+import org.apache.kafka.common.message.AddPartitionsToTxnRequestData.AddPartitionsToTxnTopicCollection
+import org.apache.kafka.common.message.AddPartitionsToTxnRequestData.AddPartitionsToTxnTransaction
+import org.apache.kafka.common.message.AddPartitionsToTxnRequestData.AddPartitionsToTxnTransactionCollection
+import org.apache.kafka.common.message.AddPartitionsToTxnResponseData
+import org.apache.kafka.common.message.AddPartitionsToTxnResponseData.AddPartitionsToTxnResultCollection
 import org.apache.kafka.common.message.AllocateProducerIdsRequestData
 import org.apache.kafka.common.message.AllocateProducerIdsResponseData
 import org.apache.kafka.common.message.AlterClientQuotasResponseData
@@ -75,12 +82,13 @@ import org.apache.kafka.common.message.BrokerRegistrationRequestData
 import org.apache.kafka.common.message.BrokerRegistrationRequestData.FeatureCollection
 import org.apache.kafka.common.message.BrokerRegistrationRequestData.ListenerCollection
 import org.apache.kafka.common.message.BrokerRegistrationResponseData
+import org.apache.kafka.common.message.ConsumerGroupHeartbeatRequestData
+import org.apache.kafka.common.message.ConsumerGroupHeartbeatResponseData
 import org.apache.kafka.common.message.ControlledShutdownRequestData
 import org.apache.kafka.common.message.ControlledShutdownResponseData
 import org.apache.kafka.common.message.ControlledShutdownResponseData.RemainingPartition
 import org.apache.kafka.common.message.ControlledShutdownResponseData.RemainingPartitionCollection
 import org.apache.kafka.common.message.CreateAclsRequestData
-import org.apache.kafka.common.message.CreateAclsRequestData.AclCreation
 import org.apache.kafka.common.message.CreateAclsResponseData
 import org.apache.kafka.common.message.CreateAclsResponseData.AclCreationResult
 import org.apache.kafka.common.message.CreateDelegationTokenRequestData
@@ -225,8 +233,6 @@ import org.apache.kafka.common.message.ProduceRequestData
 import org.apache.kafka.common.message.ProduceRequestData.PartitionProduceData
 import org.apache.kafka.common.message.ProduceRequestData.TopicProduceData
 import org.apache.kafka.common.message.ProduceRequestData.TopicProduceDataCollection
-import org.apache.kafka.common.message.ProduceResponseData.PartitionProduceResponse
-import org.apache.kafka.common.message.ProduceResponseData.TopicProduceResponse
 import org.apache.kafka.common.message.RenewDelegationTokenRequestData
 import org.apache.kafka.common.message.RenewDelegationTokenResponseData
 import org.apache.kafka.common.message.SaslAuthenticateRequestData
@@ -284,6 +290,7 @@ import org.apache.kafka.common.security.auth.SecurityProtocol
 import org.apache.kafka.common.security.token.delegation.DelegationToken
 import org.apache.kafka.common.security.token.delegation.TokenInformation
 import org.apache.kafka.common.utils.SecurityUtils.parseKafkaPrincipal
+import org.apache.kafka.test.TestUtils
 import org.junit.jupiter.api.Test
 import kotlin.test.assertContains
 import kotlin.test.assertContentEquals
@@ -293,7 +300,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlin.test.fail
 
 // This class performs tests requests and responses for all API keys
 class RequestResponseTest {
@@ -438,7 +444,7 @@ class RequestResponseTest {
         for (version in ApiKeys.API_VERSIONS.allVersions()) {
             checkErrorResponse(createApiVersionRequest(version), UnsupportedVersionException("Not Supported"))
             checkResponse(
-                response = ApiVersionsResponse.defaultApiVersionsResponse(
+                response = TestUtils.defaultApiVersionsResponse(
                     listenerType = ApiMessageType.ListenerType.ZK_BROKER,
                 ),
                 version = version,
@@ -1025,7 +1031,7 @@ class RequestResponseTest {
     }
 
     private fun defaultApiVersionsResponse(): ApiVersionsResponse {
-        return ApiVersionsResponse.defaultApiVersionsResponse(listenerType = ApiMessageType.ListenerType.ZK_BROKER)
+        return TestUtils.defaultApiVersionsResponse(listenerType = ApiMessageType.ListenerType.ZK_BROKER)
     }
 
     @Test
@@ -1087,7 +1093,8 @@ class RequestResponseTest {
     @Test
     fun testErrorCountsIncludesNone() {
         assertEquals(1, createAddOffsetsToTxnResponse().errorCounts()[Errors.NONE])
-        assertEquals(1, createAddPartitionsToTxnResponse().errorCounts()[Errors.NONE])
+        assertEquals(1, createAddPartitionsToTxnResponse(3).errorCounts()[Errors.NONE])
+        assertEquals(2, createAddPartitionsToTxnResponse(4).errorCounts()[Errors.NONE])
         assertEquals(1, createAlterClientQuotasResponse().errorCounts()[Errors.NONE])
         assertEquals(1, createAlterConfigsResponse().errorCounts()[Errors.NONE])
         assertEquals(2, createAlterPartitionReassignmentsResponse().errorCounts()[Errors.NONE])
@@ -1222,6 +1229,7 @@ class RequestResponseTest {
             ApiKeys.DESCRIBE_TRANSACTIONS -> createDescribeTransactionsRequest(version)
             ApiKeys.LIST_TRANSACTIONS -> createListTransactionsRequest(version)
             ApiKeys.ALLOCATE_PRODUCER_IDS -> createAllocateProducerIdsRequest(version)
+            ApiKeys.CONSUMER_GROUP_HEARTBEAT -> createConsumerGroupHeartbeatRequest(version)
             else -> throw IllegalArgumentException("Unknown API key $apikey")
         }
     }
@@ -1252,7 +1260,7 @@ class RequestResponseTest {
             ApiKeys.DELETE_RECORDS -> createDeleteRecordsResponse()
             ApiKeys.INIT_PRODUCER_ID -> createInitPidResponse()
             ApiKeys.OFFSET_FOR_LEADER_EPOCH -> createLeaderEpochResponse()
-            ApiKeys.ADD_PARTITIONS_TO_TXN -> createAddPartitionsToTxnResponse()
+            ApiKeys.ADD_PARTITIONS_TO_TXN -> createAddPartitionsToTxnResponse(version)
             ApiKeys.ADD_OFFSETS_TO_TXN -> createAddOffsetsToTxnResponse()
             ApiKeys.END_TXN -> createEndTxnResponse()
             ApiKeys.WRITE_TXN_MARKERS -> createWriteTxnMarkersResponse()
@@ -1296,8 +1304,54 @@ class RequestResponseTest {
             ApiKeys.DESCRIBE_TRANSACTIONS -> createDescribeTransactionsResponse()
             ApiKeys.LIST_TRANSACTIONS -> createListTransactionsResponse()
             ApiKeys.ALLOCATE_PRODUCER_IDS -> createAllocateProducerIdsResponse()
+            ApiKeys.CONSUMER_GROUP_HEARTBEAT -> createConsumerGroupHeartbeatResponse()
             else -> throw IllegalArgumentException("Unknown API key $apikey")
         }
+    }
+
+    private fun createConsumerGroupHeartbeatRequest(version: Short): ConsumerGroupHeartbeatRequest {
+        val data = ConsumerGroupHeartbeatRequestData()
+            .setGroupId("group")
+            .setMemberId("memberid")
+            .setMemberEpoch(10)
+            .setRebalanceTimeoutMs(60000)
+            .setServerAssignor("range")
+            .setRackId("rackid")
+            .setSubscribedTopicNames(mutableListOf("foo", "bar"))
+            .setTopicPartitions(
+                listOf(
+                    ConsumerGroupHeartbeatRequestData.TopicPartitions()
+                        .setTopicId(Uuid.randomUuid())
+                        .setPartitions(intArrayOf(0, 1, 2)),
+                    ConsumerGroupHeartbeatRequestData.TopicPartitions()
+                        .setTopicId(Uuid.randomUuid())
+                        .setPartitions(intArrayOf(3, 4, 5))
+                )
+            )
+        return ConsumerGroupHeartbeatRequest.Builder(data).build(version)
+    }
+
+    private fun createConsumerGroupHeartbeatResponse(): ConsumerGroupHeartbeatResponse {
+        val data = ConsumerGroupHeartbeatResponseData()
+            .setErrorCode(Errors.NONE.code)
+            .setThrottleTimeMs(1000)
+            .setMemberId("memberid")
+            .setMemberEpoch(11)
+            .setShouldComputeAssignment(false)
+            .setAssignment(
+                ConsumerGroupHeartbeatResponseData.Assignment()
+                    .setAssignedTopicPartitions(
+                        listOf(
+                            ConsumerGroupHeartbeatResponseData.TopicPartitions()
+                                .setTopicId(Uuid.randomUuid())
+                                .setPartitions(intArrayOf(0, 1, 2)),
+                            ConsumerGroupHeartbeatResponseData.TopicPartitions()
+                                .setTopicId(Uuid.randomUuid())
+                                .setPartitions(intArrayOf(3, 4, 5))
+                        )
+                    )
+            )
+        return ConsumerGroupHeartbeatResponse(data)
     }
 
     private fun createFetchSnapshotRequest(version: Short): FetchSnapshotRequest {
@@ -1596,7 +1650,7 @@ class RequestResponseTest {
             .setPartitionIndex(1)
             .setPartitionEpoch(2)
             .setLeaderEpoch(3)
-            .setNewIsr(intArrayOf(1, 2))
+            .setNewIsrWithEpochs(AlterPartitionRequest.newIsrToSimpleNewIsrWithBrokerEpochs(listOf(1, 2)))
         if (version >= 1) {
             // Use the none default value; 1 - RECOVERING
             partitionData.setLeaderRecoveryState(1)
@@ -1912,7 +1966,10 @@ class RequestResponseTest {
             serializedBytes.rewind()
             assertEquals(serializedBytes, serializedBytes2, "Response " + response + "failed equality test")
         } catch (e: Exception) {
-            throw RuntimeException("Failed to deserialize response $response with type ${response!!.javaClass}", e)
+            throw RuntimeException(
+                "Failed to deserialize version $version response $response with type ${response!!.javaClass}",
+                e,
+            )
         }
     }
 
@@ -2470,7 +2527,7 @@ class RequestResponseTest {
                 .setGroupId("group1")
                 .setMemberId("consumer1")
                 .setGroupInstanceId(null)
-                .setGenerationId(100)
+                .setGenerationIdOrMemberEpoch(100)
                 .setTopics(
                     listOf(
                         OffsetCommitRequestTopic()
@@ -3184,17 +3241,48 @@ class RequestResponseTest {
     }
 
     private fun createAddPartitionsToTxnRequest(version: Short): AddPartitionsToTxnRequest {
-        return AddPartitionsToTxnRequest.Builder(
-            "tid", 21L, 42.toShort(),
-            listOf(TopicPartition("topic", 73))
-        ).build(version)
+        return if (version < 4) {
+            AddPartitionsToTxnRequest.Builder.forClient(
+                transactionalId = "tid",
+                producerId = 21L,
+                producerEpoch = 42,
+                partitions = listOf(TopicPartition("topic", 73)),
+            ).build(version)
+        } else {
+            val transactions = AddPartitionsToTxnTransactionCollection(
+                listOf(
+                    AddPartitionsToTxnTransaction()
+                        .setTransactionalId("tid")
+                        .setProducerId(21L)
+                        .setProducerEpoch(42)
+                        .setVerifyOnly(false)
+                        .setTopics(
+                            AddPartitionsToTxnTopicCollection(
+                                listOf(
+                                    AddPartitionsToTxnTopic()
+                                        .setName("topic")
+                                        .setPartitions(intArrayOf(73))
+                                ).iterator()
+                            )
+                        )
+                ).iterator()
+            )
+            AddPartitionsToTxnRequest.Builder.forBroker(transactions).build(version)
+        }
     }
 
-    private fun createAddPartitionsToTxnResponse(): AddPartitionsToTxnResponse {
-        return AddPartitionsToTxnResponse(
-            throttleTimeMs = 0,
+    private fun createAddPartitionsToTxnResponse(version: Short): AddPartitionsToTxnResponse {
+        val txnId = if (version < 4) AddPartitionsToTxnResponse.V3_AND_BELOW_TXN_ID else "tid"
+        val result = AddPartitionsToTxnResponse.resultForTransaction(
+            transactionalId = txnId,
             errors = mapOf(TopicPartition("t", 0) to Errors.NONE),
         )
+        val data = AddPartitionsToTxnResponseData().setThrottleTimeMs(0)
+
+        if (version < 4) data.setResultsByTopicV3AndBelow(result.topicResults)
+        else data.setResultsByTransaction(AddPartitionsToTxnResultCollection(listOf(result).iterator()))
+
+        return AddPartitionsToTxnResponse(data)
     }
 
     private fun createAddOffsetsToTxnRequest(version: Short): AddOffsetsToTxnRequest {

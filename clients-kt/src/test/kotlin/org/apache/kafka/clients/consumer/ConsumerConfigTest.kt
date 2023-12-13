@@ -17,16 +17,16 @@
 
 package org.apache.kafka.clients.consumer
 
+import java.util.Properties
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.common.errors.InvalidConfigurationException
+import org.apache.kafka.common.security.auth.SecurityProtocol
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.Deserializer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import java.util.Properties
-import kotlin.collections.HashMap
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -34,9 +34,9 @@ import kotlin.test.assertFalse
 
 class ConsumerConfigTest {
     
-    private val keyDeserializer: Deserializer<ByteArray> = ByteArrayDeserializer()
+    private val keyDeserializer: Deserializer<ByteArray?> = ByteArrayDeserializer()
     
-    private val valueDeserializer: Deserializer<String> = StringDeserializer()
+    private val valueDeserializer: Deserializer<String?> = StringDeserializer()
     
     private val keyDeserializerClassName = keyDeserializer::class.java.name
     
@@ -173,5 +173,20 @@ class ConsumerConfigTest {
         configs[CommonClientConfigs.SECURITY_PROTOCOL_CONFIG] = "abc"
         val ce = assertFailsWith<ConfigException> { ConsumerConfig(configs) }
         assertContains(ce.message!!, CommonClientConfigs.SECURITY_PROTOCOL_CONFIG)
+    }
+
+    @Test
+    fun testCaseInsensitiveSecurityProtocol() {
+        val saslSslLowerCase = SecurityProtocol.SASL_SSL.name.lowercase()
+        val configs = mapOf(
+            ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG to keyDeserializerClass,
+            ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG to valueDeserializerClass,
+            CommonClientConfigs.SECURITY_PROTOCOL_CONFIG to saslSslLowerCase,
+        )
+        val consumerConfig = ConsumerConfig(configs)
+        assertEquals(
+            expected = saslSslLowerCase,
+            actual = consumerConfig.originals()[CommonClientConfigs.SECURITY_PROTOCOL_CONFIG],
+        )
     }
 }

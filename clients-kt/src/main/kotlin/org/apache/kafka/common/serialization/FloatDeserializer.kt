@@ -17,9 +17,11 @@
 
 package org.apache.kafka.common.serialization
 
+import java.nio.ByteBuffer
 import org.apache.kafka.common.errors.SerializationException
+import org.apache.kafka.common.header.Headers
 
-class FloatDeserializer : Deserializer<Float> {
+class FloatDeserializer : Deserializer<Float?> {
 
     override fun deserialize(topic: String, data: ByteArray?): Float? {
         if (data == null) return null
@@ -34,5 +36,11 @@ class FloatDeserializer : Deserializer<Float> {
         }
 
         return Float.fromBits(value)
+    }
+
+    override fun deserialize(topic: String, headers: Headers, data: ByteBuffer?): Float? = when {
+        data == null -> null
+        data.remaining() != 4 -> throw SerializationException("Size of data received by Deserializer is not 4")
+        else -> data.getFloat(data.position())
     }
 }

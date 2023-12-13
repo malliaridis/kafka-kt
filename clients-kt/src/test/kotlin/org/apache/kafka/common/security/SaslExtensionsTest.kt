@@ -65,8 +65,8 @@ class SaslExtensionsTest {
         // If the maps are distinct objects but have the same underlying values, the SaslExtension
         // objects should still be unique.
         assertNotEquals(
-            illegal = SaslExtensions(Collections.singletonMap("key", "value")),
-            actual = SaslExtensions(Collections.singletonMap("key", "value")),
+            illegal = SaslExtensions(mapOf("key" to "value")),
+            actual = SaslExtensions(mapOf("key" to "value")),
             message = "SaslExtensions with unique maps should be unique",
         )
 

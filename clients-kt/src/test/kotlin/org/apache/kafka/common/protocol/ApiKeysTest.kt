@@ -59,7 +59,7 @@ class ApiKeysTest {
             ApiKeys.ALLOCATE_PRODUCER_IDS,
             ApiKeys.UPDATE_FEATURES,
         )
-        for (apiKey in ApiKeys.zkBrokerApis()) {
+        for (apiKey in ApiKeys.clientApis()) {
             val responseSchema = apiKey.messageType.responseSchemas()[apiKey.latestVersion().toInt()]!!
             val throttleTimeField = responseSchema["throttle_time_ms"]
             if (

@@ -17,13 +17,14 @@
 
 package org.apache.kafka.common.protocol
 
+import java.util.EnumSet
+import java.util.concurrent.atomic.AtomicBoolean
 import org.apache.kafka.common.message.ApiMessageType
 import org.apache.kafka.common.message.ApiMessageType.ListenerType
+import org.apache.kafka.common.message.ApiVersionsResponseData
 import org.apache.kafka.common.protocol.types.Schema
 import org.apache.kafka.common.protocol.types.Type
 import org.apache.kafka.common.record.RecordBatch
-import java.util.*
-import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Identifiers for all the Kafka APIs
@@ -37,7 +38,7 @@ enum class ApiKeys(
     val messageType: ApiMessageType,
     val clusterAction: Boolean = false,
     val minRequiredInterBrokerMagic: Byte = RecordBatch.MAGIC_VALUE_V0,
-    val forwardable: Boolean = false
+    val forwardable: Boolean = false,
 ) {
 
     PRODUCE(messageType = ApiMessageType.PRODUCE),
@@ -321,7 +322,9 @@ enum class ApiKeys(
         messageType = ApiMessageType.ALLOCATE_PRODUCER_IDS,
         clusterAction = true,
         forwardable = true
-    );
+    ),
+
+    CONSUMER_GROUP_HEARTBEAT(messageType = ApiMessageType.CONSUMER_GROUP_HEARTBEAT);
 
     /**
      * The permanent and immutable id of an API - this can't change ever
@@ -343,7 +346,10 @@ enum class ApiKeys(
         forwardable = forwardable
     )
 
-    fun latestVersion(): Short = messageType.highestSupportedVersion()
+    fun latestVersion(): Short = messageType.highestSupportedVersion(true)
+
+    fun latestVersion(enableUnstableLastVersion: Boolean): Short =
+        messageType.highestSupportedVersion(enableUnstableLastVersion)
 
     fun oldestVersion(): Short = messageType.lowestSupportedVersion()
 
@@ -357,6 +363,27 @@ enum class ApiKeys(
 
     fun isVersionSupported(apiVersion: Short): Boolean =
         apiVersion >= oldestVersion() && apiVersion <= latestVersion()
+
+    fun isVersionEnabled(apiVersion: Short, enableUnstableLastVersion: Boolean): Boolean {
+        // ApiVersions API is a particular case. The client always send the highest version
+        // that it supports and the server fails back to version 0 if it does not know it.
+        // Hence, we have to accept any versions here, even unsupported ones.
+        return if (this == API_VERSIONS) true
+        else apiVersion >= oldestVersion() && apiVersion <= latestVersion(enableUnstableLastVersion)
+    }
+
+    fun toApiVersion(enableUnstableLastVersion: Boolean): ApiVersionsResponseData.ApiVersion? {
+        val oldestVersion = oldestVersion()
+        val latestVersion = latestVersion(enableUnstableLastVersion)
+
+        // API is entirely disabled if latestStableVersion is smaller than oldestVersion.
+        return if (latestVersion >= oldestVersion) {
+            ApiVersionsResponseData.ApiVersion()
+                .setApiKey(messageType.apiKey())
+                .setMinVersion(oldestVersion)
+                .setMaxVersion(latestVersion)
+        } else null
+    }
 
     fun requestHeaderVersion(apiVersion: Short): Short =
         messageType.requestHeaderVersion(apiVersion)
@@ -430,6 +457,8 @@ enum class ApiKeys(
         }
 
         fun zkBrokerApis(): Set<ApiKeys> = apisForListener(ListenerType.ZK_BROKER)
+
+        fun kraftBrokerApis(): Set<ApiKeys> = apisForListener(ListenerType.BROKER)
 
         fun controllerApis(): Set<ApiKeys> = apisForListener(ListenerType.CONTROLLER)
 

@@ -17,7 +17,7 @@
 
 package org.apache.kafka.common.utils
 
-import java.util.*
+import java.util.StringTokenizer
 
 object Java {
 

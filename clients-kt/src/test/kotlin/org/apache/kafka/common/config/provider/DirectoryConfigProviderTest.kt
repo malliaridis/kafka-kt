@@ -25,7 +25,7 @@ import java.io.File
 import java.io.IOException
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
-import java.util.*
+import java.util.ServiceLoader
 import java.util.stream.StreamSupport
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
@@ -81,7 +81,6 @@ class DirectoryConfigProviderTest {
     }
 
     @Test
-    @Throws(IOException::class)
     fun testGetAllKeysAtPath() {
         val (data, ttl) = provider!![dir!!.absolutePath]
         assertEquals(setOf(foo!!.getName(), bar!!.getName()), data.keys)

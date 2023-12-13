@@ -17,8 +17,8 @@
 
 package org.apache.kafka.common
 
+import java.util.Base64
 import org.junit.jupiter.api.RepeatedTest
-import java.util.*
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals

@@ -1232,7 +1232,7 @@ class MemoryRecordsTest {
         override fun provideArguments(context: ExtensionContext): Stream<out Arguments> {
             val arguments = mutableListOf<Arguments>()
             for (firstOffset in listOf(0L, 57L))
-                for (type in CompressionType.values()) {
+                for (type in CompressionType.entries) {
                     val magics =
                         if (type === CompressionType.ZSTD) listOf(RecordBatch.MAGIC_VALUE_V2)
                         else listOf(
@@ -1250,7 +1250,7 @@ class MemoryRecordsTest {
         override fun provideArguments(context: ExtensionContext): Stream<out Arguments> {
             val arguments: MutableList<Arguments> = ArrayList()
             for (firstOffset in listOf(0L, 57L))
-                for (type in CompressionType.values())
+                for (type in CompressionType.entries)
                     arguments.add(Arguments.of(Args(RecordBatch.MAGIC_VALUE_V2, firstOffset, type)))
 
             return arguments.stream()

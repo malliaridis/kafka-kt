@@ -23,6 +23,7 @@ package org.apache.kafka.clients.consumer.internals.events
 abstract class BackgroundEvent(val type: EventType) {
 
     enum class EventType {
-        NOOP
+        NOOP,
+        ERROR,
     }
 }

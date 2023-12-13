@@ -17,7 +17,7 @@
 
 package org.apache.kafka.common.config
 
-import java.util.*
+import java.util.LinkedList
 import java.util.function.Function
 import java.util.regex.Pattern
 import java.util.stream.Collectors
@@ -50,6 +50,7 @@ import org.apache.kafka.common.utils.Utils.join
  *     "config_with_default",
  *     Type.STRING,
  *     "default string value",
+ *     Importance.High,
  *     "Configuration with default value."
  * );
  * defs.define(
@@ -57,11 +58,13 @@ import org.apache.kafka.common.utils.Utils.join
  *     Type.INT,
  *     42,
  *     Range.atLeast(0),
+ *     Importance.High,
  *     "Configuration with user provided validator."
  * );
  * defs.define(
  *     "config_with_dependents",
  *     Type.INT,
+ *     Importance.LOW,
  *     "Configuration with dependents.",
  *     "group",
  *     1,
@@ -80,8 +83,8 @@ import org.apache.kafka.common.utils.Utils.join
  * int anotherConfig = (Integer) configs.get("config_with_validator");
  *
  * To validate the full configuration, use:
- * List<Config> configs = defs.validate(props);
- * The [Config] contains updated configuration information given the current configuration values.
+ * List<ConfigValue> configValues = defs.validate(props);
+ * The [ConfigValue] contains updated configuration information given the current configuration values.
  * ```
  *
  * This class can be used standalone or in combination with [AbstractConfig] which provides some
@@ -343,9 +346,7 @@ class ConfigDef {
      * @return List of Config, each Config contains the updated configuration information given
      * the current configuration values.
      */
-    fun validate(props: Map<String, String?>): List<ConfigValue?> {
-        return ArrayList(validateAll(props).values)
-    }
+    fun validate(props: Map<String, String?>): List<ConfigValue?> = validateAll(props).values.toList()
 
     fun validateAll(props: Map<String, String?>): Map<String, ConfigValue?> {
         val configValues: MutableMap<String, ConfigValue?> = HashMap()
@@ -401,7 +402,7 @@ class ConfigDef {
             }
         }
 
-        return ArrayList(undefinedConfigKeys)
+        return undefinedConfigKeys.toList()
     }
 
     // package accessible for testing
@@ -1001,8 +1002,7 @@ class ConfigDef {
             if (key.group != null) {
                 if (!lastKeyGroupName.equals(key.group, ignoreCase = true)) {
                     b.append(key.group).append("\n")
-                    val underLine = CharArray(key.group.length)
-                    Arrays.fill(underLine, '^')
+                    val underLine = CharArray(key.group.length) { '^' }
                     b.append(String(underLine)).append("\n\n")
                 }
                 lastKeyGroupName = key.group

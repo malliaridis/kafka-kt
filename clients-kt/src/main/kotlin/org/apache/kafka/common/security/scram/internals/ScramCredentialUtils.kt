@@ -17,7 +17,8 @@
 
 package org.apache.kafka.common.security.scram.internals
 
-import java.util.*
+import java.util.Base64
+import java.util.Properties
 import org.apache.kafka.common.security.authenticator.CredentialCache
 import org.apache.kafka.common.security.scram.ScramCredential
 

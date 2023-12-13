@@ -18,7 +18,7 @@
 package org.apache.kafka.common.metrics
 
 import java.io.Closeable
-import java.util.*
+import java.util.TreeMap
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentMap
 import java.util.concurrent.ScheduledThreadPoolExecutor
@@ -301,14 +301,14 @@ class Metrics(
      */
     fun addMetricIfAbsent(
         metricName: MetricName,
-        config: MetricConfig = this.config,
+        config: MetricConfig? = null,
         metricValueProvider: MetricValueProvider<*>
     ): KafkaMetric {
         val metric = KafkaMetric(
             lock = ReentrantLock(),
             metricName = metricName,
             metricValueProvider = metricValueProvider,
-            config = config,
+            config = config ?: this.config,
             time = time
         )
 
@@ -344,7 +344,7 @@ class Metrics(
      */
     @Synchronized
     fun addReporter(reporter: MetricsReporter) {
-        reporter.init(ArrayList(metrics.values))
+        reporter.init(metrics.values.toList())
         reporters.add(reporter)
     }
 

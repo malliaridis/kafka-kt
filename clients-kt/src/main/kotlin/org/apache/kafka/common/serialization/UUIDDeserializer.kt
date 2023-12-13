@@ -18,10 +18,13 @@
 package org.apache.kafka.common.serialization
 
 import java.io.UnsupportedEncodingException
+import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.nio.charset.UnsupportedCharsetException
-import java.util.*
+import java.util.UUID
 import org.apache.kafka.common.errors.SerializationException
+import org.apache.kafka.common.header.Headers
+import org.apache.kafka.common.utils.Utils
 
 /**
  * We are converting the byte array to String before deserializing to UUID. String encoding defaults
@@ -29,7 +32,7 @@ import org.apache.kafka.common.errors.SerializationException
  * value.deserializer.encoding or deserializer.encoding. The first two take precedence over the
  * last.
  */
-class UUIDDeserializer : Deserializer<UUID> {
+class UUIDDeserializer : Deserializer<UUID?> {
 
     private var encoding = StandardCharsets.UTF_8.name()
 
@@ -51,6 +54,30 @@ class UUIDDeserializer : Deserializer<UUID> {
             )
         } catch (cause: IllegalArgumentException) {
             throw SerializationException("Error parsing data into UUID", cause)
+        }
+    }
+
+    override fun deserialize(topic: String, headers: Headers, data: ByteBuffer?): UUID? {
+        return try {
+            when {
+                data == null -> null
+                data.hasArray() -> UUID.fromString(
+                    String(
+                        bytes = data.array(),
+                        offset = data.arrayOffset() + data.position(),
+                        length = data.remaining(),
+                        charset = charset(encoding),
+                    )
+                )
+                else -> UUID.fromString(String(Utils.toArray(data), charset(encoding)))
+            }
+        } catch (e: UnsupportedEncodingException) {
+            throw SerializationException(
+                "Error when deserializing ByteBuffer to UUID due to unsupported encoding $encoding",
+                e
+            )
+        } catch (e: java.lang.IllegalArgumentException) {
+            throw SerializationException("Error parsing data into UUID", e)
         }
     }
 }

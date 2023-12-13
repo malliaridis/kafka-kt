@@ -19,8 +19,8 @@ package org.apache.kafka.common.protocol
 
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
-import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
@@ -35,7 +35,7 @@ class ByteBufferAccessorTest {
         accessor.writeInt(12345)
         accessor.flip()
         val testArray2 = accessor.readArray(3)
-        assertArrayEquals(testArray, testArray2)
+        assertContentEquals(testArray, testArray2)
         assertEquals(12345, accessor.readInt())
         assertEquals(
             expected = "Error reading byte array of 3 byte(s): only 0 byte(s) available",

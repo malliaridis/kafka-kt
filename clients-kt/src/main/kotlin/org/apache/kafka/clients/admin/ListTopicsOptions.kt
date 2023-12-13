@@ -18,7 +18,6 @@
 package org.apache.kafka.clients.admin
 
 import org.apache.kafka.common.annotation.InterfaceStability.Evolving
-import java.util.*
 
 /**
  * Options for [Admin.listTopics].

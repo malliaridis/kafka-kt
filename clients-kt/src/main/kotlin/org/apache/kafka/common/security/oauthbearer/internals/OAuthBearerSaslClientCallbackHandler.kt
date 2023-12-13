@@ -19,7 +19,9 @@ package org.apache.kafka.common.security.oauthbearer.internals
 
 import java.io.IOException
 import java.security.AccessController
-import java.util.*
+import java.util.Date
+import java.util.SortedSet
+import java.util.TreeSet
 import javax.security.auth.Subject
 import javax.security.auth.callback.Callback
 import javax.security.auth.callback.UnsupportedCallbackException

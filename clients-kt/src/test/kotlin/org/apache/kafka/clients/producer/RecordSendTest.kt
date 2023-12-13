@@ -70,7 +70,6 @@ class RecordSendTest {
      * Test that an asynchronous request will eventually throw the right exception
      */
     @Test
-    @Throws(Exception::class)
     fun testError() {
         val future = FutureRecordMetadata(
             result = asyncRequest(
@@ -113,17 +112,15 @@ class RecordSendTest {
     /* create a new request result that will be completed after the given timeout */
     fun asyncRequest(baseOffset: Long, error: RuntimeException?, timeout: Long): ProduceRequestResult {
         val request = ProduceRequestResult(topicPartition)
-        val thread = object : Thread() {
-            override fun run() {
-                try {
-                    sleep(timeout)
+        val thread = Thread {
+            try {
+                Thread.sleep(timeout)
 
-                    if (error == null) request[baseOffset, RecordBatch.NO_TIMESTAMP] = null
-                    else request[-1L, RecordBatch.NO_TIMESTAMP] = { error }
+                if (error == null) request[baseOffset, RecordBatch.NO_TIMESTAMP] = null
+                else request[-1L, RecordBatch.NO_TIMESTAMP] = { error }
 
-                    request.done()
-                } catch (_: InterruptedException) {
-                }
+                request.done()
+            } catch (_: InterruptedException) {
             }
         }
         thread.start()

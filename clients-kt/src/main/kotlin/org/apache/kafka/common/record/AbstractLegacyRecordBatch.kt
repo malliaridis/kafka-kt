@@ -32,7 +32,7 @@ import java.io.DataOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.nio.ByteBuffer
-import java.util.*
+import java.util.ArrayDeque
 
 /**
  * This [RecordBatch] implementation is for magic versions 0 and 1. In addition to implementing
@@ -330,8 +330,6 @@ abstract class AbstractLegacyRecordBatch : AbstractRecordBatch(), Record {
         }
 
         override fun offset(): Long = buffer.getLong(Records.OFFSET_OFFSET)
-
-        override fun deleteHorizonMs(): Long? = null
 
         override fun outerRecord(): LegacyRecord = record
 

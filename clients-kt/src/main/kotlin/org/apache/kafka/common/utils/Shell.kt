@@ -21,8 +21,8 @@ import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
 import java.nio.charset.StandardCharsets
-import java.util.*
 import java.util.Timer
+import java.util.TimerTask
 import java.util.concurrent.atomic.AtomicBoolean
 import org.slf4j.LoggerFactory
 

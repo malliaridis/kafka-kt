@@ -17,35 +17,44 @@
 
 package org.apache.kafka.test
 
-import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.clients.producer.ProducerConfig
-import org.apache.kafka.common.Cluster
-import org.apache.kafka.common.Node
-import org.apache.kafka.common.PartitionInfo
-import org.apache.kafka.common.TopicPartition
-import org.apache.kafka.common.network.NetworkReceive
-import org.apache.kafka.common.network.Send
-import org.apache.kafka.common.protocol.ApiKeys
-import org.apache.kafka.common.record.UnalignedRecords
-import org.apache.kafka.common.requests.ByteBufferChannel
-import org.apache.kafka.common.requests.RequestHeader
-import org.apache.kafka.common.utils.Exit.addShutdownHook
-import org.apache.kafka.common.utils.KafkaThread
-import org.apache.kafka.common.utils.Utils.delete
-import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.*
+import java.util.Base64
+import java.util.Optional
+import java.util.Properties
+import java.util.UUID
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Future
 import java.util.function.Consumer
 import java.util.function.Supplier
 import java.util.regex.Pattern
+import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.producer.ProducerConfig
+import org.apache.kafka.common.Cluster
+import org.apache.kafka.common.Node
+import org.apache.kafka.common.PartitionInfo
+import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.feature.Features
+import org.apache.kafka.common.feature.SupportedVersionRange
+import org.apache.kafka.common.message.ApiMessageType.ListenerType
+import org.apache.kafka.common.message.ApiVersionsResponseData.ApiVersionCollection
+import org.apache.kafka.common.network.NetworkReceive
+import org.apache.kafka.common.network.Send
+import org.apache.kafka.common.protocol.ApiKeys
+import org.apache.kafka.common.record.RecordVersion
+import org.apache.kafka.common.record.UnalignedRecords
+import org.apache.kafka.common.requests.ApiVersionsResponse
+import org.apache.kafka.common.requests.ByteBufferChannel
+import org.apache.kafka.common.requests.RequestHeader
+import org.apache.kafka.common.utils.Exit.addShutdownHook
+import org.apache.kafka.common.utils.Utils.delete
+import org.slf4j.LoggerFactory
 import kotlin.math.min
+import kotlin.random.Random
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
@@ -71,7 +80,7 @@ object TestUtils {
     /* A consistent random number generator to make tests repeatable */
     val SEEDED_RANDOM = Random(192348092834L)
 
-    val RANDOM = Random()
+    val RANDOM = Random
 
     val DEFAULT_POLL_INTERVAL_MS: Long = 100
 
@@ -145,18 +154,6 @@ object TestUtils {
     fun tempFile(prefix: String? = "kafka", suffix: String? = ".tmp"): File {
         val file = Files.createTempFile(prefix, suffix).toFile()
         file.deleteOnExit()
-
-        // Note that we don't use Exit.addShutdownHook here because it allows for the possibility of
-        // accidently overriding the behaviour of this hook leading to leaked files.
-        Runtime.getRuntime().addShutdownHook(
-            KafkaThread.nonDaemon("delete-temp-file-shutdown-hook") {
-                try {
-                    delete(file)
-                } catch (e: IOException) {
-                    log.error("Error deleting {}", file.absolutePath, e)
-                }
-            }
-        )
         return file
     }
 
@@ -402,7 +399,7 @@ object TestUtils {
 
     fun generateRandomTopicPartitions(
         numTopic: Int,
-        numPartitionPerTopic: Int
+        numPartitionPerTopic: Int,
     ): Set<TopicPartition> {
         val tps: MutableSet<TopicPartition> = hashSetOf()
         for (i in 0 until numTopic) {
@@ -430,10 +427,27 @@ object TestUtils {
         return exceptionCauseClass.cast(exception.cause)
     }
 
+    /**
+     * Assert that a future raises an expected exception cause type. Return the exception cause
+     * if the assertion succeeds; otherwise raise AssertionError.
+     *
+     * @param future The future to await
+     * @param T Exception cause type parameter
+     * @return The caught exception cause
+     */
+    inline fun <reified T : Throwable> assertFutureThrows(future: Future<*>): T {
+        val exception = assertFailsWith<ExecutionException> { future.get() }
+        assertTrue(
+            actual = T::class.java.isInstance(exception.cause),
+            message = "Unexpected exception cause " + exception.cause,
+        )
+        return exception.cause as T
+    }
+
     fun <T : Throwable?> assertFutureThrows(
         future: Future<*>,
         expectedCauseClassApiException: Class<T>,
-        expectedMessage: String?
+        expectedMessage: String?,
     ) {
         val receivedException = assertFutureThrows(future, expectedCauseClassApiException)
         assertEquals(expectedMessage, receivedException!!.message)
@@ -542,5 +556,35 @@ object TestUtils {
         } catch (e: Exception) {
             fail("Unexpected exception thrown: ${e.message}")
         }
+    }
+
+    fun defaultApiVersionsResponse(
+        throttleTimeMs: Int = 0,
+        listenerType: ListenerType,
+        enableUnstableLastVersion: Boolean = true,
+    ): ApiVersionsResponse = createApiVersionsResponse(
+        throttleTimeMs = throttleTimeMs,
+        apiVersions = ApiVersionsResponse.filterApis(
+            minRecordVersion = RecordVersion.current(),
+            listenerType = listenerType,
+            enableUnstableLastVersion = enableUnstableLastVersion,
+        ),
+        latestSupportedFeatures = Features.emptySupportedFeatures(),
+        zkMigrationEnabled = false,
+    )
+
+    fun createApiVersionsResponse(
+        throttleTimeMs: Int,
+        apiVersions: ApiVersionCollection,
+        latestSupportedFeatures: Features<SupportedVersionRange> = Features.emptySupportedFeatures(),
+        zkMigrationEnabled: Boolean = false,
+    ): ApiVersionsResponse {
+        return ApiVersionsResponse.createApiVersionsResponse(
+            throttleTimeMs = throttleTimeMs,
+            apiVersions = apiVersions,
+            latestSupportedFeatures = latestSupportedFeatures, finalizedFeatures = emptyMap(),
+            finalizedFeaturesEpoch = ApiVersionsResponse.UNKNOWN_FINALIZED_FEATURES_EPOCH,
+            zkMigrationEnabled = zkMigrationEnabled,
+        )
     }
 }

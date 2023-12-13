@@ -17,7 +17,7 @@
 
 package org.apache.kafka.message
 
-import java.util.*
+import java.util.TreeSet
 
 /**
  * The Kafka header generator.

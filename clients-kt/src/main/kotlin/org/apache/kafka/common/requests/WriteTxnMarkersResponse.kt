@@ -64,7 +64,7 @@ class WriteTxnMarkersResponse : AbstractResponse {
             }
             WritableTxnMarkerResult()
                 .setProducerId(key)
-                .setTopics(ArrayList(responseTopicDataMap.values))
+                .setTopics(responseTopicDataMap.values.toList())
         }
 
         data = WriteTxnMarkersResponseData().setMarkers(markers)

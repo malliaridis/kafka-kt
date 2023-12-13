@@ -34,6 +34,7 @@ import java.util.regex.Pattern
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ConsumerMetadataTest {
@@ -190,7 +191,7 @@ class ConsumerMetadataTest {
         )
         assertEquals(setOf("foo"), HashSet(metadata.fetch().topics))
         assertEquals(topicIds["foo"], metadata.topicIds()["foo"])
-        assertEquals(topicIds["bar"], null)
+        assertNull(topicIds["bar"])
     }
 
     private fun testBasicSubscription(

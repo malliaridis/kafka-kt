@@ -66,9 +66,9 @@ object MetricsBench {
                 )
             }
             val start = System.nanoTime()
-            for (i in 0 until iters) parent.record(i.toDouble())
-            val ellapsed = (System.nanoTime() - start) / iters.toDouble()
-            println(String.format("%.2f ns per metric recording.", ellapsed))
+            for (i in 0..<iters) parent.record(i.toDouble())
+            val elapsed = (System.nanoTime() - start) / iters.toDouble()
+            println(String.format("%.2f ns per metric recording.", elapsed))
         }
     }
 }

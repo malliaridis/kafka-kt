@@ -499,7 +499,7 @@ class BufferPoolTest {
         val work = Callable {
             assertFailsWith<KafkaException> { pool.allocate(1, Long.MAX_VALUE) }
         }
-        for (i in 0 until numWorkers) executor.submit(work)
+        for (i in 0..<numWorkers) executor.submit(work)
 
         TestUtils.waitForCondition(
             testCondition = { pool.queued() == numWorkers },

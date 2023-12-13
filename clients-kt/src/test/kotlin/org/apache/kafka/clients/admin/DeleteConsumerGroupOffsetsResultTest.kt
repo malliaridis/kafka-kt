@@ -26,11 +26,8 @@ import org.apache.kafka.test.TestUtils.assertFutureError
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.util.concurrent.ExecutionException
-import java.util.concurrent.TimeUnit
-import org.junit.jupiter.api.Timeout
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertSame
 
 class DeleteConsumerGroupOffsetsResultTest {
@@ -69,7 +66,7 @@ class DeleteConsumerGroupOffsetsResultTest {
     @Test
     @Throws(ExecutionException::class, InterruptedException::class)
     fun testPartitionLevelErrorConstructor() {
-        createAndVerifyPartitionLevelErrror()
+        createAndVerifyPartitionLevelError()
     }
 
     @Test
@@ -87,7 +84,7 @@ class DeleteConsumerGroupOffsetsResultTest {
     @Test
     @Throws(InterruptedException::class, ExecutionException::class)
     fun testPartitionMissingInRequestErrorConstructor() {
-        val partitionLevelErrorResult = createAndVerifyPartitionLevelErrror()
+        val partitionLevelErrorResult = createAndVerifyPartitionLevelError()
         assertFailsWith<IllegalArgumentException> {
             partitionLevelErrorResult.partitionResult(
                 TopicPartition(topic = "invalid-topic", partition = 0)
@@ -109,7 +106,7 @@ class DeleteConsumerGroupOffsetsResultTest {
     }
 
     @Throws(InterruptedException::class, ExecutionException::class)
-    private fun createAndVerifyPartitionLevelErrror(): DeleteConsumerGroupOffsetsResult {
+    private fun createAndVerifyPartitionLevelError(): DeleteConsumerGroupOffsetsResult {
         partitionFutures.complete(errorsMap)
         assertFalse(partitionFutures.isCompletedExceptionally)
         val partitionLevelErrorResult = DeleteConsumerGroupOffsetsResult(

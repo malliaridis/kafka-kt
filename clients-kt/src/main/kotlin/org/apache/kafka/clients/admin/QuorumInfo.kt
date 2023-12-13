@@ -17,8 +17,6 @@
 
 package org.apache.kafka.clients.admin
 
-import java.util.*
-
 /**
  * This class is used to describe the state of the quorum received in DescribeQuorumResponse.
  * @property leaderId

@@ -21,7 +21,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.JsonNodeType
 import java.io.IOException
-import java.util.*
+import java.util.Base64
 import org.apache.kafka.common.security.oauthbearer.OAuthBearerToken
 import kotlin.math.roundToLong
 

@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory
  */
 data class FetchMetadata(
     val sessionId: Int,
-    val epoch: Int
+    val epoch: Int,
 ) {
 
     /**
@@ -48,9 +48,16 @@ data class FetchMetadata(
     fun epoch(): Int = epoch
 
     /**
-     * Return the metadata for the next error response.
+     * Return the metadata for the next request. The metadata is set to indicate that the client wants
+     * to close the existing session.
      */
-    fun nextCloseExisting(): FetchMetadata = FetchMetadata(sessionId, INITIAL_EPOCH)
+    fun nextCloseExisting(): FetchMetadata = FetchMetadata(sessionId, FINAL_EPOCH)
+
+    /**
+     * Return the metadata for the next request. The metadata is set to indicate that the client wants
+     * to close the existing session and create a new one if possible.
+     */
+    fun nextCloseExistingAttemptNew(): FetchMetadata = FetchMetadata(sessionId, INITIAL_EPOCH)
 
     /**
      * Return the metadata for the next incremental response.

@@ -52,13 +52,24 @@ class RequestFuture<T> : PollCondition {
 
     private val completedLatch = CountDownLatch(1)
 
-    val isDone: Boolean
-        /**
-         * Check whether the response is ready to be handled.
-         *
-         * @return true if the response is ready, false otherwise
-         */
-        get() = result.get() !== INCOMPLETE_SENTINEL
+    /**
+     * Check whether the response is ready to be handled.
+     *
+     * @return true if the response is ready, false otherwise
+     */
+//    @Deprecated(
+//        message = "Use function instead",
+//        replaceWith = ReplaceWith("isDone()")
+//    )
+////    val isDone: Boolean
+////        get() = result.get() !== INCOMPLETE_SENTINEL
+
+    /**
+     * Check whether the response is ready to be handled.
+     *
+     * @return true if the response is ready, false otherwise
+     */
+    fun isDone(): Boolean = result.get() != INCOMPLETE_SENTINEL
 
     @Throws(InterruptedException::class)
     fun awaitDone(timeout: Long, unit: TimeUnit): Boolean = completedLatch.await(timeout, unit)
@@ -81,7 +92,7 @@ class RequestFuture<T> : PollCondition {
      *
      * @return true if the request completed and was successful
      */
-    fun succeeded(): Boolean = isDone && !failed()
+    fun succeeded(): Boolean = isDone() && !failed()
 
     /**
      * Check if the request failed.
@@ -196,8 +207,8 @@ class RequestFuture<T> : PollCondition {
         val adapted: RequestFuture<S> = RequestFuture()
 
         addListener(object : RequestFutureListener<T> {
-            override fun onSuccess(value: T) = adapter.onSuccess(value, adapted)
-            override fun onFailure(e: RuntimeException) = adapter.onFailure(e, adapted)
+            override fun onSuccess(result: T) = adapter.onSuccess(result, adapted)
+            override fun onFailure(exception: RuntimeException) = adapter.onFailure(exception, adapted)
         })
 
         return adapted
@@ -205,12 +216,12 @@ class RequestFuture<T> : PollCondition {
 
     fun chain(future: RequestFuture<T>) {
         addListener(object : RequestFutureListener<T> {
-            override fun onSuccess(value: T) = future.complete(value)
-            override fun onFailure(e: RuntimeException) = future.raise(e)
+            override fun onSuccess(result: T) = future.complete(result)
+            override fun onFailure(exception: RuntimeException) = future.raise(exception)
         })
     }
 
-    override fun shouldBlock(): Boolean = !isDone
+    override fun shouldBlock(): Boolean = !isDone()
 
     companion object {
 

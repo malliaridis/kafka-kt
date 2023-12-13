@@ -17,7 +17,7 @@
 
 package org.apache.kafka.common.serialization
 
-class LongSerializer : Serializer<Long> {
+class LongSerializer : Serializer<Long?> {
 
     override fun serialize(topic: String, data: Long?): ByteArray? = data?.let {
         byteArrayOf(

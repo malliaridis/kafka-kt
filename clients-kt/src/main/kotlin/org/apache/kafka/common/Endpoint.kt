@@ -17,7 +17,7 @@
 
 package org.apache.kafka.common
 
-import java.util.*
+import java.util.Optional
 import org.apache.kafka.common.annotation.InterfaceStability.Evolving
 import org.apache.kafka.common.security.auth.SecurityProtocol
 
@@ -40,9 +40,7 @@ data class Endpoint(
         message = "Use property instead.",
         replaceWith = ReplaceWith("listenerName")
     )
-    fun listenerName(): Optional<String> {
-        return Optional.ofNullable(listenerName)
-    }
+    fun listenerName(): String? = listenerName
 
     /**
      * Returns the security protocol of this endpoint.

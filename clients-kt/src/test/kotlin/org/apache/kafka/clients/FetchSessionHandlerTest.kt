@@ -17,7 +17,7 @@
 
 package org.apache.kafka.clients
 
-import java.util.*
+import java.util.TreeSet
 import java.util.function.Consumer
 import java.util.stream.Stream
 import org.apache.kafka.clients.FetchSessionHandler.FetchRequestData

@@ -139,7 +139,7 @@ class ProducerBatchTest {
 
     @Test
     fun testSplitPreservesHeaders() {
-        for (compressionType in CompressionType.values()) {
+        for (compressionType in CompressionType.entries) {
             val builder = MemoryRecords.builder(
                 buffer = ByteBuffer.allocate(1024),
                 magic = RecordBatch.MAGIC_VALUE_V2,
@@ -201,7 +201,7 @@ class ProducerBatchTest {
             RecordBatch.MAGIC_VALUE_V1,
             RecordBatch.MAGIC_VALUE_V2
         ).forEach outer@ { magic ->
-            CompressionType.values().forEach { compressionType ->
+            CompressionType.entries.forEach { compressionType ->
                 if (compressionType === CompressionType.NONE && magic < RecordBatch.MAGIC_VALUE_V2) return@forEach
                 if (compressionType === CompressionType.ZSTD && magic < RecordBatch.MAGIC_VALUE_V2) return@forEach
                 val builder = MemoryRecords.builder(

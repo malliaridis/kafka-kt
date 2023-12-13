@@ -417,7 +417,7 @@ class FileLogInputStreamTest {
                 RecordBatch.MAGIC_VALUE_V1,
                 RecordBatch.MAGIC_VALUE_V2,
             ).forEach { magic ->
-                for (type in CompressionType.values())
+                for (type in CompressionType.entries)
                     arguments.add(Arguments.of(Args(magic, type)))
             }
             return arguments.stream()

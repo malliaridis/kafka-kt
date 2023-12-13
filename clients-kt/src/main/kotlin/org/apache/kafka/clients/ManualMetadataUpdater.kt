@@ -17,7 +17,6 @@
 
 package org.apache.kafka.clients
 
-import java.util.*
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.Node
 import org.apache.kafka.common.errors.AuthenticationException
@@ -41,7 +40,7 @@ open class ManualMetadataUpdater(
         this.nodes = nodes
     }
 
-    override fun fetchNodes(): List<Node> = ArrayList(nodes)
+    override fun fetchNodes(): List<Node> = nodes.toList()
 
     override fun isUpdateDue(now: Long): Boolean = false
 

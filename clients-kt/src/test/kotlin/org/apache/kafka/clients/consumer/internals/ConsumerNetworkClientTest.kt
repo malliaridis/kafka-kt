@@ -89,11 +89,11 @@ class ConsumerNetworkClientTest {
 
         assertEquals(1, consumerClient.pendingRequestCount())
         assertEquals(1, consumerClient.pendingRequestCount(node))
-        assertFalse(future.isDone)
+        assertFalse(future.isDone())
 
         consumerClient.poll(future)
 
-        assertTrue(future.isDone)
+        assertTrue(future.isDone())
         assertTrue(future.succeeded())
 
         val clientResponse = future.value()
@@ -244,7 +244,7 @@ class ConsumerNetworkClientTest {
         client.respond(heartbeatResponse(Errors.NONE))
         consumerClient.poll(future)
 
-        assertTrue(future.isDone)
+        assertTrue(future.isDone())
     }
 
     @Test
@@ -252,11 +252,7 @@ class ConsumerNetworkClientTest {
     fun testDisconnectWakesUpPoll() {
         val future = consumerClient.send(node, heartbeat())
         client.enableBlockingUntilWakeup(1)
-        val t: Thread = object : Thread() {
-            override fun run() {
-                consumerClient.poll(future)
-            }
-        }
+        val t = Thread { consumerClient.poll(future) }
         t.start()
         consumerClient.disconnectAsync(node)
         t.join()
@@ -328,16 +324,12 @@ class ConsumerNetworkClientTest {
         val future = consumerClient.send(node, heartbeat())
         consumerClient.pollNoWakeup() // dequeue and send the request
         client.enableBlockingUntilWakeup(2)
-        val t1 = object : Thread() {
-            override fun run() = consumerClient.pollNoWakeup()
-        }
+        val t1 = Thread { consumerClient.pollNoWakeup() }
         t1.start()
 
         // Sleep a little so that t1 is blocking in poll
         Thread.sleep(50)
-        val t2 = object : Thread() {
-            override fun run() = consumerClient.poll(future)
-        }
+        val t2 = Thread { consumerClient.poll(future) }
         t2.start()
 
         // Sleep a little so that t2 is awaiting the network client lock
@@ -382,23 +374,23 @@ class ConsumerNetworkClientTest {
 
         assertEquals(1, consumerClient.pendingRequestCount())
         assertEquals(1, consumerClient.pendingRequestCount(node))
-        assertFalse(future1.isDone)
+        assertFalse(future1.isDone())
 
         time.sleep((requestTimeoutMs + 1).toLong())
         val future2 = consumerClient.send(node, heartbeat())
 
         assertEquals(2, consumerClient.pendingRequestCount())
         assertEquals(2, consumerClient.pendingRequestCount(node))
-        assertFalse(future2.isDone)
+        assertFalse(future2.isDone())
 
         // First send should have expired and second send still pending
         consumerClient.poll(time.timer(0))
 
-        assertTrue(future1.isDone)
+        assertTrue(future1.isDone())
         assertFalse(future1.succeeded())
         assertEquals(1, consumerClient.pendingRequestCount())
         assertEquals(1, consumerClient.pendingRequestCount(node))
-        assertFalse(future2.isDone)
+        assertFalse(future2.isDone())
 
         // Enable send, the un-expired send should succeed on poll
         isReady.set(true)
@@ -419,7 +411,7 @@ class ConsumerNetworkClientTest {
         disconnected.set(true)
         consumerClient.poll(time.timer(0))
 
-        assertTrue(future3.isDone)
+        assertTrue(future3.isDone())
         assertFalse(future3.succeeded())
         assertEquals(0, consumerClient.pendingRequestCount())
         assertEquals(0, consumerClient.pendingRequestCount(node))

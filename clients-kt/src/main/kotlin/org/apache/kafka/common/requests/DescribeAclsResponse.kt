@@ -18,7 +18,6 @@
 package org.apache.kafka.common.requests
 
 import java.nio.ByteBuffer
-import java.util.*
 import org.apache.kafka.common.acl.AccessControlEntry
 import org.apache.kafka.common.acl.AclBinding
 import org.apache.kafka.common.acl.AclOperation

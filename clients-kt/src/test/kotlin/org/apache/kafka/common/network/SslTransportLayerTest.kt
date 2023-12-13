@@ -59,16 +59,18 @@ import org.apache.kafka.test.TestSslUtils.CertificateBuilder
 import org.apache.kafka.test.TestSslUtils.SslConfigsBuilder
 import org.apache.kafka.test.TestSslUtils.TestSslEngineFactory
 import org.apache.kafka.test.TestSslUtils.convertToPem
+import org.apache.kafka.test.TestUtils
 import org.apache.kafka.test.TestUtils.randomString
 import org.apache.kafka.test.TestUtils.waitForCondition
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assumptions
+import org.junit.jupiter.api.condition.DisabledOnJre
+import org.junit.jupiter.api.condition.JRE
 import org.junit.jupiter.api.extension.ExtensionContext
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.ArgumentsProvider
 import org.junit.jupiter.params.provider.ArgumentsSource
-import kotlin.math.min
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
@@ -87,6 +89,37 @@ class SslTransportLayerTest {
     fun teardown() {
         if (::selector.isInitialized) selector.close()
         if (::server.isInitialized) server.close()
+    }
+
+    /**
+     * Tests that server certificate with CN containing valid hostname
+     * is accepted by a client that connects using hostname and validates server endpoint.
+     */
+    @ParameterizedTest
+    @ArgumentsSource(SslTransportLayerArgumentsProvider::class)
+    @DisabledOnJre(value = [JRE.JAVA_20], disabledReason = "KAFKA-15117")
+    @Throws(Exception::class)
+    fun testValidEndpointIdentificationCN(args: Args) {
+        args.serverCertStores = certBuilder(
+            isServer = true,
+            cn = "localhost",
+            useInlinePem = args.useInlinePem,
+        ).build()
+        args.clientCertStores = certBuilder(
+            isServer = false,
+            cn = "localhost",
+            useInlinePem = args.useInlinePem,
+        ).build()
+        args.sslServerConfigs = args.getTrustingConfig(
+            certStores = args.serverCertStores,
+            peerCertStores = args.clientCertStores,
+        ).toMutableMap()
+        args.sslClientConfigs = args.getTrustingConfig(
+            certStores = args.clientCertStores,
+            peerCertStores = args.serverCertStores,
+        ).toMutableMap()
+        args.sslClientConfigs[SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG] = "HTTPS"
+        verifySslConfigs(args)
     }
 
     /**
@@ -142,10 +175,10 @@ class SslTransportLayerTest {
             peerCertStores = args.serverCertStores,
         ).toMutableMap()
         server = createEchoServer(args, SecurityProtocol.SSL)
-        
+
         args.sslClientConfigs[SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG] = "HTTPS"
         createSelector(args.sslClientConfigs)
-        
+
         val addr = InetSocketAddress("127.0.0.1", server.port)
         selector.connect(
             id = node,
@@ -159,36 +192,6 @@ class SslTransportLayerTest {
             minMessageSize = 100,
             messageCount = 10,
         )
-    }
-
-    /**
-     * Tests that server certificate with CN containing valid hostname
-     * is accepted by a client that connects using hostname and validates server endpoint.
-     */
-    @ParameterizedTest
-    @ArgumentsSource(SslTransportLayerArgumentsProvider::class)
-    @Throws(Exception::class)
-    fun testValidEndpointIdentificationCN(args: Args) {
-        args.serverCertStores = certBuilder(
-            isServer = true,
-            cn = "localhost",
-            useInlinePem = args.useInlinePem,
-        ).build()
-        args.clientCertStores = certBuilder(
-            isServer = false,
-            cn = "localhost",
-            useInlinePem = args.useInlinePem,
-        ).build()
-        args.sslServerConfigs = args.getTrustingConfig(
-            certStores = args.serverCertStores,
-            peerCertStores = args.clientCertStores,
-        ).toMutableMap()
-        args.sslClientConfigs = args.getTrustingConfig(
-            certStores = args.clientCertStores,
-            peerCertStores = args.serverCertStores,
-        ).toMutableMap()
-        args.sslClientConfigs[SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG] = "HTTPS"
-        verifySslConfigs(args)
     }
 
     /**
@@ -775,7 +778,7 @@ class SslTransportLayerTest {
         args.sslClientConfigs = args.clientCertStores.getTrustingConfig(args.serverCertStores).toMutableMap()
         assertEquals(SslConfigs.DEFAULT_SSL_PROTOCOL, args.sslServerConfigs[SslConfigs.SSL_PROTOCOL_CONFIG])
         assertEquals(SslConfigs.DEFAULT_SSL_PROTOCOL, args.sslClientConfigs[SslConfigs.SSL_PROTOCOL_CONFIG])
-        
+
         server = createEchoServer(args, SecurityProtocol.SSL)
         createSelector(args.sslClientConfigs)
         val addr = InetSocketAddress("localhost", server.port)
@@ -1144,12 +1147,12 @@ class SslTransportLayerTest {
             )
             while (selector.completedSends().isEmpty()) selector.poll(100L)
             val sendTimeNanos = channel.getAndResetNetworkThreadTimeNanos()
-            
+
             assertTrue(sendTimeNanos > 0, "Send time not recorded: $sendTimeNanos")
             assertEquals(0, channel.getAndResetNetworkThreadTimeNanos(), "Time not reset")
             assertFalse(channel.hasBytesBuffered(), "Unexpected bytes buffered")
             assertEquals(0, selector.completedReceives().size)
-            
+
             selector.unmute(node)
             // Wait for echo server to send the message back
             waitForCondition(
@@ -1214,7 +1217,7 @@ class SslTransportLayerTest {
             channelBuilder.failureIndex = i.toLong()
             channelBuilder.configure(args.sslClientConfigs)
             selector = Selector(
-                connectionMaxIdleMs = 5000L,
+                connectionMaxIdleMs = 10000L,
                 metrics = Metrics(),
                 time = time,
                 metricGrpPrefix = "MetricGroup",
@@ -1376,7 +1379,9 @@ class SslTransportLayerTest {
         val totalSendSize = count * (message.size + 4)
         for (i in 0 until count) {
             selector.send(NetworkSend(node, ByteBufferSend.sizePrefixed(ByteBuffer.wrap(message))))
-            do { selector.poll(0L) } while (selector.completedSends().isEmpty())
+            do {
+                selector.poll(0L)
+            } while (selector.completedSends().isEmpty())
         }
         server.selector.unmuteAll()
         selector.close(node)
@@ -2022,7 +2027,7 @@ class SslTransportLayerTest {
 
     private fun defaultApiVersionsSupplier(): Supplier<ApiVersionsResponse> {
         return Supplier {
-            ApiVersionsResponse.defaultApiVersionsResponse(listenerType = ApiMessageType.ListenerType.ZK_BROKER)
+            TestUtils.defaultApiVersionsResponse(listenerType = ApiMessageType.ListenerType.ZK_BROKER)
         }
     }
 
@@ -2137,7 +2142,7 @@ class SslTransportLayerTest {
             sslEngine = sslEngine,
             metadataRegistry = DefaultChannelMetadataRegistry(),
         ) {
-            
+
             private val netReadBufSize = ResizeableBufferSize(netReadBufSizeOverride)
 
             private val netWriteBufSize = ResizeableBufferSize(netWriteBufSizeOverride)
@@ -2206,7 +2211,7 @@ class SslTransportLayerTest {
             }
         }
     }
-    
+
     companion object {
 
         private const val BUFFER_SIZE = 4 * 1024

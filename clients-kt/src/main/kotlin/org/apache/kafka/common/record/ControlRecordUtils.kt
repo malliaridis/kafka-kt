@@ -40,39 +40,39 @@ object ControlRecordUtils {
             "Expected LEADER_CHANGE control record type(2), but found $recordType"
         }
 
-        return deserializeLeaderChangeMessage(record.value()!!.duplicate())
+        return deserializeLeaderChangeMessage(record.value()!!)
     }
 
     fun deserializeLeaderChangeMessage(data: ByteBuffer): LeaderChangeMessage {
-        val byteBufferAccessor = ByteBufferAccessor(data.duplicate())
+        val byteBufferAccessor = ByteBufferAccessor(data.slice())
         return LeaderChangeMessage(byteBufferAccessor, LEADER_CHANGE_CURRENT_VERSION)
     }
 
-    fun deserializedSnapshotHeaderRecord(record: Record): SnapshotHeaderRecord {
+    fun deserializeSnapshotHeaderRecord(record: Record): SnapshotHeaderRecord {
         val recordType = ControlRecordType.parse(record.key()!!)
         require(recordType == ControlRecordType.SNAPSHOT_HEADER) {
             "Expected SNAPSHOT_HEADER control record type(3), but found $recordType"
         }
 
-        return deserializedSnapshotHeaderRecord(record.value()!!.duplicate())
+        return deserializeSnapshotHeaderRecord(record.value()!!)
     }
 
-    fun deserializedSnapshotHeaderRecord(data: ByteBuffer): SnapshotHeaderRecord {
-        val byteBufferAccessor = ByteBufferAccessor(data.duplicate())
+    fun deserializeSnapshotHeaderRecord(data: ByteBuffer): SnapshotHeaderRecord {
+        val byteBufferAccessor = ByteBufferAccessor(data.slice())
         return SnapshotHeaderRecord(byteBufferAccessor, SNAPSHOT_HEADER_CURRENT_VERSION)
     }
 
-    fun deserializedSnapshotFooterRecord(record: Record): SnapshotFooterRecord {
+    fun deserializeSnapshotFooterRecord(record: Record): SnapshotFooterRecord {
         val recordType = ControlRecordType.parse(record.key()!!)
         require(recordType == ControlRecordType.SNAPSHOT_FOOTER) {
             "Expected SNAPSHOT_FOOTER control record type(4), but found $recordType"
         }
 
-        return deserializedSnapshotFooterRecord(record.value()!!.duplicate())
+        return deserializeSnapshotFooterRecord(record.value()!!)
     }
 
-    fun deserializedSnapshotFooterRecord(data: ByteBuffer): SnapshotFooterRecord {
-        val byteBufferAccessor = ByteBufferAccessor(data.duplicate())
+    fun deserializeSnapshotFooterRecord(data: ByteBuffer): SnapshotFooterRecord {
+        val byteBufferAccessor = ByteBufferAccessor(data.slice())
         return SnapshotFooterRecord(byteBufferAccessor, SNAPSHOT_FOOTER_CURRENT_VERSION)
     }
 }

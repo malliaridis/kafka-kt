@@ -17,6 +17,7 @@
 
 package org.apache.kafka.clients.producer.internals
 
+import java.io.IOException
 import org.apache.kafka.clients.ApiVersions
 import org.apache.kafka.clients.ClientResponse
 import org.apache.kafka.clients.KafkaClient
@@ -36,15 +37,12 @@ import org.apache.kafka.common.errors.RetriableException
 import org.apache.kafka.common.errors.TimeoutException
 import org.apache.kafka.common.errors.TopicAuthorizationException
 import org.apache.kafka.common.errors.TransactionAbortedException
+import org.apache.kafka.common.errors.TransactionalIdAuthorizationException
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException
 import org.apache.kafka.common.message.ProduceRequestData
 import org.apache.kafka.common.message.ProduceRequestData.PartitionProduceData
 import org.apache.kafka.common.message.ProduceRequestData.TopicProduceData
 import org.apache.kafka.common.message.ProduceRequestData.TopicProduceDataCollection
-import org.apache.kafka.common.message.ProduceResponseData.BatchIndexAndErrorMessage
-import org.apache.kafka.common.message.ProduceResponseData.PartitionProduceResponse
-import org.apache.kafka.common.message.ProduceResponseData.TopicProduceResponse
-import org.apache.kafka.common.metrics.MetricConfig
 import org.apache.kafka.common.metrics.Sensor
 import org.apache.kafka.common.metrics.stats.Avg
 import org.apache.kafka.common.metrics.stats.Max
@@ -58,11 +56,6 @@ import org.apache.kafka.common.requests.ProduceResponse.RecordError
 import org.apache.kafka.common.utils.LogContext
 import org.apache.kafka.common.utils.Time
 import org.slf4j.Logger
-import java.io.IOException
-import java.util.*
-import java.util.function.Consumer
-import java.util.function.Function
-import java.util.stream.Collectors
 import kotlin.math.min
 
 /**
@@ -197,6 +190,8 @@ class Sender(
     override fun run() {
         log.debug("Starting Kafka producer I/O thread.")
 
+        transactionManager?.setPoisonStateOnInvalidTransition(true)
+
         // main loop, runs until close is called
         while (isRunning) {
             try {
@@ -227,7 +222,14 @@ class Sender(
         ) {
             if (!transactionManager.isCompleting) {
                 log.info("Aborting incomplete transaction due to shutdown")
-                transactionManager.beginAbort()
+
+                try {
+                    // It is possible for the transaction manager to throw errors when aborting. Catch these
+                    // so as not to interfere with the rest of the shutdown logic.
+                    transactionManager.beginAbort()
+                } catch (e: java.lang.Exception) {
+                    log.error("Error in kafka producer I/O thread while aborting transaction: ", e)
+                }
             }
             try {
                 runOnce()
@@ -260,13 +262,16 @@ class Sender(
         if (transactionManager != null) try {
             transactionManager.maybeResolveSequences()
 
+            val lastError = transactionManager.lastError()
+
             // do not continue sending if the transaction manager is in a failed state
             if (transactionManager.hasFatalError) {
-                val lastError = transactionManager.lastError()
                 lastError?.let { maybeAbortBatches(it) }
                 client.poll(retryBackoffMs, time.milliseconds())
                 return
             }
+
+            if (transactionManager.hasAbortableError && shouldHandleAuthorizationError(lastError)) return
 
             // Check whether we need a new producerId. If so, we will enqueue an InitProducerId
             // request which will be sent below
@@ -280,6 +285,22 @@ class Sender(
         val currentTimeMs = time.milliseconds()
         val pollTimeout = sendProducerData(currentTimeMs)
         client.poll(pollTimeout, currentTimeMs)
+    }
+
+    // We handle `TransactionalIdAuthorizationException` and `ClusterAuthorizationException` by first
+    // failing the inflight requests, then transition the state to UNINITIALIZED so that the user doesn't need to
+    // instantiate the producer again.
+    private fun shouldHandleAuthorizationError(exception: RuntimeException?): Boolean = when (exception) {
+        is TransactionalIdAuthorizationException,
+        is ClusterAuthorizationException,
+        -> {
+            transactionManager!!.failPendingRequests(AuthenticationException(exception))
+            maybeAbortBatches(exception)
+            transactionManager.transitionToUninitialized(exception)
+            true
+        }
+
+        else -> false
     }
 
     private fun sendProducerData(now: Long): Long {
@@ -534,7 +555,21 @@ class Sender(
     ) {
         val requestHeader = response.requestHeader
         val correlationId = requestHeader.correlationId
-        if (response.disconnected) {
+        if (response.timedOut) {
+            log.trace(
+                "Cancelled request with header {} due to the last request to node {} timed out",
+                requestHeader, response.destination
+            )
+            for (batch in batches.values) completeBatch(
+                batch,
+                ProduceResponse.PartitionResponse(
+                    error = Errors.REQUEST_TIMED_OUT,
+                    errorMessage = "Disconnected from node ${response.destination} due to timeout",
+                ),
+                correlationId.toLong(),
+                now
+            )
+        } else if (response.disconnected) {
             log.trace(
                 "Cancelled request with header {} due to node {} being disconnected",
                 requestHeader, response.destination
@@ -575,17 +610,17 @@ class Sender(
                     r.partitionResponses.forEach { p ->
                         val tp = TopicPartition(r.name, p.index)
                         val partResp = ProduceResponse.PartitionResponse(
-                            Errors.forCode(p.errorCode),
-                            p.baseOffset,
-                            p.logAppendTimeMs,
-                            p.logStartOffset,
-                            p.recordErrors.map { e ->
+                            error = Errors.forCode(p.errorCode),
+                            baseOffset = p.baseOffset,
+                            logAppendTime = p.logAppendTimeMs,
+                            logStartOffset = p.logStartOffset,
+                            recordErrors = p.recordErrors.map { e ->
                                 RecordError(
                                     batchIndex = e.batchIndex,
                                     message = e.batchIndexErrorMessage,
                                 )
                             },
-                            p.errorMessage,
+                            errorMessage = p.errorMessage,
                         )
                         val batch = batches[tp]!!
                         completeBatch(
@@ -774,10 +809,19 @@ class Sender(
         recordExceptions: (Int) -> RuntimeException = { topLevelException },
         adjustSequenceNumbers: Boolean,
     ) {
-        transactionManager?.handleFailedBatch(batch, topLevelException, adjustSequenceNumbers)
         sensors.recordErrors(batch.topicPartition.topic, batch.recordCount)
-        if (batch.completeExceptionally(topLevelException, recordExceptions))
+        if (batch.completeExceptionally(topLevelException, recordExceptions)) {
+            if (transactionManager != null) {
+                try {
+                    // This call can throw an exception in the rare case that there's an invalid state transition
+                    // attempted. Catch these so as not to interfere with the rest of the logic.
+                    transactionManager.handleFailedBatch(batch, topLevelException, adjustSequenceNumbers)
+                } catch (e: java.lang.Exception) {
+                    log.debug("Encountered error when transaction manager was handling a failed batch", e)
+                }
+            }
             maybeRemoveAndDeallocateBatch(batch)
+        }
     }
 
     /**

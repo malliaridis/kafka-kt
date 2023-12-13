@@ -31,7 +31,7 @@ class RequestFutureTest {
         val future = RequestFuture<String>()
         val value = "foo"
         future.complete(value)
-        assertTrue(future.isDone)
+        assertTrue(future.isDone())
         assertEquals(value, future.value())
     }
 
@@ -40,7 +40,7 @@ class RequestFutureTest {
         val future = RequestFuture<String>()
         val exception = RuntimeException()
         future.raise(exception)
-        assertTrue(future.isDone)
+        assertTrue(future.isDone())
         assertEquals(exception, future.exception())
     }
 
@@ -48,7 +48,7 @@ class RequestFutureTest {
     fun testUnitFuture() {
         val future = RequestFuture<Unit?>()
         future.complete(null)
-        assertTrue(future.isDone)
+        assertTrue(future.isDone())
         assertNull(future.value())
     }
 
@@ -165,11 +165,11 @@ class RequestFutureTest {
         val future = RequestFuture<String>()
         val composed = future.compose(
             adapter = object : RequestFutureAdapter<String, Int>() {
-                override fun onSuccess(value: String, future: RequestFuture<Int>) = future.complete(value.length)
+                override fun onSuccess(response: String, future: RequestFuture<Int>) = future.complete(response.length)
             },
         )
         future.complete("hello")
-        assertTrue(composed.isDone)
+        assertTrue(composed.isDone())
         assertTrue(composed.succeeded())
         assertEquals(5, composed.value())
     }
@@ -179,12 +179,12 @@ class RequestFutureTest {
         val future = RequestFuture<String>()
         val composed = future.compose(
             adapter = object : RequestFutureAdapter<String, Int>() {
-                override fun onSuccess(value: String, future: RequestFuture<Int>) = future.complete(value.length)
+                override fun onSuccess(response: String, future: RequestFuture<Int>) = future.complete(response.length)
             }
         )
         val e = RuntimeException()
         future.raise(e)
-        assertTrue(composed.isDone)
+        assertTrue(composed.isDone())
         assertTrue(composed.failed())
         assertEquals(e, composed.exception())
     }
@@ -195,11 +195,11 @@ class RequestFutureTest {
 
         val numOnFailureCalls = AtomicInteger(0)
 
-        override fun onSuccess(value: T) {
+        override fun onSuccess(result: T) {
             numOnSuccessCalls.incrementAndGet()
         }
 
-        override fun onFailure(e: RuntimeException) {
+        override fun onFailure(exception: RuntimeException) {
             numOnFailureCalls.incrementAndGet()
         }
     }

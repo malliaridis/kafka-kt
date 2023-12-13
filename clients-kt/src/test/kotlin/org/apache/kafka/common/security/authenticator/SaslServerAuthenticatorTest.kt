@@ -42,7 +42,6 @@ import org.apache.kafka.common.network.TransportLayer
 import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.requests.AbstractRequest
 import org.apache.kafka.common.requests.ApiVersionsRequest
-import org.apache.kafka.common.requests.ApiVersionsResponse
 import org.apache.kafka.common.requests.RequestHeader
 import org.apache.kafka.common.requests.RequestTestUtils.serializeRequestHeader
 import org.apache.kafka.common.requests.ResponseHeader
@@ -60,12 +59,13 @@ import org.apache.kafka.common.security.ssl.SslPrincipalMapper
 import org.apache.kafka.common.utils.AppInfoParser.version
 import org.apache.kafka.common.utils.MockTime
 import org.apache.kafka.common.utils.Time
+import org.apache.kafka.test.TestUtils
 import org.junit.jupiter.api.Test
 import org.mockito.Answers
-import org.mockito.ArgumentCaptor
 import org.mockito.MockedStatic
 import org.mockito.Mockito.mockStatic
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
@@ -348,7 +348,7 @@ class SaslServerAuthenticatorTest {
 
     @Throws(IOException::class)
     private fun getResponses(transportLayer: TransportLayer): List<ByteBuffer> {
-        val buffersCaptor = ArgumentCaptor.forClass(Array<ByteBuffer>::class.java)
+        val buffersCaptor = argumentCaptor<Array<ByteBuffer>>()
         verify(transportLayer, times(numInvocations = 2)).write(buffersCaptor.capture())
 
         return buffersCaptor.allValues.map { buffers -> concatBuffers(buffers) }
@@ -468,7 +468,7 @@ class SaslServerAuthenticatorTest {
         )
         val subjects = mapOf(mechanism to Subject())
         val callbackHandlers = mapOf(mechanism to SaslServerCallbackHandler())
-        val apiVersionsResponse = ApiVersionsResponse.defaultApiVersionsResponse(
+        val apiVersionsResponse = TestUtils.defaultApiVersionsResponse(
             listenerType = ApiMessageType.ListenerType.ZK_BROKER,
         )
         val connectionsMaxReauthMsByMechanism =

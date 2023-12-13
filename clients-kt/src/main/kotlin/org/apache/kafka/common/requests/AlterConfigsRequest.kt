@@ -23,8 +23,6 @@ import org.apache.kafka.common.message.AlterConfigsResponseData
 import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.protocol.ByteBufferAccessor
 import java.nio.ByteBuffer
-import java.util.*
-import java.util.stream.Collectors
 
 class AlterConfigsRequest(
     private val data: AlterConfigsRequestData,

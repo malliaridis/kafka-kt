@@ -18,7 +18,10 @@
 package org.apache.kafka.common.utils
 
 import java.time.Duration
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ExecutionException
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import java.util.function.Supplier
 
 /**
@@ -82,6 +85,31 @@ interface Time {
      * Get a timer which is bound to this time instance and expires after the given timeout
      */
     fun timer(timeout: Duration): Timer = timer(timeout.toMillis())
+
+    /**
+     * Wait for a future to complete, or time out.
+     *
+     * @param future The future to wait for.
+     * @param deadlineNs The time in the future, in monotonic nanoseconds, to time out.
+     * @return The result of the future.
+     * @param T The type of the future.
+     */
+    @Throws(TimeoutException::class, InterruptedException::class, ExecutionException::class)
+    fun <T> waitForFuture(future: CompletableFuture<T>, deadlineNs: Long): T {
+        var timeoutException: TimeoutException? = null
+        while (true) {
+            val nowNs = nanoseconds()
+            if (deadlineNs <= nowNs) {
+                throw timeoutException ?: TimeoutException()
+            }
+            val deltaNs = deadlineNs - nowNs
+            timeoutException = try {
+                return future[deltaNs, TimeUnit.NANOSECONDS]
+            } catch (t: TimeoutException) {
+                t
+            }
+        }
+    }
 
     companion object {
         val SYSTEM: Time = SystemTime()

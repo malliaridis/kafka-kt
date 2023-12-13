@@ -89,7 +89,6 @@ class RoundRobinPartitionerTest {
     }
 
     @Test
-    @Throws(InterruptedException::class)
     fun testRoundRobinWithKeyBytes() {
         val topicA = "topicA"
         val topicB = "topicB"
@@ -163,7 +162,6 @@ class RoundRobinPartitionerTest {
     }
 
     @Test
-    @Throws(InterruptedException::class)
     fun testRoundRobinWithNullKeyBytes() {
         val topicA = "topicA"
         val topicB = "topicB"

@@ -18,11 +18,14 @@
 package org.apache.kafka.common.message
 
 import com.fasterxml.jackson.databind.JsonNode
+import java.nio.ByteBuffer
 import org.apache.kafka.common.IsolationLevel
 import org.apache.kafka.common.Uuid
 import org.apache.kafka.common.errors.UnsupportedVersionException
 import org.apache.kafka.common.message.AddPartitionsToTxnRequestData.AddPartitionsToTxnTopic
 import org.apache.kafka.common.message.AddPartitionsToTxnRequestData.AddPartitionsToTxnTopicCollection
+import org.apache.kafka.common.message.AddPartitionsToTxnRequestData.AddPartitionsToTxnTransaction
+import org.apache.kafka.common.message.AddPartitionsToTxnRequestData.AddPartitionsToTxnTransactionCollection
 import org.apache.kafka.common.message.CreateTopicsRequestData.CreatableTopicCollection
 import org.apache.kafka.common.message.DescribeClusterResponseData.DescribeClusterBroker
 import org.apache.kafka.common.message.DescribeClusterResponseData.DescribeClusterBrokerCollection
@@ -70,10 +73,9 @@ import org.apache.kafka.common.protocol.Message
 import org.apache.kafka.common.protocol.MessageUtil.toByteBuffer
 import org.apache.kafka.common.protocol.ObjectSerializationCache
 import org.apache.kafka.common.protocol.types.RawTaggedField
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Timeout
-import java.nio.ByteBuffer
-import org.junit.jupiter.api.Disabled
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotEquals
@@ -82,7 +84,6 @@ import kotlin.test.fail
 
 @Timeout(120)
 class MessageTest {
-
 
     private val memberId = "memberId"
 
@@ -110,21 +111,36 @@ class MessageTest {
     @Test
     @Throws(Exception::class)
     fun testAddPartitionsToTxnVersions() {
-        testAllMessageRoundTrips(
-            AddPartitionsToTxnRequestData()
-                .setTransactionalId("blah")
-                .setProducerId(0xbadcafebadcafeL)
-                .setProducerEpoch(30000)
-                .setTopics(
-                    AddPartitionsToTxnTopicCollection(
-                        listOf(
-                            AddPartitionsToTxnTopic()
-                                .setName("Topic")
-                                .setPartitions(intArrayOf(1)),
-                        ).iterator()
-                    )
+        val v3AndBelowData = AddPartitionsToTxnRequestData()
+            .setV3AndBelowTransactionalId("blah")
+            .setV3AndBelowProducerId(0xbadcafebadcafeL)
+            .setV3AndBelowProducerEpoch(30000)
+            .setV3AndBelowTopics(
+                AddPartitionsToTxnTopicCollection(
+                    listOf(
+                        AddPartitionsToTxnTopic()
+                            .setName("Topic")
+                            .setPartitions(intArrayOf(1))
+                    ).iterator()
                 )
-        )
+            )
+        testDuplication(v3AndBelowData)
+        testAllMessageRoundTripsUntilVersion(3, v3AndBelowData)
+
+        val data = AddPartitionsToTxnRequestData()
+            .setTransactions(
+                AddPartitionsToTxnTransactionCollection(
+                    listOf(
+                        AddPartitionsToTxnTransaction()
+                            .setTransactionalId("blah")
+                            .setProducerId(0xbadcafebadcafeL)
+                            .setProducerEpoch(30000)
+                            .setTopics(v3AndBelowData.v3AndBelowTopics)
+                    ).iterator()
+                )
+            )
+        testDuplication(data)
+        testAllMessageRoundTripsFromVersion(4, data)
     }
 
     @Test
@@ -351,7 +367,7 @@ class MessageTest {
                 .setGroupId("groupId")
                 .setMemberId(memberId)
                 .setTopics(ArrayList())
-                .setGenerationId(15)
+                .setGenerationIdOrMemberEpoch(15)
         }
         testAllMessageRoundTripsFromVersion(fromVersion = 1, message = request())
         testAllMessageRoundTripsFromVersion(fromVersion = 1, message = request().setGroupInstanceId(null))
@@ -606,7 +622,7 @@ class MessageTest {
             val requestData = request()
             if (version < 1) {
                 requestData.setMemberId("")
-                requestData.setGenerationId(-1)
+                requestData.setGenerationIdOrMemberEpoch(-1)
             }
             if (version.toInt() != 1) requestData.topics[0].partitions[0].setCommitTimestamp(-1)
             if (version < 2 || version > 4) requestData.setRetentionTimeMs(-1)
@@ -1205,12 +1221,19 @@ class MessageTest {
         message: Message,
         expected: Message,
     ) {
-        for (version in startVersion until endVersion) testMessageRoundTrip(version.toShort(), message, expected)
+        for (version in startVersion..<endVersion) testMessageRoundTrip(version.toShort(), message, expected)
     }
 
     @Throws(Exception::class)
     private fun testAllMessageRoundTripsFromVersion(fromVersion: Short, message: Message) {
         for (version in fromVersion..message.highestSupportedVersion()) {
+            testEquivalentMessageRoundTrip(version.toShort(), message)
+        }
+    }
+
+    @Throws(java.lang.Exception::class)
+    private fun testAllMessageRoundTripsUntilVersion(untilVersion: Short, message: Message) {
+        for (version in message.lowestSupportedVersion()..untilVersion) {
             testEquivalentMessageRoundTrip(version.toShort(), message)
         }
     }
@@ -1244,7 +1267,8 @@ class MessageTest {
         assertEquals(
             expected = size,
             actual = buf.position(),
-            message = "The result of the size function does not match the number of bytes read back in for version $version",
+            message =
+            "The result of the size function does not match the number of bytes read back in for version $version",
         )
         assertEquals(
             expected = expected,
@@ -1274,7 +1298,7 @@ class MessageTest {
      */
     @Test
     fun testMessageVersions() {
-        for (apiKey: ApiKeys in ApiKeys.values()) {
+        for (apiKey: ApiKeys in ApiKeys.entries) {
             var message: Message
             try {
                 message = ApiMessageType.fromApiKey(apiKey.id).newRequest()
@@ -1288,7 +1312,7 @@ class MessageTest {
             )
             try {
                 message = ApiMessageType.fromApiKey(apiKey.id).newResponse()
-            } catch (e: UnsupportedVersionException) {
+            } catch (_: UnsupportedVersionException) {
                 fail("No response message spec found for API $apiKey")
             }
             assertTrue(

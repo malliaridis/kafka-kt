@@ -17,13 +17,19 @@
 
 package org.apache.kafka.clients.consumer
 
+import java.nio.ByteBuffer
+import java.util.Arrays
+import org.apache.kafka.clients.consumer.internals.AbstractPartitionAssignorTest
+import org.apache.kafka.clients.consumer.internals.AbstractPartitionAssignorTest.Companion.ALL_RACKS
+import org.apache.kafka.clients.consumer.internals.AbstractPartitionAssignorTest.RackConfig
 import org.apache.kafka.clients.consumer.internals.AbstractStickyAssignor
 import org.apache.kafka.clients.consumer.internals.AbstractStickyAssignorTest
+import org.apache.kafka.common.PartitionInfo
 import org.apache.kafka.common.TopicPartition
 import org.junit.jupiter.api.Test
-import java.nio.ByteBuffer
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.EnumSource
 import kotlin.test.assertEquals
-import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -36,6 +42,7 @@ class CooperativeStickyAssignorTest : AbstractStickyAssignorTest() {
         topics: List<String>,
         partitions: List<TopicPartition>,
         generationId: Int,
+        consumerIndex: Int,
     ): ConsumerPartitionAssignor.Subscription? {
         // cooperative sticky assignor only supports ConsumerProtocolSubscription V1 or above
         return null
@@ -45,6 +52,7 @@ class CooperativeStickyAssignorTest : AbstractStickyAssignorTest() {
         topics: List<String>,
         partitions: List<TopicPartition>,
         generationId: Int,
+        consumerIndex: Int,
     ): ConsumerPartitionAssignor.Subscription {
         assignor.onAssignment(
             assignment = ConsumerPartitionAssignor.Assignment(partitions),
@@ -68,6 +76,7 @@ class CooperativeStickyAssignorTest : AbstractStickyAssignorTest() {
         topics: List<String>,
         partitions: List<TopicPartition>,
         generationId: Int,
+        consumerIndex: Int,
     ): ConsumerPartitionAssignor.Subscription {
         return ConsumerPartitionAssignor.Subscription(
             topics = topics,
@@ -129,9 +138,13 @@ class CooperativeStickyAssignorTest : AbstractStickyAssignorTest() {
         assertNull(assignor.memberData(subscription).generation)
     }
 
-    @Test
-    fun testAllConsumersHaveOwnedPartitionInvalidatedWhenClaimedByMultipleConsumersInSameGenerationWithEqualPartitionsPerConsumer() {
-        val partitionsPerTopic = mapOf(topic to 3)
+    @ParameterizedTest(name = AbstractPartitionAssignorTest.TEST_NAME_WITH_RACK_CONFIG)
+    @EnumSource(RackConfig::class)
+    fun testAllConsumersHaveOwnedPartitionInvalidatedWhenClaimedByMultipleConsumersInSameGenerationWithEqualPartitionsPerConsumer(rackConfig: RackConfig) {
+        initializeRacks(rackConfig)
+        val partitionsPerTopic = mutableMapOf(
+            topic to partitionInfos(topic, 3),
+        )
         subscriptions[consumer1] = buildSubscriptionV2Above(
             topics = listOf(topic),
             partitions = listOf(
@@ -139,6 +152,7 @@ class CooperativeStickyAssignorTest : AbstractStickyAssignorTest() {
                 TopicPartition(topic = topic, partition = 1)
             ),
             generationId = generationId,
+            consumerIndex = 0,
         )
         subscriptions[consumer2] = buildSubscriptionV2Above(
             topics = listOf(topic),
@@ -147,13 +161,15 @@ class CooperativeStickyAssignorTest : AbstractStickyAssignorTest() {
                 TopicPartition(topic = topic, partition = 2)
             ),
             generationId = generationId,
+            consumerIndex = 1,
         )
         subscriptions[consumer3] = buildSubscriptionV2Above(
             topics = listOf(topic),
             partitions = emptyList(),
             generationId = generationId,
+            consumerIndex = 2,
         )
-        val assignment = assignor.assign(partitionsPerTopic, subscriptions)
+        val assignment = assignor.assignPartitions(partitionsPerTopic, subscriptions)
         assertEquals(listOf(TopicPartition(topic = topic, partition = 1)), assignment[consumer1]!!)
         assertEquals(listOf(TopicPartition(topic = topic, partition = 2)), assignment[consumer2]!!)
         // In the cooperative assignor, topic-0 has to be considered "owned" and so it cant be assigned until
@@ -163,10 +179,11 @@ class CooperativeStickyAssignorTest : AbstractStickyAssignorTest() {
         assertTrue(isFullyBalanced(assignment))
     }
 
-    @Test
-    fun testAllConsumersHaveOwnedPartitionInvalidatedWhenClaimedByMultipleConsumersInSameGenerationWithUnequalPartitionsPerConsumer() {
-        val partitionsPerTopic: MutableMap<String, Int> = HashMap()
-        partitionsPerTopic[topic] = 4
+    @ParameterizedTest(name = AbstractPartitionAssignorTest.TEST_NAME_WITH_RACK_CONFIG)
+    @EnumSource(RackConfig::class)
+    fun testAllConsumersHaveOwnedPartitionInvalidatedWhenClaimedByMultipleConsumersInSameGenerationWithUnequalPartitionsPerConsumer(rackConfig: RackConfig) {
+        initializeRacks(rackConfig)
+        val partitionsPerTopic = mutableMapOf(topic to partitionInfos(topic, 4))
         subscriptions[consumer1] = buildSubscriptionV2Above(
             topics = listOf(topic),
             partitions = listOf(
@@ -174,6 +191,7 @@ class CooperativeStickyAssignorTest : AbstractStickyAssignorTest() {
                 TopicPartition(topic = topic, partition = 1)
             ),
             generationId = generationId,
+            consumerIndex = 0,
         )
         subscriptions[consumer2] = buildSubscriptionV2Above(
             topics = listOf(topic),
@@ -182,13 +200,15 @@ class CooperativeStickyAssignorTest : AbstractStickyAssignorTest() {
                 TopicPartition(topic = topic, partition = 2)
             ),
             generationId = generationId,
+            consumerIndex = 1,
         )
         subscriptions[consumer3] = buildSubscriptionV2Above(
             topics = listOf(topic),
             partitions = emptyList(),
             generationId = generationId,
+            consumerIndex = 2,
         )
-        val assignment = assignor.assign(partitionsPerTopic, subscriptions)
+        val assignment = assignor.assignPartitions(partitionsPerTopic, subscriptions)
         assertEquals(
             expected = listOf(
                 TopicPartition(topic = topic, partition = 1),
@@ -206,8 +226,6 @@ class CooperativeStickyAssignorTest : AbstractStickyAssignorTest() {
 
     @Test
     fun testMemberDataWithInconsistentData() {
-        val partitionsPerTopic: MutableMap<String, Int> = HashMap()
-        partitionsPerTopic[topic] = 2
         val ownedPartitionsInUserdata = listOf(tp1)
         val ownedPartitionsInSubscription = listOf(tp0)
         assignor.onAssignment(
@@ -312,8 +330,7 @@ class CooperativeStickyAssignorTest : AbstractStickyAssignorTest() {
 
     @Test
     fun testAssignorWithOldVersionSubscriptions() {
-        val partitionsPerTopic: MutableMap<String, Int> = HashMap()
-        partitionsPerTopic[topic1] = 3
+        val partitionsPerTopic = mutableMapOf(topic1 to partitionInfos(topic1, 3))
         val subscribedTopics = listOf(topic1)
 
         // cooperative sticky assignor only supports ConsumerProtocolSubscription V1 or above
@@ -321,18 +338,21 @@ class CooperativeStickyAssignorTest : AbstractStickyAssignorTest() {
             topics = subscribedTopics,
             partitions = listOf(TopicPartition(topic = topic1, partition = 0)),
             generationId = generationId,
+            consumerIndex = 0,
         )
         subscriptions[consumer2] = buildSubscriptionV1(
             topics = subscribedTopics,
             partitions = listOf(TopicPartition(topic = topic1, partition = 1)),
             generationId = generationId,
+            consumerIndex = 1,
         )
         subscriptions[consumer3] = buildSubscriptionV2Above(
             topics = subscribedTopics,
             partitions = emptyList(),
             generationId = generationId,
+            consumerIndex = 2,
         )
-        val assignment = assignor.assign(partitionsPerTopic, subscriptions)
+        val assignment = assignor.assignPartitions(partitionsPerTopic, subscriptions)
         assertEquals(listOf(TopicPartition(topic = topic1, partition = 0)), assignment[consumer1]!!)
         assertEquals(listOf(TopicPartition(topic = topic1, partition = 1)), assignment[consumer2]!!)
         assertEquals(listOf(TopicPartition(topic = topic1, partition = 2)), assignment[consumer3]!!)
@@ -353,7 +373,7 @@ class CooperativeStickyAssignorTest : AbstractStickyAssignorTest() {
     override fun verifyValidityAndBalance(
         subscriptions: MutableMap<String, ConsumerPartitionAssignor.Subscription>,
         assignments: MutableMap<String, MutableList<TopicPartition>>,
-        partitionsPerTopic: Map<String, Int>,
+        partitionsPerTopic: MutableMap<String, MutableList<PartitionInfo>>,
     ) {
         var rebalances = 0
         // partitions are being revoked, we must go through another assignment to get the final state
@@ -362,14 +382,18 @@ class CooperativeStickyAssignorTest : AbstractStickyAssignorTest() {
             // update the subscriptions with the now owned partitions
             for ((consumer, value) in assignments) {
                 val oldSubscription = assertNotNull(subscriptions[consumer])
+                val rackIndex =
+                    if (oldSubscription.rackId != null) ALL_RACKS.indexOf(oldSubscription.rackId)
+                    else -1
                 subscriptions[consumer] = buildSubscriptionV2Above(
                     topics = oldSubscription.topics,
                     partitions = value,
                     generationId = generationId,
+                    consumerIndex = rackIndex,
                 )
             }
             assignments.clear()
-            assignments.putAll(assignor.assign(partitionsPerTopic, subscriptions))
+            assignments.putAll(assignor.assignPartitions(partitionsPerTopic, subscriptions))
             ++rebalances
             assertTrue(rebalances <= 4)
         }

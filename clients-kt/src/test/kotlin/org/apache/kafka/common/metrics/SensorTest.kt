@@ -258,19 +258,21 @@ class SensorTest {
         val workers: MutableList<Future<Throwable>> = ArrayList(threadCount)
         var needShutdown = true
         try {
-            for (i in 0 until threadCount) {
-                workers.add(service.submit<Throwable>(Callable<Throwable?> {
-                    try {
-                        assertTrue(latch.await(5, TimeUnit.SECONDS))
-                        for (j in 0..19) {
-                            sensor.record((j * i).toDouble(), System.currentTimeMillis() + j, false)
-                            sensor.checkQuotas()
+            for (i in 0..<threadCount) {
+                workers.add(
+                    service.submit(Callable {
+                        try {
+                            assertTrue(latch.await(5, TimeUnit.SECONDS))
+                            for (j in 0..19) {
+                                sensor.record((j * i).toDouble(),System.currentTimeMillis() + j, false)
+                                sensor.checkQuotas()
+                            }
+                            return@Callable null
+                        } catch (e: Throwable) {
+                            return@Callable e
                         }
-                        return@Callable null
-                    } catch (e: Throwable) {
-                        return@Callable e
-                    }
-                }))
+                    })
+                )
             }
             latch.countDown()
             service.shutdown()

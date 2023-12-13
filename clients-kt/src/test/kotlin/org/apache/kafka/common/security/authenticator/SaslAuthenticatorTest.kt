@@ -20,12 +20,8 @@ package org.apache.kafka.common.security.authenticator
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
-import java.nio.channels.FileChannel
-import java.nio.channels.SelectionKey
-import java.nio.channels.SocketChannel
 import java.nio.charset.StandardCharsets
 import java.security.NoSuchAlgorithmException
-import java.security.Principal
 import java.util.Base64
 import java.util.concurrent.atomic.AtomicInteger
 import javax.net.ssl.SSLPeerUnverifiedException
@@ -72,7 +68,6 @@ import org.apache.kafka.common.network.NetworkSend
 import org.apache.kafka.common.network.NetworkTestUtils
 import org.apache.kafka.common.network.NetworkTestUtils.waitForChannelClose
 import org.apache.kafka.common.network.NioEchoServer
-import org.apache.kafka.common.network.PlaintextTransportLayer
 import org.apache.kafka.common.network.SaslChannelBuilder
 import org.apache.kafka.common.network.Selector
 import org.apache.kafka.common.network.TransportLayer
@@ -402,7 +397,7 @@ class SaslAuthenticatorTest {
         try {
             with(InvalidScramServerCallbackHandler) {
                 sensitiveException =
-                    IOException("Could not connect to password database locahost:8000")
+                    IOException("Could not connect to password database localhost:8000")
                 createAndCheckClientAuthenticationFailure(
                     securityProtocol = securityProtocol,
                     node = "1",
@@ -2790,7 +2785,7 @@ class SaslAuthenticatorTest {
         if (isScram) ScramCredentialUtils.createCache(credentialCache, listOf(saslMechanism))
         val apiVersionSupplier = {
                 val defaultApiVersionResponse =
-                    ApiVersionsResponse.defaultApiVersionsResponse(listenerType = ApiMessageType.ListenerType.ZK_BROKER)
+                    TestUtils.defaultApiVersionsResponse(listenerType = ApiMessageType.ListenerType.ZK_BROKER)
                 val apiVersions = ApiVersionCollection()
                 for (apiVersion in defaultApiVersionResponse.data().apiKeys) {
                     if (apiVersion.apiKey != ApiKeys.SASL_AUTHENTICATE.id) {
@@ -2828,7 +2823,7 @@ class SaslAuthenticatorTest {
                 transportLayer: TransportLayer,
                 subjects: Map<String, Subject>,
                 connectionsMaxReauthMsByMechanism: Map<String, Long>,
-                metadataRegistry: ChannelMetadataRegistry
+                metadataRegistry: ChannelMetadataRegistry,
             ): SaslServerAuthenticator {
                 return object : SaslServerAuthenticator(
                     configs = configs,
@@ -2895,7 +2890,7 @@ class SaslAuthenticatorTest {
                 serverHost: String,
                 servicePrincipal: String,
                 transportLayer: TransportLayer,
-                subject: Subject
+                subject: Subject,
             ): SaslClientAuthenticator {
                 return object : SaslClientAuthenticator(
                     configs = configs,
@@ -3282,7 +3277,7 @@ class SaslAuthenticatorTest {
         override fun configure(
             configs: Map<String, *>,
             saslMechanism: String,
-            jaasConfigEntries: List<AppConfigurationEntry>
+            jaasConfigEntries: List<AppConfigurationEntry>,
         ) {
             check(!configured) { "Server callback handler configured twice" }
             configured = true
@@ -3345,7 +3340,7 @@ class SaslAuthenticatorTest {
         override fun configure(
             configs: Map<String, *>,
             saslMechanism: String,
-            jaasConfigEntries: List<AppConfigurationEntry>
+            jaasConfigEntries: List<AppConfigurationEntry>,
         ) {
             check(!configured) { "Client callback handler configured twice" }
             configured = true
@@ -3385,7 +3380,7 @@ class SaslAuthenticatorTest {
             configs: Map<String, *>,
             contextName: String,
             jaasConfiguration: Configuration,
-            loginCallbackHandler: AuthenticateCallbackHandler
+            loginCallbackHandler: AuthenticateCallbackHandler,
         ) {
             assertEquals(1, jaasConfiguration.getAppConfigurationEntry(contextName).size)
             this.contextName = contextName
@@ -3425,7 +3420,7 @@ class SaslAuthenticatorTest {
         override fun configure(
             configs: Map<String, *>,
             saslMechanism: String,
-            jaasConfigEntries: List<AppConfigurationEntry>
+            jaasConfigEntries: List<AppConfigurationEntry>,
         ) {
             check(!configured) { "Login callback handler configured twice" }
             configured = true
@@ -3450,7 +3445,7 @@ class SaslAuthenticatorTest {
             subject: Subject,
             callbackHandler: CallbackHandler,
             sharedState: Map<String, *>,
-            options: Map<String, *>
+            options: Map<String, *>,
         ) {
             try {
                 val nameCallback = NameCallback("name:")
@@ -3519,7 +3514,7 @@ class SaslAuthenticatorTest {
         override fun configure(
             configs: Map<String, *>,
             saslMechanism: String,
-            jaasConfigEntries: List<AppConfigurationEntry>
+            jaasConfigEntries: List<AppConfigurationEntry>,
         ) = DELEGATE.configure(configs, saslMechanism, jaasConfigEntries)
 
         override fun close() = DELEGATE.close()
@@ -3574,7 +3569,7 @@ class SaslAuthenticatorTest {
         time = time,
         logContext = LogContext(),
         apiVersionSupplier = {
-            ApiVersionsResponse.defaultApiVersionsResponse(listenerType = ApiMessageType.ListenerType.ZK_BROKER)
+            TestUtils.defaultApiVersionsResponse(listenerType = ApiMessageType.ListenerType.ZK_BROKER)
         }
     ) {
         private var numInvocations = 0
@@ -3586,7 +3581,7 @@ class SaslAuthenticatorTest {
             serverHost: String,
             servicePrincipal: String,
             transportLayer: TransportLayer,
-            subject: Subject
+            subject: Subject,
         ): SaslClientAuthenticator {
             return if (++numInvocations == 1) SaslClientAuthenticator(
                 configs = configs,

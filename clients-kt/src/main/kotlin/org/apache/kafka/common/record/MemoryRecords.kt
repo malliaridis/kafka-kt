@@ -17,11 +17,15 @@
 
 package org.apache.kafka.common.record
 
+import java.io.IOException
+import java.nio.ByteBuffer
+import java.nio.channels.GatheringByteChannel
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.message.LeaderChangeMessage
 import org.apache.kafka.common.message.SnapshotFooterRecord
 import org.apache.kafka.common.message.SnapshotHeaderRecord
 import org.apache.kafka.common.network.TransferableChannel
+import org.apache.kafka.common.record.MemoryRecords.Companion.builder
 import org.apache.kafka.common.record.MemoryRecords.RecordFilter.BatchRetention
 import org.apache.kafka.common.utils.AbstractIterator
 import org.apache.kafka.common.utils.BufferSupplier
@@ -29,10 +33,6 @@ import org.apache.kafka.common.utils.ByteBufferOutputStream
 import org.apache.kafka.common.utils.Time
 import org.apache.kafka.common.utils.Utils.tryWriteTo
 import org.slf4j.LoggerFactory
-import java.io.IOException
-import java.nio.ByteBuffer
-import java.nio.channels.GatheringByteChannel
-import java.util.*
 import kotlin.math.max
 
 /**
@@ -51,16 +51,13 @@ class MemoryRecords private constructor(private val buffer: ByteBuffer) : Abstra
     override fun sizeInBytes(): Int = buffer.limit()
 
     @Throws(IOException::class)
-    override fun writeTo(channel: TransferableChannel, position: Long, length: Int): Long {
-        require(position <= Int.MAX_VALUE) {
-            "position should not be greater than Integer.MAX_VALUE: $position"
-        }
-        require(position + length <= buffer.limit()) {
-            "position+length should not be greater than buffer.limit(), position: " +
-                    "$position, length: $length, buffer.limit(): ${buffer.limit()}"
+    override fun writeTo(channel: TransferableChannel, position: Int, length: Int): Int {
+        require(position.toLong() + length <= buffer.limit()) {
+            "position+length should not be greater than buffer.limit(), " +
+                    "position: $position, length: $length, buffer.limit(): ${buffer.limit()}"
         }
 
-        return tryWriteTo(channel, position.toInt(), length, buffer)
+        return tryWriteTo(channel, position, length, buffer)
     }
 
     /**
@@ -95,7 +92,7 @@ class MemoryRecords private constructor(private val buffer: ByteBuffer) : Abstra
     override fun downConvert(
         toMagic: Byte,
         firstOffset: Long,
-        time: Time
+        time: Time,
     ): ConvertedRecords<MemoryRecords> = RecordsUtil.downConvert(
         batches = batches(),
         toMagic = toMagic,
@@ -134,7 +131,7 @@ class MemoryRecords private constructor(private val buffer: ByteBuffer) : Abstra
      */
     fun filterTo(
         partition: TopicPartition, filter: RecordFilter, destinationBuffer: ByteBuffer,
-        maxRecordBatchSize: Int, decompressionBufferSupplier: BufferSupplier
+        maxRecordBatchSize: Int, decompressionBufferSupplier: BufferSupplier,
     ): FilterResult {
         return filterTo(
             partition,
@@ -149,7 +146,7 @@ class MemoryRecords private constructor(private val buffer: ByteBuffer) : Abstra
     private class BatchFilterResult(
         val writeOriginalBatch: Boolean,
         val containsTombstones: Boolean,
-        val maxOffset: Long
+        val maxOffset: Long,
     )
 
     /**
@@ -175,7 +172,7 @@ class MemoryRecords private constructor(private val buffer: ByteBuffer) : Abstra
 
         class BatchRetentionResult(
             val batchRetention: BatchRetention,
-            val containsMarkerForEmptyTxn: Boolean
+            val containsMarkerForEmptyTxn: Boolean,
         )
 
         enum class BatchRetention {
@@ -229,7 +226,7 @@ class MemoryRecords private constructor(private val buffer: ByteBuffer) : Abstra
         fun updateRetainedBatchMetadata(
             retainedBatch: MutableRecordBatch,
             numMessagesInBatch: Int,
-            headerOnly: Boolean
+            headerOnly: Boolean,
         ) {
             val bytesRetained =
                 if (headerOnly) DefaultRecordBatch.RECORD_BATCH_OVERHEAD
@@ -249,7 +246,7 @@ class MemoryRecords private constructor(private val buffer: ByteBuffer) : Abstra
             shallowOffsetOfMaxTimestamp: Long,
             maxOffset: Long,
             messagesRetained: Int,
-            bytesRetained: Int
+            bytesRetained: Int,
         ) {
             validateBatchMetadata(maxTimestamp, shallowOffsetOfMaxTimestamp, maxOffset)
             if (maxTimestamp > this.maxTimestamp) {
@@ -264,7 +261,7 @@ class MemoryRecords private constructor(private val buffer: ByteBuffer) : Abstra
         private fun validateBatchMetadata(
             maxTimestamp: Long,
             shallowOffsetOfMaxTimestamp: Long,
-            maxOffset: Long
+            maxOffset: Long,
         ) {
             require(maxTimestamp == RecordBatch.NO_TIMESTAMP || shallowOffsetOfMaxTimestamp >= 0) {
                 "shallowOffset undefined for maximum timestamp $maxTimestamp"
@@ -530,7 +527,7 @@ class MemoryRecords private constructor(private val buffer: ByteBuffer) : Abstra
             compressionType: CompressionType,
             timestampType: TimestampType,
             baseOffset: Long,
-            maxSize: Int
+            maxSize: Int,
         ): MemoryRecordsBuilder {
             val logAppendTime =
                 if (timestampType == TimestampType.LOG_APPEND_TIME) System.currentTimeMillis()
@@ -559,7 +556,7 @@ class MemoryRecords private constructor(private val buffer: ByteBuffer) : Abstra
             baseOffset: Long,
             producerId: Long,
             producerEpoch: Short,
-            baseSequence: Int
+            baseSequence: Int,
         ): MemoryRecordsBuilder = builder(
             buffer = buffer,
             magic = RecordBatch.CURRENT_MAGIC_VALUE,
@@ -577,7 +574,7 @@ class MemoryRecords private constructor(private val buffer: ByteBuffer) : Abstra
             magic: Byte = RecordBatch.CURRENT_MAGIC_VALUE,
             compressionType: CompressionType,
             timestampType: TimestampType,
-            baseOffset: Long
+            baseOffset: Long,
         ): MemoryRecordsBuilder {
             val logAppendTime =
                 if (timestampType == TimestampType.LOG_APPEND_TIME) System.currentTimeMillis()
@@ -681,7 +678,7 @@ class MemoryRecords private constructor(private val buffer: ByteBuffer) : Abstra
             baseSequence: Int = RecordBatch.NO_SEQUENCE,
             partitionLeaderEpoch: Int = RecordBatch.NO_PARTITION_LEADER_EPOCH,
             isTransactional: Boolean = false,
-            vararg records: SimpleRecord
+            vararg records: SimpleRecord,
         ): MemoryRecords {
             if (records.isEmpty()) return EMPTY
             val sizeEstimate = estimateSizeInBytes(
@@ -799,7 +796,7 @@ class MemoryRecords private constructor(private val buffer: ByteBuffer) : Abstra
             initialOffset: Long,
             timestamp: Long,
             leaderEpoch: Int,
-            leaderChangeMessage: LeaderChangeMessage
+            leaderChangeMessage: LeaderChangeMessage,
         ) = MemoryRecordsBuilder(
             buffer = buffer,
             magic = RecordBatch.CURRENT_MAGIC_VALUE,
@@ -861,7 +858,7 @@ class MemoryRecords private constructor(private val buffer: ByteBuffer) : Abstra
             timestamp: Long,
             leaderEpoch: Int,
             buffer: ByteBuffer,
-            snapshotFooterRecord: SnapshotFooterRecord
+            snapshotFooterRecord: SnapshotFooterRecord,
         ): MemoryRecords {
             writeSnapshotFooterRecord(
                 buffer = buffer,

@@ -25,7 +25,7 @@ import javax.security.auth.Subject
  * **Note on object identity and equality**: `SaslExtensions` *intentionally* overrides the standard
  * [equals] and [hashCode] methods calling their respective [Object.equals] and [Object.hashCode]
  * implementations. In so doing, it provides equality *only* via reference identity and will not
- * base equality on the underlying values of its [extentions map][extensionsMap].
+ * base equality on the underlying values of its [extensions map][extensionsMap].
  * 
  * The reason for this approach to equality is based off of the manner in which credentials are
  * stored in a [Subject]. `SaslExtensions` are added to and removed from a [Subject] via its

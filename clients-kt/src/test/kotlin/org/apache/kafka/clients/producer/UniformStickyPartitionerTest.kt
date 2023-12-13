@@ -109,7 +109,6 @@ class UniformStickyPartitionerTest {
 
     @Suppress("Deprecation")
     @Test
-    @Throws(InterruptedException::class)
     fun testRoundRobinWithKeyBytes() {
         val allPartitions = listOf(
             PartitionInfo(
@@ -235,7 +234,6 @@ class UniformStickyPartitionerTest {
 
     @Suppress("Deprecation")
     @Test
-    @Throws(InterruptedException::class)
     fun testRoundRobinWithNullKeyBytes() {
         val allPartitions = listOf(
             PartitionInfo(

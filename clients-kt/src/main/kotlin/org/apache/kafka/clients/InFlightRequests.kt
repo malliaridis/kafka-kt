@@ -17,7 +17,8 @@
 
 package org.apache.kafka.clients
 
-import java.util.*
+import java.util.ArrayDeque
+import java.util.Deque
 import java.util.concurrent.atomic.AtomicInteger
 import org.apache.kafka.clients.NetworkClient.InFlightRequest
 
@@ -25,6 +26,7 @@ import org.apache.kafka.clients.NetworkClient.InFlightRequest
  * The set of requests which have been sent or are being sent but haven't yet received a response
  */
 internal class InFlightRequests(private val maxInFlightRequestsPerConnection: Int) {
+
     private val requests: MutableMap<String, Deque<InFlightRequest>> = HashMap()
 
     /**

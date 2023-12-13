@@ -17,13 +17,13 @@
 
 package org.apache.kafka.common.record
 
+import java.nio.ByteBuffer
 import org.apache.kafka.common.InvalidRecordException
 import org.apache.kafka.common.protocol.types.Field
 import org.apache.kafka.common.protocol.types.Schema
 import org.apache.kafka.common.protocol.types.Struct
 import org.apache.kafka.common.protocol.types.Type
 import org.slf4j.LoggerFactory
-import java.nio.ByteBuffer
 
 /**
  * Control records specify a schema for the record key which includes a version and type:
@@ -56,6 +56,12 @@ enum class ControlRecordType(val type: Short) {
     SNAPSHOT_HEADER(3.toShort()),
 
     SNAPSHOT_FOOTER(4.toShort());
+
+    @Deprecated(
+        message = "Use property instead",
+        replaceWith = ReplaceWith("type")
+    )
+    fun type(): Short = type
 
     fun recordKey(): Struct {
         require(this != UNKNOWN) { "Cannot serialize UNKNOWN control record type" }

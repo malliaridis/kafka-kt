@@ -40,7 +40,7 @@ class ExitTest {
         }
         try {
             val statusCode = 0
-            val message = "mesaage"
+            val message = "message"
             halt(statusCode)
             halt(statusCode, message)
             assertEquals(listOf<Any?>(statusCode, null, statusCode, message), list)
@@ -58,7 +58,7 @@ class ExitTest {
         }
         try {
             val statusCode = 0
-            val message = "mesaage"
+            val message = "message"
             exit(statusCode)
             exit(statusCode, message)
             assertEquals(listOf<Any?>(statusCode, null, statusCode, message), list)

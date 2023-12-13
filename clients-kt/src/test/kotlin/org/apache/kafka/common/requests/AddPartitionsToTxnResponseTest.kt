@@ -20,13 +20,19 @@ package org.apache.kafka.common.requests
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.message.AddPartitionsToTxnResponseData
 import org.apache.kafka.common.message.AddPartitionsToTxnResponseData.AddPartitionsToTxnPartitionResult
+import org.apache.kafka.common.message.AddPartitionsToTxnResponseData.AddPartitionsToTxnResult
+import org.apache.kafka.common.message.AddPartitionsToTxnResponseData.AddPartitionsToTxnResultCollection
 import org.apache.kafka.common.message.AddPartitionsToTxnResponseData.AddPartitionsToTxnTopicResult
 import org.apache.kafka.common.message.AddPartitionsToTxnResponseData.AddPartitionsToTxnTopicResultCollection
 import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.protocol.Errors
+import org.apache.kafka.common.requests.AddPartitionsToTxnResponse.Companion.errorsForTransaction
+import org.apache.kafka.common.utils.annotation.ApiKeyVersionsSource
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class AddPartitionsToTxnResponseTest {
     
@@ -44,9 +50,9 @@ class AddPartitionsToTxnResponseTest {
     
     internal val partitionTwo = 2
     
-    internal var tp1 = TopicPartition(topic = topicOne, partition = partitionOne)
+    internal val tp1 = TopicPartition(topic = topicOne, partition = partitionOne)
     
-    internal var tp2 = TopicPartition(topic = topicTwo, partition = partitionTwo)
+    internal val tp2 = TopicPartition(topic = topicTwo, partition = partitionTwo)
     
     internal lateinit var expectedErrorCounts: MutableMap<Errors, Int>
     
@@ -58,38 +64,93 @@ class AddPartitionsToTxnResponseTest {
         errorsMap = mutableMapOf(tp1 to errorOne, tp2 to errorTwo)
     }
 
-    @Test
-    fun testConstructorWithErrorResponse() {
-        val response = AddPartitionsToTxnResponse(throttleTimeMs, errorsMap)
-        assertEquals(expectedErrorCounts, response.errorCounts())
-        assertEquals(throttleTimeMs, response.throttleTimeMs())
-    }
-
-    @Test
-    fun testParse() {
+    @ParameterizedTest
+    @ApiKeyVersionsSource(apiKey = ApiKeys.ADD_PARTITIONS_TO_TXN)
+    fun testParse(version: Short) {
         val topicCollection = AddPartitionsToTxnTopicResultCollection()
         val topicResult = AddPartitionsToTxnTopicResult()
         topicResult.setName(topicOne)
-        topicResult.results.add(
+        topicResult.resultsByPartition.add(
             AddPartitionsToTxnPartitionResult()
-                .setErrorCode(errorOne.code)
+                .setPartitionErrorCode(errorOne.code)
                 .setPartitionIndex(partitionOne)
         )
-        topicResult.results.add(
+        topicResult.resultsByPartition.add(
             AddPartitionsToTxnPartitionResult()
-                .setErrorCode(errorTwo.code)
+                .setPartitionErrorCode(errorTwo.code)
                 .setPartitionIndex(partitionTwo)
         )
         topicCollection.add(topicResult)
-        val data = AddPartitionsToTxnResponseData()
-            .setResults(topicCollection)
-            .setThrottleTimeMs(throttleTimeMs)
-        val response = AddPartitionsToTxnResponse(data)
-        ApiKeys.ADD_PARTITIONS_TO_TXN.allVersions().forEach { version ->
-            val parsedResponse = AddPartitionsToTxnResponse.parse(response.serialize(version), version)
+
+        if (version < 4) {
+            val data = AddPartitionsToTxnResponseData()
+                .setResultsByTopicV3AndBelow(topicCollection)
+                .setThrottleTimeMs(throttleTimeMs)
+            val response = AddPartitionsToTxnResponse(data)
+            val parsedResponse = AddPartitionsToTxnResponse.parse(
+                buffer = response.serialize(version),
+                version = version,
+            )
             assertEquals(expectedErrorCounts, parsedResponse.errorCounts())
             assertEquals(throttleTimeMs, parsedResponse.throttleTimeMs())
             assertEquals(version >= 1, parsedResponse.shouldClientThrottle(version))
+        } else {
+            val results = AddPartitionsToTxnResultCollection()
+            results.add(
+                AddPartitionsToTxnResult()
+                    .setTransactionalId("txn1")
+                    .setTopicResults(topicCollection)
+            )
+
+            // Create another transaction with new name and errorOne for a single partition.
+            val txnTwoExpectedErrors = mapOf(tp2 to errorOne)
+            results.add(AddPartitionsToTxnResponse.resultForTransaction("txn2", txnTwoExpectedErrors))
+
+            val data = AddPartitionsToTxnResponseData()
+                .setResultsByTransaction(results)
+                .setThrottleTimeMs(throttleTimeMs)
+            val response = AddPartitionsToTxnResponse(data)
+
+            val newExpectedErrorCounts = mapOf(
+                Errors.NONE to 1, // top level error
+                errorOne to 2,
+                errorTwo to 1,
+            )
+
+            val parsedResponse = AddPartitionsToTxnResponse.parse(
+                buffer = response.serialize(version),
+                version = version,
+            )
+            assertEquals(
+                expected = txnTwoExpectedErrors,
+                actual = errorsForTransaction(response.getTransactionTopicResults("txn2")),
+            )
+            assertEquals(newExpectedErrorCounts, parsedResponse.errorCounts())
+            assertEquals(throttleTimeMs, parsedResponse.throttleTimeMs())
+            assertTrue(parsedResponse.shouldClientThrottle(version))
         }
+    }
+
+    @Test
+    fun testBatchedErrors() {
+        val txn1Errors = mapOf(tp1 to errorOne)
+        val txn2Errors = mapOf(tp1 to errorOne)
+        val transaction1 = AddPartitionsToTxnResponse.resultForTransaction("txn1", txn1Errors)
+        val transaction2 = AddPartitionsToTxnResponse.resultForTransaction("txn2", txn2Errors)
+
+        val results = AddPartitionsToTxnResultCollection()
+        results.add(transaction1)
+        results.add(transaction2)
+
+        val response = AddPartitionsToTxnResponse(AddPartitionsToTxnResponseData().setResultsByTransaction(results))
+        assertEquals(txn1Errors, errorsForTransaction(response.getTransactionTopicResults("txn1")))
+        assertEquals(txn2Errors, errorsForTransaction(response.getTransactionTopicResults("txn2")))
+
+        val expectedErrors = mapOf(
+            "txn1" to txn1Errors,
+            "txn2" to txn2Errors,
+        )
+
+        assertEquals(expectedErrors, response.errors())
     }
 }

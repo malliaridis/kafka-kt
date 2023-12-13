@@ -17,7 +17,7 @@
 
 package org.apache.kafka.common.serialization
 
-class FloatSerializer : Serializer<Float> {
+class FloatSerializer : Serializer<Float?> {
 
     override fun serialize(topic: String, data: Float?): ByteArray? = data?.toRawBits()?.let {
         byteArrayOf(

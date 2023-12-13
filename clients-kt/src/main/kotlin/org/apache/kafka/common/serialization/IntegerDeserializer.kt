@@ -17,22 +17,29 @@
 
 package org.apache.kafka.common.serialization
 
+import java.nio.ByteBuffer
 import org.apache.kafka.common.errors.SerializationException
+import org.apache.kafka.common.header.Headers
 
-class IntegerDeserializer : Deserializer<Int> {
+class IntegerDeserializer : Deserializer<Int?> {
 
-    override fun deserialize(topic: String, data: ByteArray?): Int? {
-        if (data == null) return null
+    override fun deserialize(topic: String, data: ByteArray?): Int? = when {
+        data == null -> null
+        data.size != 4 -> throw SerializationException("Size of data received by IntegerDeserializer is not 4")
+        else -> {
+            var value = 0
+            data.forEach { b ->
+                value = value shl 8
+                value = value or (b.toInt() and 0xFF)
+            }
 
-        if (data.size != 4)
-            throw SerializationException("Size of data received by IntegerDeserializer is not 4")
-
-        var value = 0
-        data.forEach { b ->
-            value = value shl 8
-            value = value or (b.toInt() and 0xFF)
+            value
         }
+    }
 
-        return value
+    override fun deserialize(topic: String, headers: Headers, data: ByteBuffer?): Int? = when {
+        data == null -> null
+        data.remaining() != 4 -> throw SerializationException("Size of data received by IntegerDeserializer is not 4")
+        else -> data.getInt(data.position())
     }
 }

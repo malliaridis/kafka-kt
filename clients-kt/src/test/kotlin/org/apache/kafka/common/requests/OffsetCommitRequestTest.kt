@@ -22,11 +22,12 @@ import org.apache.kafka.common.errors.UnsupportedVersionException
 import org.apache.kafka.common.message.OffsetCommitRequestData
 import org.apache.kafka.common.message.OffsetCommitRequestData.OffsetCommitRequestPartition
 import org.apache.kafka.common.message.OffsetCommitRequestData.OffsetCommitRequestTopic
+import org.apache.kafka.common.message.OffsetCommitResponseData
 import org.apache.kafka.common.message.OffsetCommitResponseData.OffsetCommitResponsePartition
 import org.apache.kafka.common.message.OffsetCommitResponseData.OffsetCommitResponseTopic
 import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.protocol.Errors
-import org.apache.kafka.common.requests.OffsetCommitRequest.Companion.getErrorResponseTopics
+import org.apache.kafka.common.requests.OffsetCommitRequest.Companion.getErrorResponse
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
@@ -89,31 +90,6 @@ open class OffsetCommitRequestTest {
     }
 
     @Test
-    fun testGetErrorResponseTopics() {
-        val expectedTopics = listOf(
-            OffsetCommitResponseTopic()
-                .setName(TOPIC_ONE)
-                .setPartitions(
-                    listOf(
-                        OffsetCommitResponsePartition()
-                            .setErrorCode(Errors.UNKNOWN_MEMBER_ID.code)
-                            .setPartitionIndex(PARTITION_ONE)
-                    )
-                ),
-            OffsetCommitResponseTopic()
-                .setName(TOPIC_TWO)
-                .setPartitions(
-                    listOf(
-                        OffsetCommitResponsePartition()
-                            .setErrorCode(Errors.UNKNOWN_MEMBER_ID.code)
-                            .setPartitionIndex(PARTITION_TWO)
-                    )
-                )
-        )
-        assertEquals(expectedTopics, getErrorResponseTopics(topics, Errors.UNKNOWN_MEMBER_ID))
-    }
-
-    @Test
     fun testVersionSupportForGroupInstanceId() {
         val builder = OffsetCommitRequest.Builder(
             OffsetCommitRequestData()
@@ -125,6 +101,35 @@ open class OffsetCommitRequestTest {
             if (version >= 7) builder.build(version)
             else assertFailsWith<UnsupportedVersionException> { builder.build(version) }
         }
+    }
+
+    @Test
+    fun testGetErrorResponse() {
+        val expectedResponse = OffsetCommitResponseData()
+            .setTopics(
+                listOf(
+                    OffsetCommitResponseTopic()
+                        .setName(TOPIC_ONE)
+                        .setPartitions(
+                            listOf(
+                                OffsetCommitResponsePartition()
+                                    .setErrorCode(Errors.UNKNOWN_MEMBER_ID.code)
+                                    .setPartitionIndex(PARTITION_ONE)
+                            )
+                        ),
+                    OffsetCommitResponseTopic()
+                        .setName(TOPIC_TWO)
+                        .setPartitions(
+                            listOf(
+                                OffsetCommitResponsePartition()
+                                    .setErrorCode(Errors.UNKNOWN_MEMBER_ID.code)
+                                    .setPartitionIndex(PARTITION_TWO)
+                            )
+                        )
+                )
+            )
+
+        assertEquals(expectedResponse, getErrorResponse(data, Errors.UNKNOWN_MEMBER_ID))
     }
 
     companion object {

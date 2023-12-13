@@ -80,7 +80,7 @@ class RemoveMembersFromConsumerGroupHandler(
             val groupsToUnmap = mutableSetOf<CoordinatorKey>()
 
             handleGroupError(groupId, error, failed, groupsToUnmap)
-            ApiResult(emptyMap(), failed, ArrayList(groupsToUnmap))
+            ApiResult(emptyMap(), failed, groupsToUnmap.toList())
         } else {
             val memberErrors = mutableMapOf<MemberIdentity, Errors>()
             for (memberResponse: MemberResponse in res.memberResponses()) {

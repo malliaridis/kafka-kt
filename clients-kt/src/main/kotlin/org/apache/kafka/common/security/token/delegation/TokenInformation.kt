@@ -31,7 +31,7 @@ data class TokenInformation(
     val renewers: Collection<KafkaPrincipal>,
     val issueTimestamp: Long,
     val maxTimestamp: Long,
-    var expiryTimestamp: Long
+    var expiryTimestamp: Long,
 ) {
 
     @Deprecated(
@@ -42,15 +42,21 @@ data class TokenInformation(
 
     @Deprecated(
         message = "Use property instead",
+        replaceWith = ReplaceWith("owner.toString()"),
+    )
+    fun ownerAsString(): String = owner.toString()
+
+    @Deprecated(
+        message = "Use property instead",
         replaceWith = ReplaceWith("tokenRequester"),
     )
     fun tokenRequester(): KafkaPrincipal = tokenRequester
 
     @Deprecated(
         message = "Use property instead",
-        replaceWith = ReplaceWith("owner.toString()"),
+        replaceWith = ReplaceWith("tokenRequester.toString()"),
     )
-    fun ownerAsString(): String = owner.toString()
+    fun tokenRequesterAsString(): String = tokenRequester.toString()
 
     @Deprecated(
         message = "Use property instead",
@@ -98,5 +104,29 @@ data class TokenInformation(
                 ", expiryTimestamp=$expiryTimestamp" +
                 ", tokenId='$tokenId'" +
                 '}'
+    }
+
+    companion object {
+
+        // Convert record elements into a TokenInformation
+        fun fromRecord(
+            tokenId: String,
+            owner: KafkaPrincipal,
+            tokenRequester: KafkaPrincipal,
+            renewers: Collection<KafkaPrincipal>,
+            issueTimestamp: Long,
+            maxTimestamp: Long,
+            expiryTimestamp: Long,
+        ): TokenInformation {
+            return TokenInformation(
+                tokenId = tokenId,
+                owner = owner,
+                tokenRequester = tokenRequester,
+                renewers = renewers,
+                issueTimestamp = issueTimestamp,
+                maxTimestamp = maxTimestamp,
+                expiryTimestamp = expiryTimestamp,
+            )
+        }
     }
 }

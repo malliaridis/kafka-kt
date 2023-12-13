@@ -74,7 +74,7 @@ class ScramSaslServerTest {
 
     @Test
     @Throws(Exception::class)
-    fun authorizatonIdEqualsAuthenticationId() {
+    fun authorizationIdEqualsAuthenticationId() {
         val nextChallenge = saslServer.evaluateResponse(
             clientFirstMessage(userName = USER_A, authorizationId = USER_A)
         )
@@ -82,7 +82,7 @@ class ScramSaslServerTest {
     }
 
     @Test
-    fun authorizatonIdNotEqualsAuthenticationId() {
+    fun authorizationIdNotEqualsAuthenticationId() {
         assertFailsWith<SaslAuthenticationException> {
             saslServer.evaluateResponse(
                 clientFirstMessage(userName = USER_A, authorizationId = USER_B)

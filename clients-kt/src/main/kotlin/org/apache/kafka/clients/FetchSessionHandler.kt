@@ -60,6 +60,10 @@ open class FetchSessionHandler(logContext: LogContext, node: Int) {
      */
     private var sessionTopicNames = mapOf<Uuid, String>()
 
+    // visible for testing
+    internal val sessionId: Int
+        get() = nextMetadata.sessionId
+
     init {
         log = logContext.logger(FetchSessionHandler::class.java)
         this.node = node
@@ -263,7 +267,7 @@ open class FetchSessionHandler(logContext: LogContext, node: Int) {
             val removed: MutableList<TopicIdPartition> = ArrayList()
             val altered: MutableList<TopicIdPartition> = ArrayList()
             val replaced: MutableList<TopicIdPartition> = ArrayList()
-            val iter = sessionPartitions.entries.iterator()
+            val iter = sessionPartitions.iterator()
             while (iter.hasNext()) {
                 val entry = iter.next()
                 val topicPartition = entry.key
@@ -330,7 +334,7 @@ open class FetchSessionHandler(logContext: LogContext, node: Int) {
                     topicPartitionsToLogString(sessionPartitions.keys),
                 )
             }
-            val toSend = next!!.toMap()
+            val toSend = next!!
             val curSessionPartitions =
                 if (copySessionPartitions) sessionPartitions.toMap()
                 else sessionPartitions
@@ -382,7 +386,7 @@ open class FetchSessionHandler(logContext: LogContext, node: Int) {
     fun verifyFullFetchResponsePartitions(
         topicPartitions: Set<TopicPartition>,
         ids: Set<Uuid>,
-        version: Short
+        version: Short,
     ): String? {
         val bld = StringBuilder()
         val extra = findMissing(topicPartitions, sessionPartitions.keys)
@@ -392,15 +396,15 @@ open class FetchSessionHandler(logContext: LogContext, node: Int) {
         if (version >= 13) extraIds = findMissing(ids, sessionTopicNames.keys)
         if (omitted.isNotEmpty()) bld.append("omittedPartitions=(")
             .append(omitted.joinToString(", "))
-            .append(", ")
+            .append("), ")
 
         if (extra.isNotEmpty()) bld.append("extraPartitions=(")
             .append(extra.joinToString(", "))
-            .append(", ")
+            .append("), ")
 
         if (extraIds.isNotEmpty()) bld.append("extraIds=(")
             .append(extraIds.joinToString(", "))
-            .append(", ")
+            .append("), ")
 
         if (omitted.isNotEmpty() || extra.isNotEmpty() || extraIds.isNotEmpty()) {
             bld.append("response=(")
@@ -502,7 +506,7 @@ open class FetchSessionHandler(logContext: LogContext, node: Int) {
             )
             nextMetadata =
                 if (response.error() === Errors.FETCH_SESSION_ID_NOT_FOUND) FetchMetadata.INITIAL
-                else nextMetadata.nextCloseExisting()
+                else nextMetadata.nextCloseExistingAttemptNew()
 
             return false
         }
@@ -566,7 +570,7 @@ open class FetchSessionHandler(logContext: LogContext, node: Int) {
                     node,
                     problem
                 )
-                nextMetadata = nextMetadata.nextCloseExisting()
+                nextMetadata = nextMetadata.nextCloseExistingAttemptNew()
                 false
             } else if (response.sessionId() == FetchMetadata.INVALID_SESSION_ID) {
                 // The incremental fetch session was closed by the server.
@@ -597,6 +601,17 @@ open class FetchSessionHandler(logContext: LogContext, node: Int) {
     }
 
     /**
+     * The client will initiate the session close on next fetch request.
+     */
+    fun notifyClose() {
+        log.debug(
+            "Set the metadata for next fetch request to close the existing session ID={}",
+            nextMetadata.sessionId
+        )
+        nextMetadata = nextMetadata.nextCloseExisting()
+    }
+
+    /**
      * Handle an error sending the prepared request.
      *
      * When a network error occurs, we close any existing fetch session on our next request, and try
@@ -606,7 +621,7 @@ open class FetchSessionHandler(logContext: LogContext, node: Int) {
      */
     open fun handleError(t: Throwable?) {
         log.info("Error sending fetch request {} to node {}:", nextMetadata, node, t)
-        nextMetadata = nextMetadata.nextCloseExisting()
+        nextMetadata = nextMetadata.nextCloseExistingAttemptNew()
     }
 
     /**

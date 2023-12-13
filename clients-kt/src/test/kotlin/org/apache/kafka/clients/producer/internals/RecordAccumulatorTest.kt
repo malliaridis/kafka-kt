@@ -736,31 +736,29 @@ class RecordAccumulatorTest {
             lingerMs = 0,
         )
         val threads = List(numThreads) {
-            object : Thread() {
-                override fun run() {
-                    repeat(msgs) { i ->
-                        try {
-                            accum.append(
-                                topic = topic,
-                                partition = i % numParts,
-                                timestamp = 0L,
-                                key = key,
-                                value = value,
-                                headers = Record.EMPTY_HEADERS,
-                                callbacks = null,
-                                maxTimeToBlock = maxBlockTimeMs,
-                                abortOnNewBatch = false,
-                                nowMs = time.milliseconds(),
-                                cluster = cluster,
-                            )
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
+            Thread {
+                repeat(msgs) { i ->
+                    try {
+                        accum.append(
+                            topic = topic,
+                            partition = i % numParts,
+                            timestamp = 0L,
+                            key = key,
+                            value = value,
+                            headers = Record.EMPTY_HEADERS,
+                            callbacks = null,
+                            maxTimeToBlock = maxBlockTimeMs,
+                            abortOnNewBatch = false,
+                            nowMs = time.milliseconds(),
+                            cluster = cluster,
+                        )
+                    } catch (e: Exception) {
+                        e.printStackTrace()
                     }
                 }
             }
         }
-        for (t: Thread in threads) t.start()
+        for (t in threads) t.start()
         var read = 0
         val now = time.milliseconds()
         while (read < numThreads * msgs) {
@@ -1023,11 +1021,9 @@ class RecordAccumulatorTest {
     }
 
     private fun delayedInterrupt(thread: Thread, delayMs: Long) {
-        val t: Thread = object : Thread() {
-            override fun run() {
-                Time.SYSTEM.sleep(delayMs)
-                thread.interrupt()
-            }
+        val t = Thread {
+            Time.SYSTEM.sleep(delayMs)
+            thread.interrupt()
         }
         t.start()
     }
@@ -1083,7 +1079,7 @@ class RecordAccumulatorTest {
         class TestCallback : RecordAccumulator.AppendCallbacks {
 
             override fun onCompletion(metadata: RecordMetadata?, exception: Exception?) {
-                assertTrue(exception!!.message == "Producer is closed forcefully.")
+                assertEquals("Producer is closed forcefully.", exception!!.message)
                 numExceptionReceivedInCallback.incrementAndGet()
             }
 
@@ -1722,11 +1718,7 @@ class RecordAccumulatorTest {
         val value = ByteArray(1024)
         val acked = AtomicInteger(0)
 
-        val cb = object : Callback {
-            override fun onCompletion(metadata: RecordMetadata?, exception: Exception?) {
-                acked.incrementAndGet()
-            }
-        }
+        val cb = Callback { _, _ -> acked.incrementAndGet() }
         // Append two messages so the batch is too big.
         val future1 = batch.tryAppend(
             timestamp = now,

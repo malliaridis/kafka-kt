@@ -26,8 +26,7 @@ import kotlin.math.max
  */
 object CompressionRatioEstimator {
 
-    // The constant speed to increase compression ratio when a batch compresses better than
-    // expected.
+    // The constant speed to increase compression ratio when a batch compresses better than expected.
     const val COMPRESSION_RATIO_IMPROVING_STEP = 0.005f
 
     // The minimum speed to decrease compression ratio when a batch compresses worse than expected.
@@ -45,21 +44,22 @@ object CompressionRatioEstimator {
      */
     fun updateEstimation(topic: String, type: CompressionType, observedRatio: Float): Float {
         val compressionRatioForTopic = getAndCreateEstimationIfAbsent(topic)
-        val currentEstimation = compressionRatioForTopic[type.id]
+        val typeId = type.id.toInt()
+        val currentEstimation = compressionRatioForTopic[typeId]
 
         synchronized(compressionRatioForTopic) {
-            if (observedRatio > currentEstimation) compressionRatioForTopic[type.id] = max(
+            if (observedRatio > currentEstimation) compressionRatioForTopic[typeId] = max(
                 currentEstimation + COMPRESSION_RATIO_DETERIORATE_STEP,
                 observedRatio
             ) else if (observedRatio < currentEstimation) {
-                compressionRatioForTopic[type.id] = max(
+                compressionRatioForTopic[typeId] = max(
                     currentEstimation - COMPRESSION_RATIO_IMPROVING_STEP,
                     observedRatio
                 )
             }
         }
 
-        return compressionRatioForTopic[type.id]
+        return compressionRatioForTopic[typeId]
     }
 
     /**
@@ -67,7 +67,7 @@ object CompressionRatioEstimator {
      */
     fun estimation(topic: String, type: CompressionType): Float {
         val compressionRatioForTopic = getAndCreateEstimationIfAbsent(topic)
-        return compressionRatioForTopic[type.id]
+        return compressionRatioForTopic[type.id.toInt()]
     }
 
     /**
@@ -76,8 +76,8 @@ object CompressionRatioEstimator {
     fun resetEstimation(topic: String) {
         val compressionRatioForTopic = getAndCreateEstimationIfAbsent(topic)
         synchronized(compressionRatioForTopic) {
-            for (type in CompressionType.values())
-                compressionRatioForTopic[type.id] = type.rate
+            for (type in CompressionType.entries)
+                compressionRatioForTopic[type.id.toInt()] = type.rate
         }
     }
 
@@ -93,7 +93,7 @@ object CompressionRatioEstimator {
     fun setEstimation(topic: String, type: CompressionType, ratio: Float) {
         val compressionRatioForTopic = getAndCreateEstimationIfAbsent(topic)
         synchronized(compressionRatioForTopic) {
-            compressionRatioForTopic[type.id] = ratio
+            compressionRatioForTopic[type.id.toInt()] = ratio
         }
     }
 
@@ -110,9 +110,9 @@ object CompressionRatioEstimator {
     }
 
     private fun initialCompressionRatio(): FloatArray {
-        val compressionRatio = FloatArray(CompressionType.values().size)
-        for (type in CompressionType.values())
-            compressionRatio[type.id] = type.rate
+        val compressionRatio = FloatArray(CompressionType.entries.size)
+        for (type in CompressionType.entries)
+            compressionRatio[type.id.toInt()] = type.rate
 
         return compressionRatio
     }

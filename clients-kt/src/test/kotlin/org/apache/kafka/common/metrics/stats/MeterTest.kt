@@ -57,7 +57,7 @@ class MeterTest {
         var nextValue = 0.0
         var expectedTotal = 0.0
         var now: Long = 0
-        val intervalMs = 100.0
+        val intervalMs = 100
         val delta = 5.0
 
         // Record values in multiple windows and verify that rates are reported
@@ -66,7 +66,7 @@ class MeterTest {
             while (now < i * 1000) {
                 expectedTotal += nextValue
                 meter.record(config, nextValue, now)
-                now = (now + intervalMs).toLong()
+                now += intervalMs
                 nextValue += delta
             }
 
@@ -79,7 +79,7 @@ class MeterTest {
             var timeMs = now - 100
             while (timeMs >= windowStartMs) {
                 sampledTotal += prevValue
-                timeMs = (timeMs - intervalMs).toLong()
+                timeMs -= intervalMs
                 prevValue -= delta
             }
 

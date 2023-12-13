@@ -19,6 +19,7 @@ package org.apache.kafka.clients.producer
 
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.common.config.ConfigException
+import org.apache.kafka.common.security.auth.SecurityProtocol
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.apache.kafka.common.serialization.Serializer
 import org.apache.kafka.common.serialization.StringSerializer
@@ -29,9 +30,9 @@ import kotlin.test.assertTrue
 
 class ProducerConfigTest {
     
-    private val keySerializer: Serializer<ByteArray> = ByteArraySerializer()
+    private val keySerializer: Serializer<ByteArray?> = ByteArraySerializer()
     
-    private val valueSerializer: Serializer<String> = StringSerializer()
+    private val valueSerializer: Serializer<String?> = StringSerializer()
     
     private val keySerializerClass: Any = keySerializer.javaClass
     
@@ -117,5 +118,20 @@ class ProducerConfigTest {
 
         val ce = assertFailsWith<ConfigException> { ProducerConfig(configs) }
         assertTrue(ce.message!!.contains(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG))
+    }
+
+    @Test
+    fun testCaseInsensitiveSecurityProtocol() {
+        val saslSslLowerCase = SecurityProtocol.SASL_SSL.name.lowercase()
+        val configs = mapOf(
+            ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to keySerializerClass,
+            ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG to valueSerializerClass,
+            CommonClientConfigs.SECURITY_PROTOCOL_CONFIG to saslSslLowerCase,
+        )
+        val producerConfig = ProducerConfig(configs)
+        assertEquals(
+            expected = saslSslLowerCase,
+            actual = producerConfig.originals()[CommonClientConfigs.SECURITY_PROTOCOL_CONFIG]
+        )
     }
 }

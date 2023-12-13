@@ -86,25 +86,18 @@ class ProduceResponse(private val data: ProduceResponseData) : AbstractResponse(
     data class PartitionResponse(
         val error: Errors,
         val baseOffset: Long = INVALID_OFFSET,
+        val lastOffset: Long = INVALID_OFFSET,
         val logAppendTime: Long = RecordBatch.NO_TIMESTAMP,
         val logStartOffset: Long = INVALID_OFFSET,
         val recordErrors: List<RecordError> = emptyList(),
-        val errorMessage: String? = null
+        val errorMessage: String? = null,
     ) {
-
-        constructor(error: Errors, errorMessage: String?) : this(
-            error = error,
-            baseOffset = INVALID_OFFSET,
-            logAppendTime = RecordBatch.NO_TIMESTAMP,
-            logStartOffset = INVALID_OFFSET,
-            recordErrors = emptyList(),
-            errorMessage = errorMessage
-        )
 
         override fun toString(): String {
             return '{' +
                     "error: $error" +
                     ",offset: $baseOffset" +
+                    ",lastOffset: $lastOffset" +
                     ",logAppendTime: $logAppendTime" +
                     ", logStartOffset: $logStartOffset" +
                     ", recordErrors: $recordErrors" +

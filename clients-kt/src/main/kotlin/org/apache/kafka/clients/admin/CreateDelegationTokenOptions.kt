@@ -17,9 +17,9 @@
 
 package org.apache.kafka.clients.admin
 
+import java.util.LinkedList
 import org.apache.kafka.common.annotation.InterfaceStability.Evolving
 import org.apache.kafka.common.security.auth.KafkaPrincipal
-import java.util.*
 
 /**
  * Options for [Admin.createDelegationToken].
