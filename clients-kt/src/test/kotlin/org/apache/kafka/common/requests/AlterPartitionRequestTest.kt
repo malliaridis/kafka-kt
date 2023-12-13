@@ -78,7 +78,7 @@ internal class AlterPartitionRequestTest {
         assertEquals(1, alterPartitionRequest.data().topics[0].partitions.size)
         alterPartitionRequest.data().topics[0].partitions[0]
         if (version < 3) {
-            assertEquals(intArrayOf(1, 2, 3), partitionData.newIsr)
+            assertContentEquals(intArrayOf(1, 2, 3), partitionData.newIsr)
             assertTrue(partitionData.newIsrWithEpochs.isEmpty())
         } else {
             assertEquals(newIsrWithBrokerEpoch, partitionData.newIsrWithEpochs)

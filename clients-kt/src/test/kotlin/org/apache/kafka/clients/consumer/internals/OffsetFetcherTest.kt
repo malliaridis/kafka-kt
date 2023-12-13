@@ -788,6 +788,7 @@ class OffsetFetcherTest {
             Errors.REPLICA_NOT_AVAILABLE, Errors.KAFKA_STORAGE_ERROR, Errors.OFFSET_NOT_AVAILABLE,
             Errors.LEADER_NOT_AVAILABLE, Errors.FENCED_LEADER_EPOCH, Errors.UNKNOWN_LEADER_EPOCH
         )
+
         val newLeaderEpoch = 3
         val updatedMetadata = metadataUpdateWith(
             clusterId = "dummy",
@@ -797,13 +798,17 @@ class OffsetFetcherTest {
             epochSupplier = { newLeaderEpoch },
             topicIds = topicIds,
         )
+
         val originalLeader = initialUpdateResponse.buildCluster().leaderFor(tp1)
         val newLeader = updatedMetadata.buildCluster().leaderFor(tp1)
         assertNotEquals(originalLeader, newLeader)
+
         for (retriableError in retriableErrors) {
             buildFetcher()
+
             subscriptions.assignFromUser(setOf(tp0, tp1))
             client.updateMetadata(initialUpdateResponse)
+
             val fetchTimestamp = 10L
             val tp0NoError = ListOffsetsPartitionResponse()
                 .setPartitionIndex(tp0.partition)
@@ -827,6 +832,7 @@ class OffsetFetcherTest {
             val data = ListOffsetsResponseData()
                 .setThrottleTimeMs(0)
                 .setTopics(topics)
+
             client.prepareResponseFrom(
                 matcher = { request ->
                     if (request is ListOffsetsRequest) {
@@ -836,18 +842,18 @@ class OffsetFetcherTest {
                                 .setPartitions(
                                     listOf(
                                         ListOffsetsPartition()
-                                            .setPartitionIndex(tp1.partition)
+                                            .setPartitionIndex(tp0.partition)
                                             .setTimestamp(fetchTimestamp)
                                             .setCurrentLeaderEpoch(ListOffsetsResponse.UNKNOWN_EPOCH),
                                         ListOffsetsPartition()
-                                            .setPartitionIndex(tp0.partition)
+                                            .setPartitionIndex(tp1.partition)
                                             .setTimestamp(fetchTimestamp)
                                             .setCurrentLeaderEpoch(ListOffsetsResponse.UNKNOWN_EPOCH)
                                     )
                                 )
                         )
-                        return@prepareResponseFrom request.topics == expectedTopics
-                    } else return@prepareResponseFrom false
+                        request.topics == expectedTopics
+                    } else false
                 },
                 response = ListOffsetsResponse(data),
                 node = originalLeader,
@@ -880,20 +886,25 @@ class OffsetFetcherTest {
             )
 
             // The request to new leader must only contain one partition tp1 with error.
-            client.prepareResponseFrom({ body: AbstractRequest? ->
-                val isListOffsetRequest = body is ListOffsetsRequest
-                if (isListOffsetRequest) {
-                    val request = body as ListOffsetsRequest?
-                    val requestTopic = request!!.topics[0]
-                    val expectedPartition = ListOffsetsPartition()
-                        .setPartitionIndex(tp1.partition)
-                        .setTimestamp(fetchTimestamp)
-                        .setCurrentLeaderEpoch(newLeaderEpoch)
-                    return@prepareResponseFrom expectedPartition == requestTopic.partitions[0]
-                } else {
-                    return@prepareResponseFrom false
-                }
-            }, listOffsetResponse(tp1, Errors.NONE, fetchTimestamp, 5L), newLeader)
+            client.prepareResponseFrom(
+                matcher = { request ->
+                    if (request is ListOffsetsRequest) {
+                        val requestTopic = request.topics[0]
+                        val expectedPartition = ListOffsetsPartition()
+                            .setPartitionIndex(tp1.partition)
+                            .setTimestamp(fetchTimestamp)
+                            .setCurrentLeaderEpoch(newLeaderEpoch)
+                        expectedPartition == requestTopic.partitions[0]
+                    } else false
+                },
+                response = listOffsetResponse(
+                    tp = tp1,
+                    error = Errors.NONE,
+                    timestamp = fetchTimestamp,
+                    offset = 5L,
+                ),
+                node = newLeader,
+            )
             val offsetAndTimestampMap = offsetFetcher.offsetsForTimes(
                 timestampsToSearch = mapOf(
                     tp0 to fetchTimestamp,
@@ -2106,4 +2117,3 @@ class OffsetFetcherTest {
         )
     }
 }
-

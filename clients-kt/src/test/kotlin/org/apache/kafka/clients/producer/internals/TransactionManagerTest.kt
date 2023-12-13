@@ -18,7 +18,6 @@
 package org.apache.kafka.clients.producer.internals
 
 import java.nio.ByteBuffer
-import java.util.Collections
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
@@ -84,6 +83,7 @@ import org.apache.kafka.common.utils.MockTime
 import org.apache.kafka.common.utils.ProducerIdAndEpoch
 import org.apache.kafka.test.TestUtils.assertFutureThrows
 import org.apache.kafka.test.TestUtils.singletonCluster
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
@@ -3401,23 +3401,29 @@ class TransactionManagerTest {
                 )
             )
         )
+
         doInitTransactions()
+
         transactionManager.beginTransaction()
+
         transactionManager.maybeAddPartition(tp1)
         val successPartitionResponseFuture = appendToAccumulator(tp1)
         prepareAddPartitionsToTxnResponse(Errors.NONE, tp1, epoch, producerId)
         prepareProduceResponse(Errors.NONE, producerId, epoch, tp1)
         runUntil { successPartitionResponseFuture!!.isDone }
         assertTrue(transactionManager.isPartitionAdded(tp1))
+
         transactionManager.maybeAddPartition(tp0)
         val responseFuture0 = appendToAccumulator(tp0)
         prepareAddPartitionsToTxnResponse(Errors.NONE, tp0, epoch, producerId)
         prepareProduceResponse(Errors.NONE, producerId, epoch)
         runUntil { responseFuture0!!.isDone }
         assertTrue(transactionManager.isPartitionAdded(tp0))
+
         val responseFuture1 = appendToAccumulator(tp0)
         prepareProduceResponse(Errors.NONE, producerId, epoch)
         runUntil { responseFuture1!!.isDone }
+
         val responseFuture2 = appendToAccumulator(tp0)
         client.prepareResponse(
             matcher = produceRequestMatcher(producerId, epoch, tp0),
@@ -3429,16 +3435,20 @@ class TransactionManagerTest {
                 logStartOffset = 0,
             )
         )
-        runUntil { responseFuture2!!.isDone() }
+        runUntil { responseFuture2!!.isDone }
+
         assertTrue(transactionManager.hasAbortableError)
+
         val abortResult = transactionManager.beginAbort()
         prepareEndTxnResponse(Errors.NONE, TransactionResult.ABORT, producerId, epoch)
         runUntil(abortResult::isCompleted)
         assertTrue(abortResult.isSuccessful)
         abortResult.await()
         assertTrue(transactionManager.isReady) // make sure we are ready for a transaction now.
+
         transactionManager.beginTransaction()
         transactionManager.maybeAddPartition(tp0)
+
         prepareAddPartitionsToTxnResponse(Errors.NONE, tp0, epoch, producerId)
         runUntil { transactionManager.isPartitionAdded(tp0) }
         assertEquals(0, transactionManager.sequenceNumber(tp0))
@@ -4352,8 +4362,10 @@ class TransactionManagerTest {
         logStartOffset: Int,
     ): ProduceResponse {
         val resp = ProduceResponse.PartitionResponse(
-            error, offset, RecordBatch.NO_TIMESTAMP,
-            logStartOffset.toLong()
+            error = error,
+            baseOffset = offset,
+            logAppendTime = RecordBatch.NO_TIMESTAMP,
+            logStartOffset = logStartOffset.toLong(),
         )
         val partResp = mapOf(tp to resp)
         return ProduceResponse(partResp, throttleTimeMs)

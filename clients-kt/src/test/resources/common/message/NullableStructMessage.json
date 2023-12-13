@@ -34,7 +34,7 @@
         { "name": "MyString", "type": "string", "versions": "1+" },
         { "name": "MyInt", "type": "int32", "versions": "1+" }
       ]},
-    { "name": "NullableStruct4", "type": "MyStruct4", "versions": "1+", "nullableVersions": "1+",
+    { "name": "NullableStruct4", "type": "MyStruct4", "versions": "1+", "nullableVersions": "1+", "default": "",
       "tag": 1, "taggedVersions": "1+",
       "fields": [
         { "name": "MyString", "type": "string", "versions": "1+" },

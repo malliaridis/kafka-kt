@@ -1537,10 +1537,7 @@ class TransactionManager(
                         topicPartition,
                     )
                     hasPartitionErrors = true
-                } else if (
-                    error === Errors.UNKNOWN_PRODUCER_ID
-                    || error === Errors.INVALID_PRODUCER_ID_MAPPING
-                ) {
+                } else if (error === Errors.UNKNOWN_PRODUCER_ID || error === Errors.INVALID_PRODUCER_ID_MAPPING) {
                     abortableErrorIfPossible(error.exception!!)
                     return
                 } else {
@@ -1692,10 +1689,8 @@ class TransactionManager(
             } else if (error === Errors.TRANSACTIONAL_ID_AUTHORIZATION_FAILED)
                 fatalError(error.exception)
             else if (error === Errors.INVALID_TXN_STATE) fatalError(error.exception)
-            else if (
-                error === Errors.UNKNOWN_PRODUCER_ID
-                || error === Errors.INVALID_PRODUCER_ID_MAPPING
-            ) abortableErrorIfPossible(error.exception!!)
+            else if (error === Errors.UNKNOWN_PRODUCER_ID || error === Errors.INVALID_PRODUCER_ID_MAPPING)
+                abortableErrorIfPossible(error.exception!!)
             else fatalError(KafkaException("Unhandled error in EndTxnResponse: ${error.message}"))
         }
     }

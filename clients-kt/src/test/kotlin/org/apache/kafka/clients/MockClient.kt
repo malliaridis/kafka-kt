@@ -187,13 +187,10 @@ open class MockClient(
         }
 
         // Check if the request is directed to a node with a pending authentication error.
-        val authErrorIter: MutableIterator<Map.Entry<Node, Long>> =
-            pendingAuthenticationErrors.entries.iterator()
+        val authErrorIter = pendingAuthenticationErrors.iterator()
 
         while (authErrorIter.hasNext()) {
-            val entry = authErrorIter.next()
-            val node = entry.key
-            val backoffMs = entry.value
+            val (node, backoffMs) = authErrorIter.next()
             if (node.idString() == request.destination) {
                 authErrorIter.remove()
                 // Set up a disconnected ClientResponse and create an authentication error
@@ -231,15 +228,14 @@ open class MockClient(
             val builder = request.requestBuilder()
             try {
                 val version = nodeApiVersions.latestUsableVersion(
-                    request.apiKey,
-                    builder.oldestAllowedVersion,
-                    builder.latestAllowedVersion
+                    apiKey = request.apiKey,
+                    oldestAllowedVersion = builder.oldestAllowedVersion,
+                    latestAllowedVersion = builder.latestAllowedVersion
                 )
                 var unsupportedVersionException: UnsupportedVersionException? = null
                 if (futureResp.isUnsupportedRequest) {
-                    unsupportedVersionException = UnsupportedVersionException(
-                        "Api ${request.apiKey} with version $version"
-                    )
+                    unsupportedVersionException =
+                        UnsupportedVersionException("Api ${request.apiKey} with version $version")
                 } else {
                     val abstractRequest = request.requestBuilder().build(version)
                     check(futureResp.requestMatcher.matches(abstractRequest)) {

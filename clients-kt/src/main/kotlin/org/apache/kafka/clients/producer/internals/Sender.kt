@@ -563,8 +563,8 @@ class Sender(
             for (batch in batches.values) completeBatch(
                 batch,
                 ProduceResponse.PartitionResponse(
-                    Errors.REQUEST_TIMED_OUT,
-                    String.format("Disconnected from node %s due to timeout", response.destination)
+                    error = Errors.REQUEST_TIMED_OUT,
+                    errorMessage = "Disconnected from node ${response.destination} due to timeout",
                 ),
                 correlationId.toLong(),
                 now

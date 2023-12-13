@@ -199,7 +199,7 @@ class ListOffsetsRequest private constructor(
         fun toListOffsetsTopics(
             timestampsToSearch: Map<TopicPartition, ListOffsetsPartition>,
         ): List<ListOffsetsTopic> {
-            val topics: MutableMap<String, ListOffsetsTopic> = HashMap()
+            val topics = hashMapOf<String, ListOffsetsTopic>()
 
             for ((tp, value) in timestampsToSearch) {
                 val topic =

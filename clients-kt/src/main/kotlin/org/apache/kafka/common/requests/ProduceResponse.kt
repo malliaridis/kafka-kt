@@ -93,16 +93,6 @@ class ProduceResponse(private val data: ProduceResponseData) : AbstractResponse(
         val errorMessage: String? = null,
     ) {
 
-        constructor(error: Errors, errorMessage: String?) : this(
-            error = error,
-            baseOffset = INVALID_OFFSET,
-            lastOffset = INVALID_OFFSET,
-            logAppendTime = RecordBatch.NO_TIMESTAMP,
-            logStartOffset = INVALID_OFFSET,
-            recordErrors = emptyList(),
-            errorMessage = errorMessage
-        )
-
         override fun toString(): String {
             return '{' +
                     "error: $error" +
