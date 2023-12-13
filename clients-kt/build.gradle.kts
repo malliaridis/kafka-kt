@@ -10,27 +10,27 @@ plugins {
 val generator: Configuration by configurations.creating
 
 dependencies {
-    implementation(Deps.Libs.zstd)
-    implementation(Deps.Libs.lz4)
-    implementation(Deps.Libs.snappy)
-    implementation(Deps.Libs.slf4jApi)
+    implementation(libs.luben.zstd)
+    implementation(libs.lz4.java)
+    implementation(libs.snappy.java)
+    implementation(libs.slf4j.api)
 
-    compileOnly(Deps.Libs.jacksonDatabind) // for SASL/OAUTHBEARER bearer token parsing
-    compileOnly(Deps.Libs.jacksonJDK8Datatypes)
-    compileOnly(Deps.Libs.jose4j) // for SASL/OAUTHBEARER JWT validation; only used by broker
+    compileOnly(libs.jackson.databind) // for SASL/OAUTHBEARER bearer token parsing
+    compileOnly(libs.jackson.jdk8.datatypes)
+    compileOnly(libs.bitbucket.jose4j) // for SASL/OAUTHBEARER JWT validation; only used by broker
 
     testImplementation(kotlin("test"))
-    testImplementation(Deps.Libs.bcpkix)
-    testImplementation(Deps.Libs.jacksonJaxrsJsonProvider)
-    testImplementation(Deps.Libs.jose4j)
-    testImplementation(Deps.Libs.junitJupiter)
-    testImplementation(Deps.Libs.log4j)
-    testImplementation(Deps.Libs.mockitoInline)
-    testImplementation(Deps.Libs.mockitoKotlin)
+    testImplementation(libs.bouncycastle.bcpkix)
+    testImplementation(libs.jackson.jaxrs.jsonProvider)
+    testImplementation(libs.bitbucket.jose4j)
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.log4j.reload4j)
+    testImplementation(libs.mockito.inline)
+    testImplementation(libs.mockito.kotlin)
 
-    testRuntimeOnly(Deps.Libs.slf4jlog4j)
-    testRuntimeOnly(Deps.Libs.jacksonDatabind)
-    testRuntimeOnly(Deps.Libs.jacksonJDK8Datatypes)
+    testRuntimeOnly(libs.slf4j.log4j)
+    testRuntimeOnly(libs.jackson.databind)
+    testRuntimeOnly(libs.jackson.jdk8.datatypes)
 
     generator(project(":generator-kt"))
 }

@@ -3,10 +3,10 @@ plugins {
 }
 
 dependencies {
-    implementation(Deps.Libs.argparse4j)
-    implementation(Deps.Libs.jacksonDatabind)
-    implementation(Deps.Libs.jacksonJDK8Datatypes)
-    implementation(Deps.Libs.jacksonJaxrsJsonProvider)
+    implementation(libs.sourceforge.argparse4j)
+    implementation(libs.jackson.databind)
+    implementation(libs.jackson.jdk8.datatypes)
+    implementation(libs.jackson.jaxrs.jsonProvider)
 
     testImplementation(kotlin("test"))
 }

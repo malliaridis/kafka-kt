@@ -1,0 +1,173 @@
+[versions]
+
+kotlin = "1.9.0"
+jvmTarget = "11"
+scala = "2.13.10"
+activation = "1.1.1"
+apacheda = "1.0.2"
+apacheds = "2.0.0-M24"
+argparse4j = "0.7.0"
+bcpkix = "1.70"
+checkstyle = "8.36.2"
+commonsCli = "1.4"
+dropwizardMetrics = "4.1.12.1"
+gradle = "8.0.2"
+grgit = "4.1.1"
+httpclient = "4.5.13"
+easymock = "4.3"
+jackson = "2.13.4"
+jacksonDatabind = "2.13.4.2"
+jacoco = "0.8.7"
+javassist = "3.27.0-GA"
+jetty = "9.4.48.v20220622"
+jersey = "2.34"
+jline = "3.21.0"
+jmh = "1.35"
+hamcrest = "2.2"
+scalaLogging = "3.9.4"
+jaxAnnotation = "1.3.2"
+jaxb = "2.3.0"
+jaxrs = "2.1.1"
+jfreechart = "1.0.0"
+jopt = "5.0.4"
+jose4j = "0.7.9"
+junit = "5.9.0"
+jqwik = "1.6.5"
+kafka_0100 = "0.10.0.1"
+kafka_0101 = "0.10.1.1"
+kafka_0102 = "0.10.2.2"
+kafka_0110 = "0.11.0.3"
+kafka_10 = "1.0.2"
+kafka_11 = "1.1.1"
+kafka_20 = "2.0.1"
+kafka_21 = "2.1.1"
+kafka_22 = "2.2.2"
+kafka_23 = "2.3.1"
+kafka_24 = "2.4.1"
+kafka_25 = "2.5.1"
+kafka_26 = "2.6.2"
+kafka_27 = "2.7.1"
+kafka_28 = "2.8.2"
+kafka_30 = "3.0.2"
+kafka_31 = "3.1.2"
+kafka_32 = "3.2.3"
+kafka_33 = "3.3.1"
+lz4 = "1.8.0"
+mavenArtifact = "3.8.4"
+metrics = "2.2.0"
+mockito = "5.1.0"
+netty = "4.1.78.Final"
+powermock = "2.0.9"
+reflections = "0.9.12"
+reload4j = "1.2.19"
+rocksDB = "7.1.2"
+scalaCollectionCompat = "2.6.0"
+scalafmt = "3.5.9"
+scalaJava8Compat =  "1.0.2"
+scoverage = "1.4.11"
+slf4j = "1.7.36"
+snappy = "1.1.8.4"
+spotbugs = "4.7.3"
+swaggerAnnotations = "2.2.0"
+swaggerJaxrs2 = "2.2.0"
+zinc = "1.7.2"
+zookeeper = "3.6.3"
+zstd = "1.5.2-1"
+
+[plugins]
+
+
+[libraries]
+
+apache-directory-api = { group = "org.apache.directory.api", name = "api-all", version.ref = "apacheda" }
+apache-ds-core = { group = "org.apache.directory.server", name = "apacheds-core-api", version.ref = "apacheds" }
+apache-ds-interceptor-kerberos = { group = "org.apache.directory.server", name = "apacheds-interceptor-kerberos", version.ref = "apacheds" }
+apache-ds-protocol-shared = { group = "org.apache.directory.server", name = "apacheds-protocol-shared", version.ref = "apacheds" }
+apache-ds-protocol-kerberos = { group = "org.apache.directory.server", name = "apacheds-protocol-kerberos", version.ref = "apacheds" }
+apache-ds-protocol-ldap = { group = "org.apache.directory.server", name = "apacheds-protocol-ldap", version.ref = "apacheds" }
+apache-ds-ldif-partition = { group = "org.apache.directory.server", name = "apacheds-ldif-partition", version.ref = "apacheds" }
+apache-ds-mavibot-partition = { group = "org.apache.directory.server", name = "apacheds-mavibot-partition", version.ref = "apacheds" }
+apache-ds-jdbm-partition = { group = "org.apache.directory.server", name = "apacheds-jdbm-partition", version.ref = "apacheds" }
+apache-httpclient = { group = "org.apache.httpcomponents", name = "httpclient", version.ref = "httpclient" }
+apache-zookeeper = { group = "org.apache.zookeeper", name = "zookeeper", version.ref = "zookeeper" }
+sourceforge-argparse4j = { group = "net.sourceforge.argparse4j", name = "argparse4j", version.ref = "argparse4j" }
+bouncycastle-bcpkix = { group = "org.bouncycastle", name = "bcpkix-jdk15on", version.ref = "bcpkix" }
+commons-cli = { group = "commons-cli", name = "commons-cli", version.ref = "commonsCli" }
+easymock-easymock = { group = "org.easymock", name = "easymock", version.ref = "easymock" }
+jackson-annotations = { group = "com.fasterxml.jackson.core", name = "jackson-annotations", version.ref = "jackson" }
+jackson-databind = { group = "com.fasterxml.jackson.core", name = "jackson-databind", version.ref = "jacksonDatabind" }
+jackson-dataformat-csv = { group = "com.fasterxml.jackson.dataformat", name = "jackson-dataformat-csv", version.ref = "jackson" }
+# TODO Find a way to dynamically load scala module (or remove completely if replaceable)
+jackson-module-scala = { group = "com.fasterxml.jackson.module", name = "jackson-module-scala_2.13.10", version.ref = "jackson" }
+# TODO Remove JDK8 dependencies
+jackson-jdk8-datatypes = { group = "com.fasterxml.jackson.datatype", name = "jackson-datatype-jdk8", version.ref = "jackson" }
+jackson-jaxrs-jsonProvider = { group = "com.fasterxml.jackson.jaxrs", name = "jackson-jaxrs-json-provider", version.ref = "jackson" }
+javax-activation = { group = "javax.activation", name = "activation", version.ref = "activation" }
+javax-annotation = { group = "javax.annotation", name = "javax-annotation-api", version.ref = "jaxAnnotation" }
+javax-bind-api = { group = "javax.xml.bind", name = "jaxb-api", version.ref = "jaxb" }
+javax-rs-api = { group = "javax.ws.rs", name = "javax.ws.rs-api", version.ref = "jaxrs" }
+javassist-javassist = { group = "javassist", name = "javassist", version.ref = "javassist" }
+jetty-server = { group = "org.eclipse.jetty", name = "jetty-server", version.ref = "jetty" }
+jetty-client = { group = "org.eclipse.jetty", name = "jetty-client", version.ref = "jetty" }
+jetty-servlet = { group = "org.eclipse.jetty", name = "jetty-servlet", version.ref = "jetty" }
+jetty-servlets = { group = "org.eclipse.jetty", name = "jetty-servlets", version.ref = "jetty" }
+jersey-container-servlet = { group = "org.glassfish.jersey.containers", name = "jersey-container-servlet", version.ref = "jersey" }
+jersey-inject-hk2 = { group = "org.glassfish.jersey.inject", name = "jersey-hk2", version.ref = "jersey" }
+jline-jline = { group = "org.jline", name = "jline", version.ref = "jline" }
+jmh-core = { group = "org.openjdk.jmh", name = "jmh-core", version.ref = "jmh" }
+jmh-benchamrks = { group = "org.openjdk.jmh", name = "jmh-core-benchmarks", version.ref = "jmh" }
+jmh-annprocess = { group = "org.openjdk.jmh", name = "jmh-generator-annprocess", version.ref = "jmh" }
+jopt-simple = { group = "net.sf.jopt-simple", name = "jopt-simple", version.ref = "jopt" }
+bitbucket-jose4j = { group = "org.bitbucket.b_c", name = "jose4j", version.ref = "jose4j" }
+junit-jupiter = { group = "org.junit.jupiter", name = "junit-jupiter", version.ref = "junit" }
+junit-jupiter-api = { group = "org.junit.jupiter", name = "junit-jupiter-api", version.ref = "junit" }
+junit-vintage-engine = { group = "org.junit.vintage", name = "junit-vintage-engine", version.ref = "junit" }
+jqwik-jqwik = { group = "net.jqwik", name = "jqwik", version.ref = "jqwik" }
+hamcrest-hamcrest = { group = "org.hamcrest", name = "hamcrest", version.ref = "hamcrest" }
+kafka-streams-0100 = { group = "org.apache.kafka", name = "kafka-streams", version.ref = "kafka_0100" }
+kafka-streams-0101 = { group = "org.apache.kafka", name = "kafka-streams", version.ref = "kafka_0101" }
+kafka-streams-0102 = { group = "org.apache.kafka", name = "kafka-streams", version.ref = "kafka_0102" }
+kafka-streams-0110 = { group = "org.apache.kafka", name = "kafka-streams", version.ref = "kafka_0110" }
+kafka-streams-10 = { group = "org.apache.kafka", name = "kafka-streams", version.ref = "kafka_10" }
+kafka-streams-11 = { group = "org.apache.kafka", name = "kafka-streams", version.ref = "kafka_11" }
+kafka-streams-20 = { group = "org.apache.kafka", name = "kafka-streams", version.ref = "kafka_20" }
+kafka-streams-21 = { group = "org.apache.kafka", name = "kafka-streams", version.ref = "kafka_21" }
+kafka-streams-22 = { group = "org.apache.kafka", name = "kafka-streams", version.ref = "kafka_22" }
+kafka-streams-23 = { group = "org.apache.kafka", name = "kafka-streams", version.ref = "kafka_23" }
+kafka-streams-24 = { group = "org.apache.kafka", name = "kafka-streams", version.ref = "kafka_24" }
+kafka-streams-25 = { group = "org.apache.kafka", name = "kafka-streams", version.ref = "kafka_25" }
+kafka-streams-26 = { group = "org.apache.kafka", name = "kafka-streams", version.ref = "kafka_26" }
+kafka-streams-27 = { group = "org.apache.kafka", name = "kafka-streams", version.ref = "kafka_27" }
+kafka-streams-28 = { group = "org.apache.kafka", name = "kafka-streams", version.ref = "kafka_28" }
+kafka-streams-30 = { group = "org.apache.kafka", name = "kafka-streams", version.ref = "kafka_30" }
+kafka-streams-31 = { group = "org.apache.kafka", name = "kafka-streams", version.ref = "kafka_31" }
+kafka-streams-32 = { group = "org.apache.kafka", name = "kafka-streams", version.ref = "kafka_32" }
+kafka-streams-33 = { group = "org.apache.kafka", name = "kafka-streams", version.ref = "kafka_33" }
+log4j-reload4j = { group = "ch.qos.reload4j", name = "reload4j", version.ref = "reload4j" }
+lz4-java = { group = "org.lz4", name = "lz4-java", version.ref = "lz4" }
+yammer-metrics = { group = "com.yammer.metrics", name = "metrics-core", version.ref = "metrics" }
+dropwizard-metrics = { group = "io.dropwizard.metrics", name = "metrics-core", version.ref = "dropwizardMetrics" }
+mockito-core = { group = "org.mockito", name = "mockito-core", version.ref = "mockito" }
+mockito-inline = { group = "org.mockito", name = "mockito-inline", version.ref = "mockito" }
+mockito-kotlin = { group = "org.mockito.kotlin", name = "mockito-kotlin", version.ref = "mockito" }
+mockito-junit-jupiter = { group = "org.mockito", name = "mockito-junit-jupiter", version.ref = "mockito" }
+netty-handler = { group = "io.netty", name = "netty-handler", version.ref = "netty" }
+netty-transport-natiiveEpoll = { group = "io.netty", name = "netty-transport-native-epoll", version.ref = "netty" }
+powermock-junit4 = { group = "org.powermock", name = "powermock-module-junit4", version.ref = "powermock" }
+powermock-easymock = { group = "org.powermock", name = "powermock-api-easymock", version.ref = "powermock" }
+reflections-reflections = { group = "org.reflections", name = "reflections", version.ref = "reflections" }
+rocksdb-jni = { group = "org.rocksdb", name = "rocksdbjni", version.ref = "rocksDB" }
+scala-collectionCompat = { group = "org.scala-lang.modules", name = "scala-collection-compat_2.13.10", version.ref = "scalaCollectionCompat" }
+# TODO Remove Java 8 compat
+scala-java8Compat = { group = "org.scala-lang.modules", name = "scala-java8-compat_2.13.10", version.ref = "scalaJava8Compat" }
+scala-library = { group = "org.scala-lang", name = "scala-library", version.ref = "scala" }
+scala-logging = { group = "com.typesafe.scala-logging", name = "scala-logging_2.13.10", version.ref = "scalaLogging" }
+scala-reflect = { group = "org.scala-lang", name = "scala-reflect", version.ref = "scala" }
+slf4j-api = { group = "org.slf4j", name = "slf4j-api", version.ref = "slf4j" }
+slf4j-log4j = { group = "org.slf4j", name = "slf4j-log4j12", version.ref = "slf4j" }
+snappy-java = { group = "org.xerial.snappy", name = "snappy-java", version.ref = "snappy" }
+swagger-annotations = { group = "io.swagger.core.v3", name = "swagger-annotations", version.ref = "swaggerAnnotations" }
+swagger-jaxrs2 = { group = "io.swagger.core.v3", name = "swagger-jaxrs2", version.ref = "swaggerJaxrs2" }
+jfreechart-jfreechart = { group = "jfreechart", name = "jfreechart", version.ref = "jfreechart" }
+maven-artifact = { group = "org.apache.maven", name = "maven-artifact", version.ref = "mavenArtifact" }
+luben-zstd = { group = "com.github.luben", name = "zstd-jni", version.ref = "zstd" }
