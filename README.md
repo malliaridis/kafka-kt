@@ -6,10 +6,10 @@ This is an unofficial and experimental Kotlin migration of the
 > **CAUTION:** The migration is in very early stage and has very likely multiple bugs. **It is not
 > recommended to use it in the current state.**
 
-## Migration
+## Migration Status
 
-The status of the migration can be looked up in [Migration Status](MIGRATION_STATUS.md).
+The [milestones on GitHub](https://github.com/malliaridis/kafka-kt/milestones) show the current progress
+of the migration. Right now the following modules have been fully migrated (but not yet optimized):
 
-Information about how to migrate existing code can be found in
-[Migration Notes](MIGRATION_NOTES.md).
-
+- `clients` (Kafka 3.6.0)
+- `generator` (Kafka 3.6.0)
