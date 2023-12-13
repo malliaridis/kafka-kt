@@ -31,7 +31,7 @@ class RequestFutureTest {
         val future = RequestFuture<String>()
         val value = "foo"
         future.complete(value)
-        assertTrue(future.isDone)
+        assertTrue(future.isDone())
         assertEquals(value, future.value())
     }
 
@@ -40,7 +40,7 @@ class RequestFutureTest {
         val future = RequestFuture<String>()
         val exception = RuntimeException()
         future.raise(exception)
-        assertTrue(future.isDone)
+        assertTrue(future.isDone())
         assertEquals(exception, future.exception())
     }
 
@@ -48,7 +48,7 @@ class RequestFutureTest {
     fun testUnitFuture() {
         val future = RequestFuture<Unit?>()
         future.complete(null)
-        assertTrue(future.isDone)
+        assertTrue(future.isDone())
         assertNull(future.value())
     }
 
@@ -169,7 +169,7 @@ class RequestFutureTest {
             },
         )
         future.complete("hello")
-        assertTrue(composed.isDone)
+        assertTrue(composed.isDone())
         assertTrue(composed.succeeded())
         assertEquals(5, composed.value())
     }
@@ -184,7 +184,7 @@ class RequestFutureTest {
         )
         val e = RuntimeException()
         future.raise(e)
-        assertTrue(composed.isDone)
+        assertTrue(composed.isDone())
         assertTrue(composed.failed())
         assertEquals(e, composed.exception())
     }

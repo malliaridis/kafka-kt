@@ -50,7 +50,7 @@ abstract class AsyncClient<T1, Req : AbstractRequest, Resp : AbstractResponse, T
                     try {
                         future.complete(handleResponse(node, requestData, resp))
                     } catch (e: RuntimeException) {
-                        if (!future.isDone) future.raise(e)
+                        if (!future.isDone()) future.raise(e)
                     }
                 }
             }

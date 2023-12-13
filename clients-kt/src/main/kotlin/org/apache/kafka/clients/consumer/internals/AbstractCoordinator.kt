@@ -262,7 +262,7 @@ abstract class AbstractCoordinator(
 
             val future = lookupCoordinator()
             client.poll(future, timer, disableWakeup)
-            if (!future.isDone) {
+            if (!future.isDone()) {
                 // ran out of time
                 break
             }
@@ -443,7 +443,7 @@ abstract class AbstractCoordinator(
             }
             val future = initiateJoinGroup()
             client.poll(future, timer)
-            if (!future.isDone) {
+            if (!future.isDone()) {
                 // we ran out of time
                 return false
             }
@@ -1423,7 +1423,7 @@ abstract class AbstractCoordinator(
                 val responseObj = response.responseBody as R
                 handle(responseObj, future)
             } catch (e: RuntimeException) {
-                if (!future.isDone) future.raise(e)
+                if (!future.isDone()) future.raise(e)
             }
         }
 

@@ -1453,7 +1453,7 @@ class AbstractCoordinatorTest {
         mockTime.sleep(50)
 
         val future = coordinator.lookupCoordinator()
-        assertFalse(future.isDone, "Request not sent")
+        assertFalse(future.isDone(), "Request not sent")
         assertSame(
             expected = future,
             actual = coordinator.lookupCoordinator(),

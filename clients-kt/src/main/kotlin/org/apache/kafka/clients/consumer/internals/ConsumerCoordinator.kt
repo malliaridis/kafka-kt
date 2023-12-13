@@ -782,7 +782,7 @@ class ConsumerCoordinator(
             var onJoinPrepareAsyncCommitCompleted = true
             if (joinPrepareTimer!!.isExpired) log.error(
                 "Asynchronous auto-commit of offsets failed: joinPrepare timeout. Will continue to join group"
-            ) else if (!requestFuture.isDone) onJoinPrepareAsyncCommitCompleted = false
+            ) else if (!requestFuture.isDone()) onJoinPrepareAsyncCommitCompleted = false
             else if (requestFuture.failed() && requestFuture.isRetriable) {
                 log.debug(
                     "Asynchronous auto-commit of offsets failed with retryable error: {}. Will retry it.",
@@ -793,7 +793,7 @@ class ConsumerCoordinator(
                 "Asynchronous auto-commit of offsets failed: {}. Will continue to join group.",
                 requestFuture.exception().message
             )
-            if (requestFuture.isDone) this.autoCommitOffsetRequestFuture = null
+            if (requestFuture.isDone()) this.autoCommitOffsetRequestFuture = null
 
             if (!onJoinPrepareAsyncCommitCompleted) {
                 pollTimer.sleep(min(pollTimer.remainingMs, rebalanceConfig.retryBackoffMs!!))
@@ -1005,7 +1005,7 @@ class ConsumerCoordinator(
 
             client.poll(future, timer)
 
-            if (future.isDone) {
+            if (future.isDone()) {
                 pendingCommittedOffsetRequest = null
                 if (future.succeeded()) return future.value()
                 else if (!future.isRetriable) throw future.exception()

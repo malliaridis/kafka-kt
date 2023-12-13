@@ -267,7 +267,7 @@ open class FetchSessionHandler(logContext: LogContext, node: Int) {
             val removed: MutableList<TopicIdPartition> = ArrayList()
             val altered: MutableList<TopicIdPartition> = ArrayList()
             val replaced: MutableList<TopicIdPartition> = ArrayList()
-            val iter = sessionPartitions.entries.iterator()
+            val iter = sessionPartitions.iterator()
             while (iter.hasNext()) {
                 val entry = iter.next()
                 val topicPartition = entry.key
@@ -334,7 +334,7 @@ open class FetchSessionHandler(logContext: LogContext, node: Int) {
                     topicPartitionsToLogString(sessionPartitions.keys),
                 )
             }
-            val toSend = next!!.toMap()
+            val toSend = next!!
             val curSessionPartitions =
                 if (copySessionPartitions) sessionPartitions.toMap()
                 else sessionPartitions

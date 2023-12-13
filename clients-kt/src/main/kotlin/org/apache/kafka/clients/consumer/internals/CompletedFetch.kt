@@ -58,7 +58,7 @@ internal class CompletedFetch<K, V>(
     val requestVersion: Short,
 ) {
 
-    var nextFetchOffset: Long
+    var nextFetchOffset: Long = fetchOffset
 
     var lastEpoch: Int? = null
 
@@ -66,7 +66,7 @@ internal class CompletedFetch<K, V>(
 
     var initialized = false
 
-    private val log: Logger = logContext.logger(CompletedFetch::class.java)
+    private val log: Logger = logContext.logger(javaClass)
 
     private val batches: Iterator<RecordBatch> = FetchResponse.recordsOrFail(partitionData).batches().iterator()
 
@@ -87,10 +87,6 @@ internal class CompletedFetch<K, V>(
     private var cachedRecordException: Exception? = null
 
     private var corruptLastRecord = false
-
-    init {
-        nextFetchOffset = fetchOffset
-    }
 
     /**
      * After each partition is parsed, we update the current metric totals with the total bytes

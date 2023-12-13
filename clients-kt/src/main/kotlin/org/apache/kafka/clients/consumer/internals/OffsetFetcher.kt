@@ -141,7 +141,7 @@ class OffsetFetcher(
             // and throw timeout exception if it cannot complete in time
             if (timer.timeoutMs == 0L) return actualResult
             client.poll(future, timer)
-            if (!future.isDone) break
+            if (!future.isDone()) break
             else if (remainingToSearch.isEmpty()) return actualResult
             else client.awaitMetadataUpdate(timer)
         } while (timer.isNotExpired)
@@ -333,7 +333,7 @@ class OffsetFetcher(
                     synchronized(listOffsetRequestsFuture) {
                         fetchedTimestampOffsets.putAll(result.fetchedOffsets)
                         partitionsToRetry.addAll(result.partitionsToRetry)
-                        if (remainingResponses.decrementAndGet() == 0 && !listOffsetRequestsFuture.isDone) {
+                        if (remainingResponses.decrementAndGet() == 0 && !listOffsetRequestsFuture.isDone()) {
                             listOffsetRequestsFuture.complete(
                                 ListOffsetResult(fetchedTimestampOffsets, partitionsToRetry)
                             )
@@ -343,7 +343,7 @@ class OffsetFetcher(
 
                 override fun onFailure(exception: RuntimeException) {
                     synchronized(listOffsetRequestsFuture) {
-                        if (!listOffsetRequestsFuture.isDone)
+                        if (!listOffsetRequestsFuture.isDone())
                             listOffsetRequestsFuture.raise(exception)
                     }
                 }

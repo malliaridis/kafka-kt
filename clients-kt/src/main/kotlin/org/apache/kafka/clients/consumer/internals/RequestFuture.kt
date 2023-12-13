@@ -52,13 +52,24 @@ class RequestFuture<T> : PollCondition {
 
     private val completedLatch = CountDownLatch(1)
 
-    val isDone: Boolean
-        /**
-         * Check whether the response is ready to be handled.
-         *
-         * @return true if the response is ready, false otherwise
-         */
-        get() = result.get() !== INCOMPLETE_SENTINEL
+    /**
+     * Check whether the response is ready to be handled.
+     *
+     * @return true if the response is ready, false otherwise
+     */
+//    @Deprecated(
+//        message = "Use function instead",
+//        replaceWith = ReplaceWith("isDone()")
+//    )
+////    val isDone: Boolean
+////        get() = result.get() !== INCOMPLETE_SENTINEL
+
+    /**
+     * Check whether the response is ready to be handled.
+     *
+     * @return true if the response is ready, false otherwise
+     */
+    fun isDone(): Boolean = result.get() != INCOMPLETE_SENTINEL
 
     @Throws(InterruptedException::class)
     fun awaitDone(timeout: Long, unit: TimeUnit): Boolean = completedLatch.await(timeout, unit)
@@ -81,7 +92,7 @@ class RequestFuture<T> : PollCondition {
      *
      * @return true if the request completed and was successful
      */
-    fun succeeded(): Boolean = isDone && !failed()
+    fun succeeded(): Boolean = isDone() && !failed()
 
     /**
      * Check if the request failed.
@@ -210,7 +221,7 @@ class RequestFuture<T> : PollCondition {
         })
     }
 
-    override fun shouldBlock(): Boolean = !isDone
+    override fun shouldBlock(): Boolean = !isDone()
 
     companion object {
 

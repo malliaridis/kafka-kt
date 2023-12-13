@@ -180,7 +180,7 @@ class ConsumerNetworkClient(
      * @throws InterruptException if the calling thread is interrupted
      */
     fun poll(future: RequestFuture<*>) {
-        while (!future.isDone) poll(time.timer(Long.MAX_VALUE), future)
+        while (!future.isDone()) poll(time.timer(Long.MAX_VALUE), future)
     }
 
     /**
@@ -197,9 +197,9 @@ class ConsumerNetworkClient(
     fun poll(future: RequestFuture<*>, timer: Timer, disableWakeup: Boolean = false): Boolean {
         do {
             poll(timer, future, disableWakeup)
-        } while (!future.isDone && timer.isNotExpired)
+        } while (!future.isDone() && timer.isNotExpired)
 
-        return future.isDone
+        return future.isDone()
     }
 
     /**

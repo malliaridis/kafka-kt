@@ -23,13 +23,19 @@ import java.io.DataOutputStream
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.time.Duration
+import java.util.Collections
 import java.util.concurrent.Callable
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.function.Consumer
+import java.util.function.Function
+import java.util.stream.Collectors
 import org.apache.kafka.clients.ApiVersions
+import org.apache.kafka.clients.ClientRequest
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.FetchSessionHandler
 import org.apache.kafka.clients.Metadata.LeaderAndEpoch
@@ -102,10 +108,10 @@ import org.apache.kafka.test.TestUtils.assertNullable
 import org.apache.kafka.test.TestUtils.checkEquals
 import org.apache.kafka.test.TestUtils.singletonCluster
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentCaptor
-import org.mockito.Mockito
 import org.mockito.kotlin.any
 import org.mockito.kotlin.spy
 import org.mockito.kotlin.times
@@ -339,14 +345,14 @@ class FetcherTest {
     @Test
     fun testFetcherCloseClosesFetchSessionsInBroker() {
         buildFetcher()
-        
+
         assignFromUser(setOf(tp0))
         subscriptions.seek(tp0, 0)
 
         // normal fetch
         assertEquals(1, sendFetches())
         assertFalse(fetcher.hasCompletedFetches())
-        
+
         val fetchResponse: FetchResponse = fullFetchResponse(
             tp = tidp0,
             records = records,
@@ -358,7 +364,7 @@ class FetcherTest {
         consumerClient.poll(time.timer(0))
         assertTrue(fetcher.hasCompletedFetches())
         assertEquals(0, consumerClient.pendingRequestCount())
-        
+
         val argument = ArgumentCaptor.forClass(FetchRequest.Builder::class.java)
 
         // send request to close the fetcher
@@ -4105,15 +4111,14 @@ class FetcherTest {
     @Throws(Exception::class)
     fun testFetcherConcurrency() {
         val numPartitions = 20
-        val topicPartitions = mutableSetOf<TopicPartition>()
-        for (i in 0..<numPartitions) topicPartitions.add(TopicPartition(topicName, i))
+        val topicPartitions = List(numPartitions) { TopicPartition(topicName, it) }.toSet()
 
         val logContext = LogContext()
         buildDependencies(
             metricConfig = MetricConfig(),
             metadataExpireMs = Long.MAX_VALUE,
             subscriptionState = SubscriptionState(logContext, OffsetResetStrategy.EARLIEST),
-            logContext = logContext
+            logContext = logContext,
         )
 
         val isolationLevel = IsolationLevel.READ_UNCOMMITTED
@@ -4152,8 +4157,7 @@ class FetcherTest {
             time = time,
         ) {
             override fun sessionHandler(node: Int): FetchSessionHandler? {
-                val handler = super.sessionHandler(node)
-                return if (handler == null) null else {
+                return super.sessionHandler(node)?.let { handler ->
                     object : FetchSessionHandler(logContext = LogContext(), node = node) {
                         override fun newBuilder(): Builder {
                             verifySessionPartitions()
@@ -4176,7 +4180,7 @@ class FetcherTest {
                                 val field = FetchSessionHandler::class.java.getDeclaredField("sessionPartitions")
                                 field.setAccessible(true)
                                 val sessionPartitions = field[handler] as LinkedHashMap<*, *>
-                                sessionPartitions.forEach {
+                                for(partition in sessionPartitions) {
                                     // If `sessionPartitions` are modified on another thread, Thread.yield will increase the
                                     // possibility of ConcurrentModificationException if appropriate synchronization is not used.
                                     Thread.yield()
@@ -4189,7 +4193,7 @@ class FetcherTest {
                 }
             }
         }
-        val initialMetadataResponse = metadataUpdateWithIds(
+        val initialMetadataResponse = metadataUpdateWith(
             numNodes = 1,
             topicPartitionCounts = mapOf(topicName to numPartitions),
             epochSupplier = { validLeaderEpoch },
@@ -4197,64 +4201,66 @@ class FetcherTest {
         )
         client.updateMetadata(initialMetadataResponse)
         fetchSize = 10000
+
         assignFromUser(topicPartitions)
         topicPartitions.forEach { tp -> subscriptions.seek(tp, 0L) }
-        val fetchesRemaining = AtomicInteger(1000)
 
+        val fetchesRemaining = AtomicInteger(1000)
         executorService = Executors.newSingleThreadExecutor()
         val future = executorService.submit(Callable {
             while (fetchesRemaining.get() > 0) {
                 synchronized(consumerClient) {
-                    if (!client.requests().isEmpty()) {
-                        val request = client.requests().peek()
-                        val fetchRequest = request.requestBuilder().build() as FetchRequest
-                        val responseMap = LinkedHashMap<TopicIdPartition, FetchResponseData.PartitionData>()
-                        for ((tp, value) in fetchRequest.fetchData(topicNames)!!) {
-                            val offset = value.fetchOffset
-                            responseMap[tp] = FetchResponseData.PartitionData()
-                                .setPartitionIndex(tp.topicPartition.partition)
-                                .setHighWatermark(offset + 2)
-                                .setLastStableOffset(offset + 2)
-                                .setLogStartOffset(0)
-                                .setRecords(buildRecords(offset, 2, offset))
-                        }
-                        client.respondToRequest(
-                            clientRequest = request,
-                            response = FetchResponse.of(
-                                error = Errors.NONE,
-                                throttleTimeMs = 0,
-                                sessionId = 123,
-                                responseData = responseMap,
-                            )
-                        )
-                        consumerClient.poll(time.timer(0))
+                    if (client.requests().isEmpty()) return@synchronized
+
+                    val request = client.requests().peek()
+                    val fetchRequest = request.requestBuilder().build() as FetchRequest
+                    val responseMap = fetchRequest.fetchData(topicNames)!!.mapValues { (tp, data) ->
+                        val offset = data.fetchOffset
+                        FetchResponseData.PartitionData()
+                            .setPartitionIndex(tp.topicPartition.partition)
+                            .setHighWatermark(offset + 2)
+                            .setLastStableOffset(offset + 2)
+                            .setLogStartOffset(0)
+                            .setRecords(buildRecords(offset, 2, offset))
                     }
+                    client.respondToRequest(
+                        clientRequest = request,
+                        response = FetchResponse.of(
+                            error = Errors.NONE,
+                            throttleTimeMs = 0,
+                            sessionId = 123,
+                            responseData = responseMap,
+                        )
+                    )
+                    consumerClient.poll(time.timer(0))
                 }
             }
+            Thread.sleep(5)
             fetchesRemaining.get()
         })
 
         val nextFetchOffsets = topicPartitions.associateWith { 0L }.toMutableMap()
 
         while (fetchesRemaining.get() > 0 && !future.isDone) {
-            if ((fetcher as Fetcher<ByteArray, ByteArray>).sendFetches() == 1) {
-                synchronized(consumerClient) { consumerClient.poll(time.timer(0)) }
+            if (sendFetches() == 1) synchronized(consumerClient) {
+                consumerClient.poll(time.timer(0))
             }
-            if ((fetcher as Fetcher<ByteArray, ByteArray>).hasCompletedFetches()) {
-                val fetchedRecords = fetchedRecords<ByteArray, ByteArray>()
-                if (!fetchedRecords.isEmpty()) {
-                    fetchesRemaining.decrementAndGet()
-                    fetchedRecords.forEach { (tp, records) ->
-                        assertEquals(2, records.size)
+            if (fetcher.hasCompletedFetches()) {
+                val fetchedRecords = fetchedRecords<ByteArray?, ByteArray?>()
+                if (fetchedRecords.isEmpty()) continue
 
-                        val nextOffset = nextFetchOffsets[tp]!!
-                        assertEquals(nextOffset, records[0].offset)
-                        assertEquals(nextOffset + 1, records[1].offset)
+                fetchesRemaining.decrementAndGet()
+                fetchedRecords.forEach { (tp, records) ->
+                    assertEquals(2, records.size)
 
-                        nextFetchOffsets[tp] = nextOffset + 2
-                    }
+                    val nextOffset = nextFetchOffsets[tp]!!
+                    assertEquals(nextOffset, records[0].offset)
+                    assertEquals(nextOffset + 1, records[1].offset)
+
+                    nextFetchOffsets[tp] = nextOffset + 2
                 }
             }
+            Thread.sleep(5)
         }
         assertEquals(0, future.get())
     }

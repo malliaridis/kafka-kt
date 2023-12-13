@@ -62,7 +62,7 @@ abstract class AbstractFetch<K, V>(
     protected val time: Time,
 ) : Closeable {
 
-    private val log: Logger = logContext.logger(AbstractFetch::class.java)
+    private val log: Logger = logContext.logger(javaClass)
 
     private val decompressionBufferSupplier: BufferSupplier = BufferSupplier.create()
 
@@ -147,7 +147,7 @@ abstract class AbstractFetch<K, V>(
                     fetchConfig.isolationLevel, fetchOffset, partition, partitionData
                 )
 
-                val completedFetch: CompletedFetch<K, V> = CompletedFetch(
+                val completedFetch = CompletedFetch(
                     logContext = logContext,
                     subscriptions = subscriptions,
                     fetchConfig = fetchConfig,
@@ -176,8 +176,7 @@ abstract class AbstractFetch<K, V>(
      */
     protected fun handleFetchResponse(fetchTarget: Node, e: RuntimeException?) {
         try {
-            val handler = sessionHandler(fetchTarget.id)
-            if (handler != null) {
+            sessionHandler(fetchTarget.id)?.let { handler  ->
                 handler.handleError(e)
                 handler.sessionTopicPartitions().forEach { tp -> subscriptions.clearPreferredReadReplica(tp) }
             }
@@ -243,11 +242,10 @@ abstract class AbstractFetch<K, V>(
     fun collectFetch(): Fetch<K, V> {
         val fetch: Fetch<K, V> = Fetch.empty()
         val pausedCompletedFetches: Queue<CompletedFetch<K, V>> = ArrayDeque()
-        var recordsRemaining: Int = fetchConfig.maxPollRecords
+        var recordsRemaining = fetchConfig.maxPollRecords
         try {
             while (recordsRemaining > 0) {
-                val inlineFetch = nextInLineFetch
-                if (inlineFetch == null || inlineFetch.isConsumed) {
+                if (nextInLineFetch == null || nextInLineFetch!!.isConsumed) {
                     val records = completedFetches.peek() ?: break
                     if (!records.initialized) {
                         try {
@@ -269,19 +267,19 @@ abstract class AbstractFetch<K, V>(
                         }
                     } else nextInLineFetch = records
                     completedFetches.poll()
-                } else if (subscriptions.isPaused(inlineFetch.partition)) {
+                } else if (subscriptions.isPaused(nextInLineFetch!!.partition)) {
                     // when the partition is paused we add the records back to the completedFetches queue
                     // instead of draining them so that they can be returned on a subsequent poll if the partition
                     // is resumed at that time
                     log.debug(
                         "Skipping fetching records for assigned partition {} because it is paused",
-                        inlineFetch.partition
+                        nextInLineFetch!!.partition
                     )
-                    pausedCompletedFetches.add(inlineFetch)
+                    pausedCompletedFetches.add(nextInLineFetch)
                     nextInLineFetch = null
                 } else {
                     val nextFetch = fetchRecords(recordsRemaining)
-                    recordsRemaining -= nextFetch.numRecords()
+                    recordsRemaining -= nextFetch.numRecords
                     fetch.add(nextFetch)
                 }
             }
@@ -296,62 +294,61 @@ abstract class AbstractFetch<K, V>(
     }
 
     private fun fetchRecords(maxRecords: Int): Fetch<K, V> {
-        val inLineFetch = nextInLineFetch!!
-        if (!subscriptions.isAssigned(inLineFetch.partition)) {
+        if (!subscriptions.isAssigned(nextInLineFetch!!.partition)) {
             // this can happen when a rebalance happened before fetched records are returned to the consumer's poll call
             log.debug(
                 "Not returning fetched records for partition {} since it is no longer assigned",
-                inLineFetch.partition
+                nextInLineFetch!!.partition
             )
-        } else if (!subscriptions.isFetchable(inLineFetch.partition)) {
+        } else if (!subscriptions.isFetchable(nextInLineFetch!!.partition)) {
             // this can happen when a partition is paused before fetched records are returned to the consumer's
             // poll call or if the offset is being reset
             log.debug(
                 "Not returning fetched records for assigned partition {} since it is no longer fetchable",
-                inLineFetch.partition
+                nextInLineFetch!!.partition
             )
         } else {
-            val position = checkNotNull(subscriptions.position(inLineFetch.partition)) {
-                "Missing position for fetchable partition " + inLineFetch.partition
+            val position = checkNotNull(subscriptions.position(nextInLineFetch!!.partition)) {
+                "Missing position for fetchable partition " + nextInLineFetch!!.partition
             }
-            if (inLineFetch.nextFetchOffset == position.offset) {
-                val partRecords = inLineFetch.fetchRecords(maxRecords)
+            if (nextInLineFetch!!.nextFetchOffset == position.offset) {
+                val partRecords = nextInLineFetch!!.fetchRecords(maxRecords)
                 log.trace(
                     "Returning {} fetched records at offset {} for assigned partition {}",
-                    partRecords.size, position, inLineFetch.partition
+                    partRecords.size, position, nextInLineFetch!!.partition
                 )
                 var positionAdvanced = false
-                if (inLineFetch.nextFetchOffset > position.offset) {
+                if (nextInLineFetch!!.nextFetchOffset > position.offset) {
                     val nextPosition = FetchPosition(
-                        inLineFetch.nextFetchOffset,
-                        inLineFetch.lastEpoch,
-                        position.currentLeader
+                        offset = nextInLineFetch!!.nextFetchOffset,
+                        offsetEpoch = nextInLineFetch!!.lastEpoch,
+                        currentLeader = position.currentLeader,
                     )
                     log.trace(
                         "Updating fetch position from {} to {} for partition {} and returning {} records from `poll()`",
-                        position, nextPosition, inLineFetch.partition, partRecords.size
+                        position, nextPosition, nextInLineFetch!!.partition, partRecords.size
                     )
-                    subscriptions.position(inLineFetch.partition, nextPosition)
+                    subscriptions.position(nextInLineFetch!!.partition, nextPosition)
                     positionAdvanced = true
                 }
-                val partitionLag = subscriptions.partitionLag(inLineFetch.partition, fetchConfig.isolationLevel)
-                if (partitionLag != null) metricsManager.recordPartitionLag(inLineFetch.partition, partitionLag)
-                val lead = subscriptions.partitionLead(inLineFetch.partition)
-                if (lead != null) {
-                    metricsManager.recordPartitionLead(inLineFetch.partition, lead)
-                }
-                return Fetch.forPartition(inLineFetch.partition, partRecords, positionAdvanced)
+                val partitionLag = subscriptions.partitionLag(nextInLineFetch!!.partition, fetchConfig.isolationLevel)
+                if (partitionLag != null) metricsManager.recordPartitionLag(nextInLineFetch!!.partition, partitionLag)
+                val lead = subscriptions.partitionLead(nextInLineFetch!!.partition)
+                if (lead != null) metricsManager.recordPartitionLead(nextInLineFetch!!.partition, lead)
+
+                return Fetch.forPartition(nextInLineFetch!!.partition, partRecords, positionAdvanced)
             } else {
                 // these records aren't next in line based on the last consumed position, ignore them
                 // they must be from an obsolete request
                 log.debug(
                     "Ignoring fetched records for {} at offset {} since the current position is {}",
-                    inLineFetch.partition, inLineFetch.nextFetchOffset, position
+                    nextInLineFetch!!.partition, nextInLineFetch!!.nextFetchOffset, position
                 )
             }
         }
-        log.trace("Draining fetched records for partition {}", inLineFetch.partition)
-        inLineFetch.drain()
+        log.trace("Draining fetched records for partition {}", nextInLineFetch!!.partition)
+        nextInLineFetch!!.drain()
+
         return Fetch.empty()
     }
 
@@ -415,7 +412,7 @@ abstract class AbstractFetch<K, V>(
         val currentTimeMs = time.milliseconds()
         val topicIds = metadata.topicIds()
 
-        for (partition: TopicPartition in fetchablePartitions()) {
+        for (partition in fetchablePartitions()) {
 
             val position = checkNotNull(subscriptions.position(partition)) {
                 "Missing position for fetchable partition $partition"
@@ -469,8 +466,8 @@ abstract class AbstractFetch<K, V>(
                 )
                 builder.add(partition, partitionData)
                 log.debug(
-                    "Added {} fetch request for partition {} at position {} to node {}", fetchConfig.isolationLevel,
-                    partition, position, node
+                    "Added {} fetch request for partition {} at position {} to node {}",
+                    fetchConfig.isolationLevel, partition, position, node
                 )
             }
         }
@@ -501,8 +498,8 @@ abstract class AbstractFetch<K, V>(
         } finally {
             if (recordMetrics) completedFetch.recordAggregatedMetrics(bytes = 0, records = 0)
             if (error != Errors.NONE)
-                // we move the partition to the end if there was an error. This way, it's more likely that
-                // partitions for the same topic can remain together (allowing for more efficient serialization).
+            // we move the partition to the end if there was an error. This way, it's more likely that
+            // partitions for the same topic can remain together (allowing for more efficient serialization).
                 subscriptions.movePartitionToEnd(tp)
         }
     }
@@ -522,12 +519,12 @@ abstract class AbstractFetch<K, V>(
             )
             return null
         }
-        val partition: FetchResponseData.PartitionData = completedFetch.partitionData
+        val partition = completedFetch.partitionData
         log.trace(
             "Preparing to read {} bytes of data for partition {} with offset {}",
             FetchResponse.recordsSize(partition), tp, position
         )
-        val batches: Iterator<RecordBatch?> = FetchResponse.recordsOrFail(partition).batches().iterator()
+        val batches = FetchResponse.recordsOrFail(partition).batches().iterator()
         if (!batches.hasNext() && FetchResponse.recordsSize(partition) > 0) {
             if (completedFetch.requestVersion < 3) {
                 // Implement the pre KIP-74 behavior of throwing a RecordTooLargeException.
@@ -631,9 +628,7 @@ abstract class AbstractFetch<K, V>(
         else if (error == Errors.CORRUPT_MESSAGE) throw KafkaException(
             "Encountered corrupt message when fetching offset $fetchOffset for topic-partition $tp"
         )
-        else throw IllegalStateException(
-            "Unexpected error code ${error.code} while fetching at offset $fetchOffset from topic-partition $tp"
-        )
+        else error("Unexpected error code ${error.code} while fetching at offset $fetchOffset from topic-partition $tp")
     }
 
     private fun handleOffsetOutOfRange(
@@ -702,7 +697,8 @@ abstract class AbstractFetch<K, V>(
         sessionHandlers.forEach { (fetchTargetNodeId, sessionHandler) ->
             // set the session handler to notify close. This will set the next metadata request to send close message.
             sessionHandler.notifyClose()
-            val sessionId: Int = sessionHandler.sessionId
+
+            val sessionId = sessionHandler.sessionId
             // FetchTargetNode may not be available as it may have disconnected the connection. In such cases, we will
             // skip sending the close request.
             val fetchTarget = cluster.nodeById(fetchTargetNodeId)
@@ -710,8 +706,10 @@ abstract class AbstractFetch<K, V>(
                 log.debug("Skip sending close session request to broker {} since it is not reachable", fetchTarget)
                 return@forEach
             }
+
             val request = createFetchRequest(fetchTarget, sessionHandler.newBuilder().build())
             val responseFuture = client.send(fetchTarget, request)
+
             responseFuture.addListener(object : RequestFutureListener<ClientResponse> {
                 override fun onSuccess(result: ClientResponse) {
                     log.debug(
@@ -731,15 +729,16 @@ abstract class AbstractFetch<K, V>(
                     )
                 }
             })
+
             requestFutures.add(responseFuture)
         }
 
         // Poll to ensure that request has been written to the socket. Wait until either the timer has expired or until
         // all requests have received a response.
-        while (timer.isNotExpired && !requestFutures.all(RequestFuture<*>::isDone))
+        while (timer.isNotExpired && !requestFutures.all { it.isDone() })
             client.poll(timer, null, true)
 
-        if (!requestFutures.stream().allMatch(RequestFuture<*>::isDone)) {
+        if (!requestFutures.all { it.isDone() }) {
             // we ran out of time before completing all futures. It is ok since we don't want to block
             // the shutdown here.
             log.debug(
@@ -754,10 +753,12 @@ abstract class AbstractFetch<K, V>(
     open fun close(timer: Timer) {
         // we do not need to re-enable wakeups since we are closing already
         client.disableWakeups()
+
         nextInLineFetch?.let {
             it.drain()
             nextInLineFetch = null
         }
+
         maybeCloseFetchSessions(timer)
         closeQuietly(decompressionBufferSupplier, "decompressionBufferSupplier")
         sessionHandlers.clear()
