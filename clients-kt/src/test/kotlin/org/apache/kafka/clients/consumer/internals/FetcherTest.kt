@@ -23,19 +23,13 @@ import java.io.DataOutputStream
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.time.Duration
-import java.util.Collections
 import java.util.concurrent.Callable
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.function.Consumer
-import java.util.function.Function
-import java.util.stream.Collectors
 import org.apache.kafka.clients.ApiVersions
-import org.apache.kafka.clients.ClientRequest
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.FetchSessionHandler
 import org.apache.kafka.clients.Metadata.LeaderAndEpoch
@@ -108,11 +102,10 @@ import org.apache.kafka.test.TestUtils.assertNullable
 import org.apache.kafka.test.TestUtils.checkEquals
 import org.apache.kafka.test.TestUtils.singletonCluster
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.mockito.ArgumentCaptor
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.spy
 import org.mockito.kotlin.times
 import org.mockito.kotlin.verify
@@ -365,15 +358,15 @@ class FetcherTest {
         assertTrue(fetcher.hasCompletedFetches())
         assertEquals(0, consumerClient.pendingRequestCount())
 
-        val argument = ArgumentCaptor.forClass(FetchRequest.Builder::class.java)
+        val argument = argumentCaptor<FetchRequest.Builder>()
 
         // send request to close the fetcher
         fetcher.close(time.timer(Duration.ofSeconds(10)))
 
         // validate that Fetcher.close() has sent a request with final epoch. 2 requests are sent, one for the normal
         // fetch earlier and another for the finish fetch here.
-        verify(consumerClient, times(2)).send(any<Node>(), argument.capture())
-        val builder = argument.value
+        verify(consumerClient, times(2)).send(any(), argument.capture())
+        val builder = argument.lastValue
         // session Id is the same
         assertEquals(fetchResponse.sessionId(), builder.metadata().sessionId)
         // contains final epoch

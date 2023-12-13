@@ -22,8 +22,8 @@ import java.nio.ByteBuffer
 import org.apache.kafka.common.memory.MemoryPool
 import org.apache.kafka.test.TestUtils.randomBytes
 import org.junit.jupiter.api.Test
-import org.mockito.ArgumentCaptor
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.whenever
@@ -81,10 +81,8 @@ class KafkaChannelTest {
         val pool = mock<MemoryPool>()
         val metadataRegistry = mock<ChannelMetadataRegistry>()
 
-        val sizeCaptor = ArgumentCaptor.forClass(Int::class.java)
-        whenever(pool.tryAllocate(sizeCaptor.capture())).thenAnswer {
-            ByteBuffer.allocate(sizeCaptor.value)
-        }
+        val sizeCaptor = argumentCaptor<Int>()
+        whenever(pool.tryAllocate(sizeCaptor.capture())).thenAnswer { ByteBuffer.allocate(sizeCaptor.lastValue) }
         val channel = KafkaChannel(
             id = "0",
             transportLayer = transport,
@@ -94,9 +92,9 @@ class KafkaChannelTest {
             metadataRegistry = metadataRegistry
         )
 
-        val bufferCaptor = ArgumentCaptor.forClass(ByteBuffer::class.java)
+        val bufferCaptor = argumentCaptor<ByteBuffer>()
         whenever(transport.read(bufferCaptor.capture())).thenAnswer {
-            bufferCaptor.value.putInt(128)
+            bufferCaptor.lastValue.putInt(128)
             4
         }.thenReturn(0)
         assertEquals(4, channel.read())
@@ -105,7 +103,7 @@ class KafkaChannelTest {
 
         reset(transport)
         whenever(transport.read(bufferCaptor.capture())).thenAnswer {
-            bufferCaptor.value.put(randomBytes(64))
+            bufferCaptor.lastValue.put(randomBytes(64))
             64
         }
         assertEquals(64, channel.read())
@@ -114,7 +112,7 @@ class KafkaChannelTest {
 
         reset(transport)
         whenever(transport.read(bufferCaptor.capture())).thenAnswer {
-            bufferCaptor.value.put(randomBytes(64))
+            bufferCaptor.lastValue.put(randomBytes(64))
             64
         }
         assertEquals(64, channel.read())

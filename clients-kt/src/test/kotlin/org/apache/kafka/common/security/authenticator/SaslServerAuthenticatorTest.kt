@@ -62,10 +62,10 @@ import org.apache.kafka.common.utils.Time
 import org.apache.kafka.test.TestUtils
 import org.junit.jupiter.api.Test
 import org.mockito.Answers
-import org.mockito.ArgumentCaptor
 import org.mockito.MockedStatic
 import org.mockito.Mockito.mockStatic
 import org.mockito.kotlin.any
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
@@ -348,7 +348,7 @@ class SaslServerAuthenticatorTest {
 
     @Throws(IOException::class)
     private fun getResponses(transportLayer: TransportLayer): List<ByteBuffer> {
-        val buffersCaptor = ArgumentCaptor.forClass(Array<ByteBuffer>::class.java)
+        val buffersCaptor = argumentCaptor<Array<ByteBuffer>>()
         verify(transportLayer, times(numInvocations = 2)).write(buffersCaptor.capture())
 
         return buffersCaptor.allValues.map { buffers -> concatBuffers(buffers) }

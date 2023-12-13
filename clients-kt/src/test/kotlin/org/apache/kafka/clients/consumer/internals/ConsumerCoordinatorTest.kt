@@ -362,7 +362,6 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             coordinator.onLeaderElected("1", partitionAssignor.name(), metadata, false)
 
             val topicsCaptor = argumentCaptor<Collection<String>>()
-            // val topicsCaptor = ArgumentCaptor.forClass<Collection<String>, Collection<String>>(MutableCollection::class.java)
             // groupSubscribe should be called 2 times, once before assignment, once after assignment
             // (because the assigned topics are not the same as the subscribed topics)
             verify(mockSubscriptionState, times(2))

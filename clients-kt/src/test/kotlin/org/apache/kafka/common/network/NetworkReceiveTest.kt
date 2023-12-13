@@ -22,7 +22,7 @@ import java.nio.ByteBuffer
 import java.nio.channels.ScatteringByteChannel
 import org.apache.kafka.test.TestUtils.randomBytes
 import org.junit.jupiter.api.Test
-import org.mockito.ArgumentCaptor
+import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.reset
 import org.mockito.kotlin.whenever
@@ -38,9 +38,9 @@ class NetworkReceiveTest {
         val receive = NetworkReceive(source = "0", maxSize = 128)
         assertEquals(0, receive.bytesRead())
         val channel = mock<ScatteringByteChannel>()
-        val bufferCaptor = ArgumentCaptor.forClass(ByteBuffer::class.java)
+        val bufferCaptor = argumentCaptor<ByteBuffer>()
         whenever(channel.read(bufferCaptor.capture())).thenAnswer {
-            bufferCaptor.value.putInt(128)
+            bufferCaptor.lastValue.putInt(128)
             4
         }.thenReturn(0)
         assertEquals(4, receive.readFrom(channel))
@@ -49,7 +49,7 @@ class NetworkReceiveTest {
 
         reset(channel)
         whenever(channel.read(bufferCaptor.capture())).thenAnswer {
-            bufferCaptor.value.put(randomBytes(64))
+            bufferCaptor.lastValue.put(randomBytes(64))
             64
         }
         assertEquals(64, receive.readFrom(channel))
@@ -57,7 +57,7 @@ class NetworkReceiveTest {
         assertFalse(receive.complete())
         reset(channel)
         whenever(channel.read(bufferCaptor.capture())).thenAnswer {
-            bufferCaptor.value.put(randomBytes(64))
+            bufferCaptor.lastValue.put(randomBytes(64))
             64
         }
         assertEquals(64, receive.readFrom(channel))
