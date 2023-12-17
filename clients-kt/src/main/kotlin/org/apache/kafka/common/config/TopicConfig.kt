@@ -61,7 +61,8 @@ object TopicConfig {
             "we would fsync after every message; if it were 5 we would fsync after every five messages. " +
             "In general we recommend you not set this and use replication for durability and allow the " +
             "operating system's background flush capabilities as it is more efficient. This setting can " +
-            "be overridden on a per-topic basis (see <a href=\"#topicconfigs\">the per-topic configuration section</a>)."
+            "be overridden on a per-topic basis (see <a href=\"#topicconfigs\">the per-topic configuration " +
+            "section</a>)."
 
     const val FLUSH_MS_CONFIG = "flush.ms"
 
@@ -74,8 +75,8 @@ object TopicConfig {
     const val RETENTION_BYTES_CONFIG = "retention.bytes"
 
     const val RETENTION_BYTES_DOC = "This configuration controls the maximum size a partition " +
-            "(which consists of log segments) can grow to before we will discard old log segments to free up space if we " +
-            "are using the \"delete\" retention policy. By default there is no size limit only a time limit. " +
+            "(which consists of log segments) can grow to before we will discard old log segments to free up space " +
+            "if we are using the \"delete\" retention policy. By default there is no size limit only a time limit. " +
             "Since this limit is enforced at the partition level, multiply it by the number of partitions to compute " +
             "the topic retention in bytes."
 
@@ -89,22 +90,22 @@ object TopicConfig {
     const val REMOTE_LOG_STORAGE_ENABLE_CONFIG = "remote.storage.enable"
 
     const val REMOTE_LOG_STORAGE_ENABLE_DOC =
-        "To enable tiered storage for a topic, set `remote.storage.enable` as true. " +
+        "To enable tiered storage for a topic, set this configuration as true. " +
                 "You can not disable this config once it is enabled. It will be provided in future versions."
 
     const val LOCAL_LOG_RETENTION_MS_CONFIG = "local.retention.ms"
 
     const val LOCAL_LOG_RETENTION_MS_DOC =
         "The number of milli seconds to keep the local log segment before it gets deleted. " +
-                "Default value is -2, it represents `retention.ms` value is to be used. The effective value should always be less than or equal " +
-                "to `retention.ms` value."
+                "Default value is -2, it represents `retention.ms` value is to be used. The effective value " +
+                "should always be less than or equal to `retention.ms` value."
 
     const val LOCAL_LOG_RETENTION_BYTES_CONFIG = "local.retention.bytes"
 
     const val LOCAL_LOG_RETENTION_BYTES_DOC =
         "The maximum size of local log segments that can grow for a partition before it " +
-                "deletes the old segments. Default value is -2, it represents `retention.bytes` value to be used. The effective value should always be " +
-                "less than or equal to `retention.bytes` value."
+                "deletes the old segments. Default value is -2, it represents `retention.bytes` value to be used. " +
+                "The effective value should always be less than or equal to `retention.bytes` value."
 
     const val MAX_MESSAGE_BYTES_CONFIG = "max.message.bytes"
 
@@ -154,11 +155,11 @@ object TopicConfig {
             "50% of the log has been compacted. This ratio bounds the maximum space wasted in " +
             "the log by duplicates (at 50% at most 50% of the log could be duplicates). A " +
             "higher ratio will mean fewer, more efficient cleanings but will mean more wasted " +
-            "space in the log. If the " + MAX_COMPACTION_LAG_MS_CONFIG + " or the " + MIN_COMPACTION_LAG_MS_CONFIG +
+            "space in the log. If the $MAX_COMPACTION_LAG_MS_CONFIG or the $MIN_COMPACTION_LAG_MS_CONFIG" +
             " configurations are also specified, then the log compactor considers the log to be eligible for compaction " +
             "as soon as either: (i) the dirty ratio threshold has been met and the log has had dirty (uncompacted) " +
-            "records for at least the " + MIN_COMPACTION_LAG_MS_CONFIG + " duration, or (ii) if the log has had " +
-            "dirty (uncompacted) records for at most the " + MAX_COMPACTION_LAG_MS_CONFIG + " period."
+            "records for at least the $MIN_COMPACTION_LAG_MS_CONFIG duration, or (ii) if the log has had " +
+            "dirty (uncompacted) records for at most the $MAX_COMPACTION_LAG_MS_CONFIG period."
 
     const val CLEANUP_POLICY_CONFIG = "cleanup.policy"
 
@@ -185,8 +186,8 @@ object TopicConfig {
     const val MIN_IN_SYNC_REPLICAS_DOC = "When a producer sets acks to \"all\" (or \"-1\"), " +
             "this configuration specifies the minimum number of replicas that must acknowledge " +
             "a write for the write to be considered successful. If this minimum cannot be met, " +
-            "then the producer will raise an exception (either NotEnoughReplicas or " +
-            "NotEnoughReplicasAfterAppend).<br>When used together, <code>min.insync.replicas</code> and <code>acks</code> " +
+            "then the producer will raise an exception (either NotEnoughReplicas or NotEnoughReplicasAfterAppend)." +
+            "<br>When used together, <code>min.insync.replicas</code> and <code>acks</code> " +
             "allow you to enforce greater durability guarantees. A typical scenario would be to " +
             "create a topic with a replication factor of 3, set <code>min.insync.replicas</code> to 2, and " +
             "produce with <code>acks</code> of \"all\". This will ensure that the producer raises an exception " +
@@ -195,9 +196,9 @@ object TopicConfig {
     const val COMPRESSION_TYPE_CONFIG = "compression.type"
 
     const val COMPRESSION_TYPE_DOC = "Specify the final compression type for a given topic. " +
-            "This configuration accepts the standard compression codecs ('gzip', 'snappy', 'lz4', 'zstd'). It additionally " +
-            "accepts 'uncompressed' which is equivalent to no compression; and 'producer' which means retain the " +
-            "original compression codec set by the producer."
+            "This configuration accepts the standard compression codecs ('gzip', 'snappy', 'lz4', 'zstd'). " +
+            "It additionally accepts 'uncompressed' which is equivalent to no compression; and 'producer' " +
+            "which means retain the original compression codec set by the producer."
 
     const val PREALLOCATE_CONFIG = "preallocate"
 
@@ -216,10 +217,11 @@ object TopicConfig {
     )
     val MESSAGE_FORMAT_VERSION_DOC = "[DEPRECATED] Specify the message format version the broker " +
             "will use to append messages to the logs. The value of this config is always assumed to be `3.0` if " +
-            "`inter.broker.protocol.version` is 3.0 or higher (the actual config value is ignored). Otherwise, the value should " +
-            "be a valid ApiVersion. Some examples are: 0.10.0, 1.1, 2.8, 3.0. By setting a particular message format version, the " +
-            "user is certifying that all the existing messages on disk are smaller or equal than the specified version. Setting " +
-            "this value incorrectly will cause consumers with older versions to break as they will receive messages with a format " +
+            "`inter.broker.protocol.version` is 3.0 or higher (the actual config value is ignored). " +
+            "Otherwise, the value should be a valid ApiVersion. Some examples are: 0.10.0, 1.1, 2.8, 3.0. " +
+            "By setting a particular message format version, the user is certifying that all the existing messages " +
+            "on disk are smaller or equal than the specified version. Setting this value incorrectly " +
+            "will cause consumers with older versions to break as they will receive messages with a format " +
             "that they don't understand."
 
     const val MESSAGE_TIMESTAMP_TYPE_CONFIG = "message.timestamp.type"
@@ -227,18 +229,45 @@ object TopicConfig {
     const val MESSAGE_TIMESTAMP_TYPE_DOC = "Define whether the timestamp in the message is " +
             "message create time or log append time. The value should be either `CreateTime` or `LogAppendTime`"
 
+    @Deprecated(
+        message = "since 3.6, removal planned in 4.0. Use message.timestamp.before.max.ms and " +
+                "message.timestamp.after.max.ms instead",
+    )
     const val MESSAGE_TIMESTAMP_DIFFERENCE_MAX_MS_CONFIG = "message.timestamp.difference.max.ms"
 
+    @Deprecated(
+        message = "since 3.6, removal planned in 4.0. Use message.timestamp.before.max.ms and " +
+                "message.timestamp.after.max.ms instead",
+    )
     const val MESSAGE_TIMESTAMP_DIFFERENCE_MAX_MS_DOC = "The maximum difference allowed between " +
             "the timestamp when a broker receives a message and the timestamp specified in the message. If " +
             "message.timestamp.type=CreateTime, a message will be rejected if the difference in timestamp " +
             "exceeds this threshold. This configuration is ignored if message.timestamp.type=LogAppendTime."
 
+    const val MESSAGE_TIMESTAMP_BEFORE_MAX_MS_CONFIG = "message.timestamp.before.max.ms"
+
+    const val MESSAGE_TIMESTAMP_BEFORE_MAX_MS_DOC = "This configuration sets the allowable timestamp " +
+            "difference between the broker's timestamp and the message timestamp. The message timestamp " +
+            "can be earlier than or equal to the broker's timestamp, with the maximum allowable difference " +
+            "determined by the value set in this configuration. If message.timestamp.type=CreateTime, " +
+            "the message will be rejected if the difference in timestamps exceeds this specified threshold. " +
+            "This configuration is ignored if message.timestamp.type=LogAppendTime."
+
+    const val MESSAGE_TIMESTAMP_AFTER_MAX_MS_CONFIG = "message.timestamp.after.max.ms"
+
+    const val MESSAGE_TIMESTAMP_AFTER_MAX_MS_DOC = "This configuration sets the allowable timestamp " +
+            "difference between the message timestamp and the broker's timestamp. The message timestamp can " +
+            "be later than or equal to the broker's timestamp, with the maximum allowable difference determined by " +
+            "the value set in this configuration. If message.timestamp.type=CreateTime, the message will be rejected " +
+            "if the difference in timestamps exceeds this specified threshold. This configuration is ignored " +
+            "if message.timestamp.type=LogAppendTime."
+
     const val MESSAGE_DOWNCONVERSION_ENABLE_CONFIG = "message.downconversion.enable"
 
     const val MESSAGE_DOWNCONVERSION_ENABLE_DOC = "This configuration controls whether " +
-            "down-conversion of message formats is enabled to satisfy consume requests. When set to <code>false</code>, " +
-            "broker will not perform down-conversion for consumers expecting an older message format. The broker responds " +
-            "with <code>UNSUPPORTED_VERSION</code> error for consume requests from such older clients. This configuration" +
-            "does not apply to any message format conversion that might be required for replication to followers."
+            "down-conversion of message formats is enabled to satisfy consume requests. When set to " +
+            "<code>false</code>, broker will not perform down-conversion for consumers expecting an older message " +
+            "format. The broker responds with <code>UNSUPPORTED_VERSION</code> error for consume requests " +
+            "from such older clients. This configuration does not apply to any message format conversion " +
+            "that might be required for replication to followers."
 }

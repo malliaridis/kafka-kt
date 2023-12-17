@@ -1,0 +1,60 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements. See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.kafka.server.util.timer
+
+import kotlin.concurrent.Volatile
+
+class TimerTaskEntry(
+    val timerTask: TimerTask?,
+    val expirationMs: Long,
+) {
+
+    @Volatile
+    var list: TimerTaskList? = null
+
+    var next: TimerTaskEntry? = null
+
+    var prev: TimerTaskEntry? = null
+
+    init {
+        // if this timerTask is already held by an existing timer task entry,
+        // setTimerTaskEntry will remove it.
+        timerTask?.setTimerTaskEntry(this)
+    }
+
+    val cancelled: Boolean
+        get() = timerTask!!.timerTaskEntry != this
+
+    @Deprecated(
+        message = "Use property instead",
+        replaceWith = ReplaceWith("cancelled"),
+    )
+    fun cancelled(): Boolean = cancelled
+
+    fun remove() {
+        var currentList: TimerTaskList? = list
+        // If remove is called when another thread is moving the entry from a task entry list to another,
+        // this may fail to remove the entry due to the change of value of list. Thus, we retry until
+        // the list becomes null. In a rare case, this thread sees null and exits the loop, but the other thread
+        // insert the entry to another list later.
+        while (currentList != null) {
+            currentList.remove(this)
+            currentList = list
+        }
+    }
+}
