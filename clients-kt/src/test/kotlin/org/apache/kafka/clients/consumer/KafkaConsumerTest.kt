@@ -20,7 +20,6 @@ package org.apache.kafka.clients.consumer
 import java.lang.management.ManagementFactory
 import java.nio.ByteBuffer
 import java.time.Duration
-import java.util.Collections
 import java.util.Properties
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit

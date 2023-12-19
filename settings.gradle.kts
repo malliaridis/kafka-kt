@@ -7,5 +7,6 @@ rootProject.name = "kafka-kt"
 include(
     "generator-kt",
     "clients-kt",
+    "server-common-kt",
     "streams-kt",
 )

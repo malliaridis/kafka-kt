@@ -57,6 +57,7 @@ mavenArtifact = "3.8.4"
 metrics = "2.2.0"
 mockito = "5.1.0"
 netty = "4.1.78.Final"
+pcollections = "4.0.1"
 powermock = "2.0.9"
 reflections = "0.9.12"
 reload4j = "1.2.19"
@@ -158,6 +159,7 @@ powermock-easymock = { group = "org.powermock", name = "powermock-api-easymock",
 reflections-reflections = { group = "org.reflections", name = "reflections", version.ref = "reflections" }
 rocksdb-jni = { group = "org.rocksdb", name = "rocksdbjni", version.ref = "rocksDB" }
 scala-collectionCompat = { group = "org.scala-lang.modules", name = "scala-collection-compat_2.13.10", version.ref = "scalaCollectionCompat" }
+pcollections-pcollections = { group = "org.pcollections", name = "pcollections", version.ref = "pcollections" }
 # TODO Remove Java 8 compat
 scala-java8Compat = { group = "org.scala-lang.modules", name = "scala-java8-compat_2.13.10", version.ref = "scalaJava8Compat" }
 scala-library = { group = "org.scala-lang", name = "scala-library", version.ref = "scala" }

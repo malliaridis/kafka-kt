@@ -52,7 +52,6 @@ import org.apache.kafka.test.MockSelector
 import org.apache.kafka.test.TestUtils
 import org.apache.kafka.test.TestUtils.singletonCluster
 import org.apache.kafka.test.TestUtils.waitForCondition
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import kotlin.math.ln

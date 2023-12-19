@@ -18,8 +18,6 @@
 package org.apache.kafka.common.requests
 
 import java.nio.ByteBuffer
-import java.util.Objects
-import java.util.Optional
 import org.apache.kafka.common.Node
 import org.apache.kafka.common.message.FindCoordinatorResponseData
 import org.apache.kafka.common.message.FindCoordinatorResponseData.Coordinator

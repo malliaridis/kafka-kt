@@ -27,10 +27,8 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.util.concurrent.ExecutionException
 import org.apache.kafka.test.TestUtils.assertNotFails
-import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 
 class RemoveMembersFromConsumerGroupResultTest {
     

@@ -24,12 +24,10 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Base64
-import java.util.Optional
 import java.util.Properties
 import java.util.UUID
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Future
-import java.util.function.Consumer
 import java.util.function.Supplier
 import java.util.regex.Pattern
 import org.apache.kafka.clients.consumer.ConsumerConfig
@@ -484,12 +482,6 @@ object TestUtils {
 
     fun apiKeyFrom(networkReceive: NetworkReceive): ApiKeys {
         return RequestHeader.parse(networkReceive.payload()!!.duplicate()).apiKey
-    }
-
-    @Deprecated("Use assertNullable() instead.")
-    fun <T> assertOptional(optional: Optional<T>, assertion: Consumer<T>) {
-        if (optional.isPresent) assertion.accept(optional.get())
-        else fail("Missing value from Optional")
     }
 
     fun <T> assertNullable(nullable: T?, assertion: (T) -> Unit) {

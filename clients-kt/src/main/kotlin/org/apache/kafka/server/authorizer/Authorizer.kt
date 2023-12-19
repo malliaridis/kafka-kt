@@ -79,7 +79,7 @@ interface Authorizer : Configurable, Closeable {
      * @return CompletionStage for each endpoint that completes when authorizer is ready to
      * start authorizing requests on that listener.
      */
-    fun start(serverInfo: AuthorizerServerInfo?): Map<Endpoint?, CompletionStage<Void?>?>?
+    fun start(serverInfo: AuthorizerServerInfo): Map<Endpoint, CompletionStage<Unit>>
 
     /**
      * Authorizes the specified action. Additional metadata for the action is specified

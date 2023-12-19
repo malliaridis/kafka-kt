@@ -19,7 +19,6 @@ package org.apache.kafka.common.requests
 
 import java.nio.BufferUnderflowException
 import java.nio.ByteBuffer
-import java.util.Collections
 import org.apache.kafka.common.ConsumerGroupState
 import org.apache.kafka.common.ElectionType
 import org.apache.kafka.common.IsolationLevel

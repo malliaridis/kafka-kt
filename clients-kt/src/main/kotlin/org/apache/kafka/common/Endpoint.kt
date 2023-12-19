@@ -17,7 +17,6 @@
 
 package org.apache.kafka.common
 
-import java.util.Optional
 import org.apache.kafka.common.annotation.InterfaceStability.Evolving
 import org.apache.kafka.common.security.auth.SecurityProtocol
 

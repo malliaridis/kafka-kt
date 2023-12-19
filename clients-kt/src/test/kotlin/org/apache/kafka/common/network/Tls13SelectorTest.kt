@@ -21,11 +21,9 @@ import java.io.File
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.security.GeneralSecurityException
-import java.util.stream.Collectors
 import org.apache.kafka.common.config.SslConfigs
 import org.apache.kafka.common.network.NetworkTestUtils.waitForChannelReady
 import org.apache.kafka.test.TestSslUtils.createSslConfig
-import org.apache.kafka.test.TestUtils
 import org.apache.kafka.test.TestUtils.waitForCondition
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledForJreRange
