@@ -19,12 +19,8 @@ package org.apache.kafka.clients.consumer.internals
 
 import java.io.IOException
 import java.util.ArrayDeque
-import java.util.Collections
-import java.util.Objects
-import java.util.Optional
 import java.util.Queue
 import java.util.concurrent.CompletableFuture
-import java.util.function.Consumer
 import org.apache.kafka.clients.ClientRequest
 import org.apache.kafka.clients.ClientResponse
 import org.apache.kafka.clients.KafkaClient
@@ -232,4 +228,3 @@ class NetworkClientDelegate(
         }
     }
 }
-

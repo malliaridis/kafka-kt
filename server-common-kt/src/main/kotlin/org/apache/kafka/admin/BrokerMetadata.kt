@@ -17,9 +17,6 @@
 
 package org.apache.kafka.admin
 
-import java.util.Objects
-import java.util.Optional
-
 /**
  * Broker metadata used by admin tools.
  *

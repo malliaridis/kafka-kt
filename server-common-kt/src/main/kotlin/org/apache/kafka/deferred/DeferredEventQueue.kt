@@ -17,7 +17,6 @@
 
 package org.apache.kafka.deferred
 
-import java.util.OptionalLong
 import java.util.TreeMap
 import org.apache.kafka.common.utils.LogContext
 import org.slf4j.Logger

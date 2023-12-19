@@ -70,7 +70,7 @@ abstract class InterBrokerSendThread(
         }
     }
 
-    protected fun pollOnce(maxTimeoutMs: Long) {
+    open fun pollOnce(maxTimeoutMs: Long) {
         try {
             drainGeneratedRequests()
             var now = time.milliseconds()

@@ -55,6 +55,11 @@ class TimelineHashSet<T>(
 
     fun iterator(epoch: Long): MutableIterator<T> = ValueIterator(epoch)
 
+    // Kotlin Migration - toArray does not exist in Kotlin
+    // override fun toArray(): Array<Any> = underlying.toTypedArray()
+
+    // override fun <T> toArray(a: Array<T>): Array<T> = underlying.toArray(a)
+
     override fun add(element: T): Boolean {
         Objects.requireNonNull(element)
         return snapshottableAddUnlessPresent(TimelineHashSetEntry(element))

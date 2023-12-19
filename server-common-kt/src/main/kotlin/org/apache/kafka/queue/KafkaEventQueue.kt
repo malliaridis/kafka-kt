@@ -219,11 +219,11 @@ class KafkaEventQueue(
          * Complete the event associated with this EventContext with the specified
          * exception.
          */
-        fun completeWithException(log: Logger, t: Throwable?) {
+        fun completeWithException(logger: Logger, exception: Throwable) {
             try {
-                event!!.handleException(t)
-            } catch (e: Exception) {
-                log.error("Unexpected exception in handleException", e)
+                event!!.handleException(exception)
+            } catch (exception: Exception) {
+                logger.error("Unexpected exception in handleException", exception)
             }
         }
     }

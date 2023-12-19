@@ -38,7 +38,7 @@ class TimerTaskEntry(
     }
 
     val cancelled: Boolean
-        get() = timerTask!!.timerTaskEntry != this
+        get() = timerTask!!.getTimerTaskEntry() != this
 
     @Deprecated(
         message = "Use property instead",

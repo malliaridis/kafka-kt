@@ -26,7 +26,6 @@ import org.apache.kafka.common.protocol.ApiKeys
 import org.apache.kafka.common.record.RecordBatch
 import org.apache.kafka.common.record.RecordVersion
 import org.apache.kafka.test.TestUtils
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource

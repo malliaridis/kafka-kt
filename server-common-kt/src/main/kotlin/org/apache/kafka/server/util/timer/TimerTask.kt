@@ -25,8 +25,7 @@ import kotlin.concurrent.Volatile
 abstract class TimerTask(val delayMs: Long) : Runnable {
 
     @Volatile
-    var timerTaskEntry: TimerTaskEntry? = null
-        private set
+    private var timerTaskEntry: TimerTaskEntry? = null
 
     fun cancel() {
         synchronized(this) {
@@ -48,9 +47,5 @@ abstract class TimerTask(val delayMs: Long) : Runnable {
         }
     }
 
-    @Deprecated(
-        message = "Use property instead",
-        replaceWith = ReplaceWith("timerTaskEntry"),
-    )
     fun getTimerTaskEntry(): TimerTaskEntry? = timerTaskEntry
 }

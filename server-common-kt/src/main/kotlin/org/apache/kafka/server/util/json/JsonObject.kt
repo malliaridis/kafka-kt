@@ -35,7 +35,7 @@ data class JsonObject internal constructor(override val node: ObjectNode) : Json
         return get(name) ?: throw JsonMappingException(null, "No such field exists: `$name`")
     }
 
-    operator fun get(name: String?): JsonValue? = JsonValue.apply(node[name])
+    operator fun get(name: String?): JsonValue? = node[name]?.let { JsonValue.apply(it) }
 
     operator fun iterator(): Iterator<Map.Entry<String, JsonValue?>> {
         return node.fields().asSequence()

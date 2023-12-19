@@ -18,9 +18,7 @@
 package org.apache.kafka.server.util
 
 import java.io.IOException
-import java.util.Optional
 import java.util.Properties
-import java.util.function.Consumer
 import joptsimple.OptionParser
 import joptsimple.OptionSet
 import joptsimple.OptionSpec

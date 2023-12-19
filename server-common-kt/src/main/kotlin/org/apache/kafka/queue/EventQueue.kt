@@ -41,7 +41,7 @@ interface EventQueue : AutoCloseable {
          * scheduled because the event queue has already been closed. Otherwise, it will be whatever exception
          * was thrown by [run].
          */
-        fun handleException(exception: Throwable?) = Unit
+        fun handleException(exception: Throwable) = Unit
     }
 
     /**
@@ -175,7 +175,7 @@ interface EventQueue : AutoCloseable {
 
     abstract class FailureLoggingEvent(private val log: Logger) : Event {
 
-        override fun handleException(exception: Throwable?) {
+        override fun handleException(exception: Throwable) {
             if (exception is RejectedExecutionException)
                 log.info("Not processing {} because the event queue is closed.", this)
             else log.error("Unexpected error handling {}", this, exception)

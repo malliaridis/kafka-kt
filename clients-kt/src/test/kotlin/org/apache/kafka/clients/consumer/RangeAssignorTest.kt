@@ -17,8 +17,6 @@
 
 package org.apache.kafka.clients.consumer
 
-import java.util.Arrays
-import java.util.Optional
 import org.apache.kafka.clients.consumer.ConsumerPartitionAssignor.Subscription
 import org.apache.kafka.clients.consumer.internals.AbstractPartitionAssignor
 import org.apache.kafka.clients.consumer.internals.AbstractPartitionAssignor.MemberInfo
@@ -30,7 +28,6 @@ import org.apache.kafka.clients.consumer.internals.AbstractPartitionAssignorTest
 import org.apache.kafka.clients.consumer.internals.AbstractPartitionAssignorTest.RackConfig
 import org.apache.kafka.common.PartitionInfo
 import org.apache.kafka.common.TopicPartition
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest

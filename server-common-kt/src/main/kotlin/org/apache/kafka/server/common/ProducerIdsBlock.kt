@@ -30,8 +30,8 @@ import java.util.concurrent.atomic.AtomicLong
  * @property blockSize The number of IDs contained in this block.
  */
 data class ProducerIdsBlock(
-    private val assignedBrokerId: Int,
-    private val firstProducerId: Long,
+    val assignedBrokerId: Int,
+    val firstProducerId: Long,
     private val blockSize: Int,
 ) {
 
@@ -43,7 +43,7 @@ data class ProducerIdsBlock(
      */
     fun claimNextId(): Long? {
         val nextId = producerIdCounter.getAndIncrement()
-        return if (nextId > lastProducerId()) null else nextId
+        return if (nextId > lastProducerId) null else nextId
     }
 
     /**

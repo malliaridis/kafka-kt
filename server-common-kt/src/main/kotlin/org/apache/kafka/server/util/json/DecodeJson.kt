@@ -39,7 +39,7 @@ fun interface DecodeJson<T> {
         }
     }
 
-    class DecodeDouble : DecodeJson<Double?> {
+    class DecodeDouble : DecodeJson<Double> {
         @Throws(JsonMappingException::class)
         override fun decode(node: JsonNode): Double {
             if (node.isDouble || node.isLong || node.isInt) return node.doubleValue()
@@ -47,7 +47,7 @@ fun interface DecodeJson<T> {
         }
     }
 
-    class DecodeInteger : DecodeJson<Int?> {
+    class DecodeInteger : DecodeJson<Int> {
         @Throws(JsonMappingException::class)
         override fun decode(node: JsonNode): Int {
             if (node.isInt) return node.intValue()
@@ -55,7 +55,7 @@ fun interface DecodeJson<T> {
         }
     }
 
-    class DecodeLong : DecodeJson<Long?> {
+    class DecodeLong : DecodeJson<Long> {
         @Throws(JsonMappingException::class)
         override fun decode(node: JsonNode): Long {
             if (node.isLong || node.isInt) return node.longValue()
@@ -63,7 +63,7 @@ fun interface DecodeJson<T> {
         }
     }
 
-    class DecodeString : DecodeJson<String?> {
+    class DecodeString : DecodeJson<String> {
         @Throws(JsonMappingException::class)
         override fun decode(node: JsonNode): String {
             if (node.isTextual) return node.textValue()

@@ -27,7 +27,6 @@ import org.apache.kafka.common.config.SaslConfigs
 import org.apache.kafka.common.config.SslConfigs
 import org.apache.kafka.common.config.internals.BrokerSecurityConfigs
 import org.apache.kafka.common.message.ApiMessageType
-import org.apache.kafka.common.requests.ApiVersionsResponse
 import org.apache.kafka.common.security.JaasContext
 import org.apache.kafka.common.security.TestSecurityConfig
 import org.apache.kafka.common.security.auth.KafkaPrincipal

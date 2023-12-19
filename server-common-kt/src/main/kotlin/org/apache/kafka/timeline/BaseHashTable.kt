@@ -41,7 +41,7 @@ open class BaseHashTable<T> internal constructor(expectedSize: Int) {
     private var size = 0
 
     init {
-        elements = Array(expectedSizeToCapacity(expectedSize)) {} //  Array of Unit at the beginning
+        elements = Array(expectedSizeToCapacity(expectedSize)) { null } //  Array of Unit at the beginning
     }
 
     fun baseSize(): Int = size
@@ -107,8 +107,7 @@ open class BaseHashTable<T> internal constructor(expectedSize: Int) {
 
     fun baseRemove(key: Any): T? {
         val slot = findSlot(key, elements.size)
-        val obj = elements[slot]
-        when (obj) {
+        when (val obj = elements[slot]) {
             null -> return null
             is Array<*> -> {
                 val curArray = obj
@@ -119,7 +118,8 @@ open class BaseHashTable<T> internal constructor(expectedSize: Int) {
                             val j = if (i == 0) 1 else 0
                             elements[slot] = curArray[j]
                         } else {
-                            val newArray = curArray.copyOf(i)
+                            val newArray = arrayOfNulls<Any>(curArray.size - 1)
+                            System.arraycopy(curArray, 0, newArray, 0, i)
                             System.arraycopy(curArray, i + 1, newArray, i, curArray.size - 1 - i)
                             elements[slot] = newArray
                         }

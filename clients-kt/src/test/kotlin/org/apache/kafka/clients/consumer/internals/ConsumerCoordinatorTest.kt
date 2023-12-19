@@ -19,7 +19,6 @@ package org.apache.kafka.clients.consumer.internals
 
 import java.nio.ByteBuffer
 import java.util.Collections
-import java.util.Optional
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException

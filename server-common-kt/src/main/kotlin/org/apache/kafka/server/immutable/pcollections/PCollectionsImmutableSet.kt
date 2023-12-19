@@ -44,16 +44,14 @@ class PCollectionsImmutableSet<E>(internal val underlying: MapPSet<E>) : Immutab
 
     override fun forEach(action: Consumer<in E>) = underlying.forEach(action)
 
-    override fun <T> toArray(generator: IntFunction<Array<T>>): Array<T> = underlying.toArray(generator)
-
     // Kotlin Migration - toArray override does not exist in kotlin
     // override fun toArray(): Array<E> = underlying.toTypedArray()
 
     // override fun <T> toArray(a: Array<T>?): Array<T> = underlying.toArray(a)
 
-    override fun add(e: E): Boolean {
+    override fun add(element: E): Boolean {
         // will throw UnsupportedOperationException; delegate anyway for testability
-        return underlying.add(e)
+        return underlying.add(element)
     }
 
     // will throw UnsupportedOperationException; delegate anyway for testability

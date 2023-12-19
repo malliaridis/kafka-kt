@@ -27,7 +27,7 @@ package org.apache.kafka.timeline
  * @param K The key type of the set.
  * @param V The value type of the set.
  */
-class TimelineHashMap<K, V>(
+class TimelineHashMap<K : Any, V : Any>(
     snapshotRegistry: SnapshotRegistry,
     expectedSize: Int,
 ) : SnapshottableHashTable<TimelineHashMap.TimelineHashMapEntry<K, V>>(
@@ -69,9 +69,7 @@ class TimelineHashMap<K, V>(
     }
 
     override fun put(key: K, value: V): V? {
-        requireNotNull(key)
-        requireNotNull(value)
-        val entry = TimelineHashMapEntry(key as K, value as V)
+        val entry = TimelineHashMapEntry(key, value)
         val (_, value1) = snapshottableAddOrReplace(entry) ?: return null
         return value1
     }
@@ -123,7 +121,7 @@ class TimelineHashMap<K, V>(
                 val (key, value) = iter.next()
                 if (other[key] != value) return false
             }
-        } catch (unused: ClassCastException) {
+        } catch (_: ClassCastException) {
             return false
         }
         return true

@@ -17,7 +17,7 @@
 
 package org.apache.kafka.server.mutable
 
-import java.util.function.IntFunction
+import java.util.Collections
 
 /**
  * A list which cannot grow beyond a certain length. If the maximum length would be exceeded by an
@@ -48,9 +48,7 @@ class BoundedList<E>(maxLength: Int, underlying: MutableList<E>) : MutableList<E
 
     override operator fun contains(element: E): Boolean = underlying.contains(element)
 
-    override fun iterator(): MutableIterator<E> = underlying.iterator()
-
-    override fun <T> toArray(generator: IntFunction<Array<T>>?): Array<T> = underlying.toArray(generator)
+    override fun iterator(): MutableIterator<E> = Collections.unmodifiableList(underlying).iterator()
 
     // Kotlin Migration - toArray does not exist in Kotlin
     // override fun toArray(): Array<Any> = underlying.toTypedArray()
@@ -107,11 +105,13 @@ class BoundedList<E>(maxLength: Int, underlying: MutableList<E>) : MutableList<E
 
     override fun lastIndexOf(element: E): Int = underlying.lastIndexOf(element)
 
-    override fun listIterator(): MutableListIterator<E> = underlying.listIterator()
+    override fun listIterator(): MutableListIterator<E> = Collections.unmodifiableList(underlying).listIterator()
 
-    override fun listIterator(index: Int): MutableListIterator<E> = underlying.listIterator(index)
+    override fun listIterator(index: Int): MutableListIterator<E> =
+        Collections.unmodifiableList(underlying).listIterator(index)
 
-    override fun subList(fromIndex: Int, toIndex: Int): MutableList<E> = underlying.subList(fromIndex, toIndex)
+    override fun subList(fromIndex: Int, toIndex: Int): MutableList<E> =
+        Collections.unmodifiableList(underlying).subList(fromIndex, toIndex)
 
     override fun equals(other: Any?): Boolean {
         return underlying == other

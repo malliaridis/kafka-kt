@@ -20,7 +20,7 @@ package org.apache.kafka.timeline
 import org.apache.kafka.common.utils.LogContext
 import org.slf4j.Logger
 
-class SnapshotRegistry(logContext: LogContext) {
+open class SnapshotRegistry(logContext: LogContext) {
 
     private val log: Logger = logContext.logger(javaClass)
 
@@ -85,7 +85,7 @@ class SnapshotRegistry(logContext: LogContext) {
      * @param epoch The epoch to create the snapshot at.  The current epoch
      * will be advanced to one past this epoch.
      */
-    fun getOrCreateSnapshot(epoch: Long): Snapshot {
+    open fun getOrCreateSnapshot(epoch: Long): Snapshot {
         val last = head.prev()
         if (last.epoch > epoch) throw RuntimeException(
             "Can't create a new in-memory snapshot at epoch $epoch because there is already " +
@@ -106,7 +106,7 @@ class SnapshotRegistry(logContext: LogContext) {
      *
      * @param targetEpoch The epoch of the snapshot to revert to.
      */
-    fun revertToSnapshot(targetEpoch: Long) {
+    open fun revertToSnapshot(targetEpoch: Long) {
         log.debug("Reverting to in-memory snapshot {}", targetEpoch)
         val target = getSnapshot(targetEpoch)
         val iterator = iterator(target)
@@ -173,7 +173,7 @@ class SnapshotRegistry(logContext: LogContext) {
     /**
      * Delete all snapshots and resets all of the Revertable object registered.
      */
-    fun reset() {
+    open fun reset() {
         deleteSnapshotsUpTo(LATEST_EPOCH)
         for (revertable in revertables) revertable.reset()
 

@@ -50,20 +50,8 @@ abstract class ShutdownableThread(
         awaitShutdown()
     }
 
-    @Deprecated(
-        message = "Use property instead",
-        replaceWith = ReplaceWith("isShutdownInitiated"),
-    )
-    fun isShutdownInitiated(): Boolean = isShutdownInitiated
-
     val isShutdownInitiated: Boolean
         get() = shutdownInitiated.count == 0L
-
-    @Deprecated(
-        message = "Use property instead",
-        replaceWith = ReplaceWith("isShutdownComplete"),
-    )
-    fun isShutdownComplete(): Boolean = isShutdownComplete
 
     val isShutdownComplete: Boolean
         get() = shutdownComplete.count == 0L
@@ -96,7 +84,7 @@ abstract class ShutdownableThread(
      */
     @Throws(InterruptedException::class)
     fun awaitShutdown() {
-        check(isShutdownInitiated) { "initiateShutdown() was not called before awaitShutdown()" }
+        check(isShutdownInitiated) { "initiateShutdown was not called before awaitShutdown()" }
         if (isStarted) shutdownComplete.await()
         log.info("Shutdown completed")
     }

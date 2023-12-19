@@ -99,15 +99,6 @@ class PCollectionsImmutableNavigableSet<E>(internal val underlying: TreePSet<E>)
 
     override fun forEach(action: Consumer<in E>) = underlying.forEach(action)
 
-    @Deprecated(
-        message = "This member is not fully supported by Kotlin compiler, so it may be absent or have " +
-                "different signature in next major version",
-        replaceWith = ReplaceWith(""),
-        level = DeprecationLevel.WARNING
-    )
-    override fun <T : Any?> toArray(generator: IntFunction<Array<T>>?): Array<T> =
-        underlying.toArray(generator)
-
     // Kotlin Migration - toArray override does not exist in kotlin
     // override fun toArray(): Array<E> = underlying.toArray()
 

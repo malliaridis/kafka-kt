@@ -83,7 +83,6 @@ import org.apache.kafka.common.utils.MockTime
 import org.apache.kafka.common.utils.ProducerIdAndEpoch
 import org.apache.kafka.test.TestUtils.assertFutureThrows
 import org.apache.kafka.test.TestUtils.singletonCluster
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
