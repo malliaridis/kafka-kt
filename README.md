@@ -13,3 +13,4 @@ of the migration. Right now the following modules have been fully migrated (but 
 
 - `clients` (Kafka 3.6.0)
 - `generator` (Kafka 3.6.0)
+- `server-common` (Kafka 3.6.0)
