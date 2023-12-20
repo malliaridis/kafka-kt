@@ -221,6 +221,7 @@ import org.slf4j.Logger
  * versions 0.11.0 or later. You will receive an `UnsupportedVersionException` when invoking an API
  * that is not available in the running broker version.
  */
+@Suppress("DEPRECATION")
 open class KafkaProducer<K, V> : Producer<K, V> {
 
     private val log: Logger
@@ -1274,11 +1275,8 @@ open class KafkaProducer<K, V> : Producer<K, V> {
             elapsed = time.milliseconds() - nowMs
             if (elapsed >= maxWaitMs) {
                 throw TimeoutException(
-                    if (partitionsCount == null) String.format(
-                        "Topic %s not present in metadata after %d ms.",
-                        topic,
-                        maxWaitMs
-                    ) else String.format(
+                    if (partitionsCount == null) "Topic $topic not present in metadata after $maxWaitMs ms."
+                    else String.format(
                         "Partition %d of topic %s with partition count %d is not present in" +
                                 " metadata after %d ms.",
                         partition,
@@ -1541,27 +1539,22 @@ open class KafkaProducer<K, V> : Producer<K, V> {
         return if (serializedKey != null && !partitionerIgnoreKeys) {
             // hash the keyBytes to choose a partition
             BuiltInPartitioner.partitionForKey(
-                serializedKey,
-                cluster.partitionsForTopic(record.topic).size
+                serializedKey = serializedKey,
+                numPartitions = cluster.partitionsForTopic(record.topic).size,
             )
         } else RecordMetadata.UNKNOWN_PARTITION
     }
 
     private fun throwIfInvalidGroupMetadata(groupMetadata: ConsumerGroupMetadata?) {
-        if (groupMetadata == null) {
-            throw IllegalArgumentException("Consumer group metadata could not be null")
-        } else if ((groupMetadata.generationId() > 0
-                    && (JoinGroupRequest.UNKNOWN_MEMBER_ID == groupMetadata.memberId()))
-        ) {
-            throw IllegalArgumentException("Passed in group metadata $groupMetadata has generationId > 0 but member.id ")
+        requireNotNull(groupMetadata) { "Consumer group metadata could not be null" }
+        require(groupMetadata.generationId <= 0 || (JoinGroupRequest.UNKNOWN_MEMBER_ID != groupMetadata.memberId())) {
+            "Passed in group metadata $groupMetadata has generationId > 0 but member.id "
         }
     }
 
-    private fun throwIfNoTransactionManager() {
-        if (transactionManager == null) throw IllegalStateException(
-            ("Cannot use transactional methods without enabling transactions " +
-                    "by setting the " + ProducerConfig.TRANSACTIONAL_ID_CONFIG + " configuration property")
-        )
+    private fun throwIfNoTransactionManager() = checkNotNull(transactionManager) {
+        "Cannot use transactional methods without enabling transactions by setting the " +
+                "${ProducerConfig.TRANSACTIONAL_ID_CONFIG} configuration property"
     }
 
     class ClusterAndWaitTime internal constructor(
@@ -1569,35 +1562,21 @@ open class KafkaProducer<K, V> : Producer<K, V> {
         val waitedOnMetadataMs: Long,
     )
 
-    class FutureFailure(exception: Exception?) :
-        Future<RecordMetadata> {
-        private val exception: ExecutionException
+    class FutureFailure(exception: Exception?) : Future<RecordMetadata> {
 
-        init {
-            this.exception = ExecutionException(exception)
-        }
+        private val exception: ExecutionException = ExecutionException(exception)
 
-        override fun cancel(interrupt: Boolean): Boolean {
-            return false
-        }
+        override fun cancel(interrupt: Boolean): Boolean = false
 
         @Throws(ExecutionException::class)
-        override fun get(): RecordMetadata {
-            throw exception
-        }
+        override fun get(): RecordMetadata = throw exception
 
         @Throws(ExecutionException::class)
-        override fun get(timeout: Long, unit: TimeUnit): RecordMetadata {
-            throw exception
-        }
+        override fun get(timeout: Long, unit: TimeUnit): RecordMetadata = throw exception
 
-        override fun isCancelled(): Boolean {
-            return false
-        }
+        override fun isCancelled(): Boolean = false
 
-        override fun isDone(): Boolean {
-            return true
-        }
+        override fun isDone(): Boolean = true
     }
 
     /**
