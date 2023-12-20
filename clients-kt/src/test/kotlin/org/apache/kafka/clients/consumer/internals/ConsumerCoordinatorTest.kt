@@ -4367,7 +4367,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
         assertEquals(groupId, groupMetadata.groupId())
         assertEquals(
             JoinGroupRequest.UNKNOWN_GENERATION_ID,
-            groupMetadata.generationId()
+            groupMetadata.generationId
         )
         assertEquals(JoinGroupRequest.UNKNOWN_MEMBER_ID, groupMetadata.memberId())
         assertNull(groupMetadata.groupInstanceId)
@@ -4381,7 +4381,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
             val joinedGroupMetadata: ConsumerGroupMetadata = coordinator.groupMetadata()
             assertNotNull(joinedGroupMetadata)
             assertEquals(groupId, joinedGroupMetadata.groupId())
-            assertEquals(1, joinedGroupMetadata.generationId())
+            assertEquals(1, joinedGroupMetadata.generationId)
             assertEquals(
                 consumerId,
                 joinedGroupMetadata.memberId()
@@ -4397,7 +4397,7 @@ abstract class ConsumerCoordinatorTest(private val protocol: RebalanceProtocol) 
     fun shouldUpdateConsumerGroupMetadataBeforeCallbacks() {
         val rebalanceListener = object : MockRebalanceListener() {
             override fun onPartitionsRevoked(partitions: Collection<TopicPartition>) {
-                assertEquals(2, coordinator.groupMetadata().generationId())
+                assertEquals(2, coordinator.groupMetadata().generationId)
             }
         }
         subscriptions.subscribe(setOf(topic1), rebalanceListener)

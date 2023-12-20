@@ -8,5 +8,6 @@ include(
     "generator-kt",
     "clients-kt",
     "server-common-kt",
+    "log4j-appender-kt",
     "streams-kt",
 )
