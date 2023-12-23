@@ -34,22 +34,22 @@ class ProcessStopFaultWorker(
 
     @Throws(Exception::class)
     override fun start(
-        platform: Platform,
+        platform: Platform?,
         status: WorkerStatusTracker,
         haltFuture: KafkaFutureImpl<String>,
     ) {
         this.status = status
         log.info("Activating ProcessStopFault {}.", id)
         this.status!!.update(TextNode("stopping $javaProcessName"))
-        sendSignals(platform, "SIGSTOP")
+        sendSignals(platform!!, "SIGSTOP")
         this.status!!.update(TextNode("stopped $javaProcessName"))
     }
 
     @Throws(Exception::class)
-    override fun stop(platform: Platform) {
+    override fun stop(platform: Platform?) {
         log.info("Deactivating ProcessStopFault {}.", id)
         status!!.update(TextNode("resuming $javaProcessName"))
-        sendSignals(platform, "SIGCONT")
+        sendSignals(platform!!, "SIGCONT")
         status!!.update(TextNode("resumed $javaProcessName"))
     }
 

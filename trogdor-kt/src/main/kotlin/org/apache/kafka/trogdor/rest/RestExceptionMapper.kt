@@ -28,24 +28,24 @@ import org.slf4j.LoggerFactory
 
 class RestExceptionMapper : ExceptionMapper<Throwable> {
 
-    override fun toResponse(e: Throwable): Response {
-        if (log.isDebugEnabled) log.debug("Uncaught exception in REST call: ", e)
-        else if (log.isInfoEnabled) log.info("Uncaught exception in REST call: {}", e.message)
+    override fun toResponse(exception: Throwable): Response {
+        if (log.isDebugEnabled) log.debug("Uncaught exception in REST call: ", exception)
+        else if (log.isInfoEnabled) log.info("Uncaught exception in REST call: {}", exception.message)
 
-        return when (e) {
-            is NotFoundException -> buildResponse(Response.Status.NOT_FOUND, e)
-            is InvalidRequestException -> buildResponse(Response.Status.BAD_REQUEST, e)
-            is InvalidTypeIdException -> buildResponse(Response.Status.NOT_IMPLEMENTED, e)
-            is JsonMappingException -> buildResponse(Response.Status.BAD_REQUEST, e)
-            is ClassNotFoundException -> buildResponse(Response.Status.NOT_IMPLEMENTED, e)
-            is SerializationException -> buildResponse(Response.Status.BAD_REQUEST, e)
-            is RequestConflictException -> buildResponse(Response.Status.CONFLICT, e)
-            else -> buildResponse(Response.Status.INTERNAL_SERVER_ERROR, e)
+        return when (exception) {
+            is NotFoundException -> buildResponse(Response.Status.NOT_FOUND, exception)
+            is InvalidRequestException -> buildResponse(Response.Status.BAD_REQUEST, exception)
+            is InvalidTypeIdException -> buildResponse(Response.Status.NOT_IMPLEMENTED, exception)
+            is JsonMappingException -> buildResponse(Response.Status.BAD_REQUEST, exception)
+            is ClassNotFoundException -> buildResponse(Response.Status.NOT_IMPLEMENTED, exception)
+            is SerializationException -> buildResponse(Response.Status.BAD_REQUEST, exception)
+            is RequestConflictException -> buildResponse(Response.Status.CONFLICT, exception)
+            else -> buildResponse(Response.Status.INTERNAL_SERVER_ERROR, exception)
         }
     }
 
-    private fun buildResponse(code: Response.Status, e: Throwable): Response {
-        return Response.status(code).entity(ErrorResponse(code.statusCode, e.message!!)).build()
+    private fun buildResponse(code: Response.Status, exception: Throwable): Response {
+        return Response.status(code).entity(ErrorResponse(code.statusCode, exception.message)).build()
     }
 
     companion object {

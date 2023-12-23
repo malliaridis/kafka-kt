@@ -59,9 +59,7 @@ class TopicsSpec : Message {
         map[name] = value
     }
 
-    fun immutableCopy(): TopicsSpec {
-        return TopicsSpec(map.toMap() as MutableMap<String, PartitionsSpec>)
-    }
+    fun immutableCopy(): TopicsSpec = TopicsSpec(map.toMutableMap())
 
     /**
      * Enumerate the partitions inside this TopicsSpec.
@@ -69,7 +67,7 @@ class TopicsSpec : Message {
      * @return A map from topic names to PartitionsSpec objects.
      */
     fun materialize(): Map<String, PartitionsSpec> {
-        val all: HashMap<String, PartitionsSpec> = HashMap<String, PartitionsSpec>()
+        val all = mutableMapOf<String, PartitionsSpec>()
         for ((topicName, partitions) in map) {
             for (expandedTopicName in expand(topicName))
                 all[expandedTopicName] = partitions

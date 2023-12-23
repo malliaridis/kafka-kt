@@ -28,7 +28,7 @@ import org.apache.kafka.common.errors.ApiException
  * The API of this class is evolving, see [Admin] for details.
  */
 @Evolving
-class CreateTopicsResult internal constructor(
+class CreateTopicsResult(
     private val futures: Map<String, KafkaFuture<TopicMetadataAndConfig>>,
 ) {
 

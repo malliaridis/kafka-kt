@@ -48,7 +48,7 @@ class BasicNode : Node {
         this.name = name
         var hostname = "localhost"
         var tags = emptySet<String>()
-        val config: MutableMap<String, String> = HashMap()
+        val config = mutableMapOf<String, String>()
         val iter = root.fields()
         while (iter.hasNext()) {
             val (key, node) = iter.next()
@@ -56,7 +56,7 @@ class BasicNode : Node {
                 "hostname" -> hostname = node.asText()
                 "tags" -> {
                     if (!node.isArray) throw RuntimeException("Expected the 'tags' field to be an array of strings.")
-                    tags = HashSet()
+                    tags = mutableSetOf()
                     val tagIter = node.elements()
                     while (tagIter.hasNext()) {
                         val tag = tagIter.next()

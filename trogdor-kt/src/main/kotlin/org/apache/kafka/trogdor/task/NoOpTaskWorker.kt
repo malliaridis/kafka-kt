@@ -28,7 +28,7 @@ class NoOpTaskWorker(private val id: String) : TaskWorker {
 
     @Throws(Exception::class)
     override fun start(
-        platform: Platform,
+        platform: Platform?,
         status: WorkerStatusTracker,
         haltFuture: KafkaFutureImpl<String>,
     ) {
@@ -39,7 +39,7 @@ class NoOpTaskWorker(private val id: String) : TaskWorker {
     }
 
     @Throws(Exception::class)
-    override fun stop(platform: Platform) {
+    override fun stop(platform: Platform?) {
         log.info("{}: Deactivating NoOpTask.", id)
         status!!.update(TextNode("done"))
     }

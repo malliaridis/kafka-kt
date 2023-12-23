@@ -20,14 +20,14 @@ package org.apache.kafka.trogdor.workload
 /**
  * An iterator which wraps a PayloadGenerator.
  */
-class PayloadIterator(private val generator: PayloadGenerator) : MutableIterator<ByteArray> {
+class PayloadIterator(private val generator: PayloadGenerator) : MutableIterator<ByteArray?> {
 
     private var position: Long = 0
 
     override fun hasNext(): Boolean = true
 
     @Synchronized
-    override fun next(): ByteArray = generator.generate(position++)!!
+    override fun next(): ByteArray? = generator.generate(position++)
 
     override fun remove() = throw UnsupportedOperationException()
 

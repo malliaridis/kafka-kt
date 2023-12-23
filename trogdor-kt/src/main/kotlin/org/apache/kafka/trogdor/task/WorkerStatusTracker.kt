@@ -22,7 +22,7 @@ import com.fasterxml.jackson.databind.JsonNode
 /**
  * Tracks the status of a Trogdor worker.
  */
-interface WorkerStatusTracker {
+fun interface WorkerStatusTracker {
 
     /**
      * Updates the status.

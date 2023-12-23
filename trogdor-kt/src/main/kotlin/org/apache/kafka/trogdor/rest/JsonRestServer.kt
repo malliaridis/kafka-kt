@@ -102,8 +102,8 @@ class JsonRestServer(port: Int) {
 
         try {
             jettyServer.start()
-        } catch (e: Exception) {
-            throw RuntimeException("Unable to start REST server", e)
+        } catch (exception: Exception) {
+            throw RuntimeException("Unable to start REST server", exception)
         }
         log.info("REST server listening at " + jettyServer.getURI())
     }

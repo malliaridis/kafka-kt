@@ -91,7 +91,7 @@ class SustainedConnectionWorker(
 
     @Throws(Exception::class)
     override fun start(
-        platform: Platform,
+        platform: Platform?,
         status: WorkerStatusTracker,
         haltFuture: KafkaFutureImpl<String>,
     ) {
@@ -140,6 +140,30 @@ class SustainedConnectionWorker(
             createThreadFactory("SustainedConnectionWorkerThread%d", false)
         )
         for (i in 0..<spec.numThreads()) workerExecutor!!.submit(MaintainLoop())
+    }
+
+    @Throws(Exception::class)
+    override fun stop(platform: Platform?) {
+        check(running.compareAndSet(true, false)) { "SustainedConnectionWorker is not running." }
+        log.info("{}: Deactivating SustainedConnectionWorker.", id)
+
+        // Shut down the periodic status updater and perform a final update on the
+        // statistics.  We want to do this first, before deactivating any threads.
+        // Otherwise, if some threads take a while to terminate, this could lead
+        // to a misleading rate getting reported.
+        statusUpdaterFuture!!.cancel(false)
+        statusUpdaterExecutor!!.shutdown()
+        statusUpdaterExecutor!!.awaitTermination(1, TimeUnit.HOURS)
+        statusUpdaterExecutor = null
+        StatusUpdater().run()
+        doneFuture!!.complete("")
+        connections!!.forEach(SustainedConnection::close)
+
+        workerExecutor!!.shutdownNow()
+        workerExecutor!!.awaitTermination(1, TimeUnit.HOURS)
+        workerExecutor = null
+        status = null
+        connections = null
     }
 
     private interface SustainedConnection : AutoCloseable {
@@ -476,30 +500,6 @@ class SustainedConnectionWorker(
 
         @JsonProperty
         fun updatedMs(): Long = updatedMs
-    }
-
-    @Throws(Exception::class)
-    override fun stop(platform: Platform) {
-        check(running.compareAndSet(true, false)) { "SustainedConnectionWorker is not running." }
-        log.info("{}: Deactivating SustainedConnectionWorker.", id)
-
-        // Shut down the periodic status updater and perform a final update on the
-        // statistics.  We want to do this first, before deactivating any threads.
-        // Otherwise, if some threads take a while to terminate, this could lead
-        // to a misleading rate getting reported.
-        statusUpdaterFuture!!.cancel(false)
-        statusUpdaterExecutor!!.shutdown()
-        statusUpdaterExecutor!!.awaitTermination(1, TimeUnit.HOURS)
-        statusUpdaterExecutor = null
-        StatusUpdater().run()
-        doneFuture!!.complete("")
-        connections!!.forEach(SustainedConnection::close)
-
-        workerExecutor!!.shutdownNow()
-        workerExecutor!!.awaitTermination(1, TimeUnit.HOURS)
-        workerExecutor = null
-        status = null
-        connections = null
     }
 
     companion object {

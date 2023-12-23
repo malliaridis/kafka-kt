@@ -55,14 +55,14 @@ open class Throttle internal constructor(
     @Synchronized
     fun lastTimeMs(): Long = lastTimeMs
 
-    protected val time: Time
+    protected open val time: Time
         get() = Time.SYSTEM
 
     @Deprecated(
         message = "Use property instead",
         replaceWith = ReplaceWith("time"),
     )
-    protected fun time(): Time = Time.SYSTEM
+    protected open fun time(): Time = Time.SYSTEM
 
     @Synchronized
     @Throws(InterruptedException::class)

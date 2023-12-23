@@ -29,8 +29,8 @@ object StringExpander {
 
     private val NUMERIC_RANGE_PATTERN = Pattern.compile("(.*)\\[([0-9]*)-([0-9]*)](.*)")
 
-    fun expand(value: String): HashSet<String> {
-        val set = HashSet<String>()
+    fun expand(value: String): MutableSet<String> {
+        val set = mutableSetOf<String>()
         val matcher = NUMERIC_RANGE_PATTERN.matcher(value)
         if (!matcher.matches()) {
             set.add(value)

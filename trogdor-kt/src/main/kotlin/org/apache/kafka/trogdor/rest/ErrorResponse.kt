@@ -27,13 +27,13 @@ import org.apache.kafka.trogdor.common.JsonUtil.toJsonString
  */
 class ErrorResponse @JsonCreator constructor(
     @param:JsonProperty("code") private val code: Int,
-    @param:JsonProperty("message") private val message: String,
+    @param:JsonProperty("message") private val message: String?,
 ) {
     @JsonProperty
     fun code(): Int = code
 
     @JsonProperty
-    fun message(): String = message
+    fun message(): String? = message
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

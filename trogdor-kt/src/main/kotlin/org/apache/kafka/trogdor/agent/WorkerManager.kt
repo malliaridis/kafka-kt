@@ -44,7 +44,6 @@ import org.apache.kafka.trogdor.task.AgentWorkerStatusTracker
 import org.apache.kafka.trogdor.task.TaskSpec
 import org.apache.kafka.trogdor.task.TaskWorker
 import org.slf4j.LoggerFactory
-import kotlin.math.max
 
 /**
  * @property platform The platform to use.
@@ -68,41 +67,34 @@ class WorkerManager internal constructor(
     /**
      * A map of task IDs to Work objects.
      */
-    private val workers: MutableMap<Long, Worker>
+    private val workers = mutableMapOf<Long, Worker>()
 
     /**
      * An ExecutorService used to schedule events in the future.
      */
-    private val stateChangeExecutor: ScheduledExecutorService
+    private val stateChangeExecutor = Executors.newSingleThreadScheduledExecutor(
+        createThreadFactory("WorkerManagerStateThread", false)
+    )
 
     /**
      * An ExecutorService used to clean up TaskWorkers.
      */
-    private val workerCleanupExecutor: ExecutorService
+    private val workerCleanupExecutor = Executors.newCachedThreadPool(
+        createThreadFactory("WorkerCleanupThread%d", false)
+    )
 
     /**
      * An ExecutorService to help with shutting down.
      */
-    private val shutdownExecutor: ScheduledExecutorService
+    private val shutdownExecutor = Executors.newScheduledThreadPool(
+        0,
+        createThreadFactory("WorkerManagerShutdownThread%d", false)
+    )
 
     /**
      * The shutdown manager.
      */
     private val shutdownManager = ShutdownManager()
-
-    init {
-        workers = HashMap()
-        stateChangeExecutor = Executors.newSingleThreadScheduledExecutor(
-            createThreadFactory("WorkerManagerStateThread", false)
-        )
-        workerCleanupExecutor = Executors.newCachedThreadPool(
-            createThreadFactory("WorkerCleanupThread%d", false)
-        )
-        shutdownExecutor = Executors.newScheduledThreadPool(
-            0,
-            createThreadFactory("WorkerManagerShutdownThread%d", false)
-        )
-    }
 
     @Throws(Throwable::class)
     fun createWorker(workerId: Long, taskId: String, spec: TaskSpec): KafkaFuture<String> {

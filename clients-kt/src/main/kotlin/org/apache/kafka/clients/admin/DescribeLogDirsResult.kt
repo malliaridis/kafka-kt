@@ -33,7 +33,7 @@ import java.util.stream.Collectors
  * The API of this class is evolving, see [Admin] for details.
  */
 @Evolving
-class DescribeLogDirsResult internal constructor(
+class DescribeLogDirsResult(
     private val futures: Map<Int, KafkaFuture<Map<String, LogDirDescription>>>,
 ) {
 
@@ -41,14 +41,14 @@ class DescribeLogDirsResult internal constructor(
      * Return a map from brokerId to future which can be used to check the information of partitions
      * on each individual broker.
      */
-    @Suppress("deprecation")
+    @Suppress("Deprecation")
     @Deprecated("Deprecated Since Kafka 2.7. Use {@link #descriptions()}.")
     fun values(): Map<Int, KafkaFuture<Map<String, LogDirInfo>>> =
         descriptions().mapValues { (_, value) ->
             value.thenApply { map -> convertMapValues(map) }
         }
 
-    @Suppress("deprecation")
+    @Suppress("Deprecation")
     private fun convertMapValues(map: Map<String, LogDirDescription>): Map<String, LogDirInfo> {
         return map.mapValues { (_, logDir) ->
             LogDirInfo(

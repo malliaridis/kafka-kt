@@ -44,31 +44,32 @@ import org.slf4j.LoggerFactory
  * Each NodeManager has its own ExecutorService which runs in a dedicated thread.
  *
  * @property node The node which we are managing.
+ * @property taskManager The task manager.
  */
 class NodeManager internal constructor(
     private val node: Node,
-    taskManager: TaskManager,
+    private val taskManager: TaskManager,
 ) {
-
-    /**
-     * The task manager.
-     */
-    private val taskManager: TaskManager
 
     /**
      * A client for the Node's Agent.
      */
-    private val client: AgentClient
+    private val client = AgentClient.Builder()
+        .maxTries(1)
+        .target(node.hostname(), getTrogdorAgentPort(node))
+        .build()
 
     /**
      * Maps task IDs to worker structures.
      */
-    private val workers: MutableMap<Long, ManagedWorker>
+    private val workers = mutableMapOf<Long, ManagedWorker>()
 
     /**
      * An executor service which manages the thread dedicated to this node.
      */
-    private val executor: ScheduledExecutorService
+    private val executor = Executors.newSingleThreadScheduledExecutor(
+        createThreadFactory(pattern = "NodeManager(${node.name()})", daemon = false)
+    )
 
     /**
      * The heartbeat runnable.
@@ -81,15 +82,6 @@ class NodeManager internal constructor(
     private var heartbeatFuture: ScheduledFuture<*>? = null
 
     init {
-        this.taskManager = taskManager
-        client = AgentClient.Builder()
-            .maxTries(1)
-            .target(node.hostname(), getTrogdorAgentPort(node))
-            .build()
-        workers = HashMap()
-        executor = Executors.newSingleThreadScheduledExecutor(
-            createThreadFactory(pattern = "NodeManager(${node.name()})", daemon = false)
-        )
         heartbeat = NodeHeartbeat()
         rescheduleNextHeartbeat(HEARTBEAT_DELAY_MS)
     }
@@ -97,11 +89,10 @@ class NodeManager internal constructor(
     /**
      * Reschedule the heartbeat runnable.
      *
-     * @param initialDelayMs        The initial delay to use.
+     * @param initialDelayMs The initial delay to use.
      */
     fun rescheduleNextHeartbeat(initialDelayMs: Long) {
-        if (heartbeatFuture != null) heartbeatFuture!!.cancel(false)
-        
+        heartbeatFuture?.cancel(false)
         heartbeatFuture = executor.scheduleAtFixedRate(
             heartbeat,
             initialDelayMs,
@@ -158,8 +149,8 @@ class NodeManager internal constructor(
                     log.warn("{}: scheduling unknown worker with ID {} for stopping.", node.name(), workerId)
                     workers[workerId] = ManagedWorker(
                         workerId = workerId,
-                        taskId = state.taskId(),
-                        spec = state.spec(),
+                        taskId = state.taskId()!!,
+                        spec = state.spec()!!,
                         shouldRun = false,
                         state = state,
                     )

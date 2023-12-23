@@ -42,14 +42,14 @@ class DegradedNetworkFaultWorker(
 
     @Throws(Exception::class)
     override fun start(
-        platform: Platform,
+        platform: Platform?,
         status: WorkerStatusTracker,
         haltFuture: KafkaFutureImpl<String>,
     ) {
         log.info("Activating DegradedNetworkFaultWorker {}.", id)
         this.status = status
         this.status!!.update(TextNode("enabling traffic control $id"))
-        val curNode = platform.curNode()
+        val curNode = platform!!.curNode()
         val nodeSpec = nodeSpecs[curNode.name()]
         if (nodeSpec != null) {
             for (device in devicesForSpec(nodeSpec)) {
@@ -68,10 +68,10 @@ class DegradedNetworkFaultWorker(
     }
 
     @Throws(Exception::class)
-    override fun stop(platform: Platform) {
+    override fun stop(platform: Platform?) {
         log.info("Deactivating DegradedNetworkFaultWorker {}.", id)
         status!!.update(TextNode("disabling traffic control $id"))
-        val curNode = platform.curNode()
+        val curNode = platform!!.curNode()
         val nodeSpec = nodeSpecs[curNode.name()]
         if (nodeSpec != null) {
             for (device in devicesForSpec(nodeSpec)) {

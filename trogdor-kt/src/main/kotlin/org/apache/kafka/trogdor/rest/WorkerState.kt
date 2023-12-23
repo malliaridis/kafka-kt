@@ -38,15 +38,15 @@ import org.apache.kafka.trogdor.task.TaskSpec
     ],
 )
 abstract class WorkerState(
-    private val taskId: String,
-    private val spec: TaskSpec,
+    private val taskId: String?,
+    private val spec: TaskSpec?,
 ) : Message() {
 
     @JsonProperty
-    fun taskId(): String = taskId
+    fun taskId(): String? = taskId
 
     @JsonProperty
-    fun spec(): TaskSpec = spec
+    fun spec(): TaskSpec? = spec
 
     open fun stopping(): Boolean = false
 

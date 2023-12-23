@@ -27,7 +27,7 @@ import org.apache.kafka.common.config.ConfigResource
  * The API of this class is evolving, see [Admin] for details.
  */
 @Evolving
-class AlterConfigsResult internal constructor(
+class AlterConfigsResult(
     val futures: Map<ConfigResource, KafkaFuture<Unit>>,
 ) {
 

@@ -47,7 +47,7 @@ interface TaskWorker {
      * @throws Exception If the TaskWorker failed to start. stop() will not be invoked.
      */
     @Throws(Exception::class)
-    fun start(platform: Platform, status: WorkerStatusTracker, haltFuture: KafkaFutureImpl<String>)
+    fun start(platform: Platform?, status: WorkerStatusTracker, haltFuture: KafkaFutureImpl<String>)
 
     /**
      * Stops the TaskWorker.
@@ -67,5 +67,5 @@ interface TaskWorker {
      * the worker will be treated as having failed with the given error.
      */
     @Throws(Exception::class)
-    fun stop(platform: Platform)
+    fun stop(platform: Platform?)
 }

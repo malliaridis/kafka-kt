@@ -30,8 +30,8 @@ import org.apache.kafka.trogdor.task.TaskSpec
  * @property doneMs The time on the agent when the task was completed.
  */
 class WorkerDone @JsonCreator constructor(
-    @JsonProperty("taskId") taskId: String,
-    @JsonProperty("spec") spec: TaskSpec,
+    @JsonProperty("taskId") taskId: String?,
+    @JsonProperty("spec") spec: TaskSpec?,
     @param:JsonProperty("startedMs") private val startedMs: Long,
     @param:JsonProperty("doneMs") private val doneMs: Long,
     @JsonProperty("status") status: JsonNode?,

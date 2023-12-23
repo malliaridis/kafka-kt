@@ -71,7 +71,7 @@ class ConsumeBenchWorker(private val id: String, private val spec: ConsumeBenchS
 
     @Throws(Exception::class)
     override fun start(
-        platform: Platform,
+        platform: Platform?,
         status: WorkerStatusTracker,
         haltFuture: KafkaFutureImpl<String>,
     ) {
@@ -91,7 +91,7 @@ class ConsumeBenchWorker(private val id: String, private val spec: ConsumeBenchS
     }
 
     @Throws(Exception::class)
-    override fun stop(platform: Platform) {
+    override fun stop(platform: Platform?) {
         check(running.compareAndSet(true, false)) { "ConsumeBenchWorker is not running." }
         log.info("{}: Deactivating ConsumeBenchWorker.", id)
         doneFuture!!.complete("")

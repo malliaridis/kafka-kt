@@ -35,22 +35,22 @@ class NetworkPartitionFaultWorker(
 
     @Throws(Exception::class)
     override fun start(
-        platform: Platform,
+        platform: Platform?,
         status: WorkerStatusTracker,
         haltFuture: KafkaFutureImpl<String>,
     ) {
         log.info("Activating NetworkPartitionFault {}.", id)
         this.status = status
         this.status!!.update(TextNode("creating network partition $id"))
-        runIptablesCommands(platform, "-A")
+        runIptablesCommands(platform!!, "-A")
         this.status!!.update(TextNode("created network partition $id"))
     }
 
     @Throws(Exception::class)
-    override fun stop(platform: Platform) {
+    override fun stop(platform: Platform?) {
         log.info("Deactivating NetworkPartitionFault {}.", id)
         status!!.update(TextNode("removing network partition $id"))
-        runIptablesCommands(platform, "-D")
+        runIptablesCommands(platform!!, "-D")
         status!!.update(TextNode("removed network partition $id"))
     }
 

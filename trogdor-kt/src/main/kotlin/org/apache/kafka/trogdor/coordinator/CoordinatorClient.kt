@@ -399,7 +399,7 @@ class CoordinatorClient private constructor(
                         )
                         if (taskState is TaskDone) {
                             val taskDone = taskState
-                            if (taskDone.error().isNotEmpty()) System.out.printf("Error: %s%n", taskDone.error())
+                            if (!taskDone.error().isNullOrEmpty()) System.out.printf("Error: %s%n", taskDone.error())
                         }
                         if (res.getBoolean("verbose"))
                             System.out.printf("Spec: %s%n%n", toPrettyJsonString(taskState.spec()))
@@ -522,7 +522,7 @@ class CoordinatorClient private constructor(
             is TaskStopping -> "Started ${dateString(taskState.startedMs(), zoneOffset)}"
 
             is TaskDone -> {
-                val status = if (taskState.error().isEmpty()) {
+                val status = if (taskState.error().isNullOrEmpty()) {
                     if (taskState.cancelled()) "CANCELLED"
                     else "FINISHED"
                 } else "FAILED"
@@ -531,7 +531,7 @@ class CoordinatorClient private constructor(
                         durationString(taskState.doneMs() - taskState.startedMs())
             }
 
-            else -> throw RuntimeException("Unknown task state type ${taskState!!.stateType()}")
+            else -> throw RuntimeException("Unknown task state type ${taskState.stateType()}")
         }
     }
 }

@@ -202,7 +202,7 @@ object WorkerUtils {
 
         while (true) {
             log.info("Attempting to create {} topics (try {})...", topicsToCreate.size, ++tries)
-            val creations: MutableMap<String, Future<Unit>> = HashMap()
+            val creations = mutableMapOf<String, Future<Unit>>()
             while (topicsToCreate.isNotEmpty()) {
                 val newTopicsBatch = mutableListOf<NewTopic>()
                 var i = 0

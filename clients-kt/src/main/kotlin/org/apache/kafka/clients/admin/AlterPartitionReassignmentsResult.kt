@@ -27,7 +27,7 @@ import org.apache.kafka.common.annotation.InterfaceStability.Evolving
  * The API of this class is evolving. See [AdminClient] for details.
  */
 @Evolving
-class AlterPartitionReassignmentsResult internal constructor(
+class AlterPartitionReassignmentsResult(
     val futures: Map<TopicPartition, KafkaFuture<Unit>>,
 ) {
     /**

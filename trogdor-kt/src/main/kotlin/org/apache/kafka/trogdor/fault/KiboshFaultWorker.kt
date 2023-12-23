@@ -37,7 +37,7 @@ class KiboshFaultWorker(
 
     @Throws(Exception::class)
     override fun start(
-        platform: Platform,
+        platform: Platform?,
         status: WorkerStatusTracker,
         haltFuture: KafkaFutureImpl<String>,
     ) {
@@ -49,7 +49,7 @@ class KiboshFaultWorker(
     }
 
     @Throws(Exception::class)
-    override fun stop(platform: Platform) {
+    override fun stop(platform: Platform?) {
         log.info("Deactivating {} {}: {}.", spec.javaClass.getSimpleName(), id, spec)
         status!!.update(TextNode("Removing fault $id"))
         removeFault(mountPath, spec)

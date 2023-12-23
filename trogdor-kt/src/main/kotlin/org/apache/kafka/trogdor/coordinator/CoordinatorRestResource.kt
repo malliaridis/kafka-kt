@@ -62,7 +62,7 @@ class CoordinatorRestResource {
     private val coordinator = AtomicReference<Coordinator>()
 
     @Context
-    private val context: ServletContext? = null
+    private var context: ServletContext? = null
 
     fun setCoordinator(myCoordinator: Coordinator) = coordinator.set(myCoordinator)
 

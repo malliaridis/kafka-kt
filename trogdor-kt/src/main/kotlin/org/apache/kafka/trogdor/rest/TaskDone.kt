@@ -35,7 +35,7 @@ class TaskDone @JsonCreator constructor(
     @JsonProperty("spec") spec: TaskSpec,
     @param:JsonProperty("startedMs") private val startedMs: Long,
     @param:JsonProperty("doneMs") private val doneMs: Long,
-    @param:JsonProperty("error") private val error: String,
+    @param:JsonProperty("error") private val error: String?,
     @param:JsonProperty("cancelled") private val cancelled: Boolean,
     @JsonProperty("status") status: JsonNode?,
 ) : TaskState(spec, status) {
@@ -47,7 +47,7 @@ class TaskDone @JsonCreator constructor(
     fun doneMs(): Long = doneMs
 
     @JsonProperty
-    fun error(): String = error
+    fun error(): String? = error
 
     @JsonProperty
     fun cancelled(): Boolean = cancelled

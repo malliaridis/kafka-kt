@@ -29,8 +29,8 @@ import org.apache.kafka.trogdor.task.TaskSpec
  * @property startedMs The time on the agent when the task was received.
  */
 class WorkerStopping @JsonCreator constructor(
-    @JsonProperty("taskId") taskId: String,
-    @JsonProperty("spec") spec: TaskSpec,
+    @JsonProperty("taskId") taskId: String?,
+    @JsonProperty("spec") spec: TaskSpec?,
     @param:JsonProperty("startedMs") private val startedMs: Long,
     @JsonProperty("status") status: JsonNode?,
 ) : WorkerState(taskId, spec) {

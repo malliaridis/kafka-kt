@@ -57,7 +57,6 @@ import org.apache.kafka.trogdor.task.WorkerStatusTracker
 import org.apache.kafka.trogdor.workload.ConnectionStressSpec.ConnectionStressAction
 import org.slf4j.LoggerFactory
 
-
 class ConnectionStressWorker(
     private val id: String,
     private val spec: ConnectionStressSpec,
@@ -83,7 +82,7 @@ class ConnectionStressWorker(
 
     @Throws(Exception::class)
     override fun start(
-        platform: Platform,
+        platform: Platform?,
         status: WorkerStatusTracker,
         haltFuture: KafkaFutureImpl<String>,
     ) {
@@ -117,7 +116,7 @@ class ConnectionStressWorker(
     }
 
     @Throws(Exception::class)
-    override fun stop(platform: Platform) {
+    override fun stop(platform: Platform?) {
         check(running.compareAndSet(true, false)) {
             "ConnectionStressWorker is not running."
         }
@@ -173,7 +172,7 @@ class ConnectionStressWorker(
                 urls = conf.getList(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG)!!,
                 clientDnsLookupConfig = conf.getString(AdminClientConfig.CLIENT_DNS_LOOKUP_CONFIG)!!
             )
-            updater = ManualMetadataUpdater(Cluster.bootstrap(addresses).nodes())
+            updater = ManualMetadataUpdater(Cluster.bootstrap(addresses).nodes)
         }
 
         override fun tryConnect(): Boolean {

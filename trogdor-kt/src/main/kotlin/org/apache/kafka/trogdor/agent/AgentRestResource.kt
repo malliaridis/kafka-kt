@@ -54,7 +54,7 @@ class AgentRestResource {
     private val agent: AtomicReference<Agent?> = AtomicReference(null)
 
     @Context
-    private val context: ServletContext? = null
+    private var context: ServletContext? = null
 
     fun setAgent(myAgent: Agent?) = agent.set(myAgent)
 

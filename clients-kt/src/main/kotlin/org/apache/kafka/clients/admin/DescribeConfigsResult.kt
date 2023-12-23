@@ -28,7 +28,7 @@ import java.util.concurrent.ExecutionException
  * The API of this class is evolving, see [Admin] for details.
  */
 @Evolving
-class DescribeConfigsResult internal constructor(
+class DescribeConfigsResult(
     private val futures: Map<ConfigResource, KafkaFuture<Config>>,
 ) {
 

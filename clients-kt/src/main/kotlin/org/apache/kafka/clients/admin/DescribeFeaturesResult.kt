@@ -24,7 +24,7 @@ import org.apache.kafka.common.KafkaFuture
  *
  * The API of this class is evolving, see [Admin] for details.
  */
-class DescribeFeaturesResult internal constructor(
+class DescribeFeaturesResult(
     private val future: KafkaFuture<FeatureMetadata>
 ) {
     fun featureMetadata(): KafkaFuture<FeatureMetadata> = future

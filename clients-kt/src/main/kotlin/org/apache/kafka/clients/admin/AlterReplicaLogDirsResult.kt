@@ -28,7 +28,7 @@ import org.apache.kafka.common.annotation.InterfaceStability.Evolving
  * overall result only, use [all].
  */
 @Evolving
-class AlterReplicaLogDirsResult internal constructor(
+class AlterReplicaLogDirsResult(
     val futures: Map<TopicPartitionReplica, KafkaFuture<Unit>>,
 ) {
 

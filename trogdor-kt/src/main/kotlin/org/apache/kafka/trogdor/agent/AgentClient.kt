@@ -290,9 +290,9 @@ class AgentClient private constructor(
                         for ((key, value) in status.workers) {
                             val cols: MutableList<String> = ArrayList()
                             cols.add(key.toString())
-                            cols.add(value.taskId())
+                            cols.add(value.taskId()!!)
                             cols.add(value.javaClass.getSimpleName())
-                            cols.add(value.spec().javaClass.getCanonicalName())
+                            cols.add(value.spec()!!.javaClass.getCanonicalName())
                             lines.add(cols)
                         }
                         print(prettyPrintGrid(lines))

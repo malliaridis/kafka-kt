@@ -110,7 +110,7 @@ class TaskManager internal constructor(
     /**
      * The states of all workers.
      */
-    private val workerStates: MutableMap<Long, WorkerState> = HashMap()
+    private val workerStates = mutableMapOf<Long, WorkerState>()
 
     /**
      * `true` if the `TaskManager` is shut down.
