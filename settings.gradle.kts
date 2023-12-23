@@ -9,5 +9,6 @@ include(
     "clients-kt",
     "server-common-kt",
     "log4j-appender-kt",
+    "trogdor-kt",
     "streams-kt",
 )

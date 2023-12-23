@@ -31,7 +31,7 @@ import org.apache.kafka.common.Uuid
 data class TopicListing(
     val name: String,
     val topicId: Uuid,
-    private val isInternal: Boolean,
+    val isInternal: Boolean,
 ) {
 
     /**

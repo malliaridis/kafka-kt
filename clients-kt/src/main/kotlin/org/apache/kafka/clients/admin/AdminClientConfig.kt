@@ -37,7 +37,7 @@ import org.apache.kafka.common.utils.Utils.enumOptions
 /**
  * The AdminClient configuration class, which also contains constants for configuration entry names.
  */
-class AdminClientConfig internal constructor(
+class AdminClientConfig(
     props: Map<String, Any?>,
     doLog: Boolean = false,
 ) : AbstractConfig(
