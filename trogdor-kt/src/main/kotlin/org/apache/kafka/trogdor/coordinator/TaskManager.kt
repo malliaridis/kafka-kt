@@ -259,12 +259,12 @@ class TaskManager internal constructor(
         private val id: String,
         private val originalSpec: TaskSpec,
     ) : Callable<Unit> {
-        
+
         private val spec: TaskSpec
 
         init {
             val node = JsonUtil.JSON_SERDE.valueToTree<ObjectNode>(originalSpec)
-            node.set<JsonNode>("startMs", LongNode(time.milliseconds().coerceAtMost(originalSpec.startMs())))
+            node.set<JsonNode>("startMs", LongNode(time.milliseconds().coerceAtLeast(originalSpec.startMs())))
             spec = JsonUtil.JSON_SERDE.treeToValue(node, TaskSpec::class.java)
         }
 
@@ -283,7 +283,7 @@ class TaskManager internal constructor(
             var controller: TaskController? = null
             var failure: String? = null
             try {
-                controller = originalSpec.newController(id)
+                controller = spec.newController(id)
             } catch (throwable: Throwable) {
                 failure = "Failed to create TaskController: " + throwable.message
             }
@@ -292,7 +292,7 @@ class TaskManager internal constructor(
                 task = ManagedTask(
                     id = id,
                     originalSpec = originalSpec,
-                    spec = originalSpec,
+                    spec = spec,
                     controller = null,
                     state = TaskStateType.DONE,
                 )
@@ -301,14 +301,17 @@ class TaskManager internal constructor(
                 tasks[id] = task
                 return
             }
-            task = ManagedTask(id, originalSpec, originalSpec, controller, TaskStateType.PENDING)
+            task = ManagedTask(
+                id = id,
+                originalSpec = originalSpec,
+                spec = spec,
+                controller = controller,
+                state = TaskStateType.PENDING,
+            )
             tasks[id] = task
             val delayMs = task.startDelayMs(time.milliseconds())
             task.startFuture = scheduler.schedule(executor, (RunTask(task)), delayMs)
-            log.info(
-                "Created a new task {} with spec {}, scheduled to start {} ms from now.",
-                id, originalSpec, delayMs
-            )
+            log.info("Created a new task {} with spec {}, scheduled to start {} ms from now.", id, spec, delayMs)
         }
     }
 
@@ -435,7 +438,7 @@ class TaskManager internal constructor(
             }
             log.info("Destroying task {}.", id)
             task.clearStartFuture()
-            for ((nodeName, workerId) in task.workerIds.entries) {
+            for ((nodeName, workerId) in task.workerIds) {
                 workerStates.remove(workerId)
                 nodeManagers[nodeName]!!.destroyWorker(workerId)
             }

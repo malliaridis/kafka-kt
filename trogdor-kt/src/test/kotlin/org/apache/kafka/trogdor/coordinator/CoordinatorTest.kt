@@ -733,6 +733,7 @@ class CoordinatorTest {
             .use { cluster ->
                 val fooSpec = NoOpTaskSpec(startMs = 1, durationMs = 500)
                 time.sleep(552)
+
                 val coordinatorClient = cluster.coordinatorClient()
                 val updatedSpec = NoOpTaskSpec(startMs = 552, durationMs = 500)
                 coordinatorClient.createTask(CreateTaskRequest("fooSpec", fooSpec))

@@ -128,17 +128,11 @@ class WorkerManager internal constructor(
                     return worker.doneFuture!!
                 }
                 val haltFuture = KafkaFutureImpl<String>()
-                haltFuture.thenApply { errorString: String? ->
-                    val error = errorString ?: ""
+                haltFuture.thenApply { error ->
                     if (error.isEmpty()) log.info("{}: Worker {} is halting.", nodeName, worker)
-                    else log.info(
-                        "{}: Worker {} is halting with error {}",
-                        nodeName, worker, error
-                    )
+                    else log.info("{}: Worker {} is halting with error {}", nodeName, worker, error)
 
-                    stateChangeExecutor.submit(
-                        HandleWorkerHalting(worker, error, false)
-                    )
+                    stateChangeExecutor.submit(HandleWorkerHalting(worker, error, false))
                     null
                 }
                 try {

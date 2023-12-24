@@ -39,11 +39,7 @@ abstract class TaskState(
     status: JsonNode?,
 ) : Message() {
 
-    private val status: JsonNode
-
-    init {
-        this.status = status ?: NullNode.instance
-    }
+    private val status: JsonNode = status ?: NullNode.instance
 
     @JsonProperty
     fun spec(): TaskSpec = spec

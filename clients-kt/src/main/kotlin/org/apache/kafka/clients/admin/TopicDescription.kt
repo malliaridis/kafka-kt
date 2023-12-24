@@ -36,7 +36,7 @@ data class TopicDescription(
     val name: String,
     val internal: Boolean,
     val partitions: List<TopicPartitionInfo>,
-    val authorizedOperations: Set<AclOperation>? = null,
+    val authorizedOperations: Set<AclOperation> = emptySet(),
 ) {
 
     // Do not include topicId in primary constructor to exclude from generated functions
@@ -48,7 +48,7 @@ data class TopicDescription(
         name: String,
         internal: Boolean,
         partitions: List<TopicPartitionInfo>,
-        authorizedOperations: Set<AclOperation>? = null,
+        authorizedOperations: Set<AclOperation> = emptySet(),
         topicId: Uuid = Uuid.ZERO_UUID,
     ) : this(
         name = name,
@@ -62,7 +62,7 @@ data class TopicDescription(
     override fun toString(): String {
         return "(name=$name, " +
                 "internal=$internal, " +
-                "partitions=${Utils.join(partitions, ",")}, " +
+                "partitions=${partitions.joinToString(",")}, " +
                 "authorizedOperations=$authorizedOperations)"
     }
 }
