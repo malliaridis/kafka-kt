@@ -25,7 +25,7 @@ import org.apache.kafka.common.TopicPartition
  *
  * The API of this class is evolving. See [AdminClient] for details.
  */
-class ListPartitionReassignmentsResult internal constructor(
+class ListPartitionReassignmentsResult(
     private val future: KafkaFuture<Map<TopicPartition, PartitionReassignment>>,
 ) {
 

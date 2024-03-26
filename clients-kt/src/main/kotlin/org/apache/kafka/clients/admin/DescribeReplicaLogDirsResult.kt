@@ -29,7 +29,7 @@ import org.apache.kafka.common.requests.DescribeLogDirsResponse
  * The API of this class is evolving, see [Admin] for details.
  */
 @Evolving
-class DescribeReplicaLogDirsResult internal constructor(
+class DescribeReplicaLogDirsResult(
     val futures: Map<TopicPartitionReplica, KafkaFuture<ReplicaLogDirInfo>>,
 ) {
 
@@ -75,7 +75,7 @@ class DescribeReplicaLogDirsResult internal constructor(
      * partition or the replica of this partition is not being moved to another log directory on the
      * given broker.
      */
-    class ReplicaLogDirInfo internal constructor(
+    class ReplicaLogDirInfo(
         val currentReplicaLogDir: String? = null,
         val currentReplicaOffsetLag: Long = DescribeLogDirsResponse.INVALID_OFFSET_LAG,
         val futureReplicaLogDir: String? = null,

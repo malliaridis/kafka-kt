@@ -27,7 +27,7 @@ import org.apache.kafka.common.security.token.delegation.DelegationToken
  * The API of this class is evolving, see [Admin] for details.
  */
 @Evolving
-class CreateDelegationTokenResult internal constructor(
+class CreateDelegationTokenResult(
     val delegationToken: KafkaFuture<DelegationToken>,
 ) {
 

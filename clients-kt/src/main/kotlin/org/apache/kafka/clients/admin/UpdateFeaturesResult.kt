@@ -27,7 +27,7 @@ import org.apache.kafka.common.KafkaFuture
  * @property futures A map from feature name to future, which can be used to check the status of
  * individual feature updates.
  */
-class UpdateFeaturesResult internal constructor(val futures: Map<String, KafkaFuture<Unit>>) {
+class UpdateFeaturesResult(val futures: Map<String, KafkaFuture<Unit>>) {
 
     @Deprecated(
         message = "Use property instead",

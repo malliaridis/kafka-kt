@@ -24,7 +24,7 @@ import org.apache.kafka.common.KafkaFuture
  *
  * The API of this class is evolving, see [Admin] for details.
  */
-class UnregisterBrokerResult internal constructor(private val future: KafkaFuture<Unit>) {
+class UnregisterBrokerResult(private val future: KafkaFuture<Unit>) {
     /**
      * Return a future which succeeds if the operation is successful.
      */

@@ -2970,8 +2970,8 @@ class KafkaAdminClient internal constructor(
         )
     }
 
-    private fun validAclOperations(authorizedOperations: Int): Set<AclOperation>? {
-        return if (authorizedOperations == MetadataResponse.AUTHORIZED_OPERATIONS_OMITTED) null
+    private fun validAclOperations(authorizedOperations: Int): Set<AclOperation> {
+        return if (authorizedOperations == MetadataResponse.AUTHORIZED_OPERATIONS_OMITTED) emptySet()
         else Utils.from32BitField(authorizedOperations)
             .map { code -> AclOperation.fromCode(code) }
             .filter { operation: AclOperation ->
@@ -2986,16 +2986,13 @@ class KafkaAdminClient internal constructor(
         private val future: KafkaFutureImpl<Collection<Any>>,
     ) {
 
-        private val errors: MutableList<Throwable>
+        private val errors = mutableListOf<Throwable>()
 
-        private val listings: HashMap<String, ConsumerGroupListing>
+        private val listings = mutableMapOf<String, ConsumerGroupListing>()
 
-        private val remaining: MutableSet<Node>
+        private val remaining: MutableSet<Node> = leaders.toMutableSet()
 
         init {
-            errors = ArrayList()
-            listings = HashMap()
-            remaining = leaders.toMutableSet()
             tryComplete()
         }
 

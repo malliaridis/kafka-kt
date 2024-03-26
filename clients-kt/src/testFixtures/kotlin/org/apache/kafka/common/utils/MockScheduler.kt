@@ -68,12 +68,14 @@ class MockScheduler(private val time: MockTime) : Scheduler, MockTime.Listener {
 
     override fun <T> schedule(
         executor: ScheduledExecutorService,
-        callable: Callable<T>, delayMs: Long,
+        callable: Callable<T>,
+        delayMs: Long,
     ): Future<T> {
         val future = KafkaFutureImpl<T>()
         val waiter = KafkaFutureImpl<Long>()
         waiter.thenApply { now ->
-            executor.submit { // Note: it is possible that we'll execute Callable#call right after
+            executor.submit {
+                // Note: it is possible that we'll execute Callable#call right after
                 // the future is cancelled.  This is a valid sequence of events
                 // that the author of the Callable needs to be able to handle.
                 //

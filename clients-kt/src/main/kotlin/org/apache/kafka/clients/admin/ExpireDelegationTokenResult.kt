@@ -26,7 +26,7 @@ import org.apache.kafka.common.annotation.InterfaceStability.Evolving
  * The API of this class is evolving, see [Admin] for details.
  */
 @Evolving
-data class ExpireDelegationTokenResult internal constructor(
+data class ExpireDelegationTokenResult(
     val expiryTimestamp: KafkaFuture<Long>,
 ) {
 

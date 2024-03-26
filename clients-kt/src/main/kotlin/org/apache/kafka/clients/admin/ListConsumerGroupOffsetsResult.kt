@@ -32,7 +32,7 @@ import org.apache.kafka.common.annotation.InterfaceStability.Evolving
  * The API of this class is evolving, see [Admin] for details.
  */
 @Evolving
-class ListConsumerGroupOffsetsResult internal constructor(
+class ListConsumerGroupOffsetsResult(
     futures: Map<CoordinatorKey, KafkaFuture<Map<TopicPartition, OffsetAndMetadata?>>>
 ) {
 

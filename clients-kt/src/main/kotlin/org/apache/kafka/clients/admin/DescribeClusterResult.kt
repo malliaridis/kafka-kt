@@ -36,7 +36,7 @@ import org.apache.kafka.common.annotation.InterfaceStability.Evolving
  * non-null if the broker supplied this information, and `null` otherwise.
  */
 @Evolving
-class DescribeClusterResult internal constructor(
+class DescribeClusterResult(
     val nodes: KafkaFuture<Collection<Node>>,
     val controller: KafkaFuture<Node?>,
     val clusterId: KafkaFuture<String>,

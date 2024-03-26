@@ -65,7 +65,7 @@ import org.apache.kafka.common.security.token.delegation.DelegationToken
 import org.apache.kafka.common.security.token.delegation.TokenInformation
 import kotlin.math.max
 
-class MockAdminClient private constructor(
+class MockAdminClient(
     private val brokers: List<Node> = listOf(Node.noNode()),
     controller: Node = Node.noNode(),
     private val clusterId: String = DEFAULT_CLUSTER_ID,

@@ -29,7 +29,7 @@ package org.apache.kafka.clients.admin
  * @property maxVersionLevel The maximum version level value.
  * @throws IllegalArgumentException Raised when the condition described above is not met.
  */
-data class FinalizedVersionRange internal constructor(
+data class FinalizedVersionRange(
     private val minVersionLevel: Short,
     private val maxVersionLevel: Short,
 ) {

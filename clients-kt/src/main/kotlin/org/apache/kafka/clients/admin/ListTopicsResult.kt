@@ -26,7 +26,7 @@ import org.apache.kafka.common.annotation.InterfaceStability.Evolving
  * The API of this class is evolving, see [Admin] for details.
  */
 @Evolving
-class ListTopicsResult internal constructor(val future: KafkaFuture<Map<String, TopicListing>>) {
+class ListTopicsResult(val future: KafkaFuture<Map<String, TopicListing>>) {
 
     /**
      * Return a future which yields a map of topic names to TopicListing objects.

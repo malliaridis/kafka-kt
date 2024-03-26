@@ -28,7 +28,7 @@ package org.apache.kafka.clients.admin
  *
  * @throws IllegalArgumentException Raised when the condition described above is not met.
  */
-data class SupportedVersionRange internal constructor(
+data class SupportedVersionRange(
     val minVersion: Short,
     val maxVersion: Short,
 ) {
